@@ -1,0 +1,4 @@
+[submodule "gitmodules"]
+	path = gitmodules
+	url = https://github.com/bmmtstb/AlphaPose.git
+	branch = DGS
