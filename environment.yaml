@@ -1,0 +1,37 @@
+name: DGS
+channels:
+  - defaults
+  - "nvidia/label/cuda-11.8.0"
+dependencies:
+  - python=3.10.12
+  - pip
+  - cuda-toolkit  # conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
+  - pytorch::torchvision=0.16.0
+  - pytorch::torchaudio=2.1.0
+  - pytorch::pytorch-cuda=11.8
+  - pytorch::pytorch=2.1.0
+  - anaconda::cython=3.0.0
+  - anaconda::natsort
+  - anaconda::numpy
+  - anaconda::scipy
+  - conda-forge::jinja2
+  - conda-forge::munkres
+  - conda-forge::ninja
+  - conda-forge::pycocotools=2.0.6
+  - conda-forge::pyyaml=6.0.1
+  - conda-forge::terminaltables
+  - conda-forge::tensorboardx
+  - conda-forge::typeguard
+  - conda-forge::tqdm
+  - conda-forge::visdom
+  - pytorch3d::pytorch3d
+  - fvcore::fvcore
+  - pip:
+      # Additional Packages for DGS
+      - pylint
+      # Set up halpecocotools
+      - -e ./dependencies/halpecocotools/PythonAPI
+      # Set up torchreid and cythonize
+      - -e ./dependencies/torchreid
+      # Requirements for Alpha Pose
+      - -e ./dependencies/AlphaPose_Fork

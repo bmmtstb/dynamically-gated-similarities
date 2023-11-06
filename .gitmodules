@@ -2,3 +2,10 @@
 	path = dependencies/AlphaPose_Fork
 	url = https://github.com/bmmtstb/AlphaPose.git
 	branch = DGS
+[submodule "dependencies/torchreid"]
+	path = dependencies/torchreid
+	url = https://github.com/KaiyangZhou/deep-person-reid.git
+	branch = master
+[submodule "dependencies/halpecocotools"]
+	path = dependencies/halpecocotools
+	url = https://github.com/Ambrosiussen/HalpeCOCOAPI.git
