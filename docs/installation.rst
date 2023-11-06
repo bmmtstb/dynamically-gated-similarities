@@ -8,27 +8,6 @@ Use condas ``environment.yaml`` to create environment with specific python versi
     conda env create -n DGS --file environment.yaml
     conda activate DGS
 
-Because the torchreid pip-package seems broken right-now, clone torchreid as submodule and build it from source.
+Because the torchreid pip-package seems broken right-now, we are cloning torchreid as submodule and build it from source while creating the environment.
 
-::
-
-    cd dependencies/torchreid/
-    pip install -e .
-    cd ../..
-
-AlphaPose needs halpecocotools where the installer is also broken.
-
-::
-
-    cd dependencies/halpecocotools/PythonAPI/
-    pip install -e .
-    cd ../../..
-
-
-After installing halpecocotools, the AlphaPose repository is installed similarly.
-
-::
-
-    cd dependencies/AlphaPose_Fork/
-    pip install -e .
-    cd ../..
+AlphaPose needs halpecocotools where the installer is also broken for now. halpecocotools can be imported and build as submodules too. After installing halpecocotools, the AlphaPose repository is installed similarly.

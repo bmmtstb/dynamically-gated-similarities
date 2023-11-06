@@ -1,0 +1,3 @@
+"""
+Matching given similarity matrix
+"""
