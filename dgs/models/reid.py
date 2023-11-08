@@ -30,7 +30,7 @@ class EmbeddingGeneratorModel(BaseModule):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, data: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
 
         Parameters
@@ -75,5 +75,8 @@ class TorchReID(EmbeddingGeneratorModel):
 
         self.model = nn.DataParallel(m, device_ids=self.config.gpus).to(self.config.device).eval()
 
-    def forward(self, data: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
         return self.model(data)
+
+    def load_weights(self, weight_path: str, *args, **kwargs) -> None:
+        raise NotImplementedError

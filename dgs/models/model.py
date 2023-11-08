@@ -1,13 +1,13 @@
 """
 Base model class as lowest building block for dynamic modules
 """
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, Path
 
 
-class BaseModule(ABC):
+class BaseModule(ABC, metaclass=ABCMeta):
     """
     Every Module is a building block that can be replaced with other building blocks.
     This defines a base module all of those building blocks inherit
@@ -15,7 +15,7 @@ class BaseModule(ABC):
 
     def __init__(self, config: Config, path: Path):
         """
-        Every module has access the global configuration for parameters like device
+        Every module has access the global configuration for parameters like the modules' device
 
         Args:
             config: the overall configuration of the whole algorithm
@@ -27,26 +27,14 @@ class BaseModule(ABC):
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
 
-    def __call__(self, *args, **kwargs):
-        """see self.forward()"""
-        return self.forward(*args, **kwargs)
-
     @abstractmethod
-    def forward(self, *args, **kwargs) -> ... | tuple[...]:
-        """
-        Module gets input and produces output.
-        e.g. custom call of torch.model.forward()
-
-        Returns:
-            output of the model given inputs
-            might have multiple outputs
-        """
+    def __call__(self, *args, **kwargs) -> any:
         raise NotImplementedError
 
     @abstractmethod
     def load_weights(self, weight_path: str, *args, **kwargs) -> None:
         """
-        Load given weights for current model
+        Load given weights for the current model
 
         Args:
             weight_path: path to a loadable file with weights for this model

@@ -18,10 +18,12 @@ class HistoryWarpingModel(BaseModule):
     def __init__(self, config: Config, path: list[str]):
         super().__init__(config, path)
 
-        self.is_trainable: bool = ...
+    def __call__(self, *args, **kwargs) -> PoseState:
+        """see self.forward()"""
+        return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, pose: torch.Tensor, jcs: torch.Tensor, bbox: torch.Tensor, *args, **kwargs) -> PoseState:
+    def forward(self, pose: torch.Tensor, jcs: torch.Tensor, bbox: torch.Tensor) -> PoseState:
         """
 
         Parameters
@@ -52,13 +54,13 @@ class HWKalmanFilter(HistoryWarpingModel):
     def load_weights(self, weight_path: str, *args, **kwargs) -> None:
         raise NotImplementedError
 
-    def forward(self, pose: torch.Tensor, jcs: torch.Tensor, bbox: torch.Tensor, *args, **kwargs) -> PoseState:
+    def forward(self, pose: torch.Tensor, jcs: torch.Tensor, bbox: torch.Tensor) -> PoseState:
         raise NotImplementedError
 
 
-def get_warping_model(config, *args, **kwargs) -> HistoryWarpingModel:
+def get_warping_model(config: Config, *args, **kwargs) -> HistoryWarpingModel:
     """
-    given config, set up current HistoryWarping model
+    Given config, set up the current HistoryWarping model
 
     Returns
     -------
