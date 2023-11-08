@@ -17,6 +17,7 @@ dependencies:
   - conda-forge::jinja2
   - conda-forge::munkres
   - conda-forge::ninja
+  - conda-forge::easydict
   - conda-forge::pycocotools=2.0.*
   - conda-forge::pyyaml=6.0.*
   - conda-forge::terminaltables
@@ -24,15 +25,16 @@ dependencies:
   - conda-forge::typeguard
   - conda-forge::tqdm
   - conda-forge::visdom
-  #  - pytorch3d::pytorch3d  # no installation candidate?
-  - fvcore::fvcore
+  - conda-forge::pytorch3d
+  - conda-forge::fvcore
   - pip:
       # Additional Packages for DGS
       - pylint
       # Set up halpecocotools
       - -e ./dependencies/halpecocotools/PythonAPI
-      # Trochreid - install requirements and Set up torchreid and cythonize
-      # somehow does not work just by calling setup, cant find cv2 even with it in the requirements
+      # Torchreid - install requirements and Set up torchreid and cythonize
+      # somehow installing requirements does not work just by calling setup,
+      # can't find cv2 even with it in the requirements
       - -r ./dependencies/torchreid/requirements.txt
       - -e ./dependencies/torchreid
       # Requirements for Alpha Pose
