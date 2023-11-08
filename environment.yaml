@@ -25,8 +25,8 @@ dependencies:
   - conda-forge::typeguard
   - conda-forge::tqdm
   - conda-forge::visdom
-  - conda-forge::pytorch3d
-  - conda-forge::fvcore
+  #  - conda-forge::pytorch3d
+  #  - conda-forge::fvcore
   - pip:
       # Additional Packages for DGS
       - pylint

@@ -161,6 +161,7 @@ cython_debug/
 
 # data folder
 data/
+
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/inspectionProfiles/Project_Default.xml
 /.idea/.gitignore
@@ -169,3 +170,6 @@ data/
 /.idea/modules.xml
 /.idea/pylint.xml
 /.idea/vcs.xml
+/AlphaPose_Fork/
+/torchreid/
+/halpecocotools/PythonAPI/
