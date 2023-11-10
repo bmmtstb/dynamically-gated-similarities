@@ -7,7 +7,9 @@ jobs:
     name: Run pylint and tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: mamba-org/setup-micromamba@v1
         with:
           micromamba-version: 'latest'

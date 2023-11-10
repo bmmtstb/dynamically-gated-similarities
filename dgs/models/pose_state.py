@@ -1,8 +1,6 @@
 """
 definitions and helpers for pose-state(s)
 """
-from __future__ import annotations
-
 import torch
 
 from dgs.utils.types import Config, PoseStateTuple
@@ -81,8 +79,7 @@ class PoseState:
         """
         if isinstance(item, str):
             return self.__getattribute__(str(item))
-        else:
-            return self.__getstate__()[item]
+        return self.__getstate__()[item]
 
     def __getstate__(self) -> PoseStateTuple:
         """
