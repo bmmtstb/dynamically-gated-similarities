@@ -1,6 +1,8 @@
 name: DGS
+
 channels:
   - "nvidia/label/cuda-11.8.0"
+
 dependencies:
   - python==3.10.*
   - pip
