@@ -20,4 +20,4 @@ def get_sub_config(config: Config, path: list[str]) -> Config:
         return config
     if isinstance(config, dict) and path[0] in config:
         return get_sub_config(config[path[0]], path[1:])
-    raise KeyError(f'Key {path[0]} does not exist in current configuration {config}.')
+    raise KeyError(f"Key {path[0]} does not exist in current configuration {config}.")

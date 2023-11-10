@@ -1,25 +1,28 @@
 name: Run CI
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   build:
     name: Run pylint and tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: mamba-org/setup-micromamba@v1
-      with:
-        micromamba-version: 'latest'
-        environment-file: environment.yaml
-        init-shell: bash
-        cache-downloads: true
-        cache-environment: true
-        log-level: debug
-        post-cleanup: 'all'
-    - name: Analysing the code with pylint
-      run: |
-        pylint -j 0 .
-    - name: Test using unittest
-      run: |
-        python -m unittest discover ./tests/ "test__*.py"
+      - uses: actions/checkout@v3
+      - uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: 'latest'
+          environment-file: environment.yaml
+          init-shell: bash
+          cache-downloads: true
+          cache-environment: true
+          log-level: debug
+          post-cleanup: 'all'
+      - name: Analysing the code with black
+        run: |
+          black .
+      - name: Analysing the code with pylint
+        run: |
+          pylint -j 0 .
+      - name: Test using unittest
+        run: |
+          python -m unittest discover ./tests/ "test__*.py"
