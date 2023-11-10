@@ -1,6 +1,5 @@
 name: DGS
 channels:
-  - defaults
   - "nvidia/label/cuda-11.8.0"
 dependencies:
   - python==3.10.*
@@ -10,31 +9,35 @@ dependencies:
   - pytorch::torchaudio=2.1.*
   - pytorch::pytorch-cuda=11.8
   - pytorch::pytorch=2.1.*
-  - anaconda::cython=3.0.*
-  - anaconda::natsort
-  - anaconda::numpy
-  - anaconda::scipy
+  - conda-forge::black
+  - conda-forge::cython=3.0.*
+  - conda-forge::easydict
+  #  - conda-forge::fvcore
+  - conda-forge::gdown
   - conda-forge::jinja2
   - conda-forge::munkres
+  - conda-forge::natsort
   - conda-forge::ninja
-  - conda-forge::easydict
+  - conda-forge::numpy
   - conda-forge::pycocotools=2.0.*
+  #  - conda-forge::pytorch3d
   - conda-forge::pyyaml=6.0.*
+  - conda-forge::scipy
   - conda-forge::terminaltables
+  - conda-forge::tensorboard
   - conda-forge::tensorboardx
   - conda-forge::typeguard
   - conda-forge::tqdm
   - conda-forge::visdom
-  #  - conda-forge::pytorch3d
-  #  - conda-forge::fvcore
+  - fastai::opencv-python-headless
   - pip:
       # Additional Packages for DGS
       - pylint
+      - opencv-python  # so pip doesn't complain, when torchreid tries to install cv2
       # Set up halpecocotools
       - -e ./dependencies/halpecocotools/PythonAPI
       # Torchreid - install requirements and Set up torchreid and cythonize
       # somehow installing requirements does not work just by calling setup,
-      # can't find cv2 even with it in the requirements
       - -r ./dependencies/torchreid/requirements.txt
       - -e ./dependencies/torchreid
       # Requirements for Alpha Pose

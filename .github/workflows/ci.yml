@@ -6,17 +6,17 @@ jobs:
   build:
     name: Run pylint and tests
     runs-on: ubuntu-latest
-    #    strategy:
-    #      fail-fast: false
-    #      matrix:
-    #        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v3
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: mamba-org/setup-micromamba@v1
       with:
-        activate-environment: DGS
+        micromamba-version: 'latest'
         environment-file: environment.yaml
-        auto-update-conda: "true"
+        init-shell: bash
+        cache-downloads: true
+        cache-environment: true
+        log-level: debug
+        post-cleanup: 'all'
     - name: Analysing the code with pylint
       run: |
         pylint -j 0 .
