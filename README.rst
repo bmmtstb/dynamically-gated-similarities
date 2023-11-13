@@ -14,6 +14,9 @@ Dynamically Gated Similarities
 Notes
 -----
 
+You can find a visual Pipeline on
+`LucidChart<https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01>`
+
 
 Folder Structure
 ~~~~~~~~~~~~~~~~
