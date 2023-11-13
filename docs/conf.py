@@ -18,9 +18,9 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-PROJECT = "Tracking via Dynamically Gated Similarities"
-COPYRIGHT = "2023, Martin Steinborn"
-AUTHOR = "Martin Steinborn"
+project = "Tracking via Dynamically Gated Similarities"
+copyright = "2023, Martin Steinborn"
+author = "Martin Steinborn"
 
 version_file = "../dgs/__init__.py"
 with open(version_file, "r") as f:
@@ -37,14 +37,14 @@ release = __version__
 extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
+    "sphinx.ext.coverage",
     "sphinx.ext.githubpages",
+    "sphinx.ext.autosectionlabel",
 ]
 
 # File parsing
 source_suffix = [".rst", ".md"]
 source_parsers = {".md": "recommonmark.parser.CommonMarkParser"}
-
-language = None
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -52,5 +52,6 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-HTML_THEME = "classic"
-HTML_STATIC_PATH = ["_static"]
+html_theme = "classic"
+html_static_path = ["_static"]
+html_css_files = ["css/custom.css"]

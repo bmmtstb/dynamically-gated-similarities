@@ -14,15 +14,14 @@ Dynamically Gated Similarities
 Notes
 -----
 
-You can find a visual Pipeline on
-`LucidChart<https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01>`
+You can find a visual Pipeline on `LucidChart <https://lucid.app/documents/view/848ef9df-ac3d-464d-912f-f5760b6cfbe9>`_ or downloadable as `PDF <https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01>`_.
 
 
 Folder Structure
 ~~~~~~~~~~~~~~~~
 
 
-.. code-block::
+.. rst-class:: monospace-block
 
     dynamically_gated_similarities
     │
@@ -31,7 +30,7 @@ Folder Structure
     └───docs
     │   │   documentation and code for readthedocs
     └───data
-    │   │   folder containing the datasets, for structure see TODO
+    │   │   folder containing the datasets, for structure see :ref:`Dataset <dataset_page>`
     └───dependencies
     │   │   references to git submodules e.g. to my AlphaPose_Fork
     └───dgs

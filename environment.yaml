@@ -35,7 +35,8 @@ dependencies:
   - pip:
       # Additional Packages for DGS
       - pylint
-      - opencv-python  # so pip doesn't complain, when torchreid tries to install cv2
+      - opencv-python  # so pip doesn't complain when torchreid tries to install cv2
+      - sphinx  # build docs
       # Set up halpecocotools
       - -e ./dependencies/halpecocotools/PythonAPI
       # Torchreid - install requirements and Set up torchreid and cythonize
