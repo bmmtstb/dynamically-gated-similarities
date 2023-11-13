@@ -2,6 +2,10 @@
     :target: https://tracking-via-dynamically-gated-similarities.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yml/badge.svg
+    :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yml
+    :alt: Docs
+
 .. image:: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yml/badge.svg
     :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yml
     :alt: Linting and Testing
