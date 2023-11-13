@@ -1,3 +1,9 @@
+"""
+Dynamically Gated Similarities package
+
+Provide general package information
+"""
+
 __version__ = "0.0.1"
 __author__ = "Martin Steinborn"
 __homepage__ = "https://bmmtstb.github.io/dynamically-gated-similarities/"

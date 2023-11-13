@@ -3,7 +3,10 @@ Base model class as lowest building block for dynamic modules
 """
 from abc import ABC, ABCMeta, abstractmethod
 
+import torch
+
 from dgs.utils.config import get_sub_config
+from dgs.utils.constants import PRINT_PRIO
 from dgs.utils.types import Config, Path
 
 
@@ -27,6 +30,30 @@ class BaseModule(ABC, metaclass=ABCMeta):
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
 
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        """
+        Validate this module's config, throws exceptions if invalid.
+
+        Configuration should include at least the following:
+            device (Device): torch device or string
+            print_prio (str): printing priority, has to be in PRINT_PRIO
+        """
+        # validate device
+        if not self.config["device"] or (  # does not exist
+            not (  # is not either valid string nor existing torch.device
+                (isinstance(self.config["device"], str) and self.config["device"] in ["cuda", "cpu"])
+                or isinstance(self.config["device"], torch.device)
+            )
+        ):
+            raise ValueError("Module config does not contain valid device.")
+        # validate print priority
+        if not self.config["print_prio"] or (  # does not exist
+            self.config["print_prio"] not in PRINT_PRIO  # is not in the choices
+        ):
+            raise ValueError("Module config does not contain valid print priority")
+
     @abstractmethod
     def __call__(self, *args, **kwargs) -> any:
         raise NotImplementedError
@@ -40,3 +67,24 @@ class BaseModule(ABC, metaclass=ABCMeta):
             weight_path: path to a loadable file with weights for this model
         """
         raise NotImplementedError
+
+    def print(self, priority: str) -> bool:
+        """
+        Check whether the Module is allowed to print something with the given priority
+
+        Args:
+            priority: print priority, has to be in PRINT_PRIO
+
+        Returns:
+            Whether the module is allowed to print given its priority
+        """
+        try:
+            index_given: int = PRINT_PRIO.index(priority)
+        except ValueError as verr:
+            raise ValueError(f"Priority: {priority} is not in {PRINT_PRIO}") from verr
+        if priority == "none":
+            raise ValueError("To print with priority of none doesn't make sense...")
+
+        index_current: int = PRINT_PRIO.index(self.config["print_prio"])
+
+        return index_given <= index_current

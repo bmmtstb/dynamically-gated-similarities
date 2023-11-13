@@ -7,14 +7,15 @@ from dgs.utils.types import Config
 
 def get_sub_config(config: Config, path: list[str]) -> Config:
     """
-    Given a full config file, return the subtree given by path
+    Given a full configuration file in nested dict style or similar,
+    return the given subtree by using the values of path as node keys.
 
     Args:
-        config: configuration file, EasyDict stile
-        path: get the subtree at this path
+        config: configuration file, EasyDict stile or plain nested dict
+        path: path of a subtree within this dictionary
 
     Returns:
-        subconfig
+        Sub configuration, an excerpt of the original configuration
     """
     if not path:
         return config

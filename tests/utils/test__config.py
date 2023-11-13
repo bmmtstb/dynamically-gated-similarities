@@ -12,20 +12,29 @@ NESTED_CONFIG = {
         "y": 2,
         "deeper": {
             "ore": "iron",
-            "pickaxe": {"iron": 10, "diamnon": 100},
+            "pickaxe": {"iron": 10, "diamond": 100.0},
         },
     },
-    "dog": {"charlie": "good", "leika": "bad"},
+    "dog": SIMPLE_CONFIG,
 }
 
 
 class TestGetSubConfig(unittest.TestCase):
+    def test_empty_path(self):
+        for in_config, path in [
+            (EMPTY_CONFIG, []),
+            (SIMPLE_CONFIG, []),
+            (NESTED_CONFIG, []),
+            (NESTED_CONFIG, None),
+        ]:
+            with self.subTest(msg=f"Path: {path}"):
+                self.assertEqual(get_sub_config(in_config, path), in_config)
+
     def test_one_deep(self):
         for in_config, path, out_config in [
-            (EMPTY_CONFIG, [], EMPTY_CONFIG),
             (SIMPLE_CONFIG, ["foo"], "foo foo"),
             (NESTED_CONFIG, ["foo"], 3),
-            (NESTED_CONFIG, ["dog"], {"charlie": "good", "leika": "bad"}),
+            (NESTED_CONFIG, ["dog"], SIMPLE_CONFIG),
         ]:
             with self.subTest(msg=f"Path: {path}"):
                 self.assertEqual(get_sub_config(in_config, path), out_config)
@@ -36,7 +45,8 @@ class TestGetSubConfig(unittest.TestCase):
             (NESTED_CONFIG, ["bar", "y"], 2),
             (NESTED_CONFIG, ["bar", "deeper", "ore"], "iron"),
             (NESTED_CONFIG, ["bar", "deeper", "pickaxe", "iron"], 10),
-            (NESTED_CONFIG, ["dog", "charlie"], "good"),
+            (NESTED_CONFIG, ["bar", "deeper", "pickaxe", "diamond"], float(100)),
+            (NESTED_CONFIG, ["dog", "foo"], "foo foo"),
         ]:
             with self.subTest(msg=f"Path: {path}"):
                 self.assertEqual(get_sub_config(in_config, path), out_config)
@@ -47,7 +57,7 @@ class TestGetSubConfig(unittest.TestCase):
             (SIMPLE_CONFIG, ["bar"]),
             (SIMPLE_CONFIG, ["foo", "bar"]),
             (NESTED_CONFIG, ["foo", "bar"]),
-            (NESTED_CONFIG, ["bar", "charlie"]),
+            (NESTED_CONFIG, ["bar", "foo"]),
         ]:
             with self.subTest(msg=f"Path: {path}"):
                 with self.assertRaises(KeyError):

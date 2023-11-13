@@ -16,7 +16,7 @@ class EmbeddingGeneratorModel(BaseModule):
     """
     Base class for handling embedding generators.
 
-    given data predict an embedding describing the data
+    Given data predict an embedding describing the data.
     """
 
     def __init__(self, config: Config, path: list[str]):
