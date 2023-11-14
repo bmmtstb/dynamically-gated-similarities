@@ -1,25 +1,32 @@
 import unittest
 
+from easydict import EasyDict
+
 from dgs.utils.config import get_sub_config
 
-EMPTY_CONFIG = {}
-SIMPLE_CONFIG = {"foo": "foo foo"}
+EMPTY_CONFIG = EasyDict({})
+SIMPLE_CONFIG = EasyDict({"foo": "foo foo"})
 
-NESTED_CONFIG = {
-    "foo": 3,
-    "bar": {
-        "x": 1,
-        "y": 2,
-        "deeper": {
-            "ore": "iron",
-            "pickaxe": {"iron": 10, "diamond": 100.0},
+NESTED_CONFIG = EasyDict(
+    {
+        "foo": 3,
+        "bar": {
+            "x": 1,
+            "y": 2,
+            "deeper": {
+                "ore": "iron",
+                "pickaxe": {"iron": 10, "diamond": 100.0},
+            },
         },
-    },
-    "dog": SIMPLE_CONFIG,
-}
+        "dog": SIMPLE_CONFIG,
+    }
+)
 
 
 class TestGetSubConfig(unittest.TestCase):
+    def test_sub_config_still_easydict(self):
+        self.assertIsInstance(NESTED_CONFIG["bar"], EasyDict)
+
     def test_empty_path(self):
         for in_config, path in [
             (EMPTY_CONFIG, []),

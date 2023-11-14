@@ -7,7 +7,7 @@ import torch
 
 from dgs.utils.config import get_sub_config
 from dgs.utils.constants import PRINT_PRIO
-from dgs.utils.types import Config, Path
+from dgs.utils.types import Config, NodePath
 
 
 class BaseModule(ABC, metaclass=ABCMeta):
@@ -16,7 +16,7 @@ class BaseModule(ABC, metaclass=ABCMeta):
     This defines a base module all of those building blocks inherit
     """
 
-    def __init__(self, config: Config, path: Path):
+    def __init__(self, config: Config, path: NodePath):
         """
         Every module has access the global configuration for parameters like the modules' device
 
@@ -41,16 +41,16 @@ class BaseModule(ABC, metaclass=ABCMeta):
             print_prio (str): printing priority, has to be in PRINT_PRIO
         """
         # validate device
-        if not self.config["device"] or (  # does not exist
+        if not self.config.device or (  # does not exist
             not (  # is not either valid string nor existing torch.device
-                (isinstance(self.config["device"], str) and self.config["device"] in ["cuda", "cpu"])
-                or isinstance(self.config["device"], torch.device)
+                (isinstance(self.config.device, str) and self.config.device in ["cuda", "cpu"])
+                or isinstance(self.config.device, torch.device)
             )
         ):
             raise ValueError("Module config does not contain valid device.")
         # validate print priority
-        if not self.config["print_prio"] or (  # does not exist
-            self.config["print_prio"] not in PRINT_PRIO  # is not in the choices
+        if not self.config.print_prio or (  # does not exist
+            self.config.print_prio not in PRINT_PRIO  # is not in the choices
         ):
             raise ValueError("Module config does not contain valid print priority")
 
@@ -85,6 +85,6 @@ class BaseModule(ABC, metaclass=ABCMeta):
         if priority == "none":
             raise ValueError("To print with priority of none doesn't make sense...")
 
-        index_current: int = PRINT_PRIO.index(self.config["print_prio"])
+        index_current: int = PRINT_PRIO.index(self.config.print_prio)
 
         return index_given <= index_current

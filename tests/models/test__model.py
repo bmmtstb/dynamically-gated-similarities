@@ -1,13 +1,17 @@
 import unittest
 from unittest.mock import patch
 
+from easydict import EasyDict
+
 from dgs.models.model import BaseModule
 from dgs.utils.types import Config
 
-TEST_CFG: Config = {
-    "device": "cpu",
-    "print_prio": "debug",
-}
+TEST_CFG: Config = EasyDict(
+    {
+        "device": "cpu",
+        "print_prio": "debug",
+    }
+)
 
 
 def _def_repl(key: str, value: any) -> Config:
@@ -21,7 +25,7 @@ def _def_repl(key: str, value: any) -> Config:
     Returns:
         Modified copy of DEFAULT_CONFIG
     """
-    new_cfg: Config = TEST_CFG.copy()
+    new_cfg: Config = EasyDict(TEST_CFG.copy())
     new_cfg[key] = value
     return new_cfg
 

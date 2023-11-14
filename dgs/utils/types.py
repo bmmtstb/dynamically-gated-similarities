@@ -1,11 +1,15 @@
 """
 definition of regularly used types
 """
+from pathlib import Path
+
 import torch
+from easydict import EasyDict
 
 # Configuration
-Config = dict[str, bool | str | int | float | dict]
-Path = list[str]
+Config = dict[str, any] | EasyDict  # actually an EasyDict but can't use that as type hint
+NodePath = list[str]
+FilePath = str | Path
 
 
 # Pose State

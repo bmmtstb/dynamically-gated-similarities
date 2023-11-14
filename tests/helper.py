@@ -1,7 +1,6 @@
 """
 helper methods for tests
 """
-
 from dgs.utils.types import Device
 
 

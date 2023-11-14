@@ -23,7 +23,7 @@ dependencies:
   - conda-forge::numpy
   - conda-forge::pycocotools=2.0.*
   #  - conda-forge::pytorch3d
-  - conda-forge::pyyaml=6.0.*
+  - conda-forge::pyyaml=6.0.*  # yaml
   - conda-forge::scipy
   - conda-forge::terminaltables
   - conda-forge::tensorboard
