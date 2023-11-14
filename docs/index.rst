@@ -4,7 +4,8 @@
     :caption: Contents
 
     installation
-    datasets
+    ../data/datasets
+    ../weights/weights
 
 .. toctree::
     :caption: Package Reference

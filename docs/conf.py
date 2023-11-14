@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.abspath(".."))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Tracking via Dynamically Gated Similarities"
+# noinspection PyShadowingBuiltins
 copyright = "2023, Martin Steinborn"
 author = "Martin Steinborn"
 
