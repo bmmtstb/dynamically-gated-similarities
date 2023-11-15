@@ -3,9 +3,9 @@
 .. toctree::
     :caption: Contents
 
-    installation
-    ../data/datasets
-    ../weights/weights
+    Installation Guide <installation>
+    Dataset <datasets>
+    Weights <weight_link>
 
 .. toctree::
     :caption: Package Reference

@@ -18,7 +18,9 @@ Dynamically Gated Similarities
 Notes
 -----
 
-You can find a visual Pipeline on `LucidChart <https://lucid.app/documents/view/848ef9df-ac3d-464d-912f-f5760b6cfbe9>`_ or downloadable as `PDF <https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01>`_.
+You can find a visual Pipeline on
+`LucidChart <https://lucid.app/documents/view/848ef9df-ac3d-464d-912f-f5760b6cfbe9>`_ or downloadable as
+`PDF <https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01>`_.
 
 
 Folder Structure
@@ -52,16 +54,17 @@ Folder Structure
     │
     │   .gitmodules     - use git submodules to include different backends and libraries
     │   .pylintrc       - linting with pylint
-    │   .readthedocs.yaml - near automatic documentation through readthedocs
+    │   .readthedocs.yaml
     │   LICENSE         - MIT License
 
 
 Abbreviations and Definitions
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is expected that all joints have 2D coordinates, but 3D should be possible with minor adjustments.
 
-Images in PyTorch have shape: [B x C x H x W] and for plotting in matplotlib [B x H x W x C]. Single images don't have the first dimension [C x H x W].
+Images in PyTorch have shape: `[B x C x H x W]` and for plotting in matplotlib `[B x H x W x C]`.
+Single images don't have the first dimension `[C x H x W]`.
 
 +--------------------------+--------------------------------------------------------+
 |  Name                    | Description                                            |

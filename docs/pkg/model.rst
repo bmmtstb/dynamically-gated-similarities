@@ -3,6 +3,6 @@
 dgs.model
 =========
 
-.. autoclass:: dgs.models.model.BaseModule
+.. autoclass:: dgs.models.module.BaseModule
     :members:
 
