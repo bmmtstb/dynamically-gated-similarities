@@ -1,16 +1,16 @@
 """
 Base model class as lowest building block for dynamic modules
 """
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 import torch
 
 from dgs.utils.config import get_sub_config
-from dgs.utils.constants import PRINT_PRIO
+from dgs.utils.constants import PRINT_PRIORITY
 from dgs.utils.types import Config, NodePath
 
 
-class BaseModule(ABC, metaclass=ABCMeta):
+class BaseModule(ABC):
     """
     Every Module is a building block that can be replaced with other building blocks.
     This defines a base module all of those building blocks inherit
@@ -29,6 +29,7 @@ class BaseModule(ABC, metaclass=ABCMeta):
         """
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
+        self._path: NodePath = path
 
         self._validate_config()
 
@@ -50,7 +51,7 @@ class BaseModule(ABC, metaclass=ABCMeta):
             raise ValueError("Module config does not contain valid device.")
         # validate print priority
         if not self.config.print_prio or (  # does not exist
-            self.config.print_prio not in PRINT_PRIO  # is not in the choices
+            self.config.print_prio not in PRINT_PRIORITY  # is not in the choices
         ):
             raise ValueError("Module config does not contain valid print priority")
 
@@ -79,12 +80,12 @@ class BaseModule(ABC, metaclass=ABCMeta):
             Whether the module is allowed to print given its priority
         """
         try:
-            index_given: int = PRINT_PRIO.index(priority)
+            index_given: int = PRINT_PRIORITY.index(priority)
         except ValueError as verr:
-            raise ValueError(f"Priority: {priority} is not in {PRINT_PRIO}") from verr
+            raise ValueError(f"Priority: {priority} is not in {PRINT_PRIORITY}") from verr
         if priority == "none":
             raise ValueError("To print with priority of none doesn't make sense...")
 
-        index_current: int = PRINT_PRIO.index(self.config.print_prio)
+        index_current: int = PRINT_PRIORITY.index(self.config.print_prio)
 
         return index_given <= index_current

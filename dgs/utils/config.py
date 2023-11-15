@@ -40,7 +40,7 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
     Returns:
         Loaded configuration as nested dictionary or easydict
     """
-    with open(filepath, "r") as file:
+    with open(filepath, "r", encoding="utf-8") as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         if easydict:
             return EasyDict(config)

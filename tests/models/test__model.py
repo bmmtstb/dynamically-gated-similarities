@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from easydict import EasyDict
 
-from dgs.models.model import BaseModule
+from dgs.models.module import BaseModule
 from dgs.utils.types import Config
 
 TEST_CFG: Config = EasyDict(
