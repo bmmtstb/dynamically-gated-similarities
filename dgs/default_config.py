@@ -23,6 +23,8 @@ cfg.backbone = EasyDict()
 cfg.backbone.model = "AlphaPose"
 cfg.backbone.cfg_path = "./dependencies/AlphaPose_Fork/configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml"
 cfg.backbone.batchsize = 8
+cfg.backbone.mode = "video"
+cfg.backbone.data = "path_to_video"
 
 # ################ #
 # Visual Embedding #

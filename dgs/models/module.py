@@ -7,6 +7,7 @@ import torch
 
 from dgs.utils.config import get_sub_config
 from dgs.utils.constants import PRINT_PRIORITY
+from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.types import Config, NodePath
 
 
@@ -48,12 +49,12 @@ class BaseModule(ABC):
                 or isinstance(self.config.device, torch.device)
             )
         ):
-            raise ValueError("Module config does not contain valid device.")
+            raise InvalidConfigException("Module config does not contain valid device.")
         # validate print priority
         if not self.config.print_prio or (  # does not exist
             self.config.print_prio not in PRINT_PRIORITY  # is not in the choices
         ):
-            raise ValueError("Module config does not contain valid print priority")
+            raise InvalidConfigException("Module config does not contain valid print priority")
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> any:

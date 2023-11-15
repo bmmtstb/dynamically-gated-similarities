@@ -1,6 +1,7 @@
 """
-util and helpers for handling configuration files
+Util- and helper-functions for handling configuration files and passing down sub configurations to other modules.
 """
+
 import yaml
 from easydict import EasyDict
 
@@ -11,6 +12,8 @@ def get_sub_config(config: Config, path: list[str]) -> Config:
     """
     Given a full configuration file in nested dict style or similar,
     return the given subtree by using the values of path as node keys.
+
+    Works with regular dicts and with EasyDict.
 
     Args:
         config: configuration file, EasyDict stile or plain nested dict

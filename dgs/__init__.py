@@ -1,7 +1,7 @@
 """
-Dynamically Gated Similarities package
+Tracking via Dynamically Gated Similarities
 
-Provide general package information
+TODO Provide general package information
 """
 
 __version__ = "0.0.1"

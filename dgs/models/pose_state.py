@@ -174,7 +174,7 @@ class PoseStates:
         """get length of this state"""
         if len(self.jcss) == len(self.poses) == len(self.bboxes):
             return len(self.jcss)
-        raise IndexError("Lists in pose state have different shape.")
+        raise IndexError("Lists in PoseStates have different length.")
 
     def __iadd__(self, other: PoseState):
         """

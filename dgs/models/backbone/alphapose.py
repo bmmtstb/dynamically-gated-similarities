@@ -8,12 +8,22 @@ import os
 
 from easydict import EasyDict
 
-from alphapose.utils.config import update_config
 from alphapose.utils.detector import DetectionLoader
 from alphapose.utils.file_detector import FileDetectionLoader
 from alphapose.utils.webcam_detector import WebCamDetectionLoader
+from detector.apis import get_detector as get_ap_detector  # alphapose detector
 from dgs.models.backbone.backbone import BackboneModule
+from dgs.utils.config import load_config
+from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Config, NodePath
+
+ap_default_args: Config = EasyDict(
+    {
+        "qsize": 1024,  # length of result buffer, reduce for less CPU load
+        "gpus": "0",
+        "flip": False,  # enable flip testing
+    }
+)
 
 
 class AlphaPoseBackbone(BackboneModule):
@@ -22,12 +32,26 @@ class AlphaPoseBackbone(BackboneModule):
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
+        # create custom ap cfg
+        self.ap_cfg = self._init_ap_args()
         # initialize detection loader
         self._init_loader()
         # start detection loader
         self.det_worker = self.det_loader.start()
 
-        self.ap_cfg: EasyDict = update_config(config.cfg_path)
+    def _init_ap_args(self) -> Config:
+        """
+        AlphaPose needs a custom dict for args and cfg
+        """
+        # load ap config file using given path
+        ap_cfg_file: EasyDict = load_config(self.params.cfg_path)
+        # load or set default params / args for values that AlphaPose needs
+        args: Config = EasyDict(
+            {
+                "detector": self.params.get("detector", ap_cfg_file["DETECTOR"]["NAME"]),
+            }
+        )
+        return args
 
     def _init_loader(self) -> None:
         """
@@ -37,7 +61,9 @@ class AlphaPoseBackbone(BackboneModule):
 
         if self.params.mode == "detfile":  # load already existing detections
             if not os.path.isfile(self.params.data):
-                raise IOError("AlphaPose Error: detfile must refer to a detection json file, not a directory.")
+                raise InvalidParameterException(
+                    "Backbone - AlphaPose: in detfile mode, data must refer to a detection json file, not a directory."
+                )
 
             detfile = self.params.data
 
@@ -54,14 +80,16 @@ class AlphaPoseBackbone(BackboneModule):
 
             self.det_loader = WebCamDetectionLoader(
                 input_source=int(self.params.webcam),
-                detector=...,
+                detector=get_ap_detector(),
                 cfg=...,
                 opt=...,
                 queueSize=...,
             )
         elif self.params.mode == "video":  # local video file
             if not os.path.isfile(self.params.data):
-                raise IOError("AlphaPose Error: video must refer to a video file, not a directory.")
+                raise InvalidParameterException(
+                    "Backbone - AlphaPose: in video mode, data must refer to a single video file, not a directory."
+                )
 
             videofile = self.params.data
 
@@ -82,10 +110,14 @@ class AlphaPoseBackbone(BackboneModule):
                 ...
             elif isinstance(self.params.data, (list, tuple)):  # iterable of image names
                 if any(not os.path.isfile(fp) for fp in self.params.data):
-                    raise IOError("AlphaPose Error: One or multiple images do not exist.")
+                    raise InvalidParameterException(
+                        "Backbone AlphaPose: in image list mode, one or multiple images of data do not exist."
+                    )
                 # ...
             else:
-                raise IOError(f"AlphaPose Error: could not retrieve image(s) with data {self.params.data}")
+                raise InvalidParameterException(
+                    f"Backbone AlphaPose: in image mode, could not retrieve image(s) with data {self.params.data}."
+                )
             self.det_loader = DetectionLoader(
                 input_source=...,
                 detector=...,

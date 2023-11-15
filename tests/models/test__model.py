@@ -4,6 +4,7 @@ from unittest.mock import patch
 from easydict import EasyDict
 
 from dgs.models.module import BaseModule
+from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.types import Config
 
 TEST_CFG: Config = EasyDict(
@@ -55,7 +56,7 @@ class TestBaseModule(unittest.TestCase):
             (_def_repl("print_prio", None), "does not contain valid print priority", "None print priority"),
         ]:
             with self.subTest(msg=msg):
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(InvalidConfigException) as context:
                     BaseModule(config=cfg, path=[])._validate_config()
                 self.assertTrue(err_str in str(context.exception))
 

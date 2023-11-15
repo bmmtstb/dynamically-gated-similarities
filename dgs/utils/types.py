@@ -7,7 +7,7 @@ import torch
 from easydict import EasyDict
 
 # Configuration
-Config = dict[str, any] | EasyDict  # actually an EasyDict but can't use that as type hint
+Config = dict[str, any] | EasyDict  # is actually an EasyDict but can't use that as variable type hint
 NodePath = list[str]
 FilePath = str | Path
 
