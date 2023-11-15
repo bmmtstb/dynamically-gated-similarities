@@ -1,18 +1,25 @@
 .. include:: ../README.rst
 
+
+Keep on reading
+~~~~~~~~~~~~~~~
+
 .. toctree::
-    :caption: Contents
+    :maxdepth: 2
 
     Installation Guide <installation>
     Dataset <datasets>
     Weights <weight_link>
 
-.. toctree::
-    :caption: Package Reference
-    :hidden:
+Class and Method definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    pkg/model
-    pkg/util
+.. autosummary::
+    :toctree: _autosummary
+    :template: custom-module-template.rst
+    :recursive:
+
+    dgs
 
 
 Indices and tables
