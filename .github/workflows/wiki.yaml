@@ -8,11 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run and build sphinx
         uses: ammaraskar/sphinx-action@master
         with:
-          docs-folder: "docs/"
+          docs-folder: "./docs/"
   deploy:
     needs: build
     permissions:
