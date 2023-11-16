@@ -1,10 +1,6 @@
-.. image:: https://readthedocs.org/projects/tracking-via-dynamically-gated-similarities/badge/?version=latest
-    :target: https://tracking-via-dynamically-gated-similarities.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
-
 .. image:: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yaml/badge.svg
     :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yaml
-    :alt: Docs
+    :alt: Documentation Status
 
 .. image:: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml/badge.svg
     :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml
@@ -34,7 +30,7 @@ Folder Structure
     └───configs
     │   │   configuration.yaml files for running different versions of DGS
     └───docs
-    │   │   documentation and code for readthedocs
+    │   │   documentation via sphinx and autodoc
     └───data
     │   │   folder containing the datasets, for structure see :ref:`Dataset <dataset_page>`
     └───dependencies
@@ -54,8 +50,8 @@ Folder Structure
     │
     │   .gitmodules     - use git submodules to include different backends and libraries
     │   .pylintrc       - linting with pylint
-    │   .readthedocs.yaml
     │   LICENSE         - MIT License
+    │   pyproject.toml  - information about this project, additional build parameters
 
 
 Abbreviations and Definitions
