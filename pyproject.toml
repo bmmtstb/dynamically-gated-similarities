@@ -1,3 +1,30 @@
+[project]
+name = "dynamically_gated_similarities"
+authors = [
+    { name = "Martin Steinborn", email = "martin.steinborn@stud.tu-darmstadt.de" },
+]
+description = "Code for Paper \"Tracking with Dynamically Gated Similarities\""
+readme = "README.rst"
+requires-python = ">=3.10"
+classifiers = [
+    "Environment :: GPU :: NVIDIA CUDA :: 11.8",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Typing :: Typed",
+    "Development Status :: 2 - Pre-Alpha",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+[project.optional-dependencies]
+test = ["unittest"]
+doc = ["sphinx"]
+
+[project.urls]
+Documentation = "https://bmmtstb.github.io/dynamically-gated-similarities/"
+Source = "https://github.com/bmmtstb/dynamically-gated-similarities"
+
+
 [tool.black]
 line-length = 120  # equal to .pylintrc
 target-version = ['py310']
@@ -8,3 +35,6 @@ force-exclude = '''
     | data
 )/
 '''
+
+[tool.setuptools]
+py-modules = ["dgs"]
