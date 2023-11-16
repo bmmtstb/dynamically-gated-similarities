@@ -6,6 +6,7 @@ authors = [
 description = "Code for Paper \"Tracking with Dynamically Gated Similarities\""
 readme = "README.rst"
 requires-python = ">=3.10"
+license = { text = "MIT" }
 classifiers = [
     "Environment :: GPU :: NVIDIA CUDA :: 11.8",
     "License :: OSI Approved :: MIT License",
