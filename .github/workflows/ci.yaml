@@ -22,7 +22,6 @@ jobs:
           micromamba-version: 'latest'
           environment-file: environment.yaml
           init-shell: bash
-          cache-downloads: true
           cache-environment: true
           log-level: debug
           post-cleanup: 'all'
