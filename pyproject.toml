@@ -17,10 +17,16 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
+dynamic = ["dependencies"]
 
-[project.optional-dependencies]
-test = ["unittest"]
-doc = ["sphinx"]
+[tool.setuptools]
+py-modules = ["dgs"]
+
+[tool.setuptools.dynamic]
+
+[tool.setuptools.dynamic.optional-dependencies]
+test = { file = ["./tests/requirements_test.txt"] }
+docs = { file = ["./docs/requirements_docs.txt"] }
 
 [project.urls]
 Documentation = "https://bmmtstb.github.io/dynamically-gated-similarities/"
@@ -37,6 +43,3 @@ force-exclude = '''
     | data
 )/
 '''
-
-[tool.setuptools]
-py-modules = ["dgs"]

@@ -173,3 +173,4 @@ data/
 # automatically generated files for docs
 /docs/_autosummary
 /docs/_build
+/my_cleanup.sh
