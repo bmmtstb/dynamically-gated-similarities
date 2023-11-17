@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from easydict import EasyDict
 
-from dgs.models.module import BaseModule
-from dgs.utils.exceptions import InvalidConfigException
+from dgs.models.module import BaseModule, module_validations as base_module_validation
+from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Config
 
 TEST_CFG: Config = EasyDict(
@@ -43,21 +43,21 @@ class TestBaseModule(unittest.TestCase):
             _def_repl("print_prio", "all"),
         ]:
             with self.subTest(msg=str(cfg)):
-                BaseModule(config=cfg, path=[])._validate_config()
+                BaseModule(config=cfg, path=[])._validate_params(base_module_validation, "config")
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_validate_invalid_config(self):
         for cfg, err_str, msg in [
-            (_def_repl("device", "gpu"), "does not contain valid device", "gpu invalid, should be cuda"),
-            (_def_repl("device", ""), "does not contain valid device", "empty device"),
-            (_def_repl("device", None), "does not contain valid device", "None device"),
-            (_def_repl("print_prio", ""), "does not contain valid print priority", "empty print priority"),
-            (_def_repl("print_prio", "None"), "does not contain valid print priority", "caps not valid"),
-            (_def_repl("print_prio", None), "does not contain valid print priority", "None print priority"),
+            (_def_repl("device", "gpu"), "device is not valid, was gpu", "gpu invalid, should be cuda"),
+            (_def_repl("device", ""), "device is not valid", "empty device"),
+            (_def_repl("device", None), "device is not valid", "None device"),
+            (_def_repl("print_prio", ""), "print_prio is not valid", "empty print priority"),
+            (_def_repl("print_prio", "None"), "print_prio is not valid", "caps not valid"),
+            (_def_repl("print_prio", None), "print_prio is not valid", "None print priority"),
         ]:
             with self.subTest(msg=msg):
-                with self.assertRaises(InvalidConfigException) as context:
-                    BaseModule(config=cfg, path=[])._validate_config()
+                with self.assertRaises(InvalidParameterException) as context:
+                    BaseModule(config=cfg, path=[])._validate_params(base_module_validation, "config")
                 self.assertTrue(err_str in str(context.exception))
 
     @patch.multiple(BaseModule, __abstractmethods__=set())

@@ -9,3 +9,7 @@ class InvalidParameterException(Exception):
 
 class InvalidConfigException(Exception):
     """Exception to raise if one value of a modules config is invalid."""
+
+
+class ValidationException(Exception):
+    """Exception to raise if there is something wrong with the validation object"""

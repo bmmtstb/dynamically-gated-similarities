@@ -15,15 +15,22 @@ from detector.apis import get_detector as get_ap_detector  # alphapose detector
 from dgs.models.backbone.backbone import BackboneModule
 from dgs.utils.config import load_config
 from dgs.utils.exceptions import InvalidParameterException
-from dgs.utils.types import Config, NodePath
+from dgs.utils.types import Config, NodePath, Validations
 
 ap_default_args: Config = EasyDict(
     {
         "qsize": 1024,  # length of result buffer, reduce for less CPU load
         "gpus": "0",
         "flip": False,  # enable flip testing
+        "detbatch": 5,  # batchsize of detector
     }
 )
+
+ap_validation: Validations = {
+    "mode": [("in", ["detfile", "image", "webcam", "video"])],
+    "data": ["not None"],
+    "cfg_path": ["str", "file exists", ("endswith", ".yaml")],
+}
 
 
 class AlphaPoseBackbone(BackboneModule):
@@ -32,10 +39,12 @@ class AlphaPoseBackbone(BackboneModule):
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
-        # create custom ap cfg
-        self.ap_cfg = self._init_ap_args()
+        # load ap config file using given path
+        self.ap_cfg_file: EasyDict = load_config(self.params.cfg_path)
+        # create custom AP args / options
+        self.ap_args = self._init_ap_args()
         # initialize detection loader
-        self._init_loader()
+        self.det_loader = self._init_loader()
         # start detection loader
         self.det_worker = self.det_loader.start()
 
@@ -43,20 +52,27 @@ class AlphaPoseBackbone(BackboneModule):
         """
         AlphaPose needs a custom dict for args and cfg
         """
-        # load ap config file using given path
-        ap_cfg_file: EasyDict = load_config(self.params.cfg_path)
+
         # load or set default params / args for values that AlphaPose needs
         args: Config = EasyDict(
             {
-                "detector": self.params.get("detector", ap_cfg_file["DETECTOR"]["NAME"]),
+                "detector": self.params.get("detector", self.ap_cfg_file["DETECTOR"]["NAME"]),
+                "debug": self.params.get("debug", self.config["print_prio"]),
+                "qsize": self.params.get("qsize", ap_default_args["qsize"]),
+                "gpus": self.params.get("gpus", ap_default_args["gpus"]),
+                "flip": self.params.get("flip", ap_default_args["flip"]),
+                "detbatch": self.params.get("detbatch", ap_default_args["detbatch"]),
             }
         )
         return args
 
-    def _init_loader(self) -> None:
-        """
-        Initialize file detection loader
-        Either Webcam, from existing detections or live detection from images
+    def _init_loader(self):
+        """Initialize file detection loader
+
+        Detection loader can either use Webcam, existing detections, or file-based detection from images or videos.
+
+        Returns:
+            The detection loader from AlphaPose.
         """
 
         if self.params.mode == "detfile":  # load already existing detections
@@ -67,25 +83,26 @@ class AlphaPoseBackbone(BackboneModule):
 
             detfile = self.params.data
 
-            self.det_loader = FileDetectionLoader(
+            return FileDetectionLoader(
                 input_source=detfile,
                 cfg=...,
                 opt=...,
                 queueSize=...,
             )
-            self.det_worker = self.det_loader.start()
-        elif self.params.mode == "webcam":  # stream input from webcam
+
+        if self.params.mode == "webcam":  # stream input from webcam
             # set detection batch size per GPU to 1
             self.params.detbatch = 1
 
-            self.det_loader = WebCamDetectionLoader(
+            return WebCamDetectionLoader(
                 input_source=int(self.params.webcam),
                 detector=get_ap_detector(),
                 cfg=...,
                 opt=...,
                 queueSize=...,
             )
-        elif self.params.mode == "video":  # local video file
+
+        if self.params.mode == "video":  # local video file
             if not os.path.isfile(self.params.data):
                 raise InvalidParameterException(
                     "Backbone - AlphaPose: in video mode, data must refer to a single video file, not a directory."
@@ -93,7 +110,7 @@ class AlphaPoseBackbone(BackboneModule):
 
             videofile = self.params.data
 
-            self.det_loader = DetectionLoader(
+            return DetectionLoader(
                 input_source=videofile,
                 detector=...,
                 cfg=...,
@@ -103,22 +120,31 @@ class AlphaPoseBackbone(BackboneModule):
                 queueSize=...,
             )
 
-        elif self.params.mode == "image":  # local image(s) in path or folder-structure
-            if os.path.isfile(self.params.data):  # single image
+        if self.params.mode == "image":  # local image(s) in path or folder-structure
+            if (  # filename of txt file containing image names
+                isinstance(self.params.data, str)
+                and os.path.isfile(self.params.data)
+                and self.params.data.endswith(".txt")
+            ):
+                with open(self.params.data, "r", encoding="utf-8") as names_file:
+                    filenames: list[str] = names_file.readlines()
+
+            if os.path.isfile(self.params.data) and not str(self.params.data).endswith(".txt"):  # single image file
                 ...
             elif os.path.isdir(self.params.data):  # single folder
                 ...
-            elif isinstance(self.params.data, (list, tuple)):  # iterable of image names
-                if any(not os.path.isfile(fp) for fp in self.params.data):
+            elif isinstance(self.params.data, (list, tuple)) or filenames:  # iterable of image names
+                filenames = filenames if filenames else self.params.data
+                if any(not os.path.isfile(fp) for fp in filenames):
                     raise InvalidParameterException(
-                        "Backbone AlphaPose: in image list mode, one or multiple images of data do not exist."
+                        "Backbone AlphaPose: in list of filenames mode, one or multiple images of data do not exist."
                     )
                 # ...
             else:
                 raise InvalidParameterException(
                     f"Backbone AlphaPose: in image mode, could not retrieve image(s) with data {self.params.data}."
                 )
-            self.det_loader = DetectionLoader(
+            return DetectionLoader(
                 input_source=...,
                 detector=...,
                 cfg=...,
@@ -127,6 +153,8 @@ class AlphaPoseBackbone(BackboneModule):
                 batchSize=...,
                 queueSize=...,
             )
+
+        raise InvalidParameterException(f"Backbone AlphaPose: invalid mode, is {self.params.mode}")
 
     def load_weights(self, weight_path: str, *args, **kwargs) -> None:
         pass
