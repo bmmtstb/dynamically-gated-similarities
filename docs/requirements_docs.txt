@@ -1,0 +1,8 @@
+sphinx
+pyyaml
+easydict
+numpy
+
+# torch cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch

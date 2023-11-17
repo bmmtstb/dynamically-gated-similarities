@@ -18,7 +18,8 @@ jobs:
         uses: sphinx-notes/pages@v3
         with:
           python_version: "3.10"
+          requirements_path: "./docs/requirements_docs.txt"
           cache: false
           checkout: true
           publish: true
-          sphinx_build_options: -E -a -j auto
+          sphinx_build_options: "-E -a"  # force rebuild

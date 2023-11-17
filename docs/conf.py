@@ -38,9 +38,13 @@ release = __version__
 extensions = [
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.autodoc",  # Core library for html generation from docstrings
+    "sphinx.ext.coverage",
+    "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
+# tell autodoc that we don't want these packages to be imported
+autodoc_mock_imports = ["alphapose", "detector", "halpecocotools", "torchreid"]
 
 # File parsing
 source_suffix = [".rst", ".md"]
