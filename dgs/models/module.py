@@ -47,9 +47,9 @@ class BaseModule(ABC):
 
         # validate config when calling BaseModule class and not when calling its children
         if self.__class__.__name__ == "BaseModule":
-            self._validate_params(module_validations, "config")
+            self.validate_params(module_validations, "config")
 
-    def _validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
+    def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
         """Given per key validations, validate this module's parameters.
 
         Throws exceptions on invalid or nonexistent params.
@@ -88,6 +88,11 @@ class BaseModule(ABC):
                     "print_prio": [("in", PRINT_PRIORITY)],
                     "callable": (lambda value: value == 1)
                 }
+
+            And within the class `__init__` call:
+            ::
+
+                >> self.validate_params()
 
         Raises:
             InvalidParameterException: If one of the parameters is invalid

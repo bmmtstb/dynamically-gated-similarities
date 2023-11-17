@@ -26,7 +26,7 @@ ap_default_args: Config = EasyDict(
     }
 )
 
-ap_validation: Validations = {
+ap_validations: Validations = {
     "mode": [("in", ["detfile", "image", "webcam", "video"])],
     "data": ["not None"],
     "cfg_path": ["str", "file exists", ("endswith", ".yaml")],
@@ -38,6 +38,7 @@ class AlphaPoseBackbone(BackboneModule):
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
+        self.validate_params(ap_validations)
 
         # load ap config file using given path
         self.ap_cfg_file: EasyDict = load_config(self.params.cfg_path)
@@ -130,7 +131,7 @@ class AlphaPoseBackbone(BackboneModule):
                     filenames: list[str] = names_file.readlines()
 
             if os.path.isfile(self.params.data) and not str(self.params.data).endswith(".txt"):  # single image file
-                ...
+                filenames = [self.params.data]
             elif os.path.isdir(self.params.data):  # single folder
                 ...
             elif isinstance(self.params.data, (list, tuple)) or filenames:  # iterable of image names
@@ -145,7 +146,7 @@ class AlphaPoseBackbone(BackboneModule):
                     f"Backbone AlphaPose: in image mode, could not retrieve image(s) with data {self.params.data}."
                 )
             return DetectionLoader(
-                input_source=...,
+                input_source=filenames,
                 detector=...,
                 cfg=...,
                 opt=...,

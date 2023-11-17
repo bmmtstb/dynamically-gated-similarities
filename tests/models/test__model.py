@@ -43,7 +43,7 @@ class TestBaseModule(unittest.TestCase):
             _def_repl("print_prio", "all"),
         ]:
             with self.subTest(msg=str(cfg)):
-                BaseModule(config=cfg, path=[])._validate_params(base_module_validation, "config")
+                BaseModule(config=cfg, path=[]).validate_params(base_module_validation, "config")
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_validate_invalid_config(self):
@@ -57,7 +57,7 @@ class TestBaseModule(unittest.TestCase):
         ]:
             with self.subTest(msg=msg):
                 with self.assertRaises(InvalidParameterException) as context:
-                    BaseModule(config=cfg, path=[])._validate_params(base_module_validation, "config")
+                    BaseModule(config=cfg, path=[]).validate_params(base_module_validation, "config")
                 self.assertTrue(err_str in str(context.exception))
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
