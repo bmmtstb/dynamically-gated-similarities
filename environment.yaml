@@ -17,7 +17,7 @@ dependencies:
   #  - conda-forge::fvcore
   - conda-forge::gdown
   - conda-forge::jinja2
-  - conda-forge::munkres
+  - conda-forge::munkres  # hungarian algorithm
   - conda-forge::natsort
   - conda-forge::ninja
   - conda-forge::numpy

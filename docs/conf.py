@@ -38,13 +38,21 @@ release = __version__
 extensions = [
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.autodoc",  # Core library for html generation from docstrings
-    "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 # tell autodoc that we don't want these packages to be imported
-autodoc_mock_imports = ["alphapose", "detector", "halpecocotools", "torchreid"]
+autodoc_mock_imports = [
+    "alphapose",
+    "detector",
+    "halpecocotools",
+    "torchreid",
+    "natsort",
+    "tqdm",
+    "visdom",
+    "opencv-python",
+]
 
 # File parsing
 source_suffix = [".rst", ".md"]
@@ -52,6 +60,9 @@ source_parsers = {".md": "recommonmark.parser.CommonMarkParser"}
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# The name of the Pygments (syntax highlighting) style to use.
+pygments_style = "sphinx"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

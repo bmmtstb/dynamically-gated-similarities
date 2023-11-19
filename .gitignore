@@ -171,6 +171,9 @@ data/
 *.pth
 
 # automatically generated files for docs
-/docs/_autosummary
+/docs/dgs_autosummary
 /docs/_build
+/docs/docs_venv
+
+# custom files
 /my_cleanup.sh

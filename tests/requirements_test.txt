@@ -3,6 +3,14 @@ easydict
 numpy
 pylint
 black
+natsort
+scipy
+tqdm
+visdom
+opencv-python
+munkres
+terminaltables
+
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu

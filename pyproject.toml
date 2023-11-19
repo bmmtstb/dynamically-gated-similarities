@@ -41,5 +41,7 @@ force-exclude = '''
 /(
       dependencies
     | data
+    | tests/test_venv
+    | docs/docs_venv
 )/
 '''

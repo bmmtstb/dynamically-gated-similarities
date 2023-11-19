@@ -13,9 +13,9 @@ Keep on reading
 
 Class and Method definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 .. autosummary::
-    :toctree: _autosummary
+    :nosignatures:
+    :toctree: dgs_autosummary
     :template: custom-module-template.rst
     :recursive:
 

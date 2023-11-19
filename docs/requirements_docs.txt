@@ -2,6 +2,8 @@ sphinx
 pyyaml
 easydict
 numpy
+scipy
+terminaltables
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu
