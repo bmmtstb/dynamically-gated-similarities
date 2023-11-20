@@ -13,3 +13,7 @@ class InvalidConfigException(Exception):
 
 class ValidationException(Exception):
     """Exception to raise if there is something wrong with the validation object"""
+
+
+class InvalidPathException(OSError):
+    """Exception to raise if a given path is invalid."""

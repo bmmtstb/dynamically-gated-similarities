@@ -32,7 +32,7 @@ class EmbeddingGeneratorModule(BaseModule):
     def __init__(self, config: Config, path: list[str]):
         super().__init__(config, path)
 
-        self.embedding_size: int = self.params.embedding_size
+        self.embedding_size: int = self.params["embedding_size"]
         self.model = None
 
     def __call__(self, *args, **kwargs) -> torch.Tensor:

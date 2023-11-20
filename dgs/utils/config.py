@@ -4,11 +4,16 @@ Util- and helper-functions for handling configuration files and passing down sub
 Contains functions for validating configuration and parameter of modules.
 """
 import os
+from copy import deepcopy
+from typing import Union
 
 import yaml
 from easydict import EasyDict
 
+from dgs.utils.constants import PROJECT_ROOT
+from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.types import Config, FilePath, Validator
+from dgs.utils.utils import is_project_file, project_to_abspath
 
 VALIDATIONS: dict[str, Validator] = {
     "None": (lambda x, _: x is None),
@@ -37,6 +42,7 @@ VALIDATIONS: dict[str, Validator] = {
     "startswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.startswith(d)),
     "endswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.endswith(d)),
     "file exists": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
+    "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
     # additional logical operators for nested validations
     "not": (lambda x, d: not VALIDATIONS[d[0]](x, d[1])),
     "and": (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
@@ -45,19 +51,36 @@ VALIDATIONS: dict[str, Validator] = {
 }
 
 
-def get_sub_config(config: Config, path: list[str]) -> Config:
+def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
     """
-    Given a full configuration file in nested dict style or similar,
-    return the given subtree by using the values of path as node keys.
+    Given a full configuration file in nested dict style, EasyDict style, or similar,
+    return the given subtree by using the items in path as node keys.
 
     Works with regular dicts and with EasyDict.
 
     Args:
-        config: configuration file, EasyDict stile or plain nested dict
-        path: path of a subtree within this dictionary
+        config: Configuration file, EasyDict stile or plain nested dict
+        path: Path of a subtree within this config dictionary
+
+    Examples:
+        With a given configuration, this would look something like this.
+        Keep in mind that most configs use the type EasyDict, but works the same.
+
+        >>> cfg: Config = {                                         \
+            "bar": {                                                \
+                "x": 1,                                             \
+                "y": 2,                                             \
+                "deeper": {                                         \
+                    "ore": "iron",                                  \
+                    "pickaxe": {"iron": 10, "diamond": 100.0},      \
+        }}}
+        >>> print(get_sub_config(cfg, ["bar", "deeper", "pickaxe"]))
+        {"iron": 10, "diamond": 100.0}
+        >>> print(get_sub_config(cfg, ["bar", "x"]))
+        1
 
     Returns:
-        Sub configuration, an excerpt of the original configuration
+        Sub configuration, an excerpt of the original configuration, or single value.
     """
     if not path:
         return config
@@ -72,7 +95,7 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
 
     Args:
         filepath: Full filepath to the config.yaml file.
-            Path should either start at project root or be a "real" system path (object).
+            Path should start at project root or be a "real" system path (object).
 
             It is expected that all the configuration files are stored in the `configs` folder, but any path is valid.
         easydict: Whether to output a plain dictionary or an EasyDict object, which behaves mostly the same.
@@ -80,11 +103,66 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
     Returns:
         Loaded configuration as nested dictionary or easydict
     """
-    with open(filepath, "r", encoding="utf-8") as file:
+    if is_project_file(filepath):
+        filepath = project_to_abspath(filepath)
+    with open(filepath, encoding="utf-8") as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         if easydict:
             return EasyDict(config)
         return config
+
+
+def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
+    """Use values of the default configuration to fill in missing values of the current configuration.
+
+    For the current configuration, all existing key-value pairs will stay the same.
+    Additionally, keys only present in the default configuration will be added to the current configuration.
+
+    Args:
+        config: Current configuration as EasyDict or nested dict
+        default_cfg: Default configuration as EasyDict or nested dict
+
+    Returns:
+        Combined configuration
+    """
+
+    def deep_update(default_dict: Config, new_dict: Config) -> Config:
+        """Modify dict.update() to work recursively for nested dicts.
+        Due to update being overwritten in the EasyDict package, this works for dict and EasyDict.
+
+        Overwrites dict1.update(dict2).
+
+        Args:
+            default_dict: default dictionary, these values will be overwritten by the values of dict2
+
+            new_dict: new dictionary, these values will definitely be in the result
+
+        Returns:
+            A modified version of dictionary 1 with recursively combined / updated values
+        """
+        if not isinstance(default_dict, dict):
+            return new_dict
+        for key_new, val_new in new_dict.items():
+            if isinstance(val_new, dict):
+                default_dict[key_new] = deep_update(default_dict.get(key_new, {}), val_new)
+            else:
+                default_dict[key_new] = val_new
+        return default_dict
+
+    if not isinstance(config, EasyDict | dict):
+        raise InvalidConfigException(f"Config is expected to be dict or EasyDict, but is {type(config)}.")
+
+    if not default_cfg:
+        from dgs.default_config import cfg  # pylint: disable=import-outside-toplevel
+
+        default_cfg = cfg
+
+    # make sure to create a copy of default config, values might get overwritten!
+    new_config: Config = deep_update(deepcopy(default_cfg), config)
+
+    if isinstance(config, EasyDict) or isinstance(default_cfg, EasyDict):
+        return EasyDict(new_config)
+    return new_config
 
 
 def validate_value(value: any, data: any, validation: str) -> bool:

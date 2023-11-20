@@ -22,8 +22,7 @@ submodules: dict[str, list[str]] = {
 
 
 def module_loader(config: Config, module: str):
-    """
-    Load a given module and pass down the configuration.
+    """Load a given module and pass down the configuration
 
     Args:
         config: The configuration of the current tracker
@@ -43,26 +42,29 @@ def module_loader(config: Config, module: str):
     path: NodePath = module_paths[module]
     model_name: str = get_sub_config(config, path).model
 
-    if model_name not in submodules:
-        raise KeyError(f"Model '{model_name}' is not a valid submodule of module '{module}'.")
+    if module not in submodules:
+        raise NotImplementedError(f"Module {module} is no valid submodule.")
 
     if model_name not in submodules[module]:
-        raise NotImplementedError(f"The model '{model_name}' does not exist in the module '{module}'.")
+        raise NotImplementedError(
+            f"The model '{model_name}' does not exist in the module '{module}'."
+            "It is most likely not a valid submodule."
+        )
 
     # Module import and initialization
     if module == "backbone":
         if model_name == "AlphaPose":
-            from dgs.models.backbone.alphapose import AlphaPoseBackbone
+            from dgs.models.backbone import AlphaPoseBackbone
 
             return AlphaPoseBackbone(config, path)
     elif module == "visual_embedding_generator":
         if model_name == "torchreid":
-            from dgs.models.reid.torchreid import TorchreidModel
+            from dgs.models.reid import TorchreidModel
 
             return TorchreidModel(config, path)
     elif module == "pose_warping_module":
         if model_name == "kalman":
-            from dgs.models.pose_warping.kalman import KalmanFilterWarpingModel
+            from dgs.models.pose_warping import KalmanFilterWarpingModel
 
             return KalmanFilterWarpingModel(config, path)
 
