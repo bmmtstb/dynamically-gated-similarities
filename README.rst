@@ -10,6 +10,7 @@
 Dynamically Gated Similarities
 ==============================
 
+You can found the extended Documentation `here <https://bmmtstb.github.io/dynamically-gated-similarities/>`_.
 
 Notes
 -----
@@ -21,7 +22,6 @@ You can find a visual Pipeline on
 
 Folder Structure
 ~~~~~~~~~~~~~~~~
-
 
 .. rst-class:: monospace-block
 
@@ -62,18 +62,20 @@ It is expected that all joints have 2D coordinates, but 3D should be possible wi
 Images in PyTorch have shape: `[B x C x H x W]` and for plotting in matplotlib `[B x H x W x C]`.
 Single images don't have the first dimension `[C x H x W]`.
 
-+--------------------------+--------------------------------------------------------+
-|  Name                    | Description                                            |
-+==========================+========================================================+
-| J                        | Number of key-points in the given model (e.g. coco=17) |
-+--------------------------+--------------------------------------------------------+
-| C                        | Number of channels of the current image (e.g. RGB=3)   |
-+--------------------------+--------------------------------------------------------+
-| B                        | Current batch-size                                     |
-+--------------------------+--------------------------------------------------------+
-| H,W                      | Height and Width of the current image                  |
-+--------------------------+--------------------------------------------------------+
-| h,w                      | Specific given height or width                         |
-+--------------------------+--------------------------------------------------------+
-| E :sub:`V`, E :sub:`P`   | Embedding size, denoted for visual or pose based shape |
-+--------------------------+--------------------------------------------------------+
++--------------------------+--------------------------------------------------------------+
+|  Name                    | Description                                                  |
++==========================+==============================================================+
+| J                        | Number of joint-key-points in the given model (e.g. coco=17) |
++--------------------------+--------------------------------------------------------------+
+| C                        | Number of channels of the current image (e.g. RGB=3)         |
++--------------------------+--------------------------------------------------------------+
+| B                        | Current batch-size                                           |
++--------------------------+--------------------------------------------------------------+
+| N                        | Number of detections in the current frame                    |
++--------------------------+--------------------------------------------------------------+
+| H,W                      | Height and Width of the current image                        |
++--------------------------+--------------------------------------------------------------+
+| h,w                      | Specific given height or width                               |
++--------------------------+--------------------------------------------------------------+
+| E :sub:`V`, E :sub:`P`   | Embedding size, denoted for visual or pose based shape       |
++--------------------------+--------------------------------------------------------------+

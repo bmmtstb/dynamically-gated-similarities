@@ -1,8 +1,10 @@
 name: "The most simple DGS tracker"
 description: "Use the most basic module for every step."
+
 device: "cuda"
 print_prio: "normal"
 working_memory_size: 30
+training: off
 
 # Modules
 

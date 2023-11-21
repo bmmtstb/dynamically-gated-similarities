@@ -9,4 +9,4 @@ This vector is then used to compare it to other embedding vectors using a simila
 __all__ = ["TorchreidModel"]
 
 
-from dgs.models.reid.torchreid import TorchreidModel
+from dgs.models.embedding_generator.torchreid import TorchreidModel

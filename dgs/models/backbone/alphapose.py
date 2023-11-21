@@ -5,6 +5,7 @@ Original AlphaPose: https://github.com/MVIG-SJTU/AlphaPose/
 My AlpaPose fork with a few QoL improvements: https://github.com/bmmtstb/AlphaPose/tree/DGS
 """
 import os
+import sys
 import warnings
 from typing import Union
 
@@ -16,18 +17,19 @@ from alphapose.utils.file_detector import FileDetectionLoader
 from alphapose.utils.webcam_detector import WebCamDetectionLoader
 from detector.apis import get_detector as get_ap_detector  # alphapose detector
 from dgs.models.backbone.backbone import BackboneModule
-from dgs.utils.config import load_config
+from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Config, NodePath, Validations
 from dgs.utils.utils import is_dir, is_file, project_to_abspath
 
-ap_default_args: Config = EasyDict(
+# default is mostly consistent with demo inference of AlphaPose
+ap_default_opt: Config = EasyDict(
     {
         "qsize": 1024,  # length of result buffer, reduce for less CPU load
-        "gpus": "0",
         "flip": False,  # enable flip testing
-        "detbatch": 5,  # batchsize of detector
-        "sp": False,  # use a single cuda process
+        "detbatch": 5,  # batch-size of detector (per GPU)
+        "tracking": False,  # we want to use our own tracker...
+        "posebatch": 64,  # batch-size of pose estimator (per GPU)
     }
 )
 
@@ -35,6 +37,7 @@ ap_validations: Validations = {
     "mode": [("in", ["detfile", "image", "webcam", "video"])],
     "data": ["not None"],
     "cfg_path": ["str", "file exists in project", ("endswith", ".yaml")],
+    "additional_opt": [("or", (("None", ...), ("isinstance", dict)))],
 }
 
 
@@ -44,6 +47,9 @@ class AlphaPoseBackbone(BackboneModule):
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
         self.validate_params(ap_validations)
+
+        # insert AlphaPose directory to sys path so local paths can be found
+        sys.path.insert(0, project_to_abspath("./dependencies/AlphaPose_Fork/"))
 
         # load ap config file using given path
         self.ap_cfg_file: EasyDict = load_config(self.params["cfg_path"])
@@ -55,26 +61,38 @@ class AlphaPoseBackbone(BackboneModule):
         self.det_worker = self.det_loader.start()
 
     def _init_ap_args(self) -> EasyDict:
-        """
-        AlphaPose needs a custom dict for args / opt (changes names...).
-        Don't confuse args / opt with the loaded config file.
+        """AlphaPose needs a custom dict for args / opt (changes names...).
+        Don't confuse AP args / opt with the config file that AP loads additionally.
+
+        Values in the params.additional_args dict have the highest priority,
+            then follow the values within this function (most are values from self.config),
+            and finally use the values of the default AP configuration.
 
         Returns:
             Additional config for AlphaPose, which is expected to be an EasyDict.
         """
-
-        # load or set default params / args for values that AlphaPose needs
+        # Add values from config to args
         args: Config = EasyDict()
-        # either set detector name or load from config
-        args.detector = (self.params.get("detector", self.ap_cfg_file["DETECTOR"]["NAME"]),)
-        args.debug = (self.params.get("debug", self.config["print_prio"]) in ["debug", "all"],)
-        args.qsize = (self.params.get("qsize", ap_default_args["qsize"]),)
-        args.gpus = (self.params.get("gpus", ap_default_args["gpus"]),)
-        args.flip = (self.params.get("flip", ap_default_args["flip"]),)
-        args.detbatch = (self.params.get("detbatch", ap_default_args["detbatch"]),)
-        args.sp = (self.params.get("sp", ap_default_args["sp"]),)
 
-        return args
+        args.device = self.device
+        args.gpus = self.config["gpus"]
+        args.sp = self.config["sp"]
+
+        args.debug = self.config["print_prio"] in ["debug", "all"]
+
+        # either set detector name from params or load from the name from the AP config file
+        args.detector = self.params.get("detector", self.ap_cfg_file["DETECTOR"]["NAME"])
+
+        # use default values to fill in missing values in args
+        args = fill_in_defaults(args, ap_default_opt)
+
+        # finally, use the values from additional options to overwrite all existing keys in the current args
+        args = fill_in_defaults(self.params["additional_opt"] or {}, args)
+
+        # batch-sizes are per GPU
+        args["detbatch"] *= len(args.gpus)
+        args["posebatch"] *= len(args.gpus)
+        return EasyDict(args)
 
     def _init_loader(self) -> Union[FileDetectionLoader, DetectionLoader, WebCamDetectionLoader]:
         """Initialize detection loader.
@@ -106,7 +124,7 @@ class AlphaPoseBackbone(BackboneModule):
                 input_source=detfile,
                 cfg=self.ap_cfg_file,
                 opt=self.ap_args,
-                queueSize=self.ap_args.qsize,
+                queueSize=self.ap_args["qsize"],
             )
 
         def init_webcam() -> WebCamDetectionLoader:
@@ -119,7 +137,7 @@ class AlphaPoseBackbone(BackboneModule):
                 detector=get_ap_detector(self.ap_args),
                 cfg=self.ap_cfg_file,
                 opt=self.ap_args,
-                queueSize=self.ap_args.qsize,
+                queueSize=self.ap_args["qsize"],
             )
 
         def init_video() -> DetectionLoader:
@@ -138,8 +156,8 @@ class AlphaPoseBackbone(BackboneModule):
                 cfg=self.ap_cfg_file,
                 opt=self.ap_args,
                 mode=self.params["mode"],
-                batchSize=self.ap_args.detbatch,
-                queueSize=self.ap_args.qsize,
+                batchSize=self.ap_args["detbatch"],
+                queueSize=self.ap_args["qsize"],
             )
 
         def init_images() -> DetectionLoader:
@@ -183,8 +201,8 @@ class AlphaPoseBackbone(BackboneModule):
                 cfg=self.ap_cfg_file,
                 opt=self.ap_args,
                 mode=self.params["mode"],
-                batchSize=self.ap_args.detbatch,
-                queueSize=self.ap_args.qsize,
+                batchSize=self.ap_args["detbatch"],
+                queueSize=self.ap_args["qsize"],
             )
 
         if self.params["mode"] == "detfile":  # load already existing detections

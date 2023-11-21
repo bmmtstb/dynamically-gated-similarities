@@ -11,6 +11,8 @@ TEST_CFG: Config = EasyDict(
     {
         "device": "cpu",
         "print_prio": "debug",
+        "gpus": "",
+        "sp": True,
     }
 )
 
@@ -41,6 +43,11 @@ class TestBaseModule(unittest.TestCase):
             _def_repl("print_prio", "none"),
             _def_repl("print_prio", "normal"),
             _def_repl("print_prio", "all"),
+            _def_repl("gpus", [0, 1, 2]),
+            _def_repl("gpus", "0,1,2,3"),
+            _def_repl("gpus", ""),
+            _def_repl("sp", True),
+            _def_repl("sp", False),
         ]:
             with self.subTest(msg=str(cfg)):
                 BaseModule(config=cfg, path=[]).validate_params(base_module_validation, "config")
@@ -48,12 +55,13 @@ class TestBaseModule(unittest.TestCase):
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_validate_invalid_config(self):
         for cfg, err_str, msg in [
-            (_def_repl("device", "gpu"), "device is not valid, was gpu", "gpu invalid, should be cuda"),
+            (_def_repl("device", "gpu"), "device is not valid. Value is gpu", "gpu invalid should be cuda"),
             (_def_repl("device", ""), "device is not valid", "empty device"),
             (_def_repl("device", None), "device is not valid", "None device"),
             (_def_repl("print_prio", ""), "print_prio is not valid", "empty print priority"),
             (_def_repl("print_prio", "None"), "print_prio is not valid", "caps not valid"),
             (_def_repl("print_prio", None), "print_prio is not valid", "None print priority"),
+            (_def_repl("gpus", ["0", "1", "2"]), "Used a custom validation", "gpus as list of str"),
         ]:
             with self.subTest(msg=msg):
                 with self.assertRaises(InvalidParameterException) as context:

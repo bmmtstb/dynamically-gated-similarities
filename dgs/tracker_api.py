@@ -1,9 +1,10 @@
 """
 Base Tracker API structure of tracking via dynamically gated similarities
 """
+
 from dgs.models.backbone.backbone import BackboneModule
+from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
 from dgs.models.loader import module_loader
-from dgs.models.reid.reid import EmbeddingGeneratorModule
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
 

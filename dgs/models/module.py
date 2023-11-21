@@ -1,6 +1,7 @@
 """
 Base model class as lowest building block for dynamic modules
 """
+import inspect
 from abc import ABC, abstractmethod
 
 import torch
@@ -8,11 +9,13 @@ import torch
 from dgs.utils.config import get_sub_config, validate_value
 from dgs.utils.constants import PRINT_PRIORITY
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.types import Config, NodePath, Validations
+from dgs.utils.types import Config, Device, NodePath, Validations
 
 module_validations: Validations = {
     "device": ["str", ("or", (("in", ["cuda", "cpu"]), ("instance", torch.device)))],
+    "gpus": [lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
     "print_prio": [("in", PRINT_PRIORITY)],
+    "sp": [("instance", bool)],
 }
 
 
@@ -44,6 +47,14 @@ class BaseModule(ABC):
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
         self._path: NodePath = path
+
+        # gpus might be string
+        if not self.config["gpus"]:
+            self.config["gpus"] = [-1]
+        elif isinstance(self.config["gpus"], str):
+            self.config["gpus"] = (
+                [int(i) for i in self.config["gpus"].split(",")] if torch.cuda.device_count() >= 1 else [-1]
+            )
 
         # validate config when calling BaseModule class and not when calling its children
         if self.__class__.__name__ == "BaseModule":
@@ -101,7 +112,9 @@ class BaseModule(ABC):
         """
         for param_name, list_of_validations in validations.items():
             if len(list_of_validations) == 0:
-                raise ValidationException(f"Excepted at least one validation, but {param_name} has zero.")
+                raise ValidationException(
+                    f"Excepted at least one validation, but {param_name} in module {self.__class__.__name__} has zero."
+                )
 
             for validation in list_of_validations:
                 # check whether param exists in self
@@ -120,7 +133,10 @@ class BaseModule(ABC):
                 if callable(validation):
                     if validation(value):
                         continue
-                    raise InvalidParameterException(f"{param_name} is not valid. With custom validation.")
+                    raise InvalidParameterException(
+                        f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
+                        f"Used a custom validation: {inspect.getsource(validation)}"
+                    )
 
                 # case name as string or in tuple with additional values
                 if isinstance(validation, str | tuple):
@@ -129,20 +145,16 @@ class BaseModule(ABC):
                     else:
                         validation_name, data = validation
                     # call predefined validate
-                    try:
-                        if validate_value(value=value, data=data, validation=validation_name):
-                            continue
-                        raise InvalidParameterException(
-                            f"{param_name} is not valid, was {value} "
-                            f"and is expected to have validation {validation_name}."
-                        )
-                    except KeyError as e:
-                        raise InvalidParameterException(
-                            f"{param_name} has invalid validation {validation_name}."
-                        ) from e
+                    if validate_value(value=value, data=data, validation=validation_name):
+                        continue
+                    raise InvalidParameterException(
+                        f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
+                        f"Value is {value} and is expected to have validation {validation_name}."
+                    )
                 # no other case was true
                 raise ValidationException(
-                    f"Validation is expected to be callable or tuple, but was {type(validation)}."
+                    f"Validation is expected to be callable or tuple, but is {type(validation)}. "
+                    f"Current module: {self.__class__.__name__}, Parameter: {param_name}"
                 )
 
     @abstractmethod
@@ -182,6 +194,11 @@ class BaseModule(ABC):
         if priority == "none":
             raise ValueError("To print with priority of none doesn't make sense...")
 
-        index_current: int = PRINT_PRIORITY.index(self.config.print_prio)
+        index_current: int = PRINT_PRIORITY.index(self.config["print_prio"])
 
         return index_given <= index_current
+
+    @property
+    def device(self) -> Device:
+        """Shorthand for get device property."""
+        return self.config["device"]

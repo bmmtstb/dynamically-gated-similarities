@@ -3,7 +3,7 @@ Definition of default configuration for dynamically gated similarity tracker
 
 These values are used, iff the given config does not set own values
 """
-
+import torch
 from easydict import EasyDict
 
 cfg = EasyDict()
@@ -12,9 +12,14 @@ cfg = EasyDict()
 # General #
 # ####### #
 
-cfg.device = "cuda"
 cfg.print_prio = "normal"
 cfg.working_memory_size = 30
+
+# torch and device settings
+cfg.device = "cuda"
+cfg.gpus = [0 if torch.cuda.device_count() >= 1 else -1]  # use gpu=0 or none, on multi-GPU systems use list of int
+cfg.sp = True  # single or multiprocess
+cfg.training = False
 
 # ############## #
 # Backbone Model #
@@ -25,15 +30,17 @@ cfg.backbone.cfg_path = "./dependencies/AlphaPose_Fork/configs/coco/resnet/256x1
 cfg.backbone.mode = "video"
 cfg.backbone.batchsize = 8
 cfg.backbone.data = "./data/test.mkv"
+cfg.backbone.additional_opt = None
 
 # ################ #
 # Visual Embedding #
 # ################ #
 cfg.visual_embedding_generator = EasyDict()
-cfg.visual_embedding_generator.model = "osnet_ain_x1_0"  # reid generator class, model name if applicable
+cfg.visual_embedding_generator.model = "torchreid"  # module name
+cfg.visual_embedding_generator.model_name = "osnet_ain_x1_0"  # torchreid model name (if applicable)
+cfg.visual_embedding_generator.embedding_size = 128
 cfg.visual_embedding_generator.weights = (
-    "trackers/weights/osnet_ain_x1_0_msmt17_256x128_amsgrad_ep50_lr0."
-    "0015_coslr_b64_fb10_softmax_labsmth_flip_jitter.pth"
+    "./weights/osnet_ain_x1_0_msmt17_256x128_amsgrad_ep50_lr0.0015_coslr_b64_fb10_softmax_labsmth_flip_jitter.pth"
 )
 cfg.visual_embedding_generator.similarity = EasyDict()
 cfg.visual_embedding_generator.similarity.model = "dummy"
@@ -43,7 +50,8 @@ cfg.visual_embedding_generator.similarity.model = "dummy"
 # ############## #
 cfg.pose_embedding_generator = EasyDict()
 cfg.pose_embedding_generator.model = "dummy"
-cfg.pose_embedding_generator.weights = "trackers/weights/dummy.pth"
+cfg.pose_embedding_generator.embedding_size = 16
+cfg.pose_embedding_generator.weights = "./weights/dummy.pth"
 cfg.pose_embedding_generator.similarity = EasyDict()
 cfg.pose_embedding_generator.similarity.model = "dummy"
 

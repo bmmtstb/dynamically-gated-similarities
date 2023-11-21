@@ -124,8 +124,8 @@ class PoseStates:
     def _stack_tensor(self, lot: list[torch.Tensor], copy: bool = False) -> torch.Tensor:
         """Stack state and create a copy of the tensor"""
         if copy:
-            return torch.stack(lot).detach().clone().to(self.config.device)
-        return torch.stack(lot).to(self.config.device)
+            return torch.stack(lot).detach().clone().to(self.config["device"])
+        return torch.stack(lot).to(self.config["device"])
 
     def get_states(self, items: int | slice = None, copy: bool = False) -> PoseState:
         """
@@ -203,6 +203,6 @@ class PoseStates:
             self.bboxes.pop(0)
         # append new state
         pose, jcs, bbox = new_state
-        self.poses.append(pose.to(self.config.device))
-        self.jcss.append(jcs.to(self.config.device))
-        self.bboxes.append(bbox.to(self.config.device))
+        self.poses.append(pose.to(self.config["device"]))
+        self.jcss.append(jcs.to(self.config["device"]))
+        self.bboxes.append(bbox.to(self.config["device"]))

@@ -59,7 +59,7 @@ def module_loader(config: Config, module: str):
             return AlphaPoseBackbone(config, path)
     elif module == "visual_embedding_generator":
         if model_name == "torchreid":
-            from dgs.models.reid import TorchreidModel
+            from dgs.models.embedding_generator import TorchreidModel
 
             return TorchreidModel(config, path)
     elif module == "pose_warping_module":
