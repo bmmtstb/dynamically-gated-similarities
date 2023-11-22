@@ -5,7 +5,6 @@ Original AlphaPose: https://github.com/MVIG-SJTU/AlphaPose/
 My AlpaPose fork with a few QoL improvements: https://github.com/bmmtstb/AlphaPose/tree/DGS
 """
 import os
-import sys
 import warnings
 from typing import Union
 
@@ -47,9 +46,6 @@ class AlphaPoseBackbone(BackboneModule):
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
         self.validate_params(ap_validations)
-
-        # insert AlphaPose directory to sys path so local paths can be found
-        sys.path.insert(0, project_to_abspath("./dependencies/AlphaPose_Fork/"))
 
         # load ap config file using given path
         self.ap_cfg_file: EasyDict = load_config(self.params["cfg_path"])
