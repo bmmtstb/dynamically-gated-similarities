@@ -169,6 +169,7 @@ data/
 
 # large model files
 *.pth
+*.weights
 
 # automatically generated files for docs
 /docs/dgs_autosummary
