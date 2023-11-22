@@ -6,7 +6,7 @@ from abc import abstractmethod
 import torch
 
 from dgs.models.module import BaseModule
-from dgs.models.pose_state import PoseState
+from dgs.models.states import PoseState
 
 
 class PoseWarpingModule(BaseModule):

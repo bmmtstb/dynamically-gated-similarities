@@ -13,6 +13,7 @@ TEST_CFG: Config = EasyDict(
         "print_prio": "debug",
         "gpus": "",
         "sp": True,
+        "training": False,
     }
 )
 
@@ -48,6 +49,8 @@ class TestBaseModule(unittest.TestCase):
             _def_repl("gpus", ""),
             _def_repl("sp", True),
             _def_repl("sp", False),
+            _def_repl("training", True),
+            _def_repl("training", False),
         ]:
             with self.subTest(msg=str(cfg)):
                 BaseModule(config=cfg, path=[]).validate_params(base_module_validation, "config")

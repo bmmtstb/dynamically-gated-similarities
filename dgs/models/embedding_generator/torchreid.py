@@ -30,22 +30,13 @@ class TorchreidModel(EmbeddingGeneratorModule):
         """Initialize torchreid model"""
         m = models.build_model(
             name=self.params["model_name"], num_classes=self.embedding_size, pretrained=self.is_pretrained
-        ).to(device=self.device)
+        )
         if not self.is_pretrained:
             # custom model params
             load_pretrained_weights(m, project_to_abspath(self.model_weights))
 
-        # self.model = nn.parallel.DistributedDataParallel(m, device_ids=self.config["gpus"])
-        self.model = m
-
-        # set torch mode
-        if self.config["training"]:
-            self.model.train()
-        else:
-            self.model.eval()
+        # send model to device
+        self.model = self.configure_torch_model(m)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         return self.model(data)
-
-    def load_weights(self, weight_path: str, *args, **kwargs) -> None:
-        raise NotImplementedError

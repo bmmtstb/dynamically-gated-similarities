@@ -5,6 +5,7 @@ Base Tracker API structure of tracking via dynamically gated similarities
 from dgs.models.backbone.backbone import BackboneModule
 from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
 from dgs.models.loader import module_loader
+from dgs.models.module import enable_keyboard_interrupt
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
 
@@ -23,18 +24,13 @@ class DGSTracker:
         feel free to create your own custom DGSTracker class that uses the different modules.
 
     Examples:
-        You can either run the file `./scripts.demo_track.py` or in the root directory run:
-
-        .. code-block:: python
-
-            from dgs.tracker_api import DGSTracker
-
-            DGSTracker(tracker_cfg="./configs/simplest_tracker.yaml")
+        See the file `./scripts.demo_track.py` for more information.
     """
 
     # this API will have many references to other models and therefore will have many attributes
     # pylint: disable=too-many-instance-attributes
 
+    @enable_keyboard_interrupt
     def __init__(self, tracker_cfg: FilePath) -> None:
         """
         Initialize the tracker by loading its configuration and setting up all of its modules.
@@ -45,20 +41,22 @@ class DGSTracker:
         # load config and possibly add some default values without overwriting custom values
         self.cfg = fill_in_defaults(load_config(tracker_cfg))
 
+        self.ltm = ...
+        self.wm = ...
+
         # set up models
-        self.backbone: BackboneModule = module_loader(self.cfg, "backbone")
+        self.m_backbone: BackboneModule = module_loader(self.cfg, "backbone")
 
         self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
         # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
 
         # self.m_pose_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "pose_embedding_generator")
         # self.m_pose_warp: PoseWarpingModule = module_loader(self.cfg, "pose_warping_module")
-        # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "pose_similarity")
+        # self.m_pose_siml: SimilarityModule = module_loader(self.cfg, "pose_similarity")
 
-        self.m_alpha = ...
-        self.ltm = ...
-        self.wm = ...
+        # self.m_alpha = ...
 
+    @enable_keyboard_interrupt
     def update(self):
         """
         One step of tracking algorithm.
@@ -66,5 +64,13 @@ class DGSTracker:
         """
         raise NotImplementedError
 
+    @enable_keyboard_interrupt
     def load(self) -> None:
         """Load all weights for tracker, either given config or dict of weight paths"""
+        raise NotImplementedError
+
+    def terminate(self):
+        """Terminate tracker and make sure to stop all submodules and (possible) parallel threads."""
+        model_names = ["backbone", "m_vis_reid", "m_vis_siml", "m_pose_reid", "m_pose_warp", "m_pose_siml"]
+        for name in model_names:
+            getattr(self, name).terminate()

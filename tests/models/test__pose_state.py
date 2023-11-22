@@ -3,7 +3,7 @@ import unittest
 import torch
 from easydict import EasyDict
 
-from dgs.models.pose_state import PoseState, PoseStates
+from dgs.models.states import PoseState, PoseStates
 from dgs.utils.types import Device, PoseStateTuple
 from tests.helper import test_multiple_devices
 

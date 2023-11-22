@@ -5,6 +5,7 @@ import inspect
 from abc import ABC, abstractmethod
 
 import torch
+from torch.nn import Module
 
 from dgs.utils.config import get_sub_config, validate_value
 from dgs.utils.constants import PRINT_PRIORITY
@@ -16,7 +17,31 @@ module_validations: Validations = {
     "gpus": [lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
     "print_prio": [("in", PRINT_PRIORITY)],
     "sp": [("instance", bool)],
+    "training": [("instance", bool)],
 }
+
+
+def enable_keyboard_interrupt(func: callable) -> callable:
+    """Call module.terminate() on Keyboard Interruption (e.g. ctrl+c), which makes sure that all threads are stopped.
+
+    Args:
+        func: The decorated function
+
+    Returns:
+        Decorated function, which will have advanced keyboard interruption.
+    """
+
+    def module_wrapper(cls, *args, **kwargs):
+        """wrapper for decorator"""
+        try:
+            func(cls, *args, **kwargs)
+        except KeyboardInterrupt as e:
+            if callable(getattr(cls, "terminate", None)):
+                cls.terminate()
+            else:
+                raise NotImplementedError(f"Class or function {cls} does not have a terminate method.") from e
+
+    return module_wrapper
 
 
 class BaseModule(ABC):
@@ -32,6 +57,7 @@ class BaseModule(ABC):
         _path (NodePath): Location of params within config as a node path
     """
 
+    @enable_keyboard_interrupt
     def __init__(self, config: Config, path: NodePath):
         """
         Every module has access the global configuration for parameters like the modules' device(s).
@@ -161,16 +187,6 @@ class BaseModule(ABC):
     def __call__(self, *args, **kwargs) -> any:
         raise NotImplementedError
 
-    @abstractmethod
-    def load_weights(self, weight_path: str, *args, **kwargs) -> None:
-        """
-        Load given weights for the current model
-
-        Args:
-            weight_path: path to a loadable file with weights for this model
-        """
-        raise NotImplementedError
-
     def print(self, priority: str) -> bool:
         """Check whether the Module is allowed to print something with the given priority.
 
@@ -202,3 +218,33 @@ class BaseModule(ABC):
     def device(self) -> Device:
         """Shorthand for get device property."""
         return self.config["device"]
+
+    def configure_torch_model(self, module: Module, train: bool = None) -> Module:
+        """Set compute mode and send model to device or parallel devices if applicable.
+
+        Args:
+            module: The torch module instance to configure.
+            train: Whether to train or eval this module, defaults to the value set in config.
+
+        Returns:
+            The module on the specified device or in parallel.
+        """
+        train: bool = self.config["training"] if train is None else train
+        # set torch mode
+        if train:
+            module.train()
+        else:
+            module.eval()
+        # send model to device(s)
+        if not self.config["sp"] and len(self.config.gpus) > 1:
+            raise NotImplementedError("Parallel does not work yet.")
+            # return DistributedDataParallel(module, device_ids=self.config.gpus).to(self.device)
+        module.to(self.device)
+        return module
+
+    def terminate(self) -> None:
+        """Terminate this module and all of its submodules.
+
+        If nothing has to be done, just pass.
+        Is used for terminating parallel execution and threads in specific models.
+        """

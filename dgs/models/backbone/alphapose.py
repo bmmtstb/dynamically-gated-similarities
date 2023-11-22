@@ -5,17 +5,25 @@ Original AlphaPose: https://github.com/MVIG-SJTU/AlphaPose/
 My AlpaPose fork with a few QoL improvements: https://github.com/bmmtstb/AlphaPose/tree/DGS
 """
 import os
+import sys
+import time
 import warnings
+from copy import deepcopy
 from typing import Union
 
+import torch
 from easydict import EasyDict
 from natsort import natsorted
+from tqdm import tqdm
 
+from alphapose.models import builder
 from alphapose.utils.detector import DetectionLoader
 from alphapose.utils.file_detector import FileDetectionLoader
 from alphapose.utils.webcam_detector import WebCamDetectionLoader
+from alphapose.utils.writer import DataWriter, DEFAULT_VIDEO_SAVE_OPT as AP_DEF_VIDEO_SAVE_OPT
 from detector.apis import get_detector as get_ap_detector  # alphapose detector
 from dgs.models.backbone.backbone import BackboneModule
+from dgs.models.states import BackboneOutput
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Config, NodePath, Validations
@@ -25,7 +33,7 @@ from dgs.utils.utils import is_dir, is_file, project_to_abspath
 ap_default_opt: Config = EasyDict(
     {
         "qsize": 1024,  # length of result buffer, reduce for less CPU load
-        "flip": False,  # enable flip testing
+        "flip": False,  # disable flip testing, it's just too much headache
         "detbatch": 5,  # batch-size of detector (per GPU)
         "tracking": False,  # we want to use our own tracker...
         "posebatch": 64,  # batch-size of pose estimator (per GPU)
@@ -36,12 +44,19 @@ ap_validations: Validations = {
     "mode": [("in", ["detfile", "image", "webcam", "video"])],
     "data": ["not None"],
     "cfg_path": ["str", "file exists in project", ("endswith", ".yaml")],
+    "checkpoint": ["str", "file exists in project"],
     "additional_opt": [("or", (("None", ...), ("isinstance", dict)))],
 }
 
 
 class AlphaPoseBackbone(BackboneModule):
-    """Use AlphaPose as Backbone to get the current state"""
+    """
+    Use AlphaPose as Backbone to get the current state
+
+    Whole class is adapted code from AP's `demo_inference.py`
+    """
+
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
@@ -51,10 +66,33 @@ class AlphaPoseBackbone(BackboneModule):
         self.ap_cfg_file: EasyDict = load_config(self.params["cfg_path"])
         # create custom AP args / options
         self.ap_args: EasyDict = self._init_ap_args()
+
         # initialize detection loader
         self.det_loader = self._init_loader()
         # start detection loader
-        self.det_worker = self.det_loader.start()
+        self.det_loader.start()
+
+        # set up pose model
+        pose_model = builder.build_sppe(self.ap_cfg_file.MODEL, preset_cfg=self.ap_cfg_file.DATA_PRESET)
+
+        if self.print("debug"):
+            print(f"AlphaPose - Loading pose model from checkpoint {self.params['checkpoint']}")
+
+        pose_model.load_state_dict(torch.load(self.params["checkpoint"], map_location=self.device))
+        self.pose_model = self.configure_torch_model(pose_model, train=False)
+
+        # set up dataset
+        self.pose_dataset = builder.retrieve_dataset(self.ap_cfg_file.DATASET.TRAIN)
+
+        if self.params["mode"] == "webcam":
+            if self.print("normal"):
+                print("Starting webcam demo, press Ctrl + C to terminate...")
+            sys.stdout.flush()
+            self.img_names_desc = tqdm(webcam_loop())
+        else:
+            self.img_names_desc = tqdm(range(self.det_loader.length), dynamic_ncols=True, smoothing=0)
+
+        self.writer = self._init_writer()
 
     def _init_ap_args(self) -> EasyDict:
         """AlphaPose needs a custom dict for args / opt (changes names...).
@@ -133,7 +171,7 @@ class AlphaPoseBackbone(BackboneModule):
                 detector=get_ap_detector(self.ap_args),
                 cfg=self.ap_cfg_file,
                 opt=self.ap_args,
-                queueSize=self.ap_args["qsize"],
+                queueSize=2,
             )
 
         def init_video() -> DetectionLoader:
@@ -215,14 +253,86 @@ class AlphaPoseBackbone(BackboneModule):
 
         raise InvalidParameterException(f"Backbone AlphaPose: invalid mode, is {self.params['mode']}")
 
-    def load_weights(self, weight_path: str, *args, **kwargs) -> None:
-        pass
+    def _init_writer(self) -> DataWriter:
+        """Initialize AlphaPose output writer and start it."""
+        if self.config.get("save_video", False) and self.params["mode"] != "image":
+            options = deepcopy(AP_DEF_VIDEO_SAVE_OPT)
+
+            if self.params["mode"] == "video":
+                options["savepath"] = os.path.join(
+                    self.config.get("outputpath", "./results/"), "AlphaPose_" + os.path.basename(self.params["data"])
+                )
+            else:
+                options["savepath"] = os.path.join(
+                    self.config.get("outputpath", "./results/"), "AlphaPose_webcam" + str(self.params["data"]) + ".mp4"
+                )
+            options.update(self.det_loader.videoinfo)
+
+            return DataWriter(
+                self.ap_cfg_file,
+                self.ap_args,
+                save_video=True,
+                video_save_opt=options,
+                queueSize=self.params["qsize"],
+            ).start()
+        # do not save results
+        return DataWriter(self.ap_cfg_file, self.ap_args, queueSize=self.params["qsize"]).start()
 
     def precompute_values(self) -> None:
         pass
 
     def load_precomputed(self) -> ...:
-        pass
+        if self.params["mode"] != "detfile":
+            raise InvalidParameterException(
+                f"AlphaPose: when calling load_precompute mode is expected to be detfile, but is {self.params['mode']}"
+            )
+        # fixme kind of duplicate with mode = detfile ?
 
-    def forward(self, *args, **kwargs) -> ...:
-        pass
+    def forward(self, *args, **kwargs) -> BackboneOutput:
+        """Predict next backbone output."""
+        input_imgs, orig_img, im_name, boxes, scores, ids, cropped_boxes = self.det_loader.read()
+        if boxes is None or boxes.nelement() == 0:
+            self.writer.save(None, None, None, None, None, orig_img, im_name)
+        input_imgs = input_imgs.to(self.device)
+        data_length = input_imgs.size(0)
+        b: int = self.params["posebatch"]
+
+        # heatmaps for (possibly) multiple batches of size b
+        hm = []
+        for j in range(data_length // b + min(1, data_length % b)):
+            hm.append(self.pose_model(input_imgs[j * b : min((j + 1) * b, data_length)]))
+
+        hm = torch.cat(hm).to(self.device)
+
+        self.writer.save(boxes, scores, ids, hm, cropped_boxes, orig_img, im_name)
+
+        return BackboneOutput(
+            bbox=boxes, jcs=scores, ids=ids, hm=hm, bbox_crop=cropped_boxes, img_orig=orig_img, img_name=im_name
+        )
+
+    def terminate(self) -> None:
+        print("Stopping AlphaPose models")
+        # Thread won't be killed when press Ctrl+C
+        if self.config["sp"]:
+            self.det_loader.terminate()
+            while self.writer.running():
+                time.sleep(0.5)
+                print(
+                    f"==> Rendering remaining {self.writer.count()} images in the queue...",
+                    end="\r",
+                )
+            self.writer.stop()
+        else:
+            # subprocesses are killed, manually clear queues
+            self.det_loader.terminate()
+            self.writer.terminate()
+            self.writer.clear_queues()
+            self.det_loader.clear_queues()
+
+
+def webcam_loop():
+    """Infinite loop for retrieving webcam images"""
+    n = 0
+    while True:
+        yield n
+        n += 1

@@ -206,3 +206,32 @@ class PoseStates:
         self.poses.append(pose.to(self.config["device"]))
         self.jcss.append(jcs.to(self.config["device"]))
         self.bboxes.append(bbox.to(self.config["device"]))
+
+
+class BackboneOutput:
+    """Class for storing backbone outputs."""
+
+    def __init__(self, **kwargs) -> None:
+        self.img_orig = kwargs.get("img_orig", None)
+        self.img_name: str = kwargs.get("img_name", "")
+        self.heatmaps = kwargs.get("hm", None)
+        self.ids = kwargs.get("ids", None)
+        self.jcs = kwargs.get("jcs", None)
+        self.bbox = kwargs.get("bbox", None)
+        self.bbox_crop = kwargs.get("bbox_crop", None)
+
+    def to(self, *args, **kwargs) -> None:
+        """Override torch tensor to for the whole object."""
+        for name in ["img_orig", "heatmaps", "jcs", "bbox", "bbox_crop"]:
+            setattr(self, name, getattr(self, name).to(*args, **kwargs))
+
+    def __str__(self) -> str:
+        return self.img_name
+
+    def contains_img_name(self, name: str) -> bool:
+        """Returns whether the image has given name"""
+        return self.img_name == name
+
+    def contains_id(self, id_) -> bool:
+        """Returns whether the id is part of this object's ids"""
+        return id_ in self.ids
