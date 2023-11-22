@@ -30,5 +30,5 @@ Additionally check the information in _`weights` to download more example model 
 If you want to train your own models, make sure to check out the _`dataset installation guide <dataset>`.
 
 
-:: _ap install: https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/INSTALL.md
-:: _ap install models: https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/INSTALL.md#models
+:: _ap install: `https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/INSTALL.md`
+:: _ap install models: `https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/INSTALL.md#models`
