@@ -6,3 +6,5 @@ import os
 PRINT_PRIORITY: list[str] = ["none", "normal", "debug", "all"]
 
 PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+BBOX_FORMATS: list[str] = ["xyxy", "xyah", "xywh", "yolo"]

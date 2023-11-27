@@ -3,6 +3,7 @@ definitions and helpers for pose-state(s)
 """
 import torch
 
+from dgs.models.bbox import BoundingBox
 from dgs.utils.types import Config, PoseStateTuple
 
 
@@ -49,9 +50,9 @@ class PoseState:
                 and torch.equal(self.jcs, other[1])
                 and torch.equal(self.bbox, other[2])
             )
-        raise NotImplementedError
+        raise NotImplementedError(f"Equality between PoseState and {type(other)} is not defined.")
 
-    def to(self, *args, **kwargs):
+    def to(self, *args, **kwargs) -> "PoseState":
         """
         Override torch.Tensor.to() to work with PoseState class
 
@@ -209,23 +210,33 @@ class PoseStates:
 
 
 class BackboneOutput:
-    """Class for storing backbone outputs."""
+    """Class for storing backbone outputs.
+
+    Original image shape: `[B x C x H x W]`
+    Cropped image shape: `[C x h x w]`
+    """
+
+    # there a many attributes and they can get used, so please the linter
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, **kwargs) -> None:
-        self.img_orig = kwargs.get("img_orig", None)
-        self.img_name: str = kwargs.get("img_name", "")
-        self.heatmaps = kwargs.get("hm", None)
-        self.ids = kwargs.get("ids", None)
-        self.jcs = kwargs.get("jcs", None)
-        self.bbox = kwargs.get("bbox", None)
-        self.bbox_crop = kwargs.get("bbox_crop", None)
+        self.img_orig: torch.Tensor = torch.squeeze(kwargs.get("img_orig"))
+        self.img_name: str = kwargs.get("img_name")
+        self._img_crop: torch.Tensor = kwargs.get("img_crop", None)
+        self.heatmaps: torch.Tensor = kwargs.get("hm", None)
+        self.ids = kwargs.get("ids", None)  # fixme type?
+        self.jcs: torch.Tensor = kwargs.get("jcs", None)
+        self.visibility: torch.Tensor = kwargs.get("vis", None)
+        self.bbox: BoundingBox = kwargs.get("bbox", None)
 
-    def to(self, *args, **kwargs) -> None:
+    def to(self, *args, **kwargs) -> "BackboneOutput":
         """Override torch tensor to for the whole object."""
-        for name in ["img_orig", "heatmaps", "jcs", "bbox", "bbox_crop"]:
+        for name in ["img_orig", "_img_crop", "heatmaps", "jcs", "bbox"]:
             setattr(self, name, getattr(self, name).to(*args, **kwargs))
+        return self
 
     def __str__(self) -> str:
+        """Overwrite representation to be image name."""
         return self.img_name
 
     def contains_img_name(self, name: str) -> bool:
@@ -235,3 +246,52 @@ class BackboneOutput:
     def contains_id(self, id_) -> bool:
         """Returns whether the id is part of this object's ids"""
         return id_ in self.ids
+
+    @property
+    def J(self) -> int:
+        """Get number of joints"""
+        return self.heatmaps.shape[0]
+
+    @property
+    def C(self) -> int:
+        """Get number of channels in image"""
+        # might use 0 or 1, because image can have dimension for batch size (of one)
+        return self.img_orig.shape[-3]
+
+    @property
+    def W(self) -> int:
+        """Get the width of the original image"""
+        return self.img_orig.shape[-1]
+
+    @property
+    def img_crop(self) -> torch.Tensor:
+        """Get the plain image crop or compute it if it's not yet available.
+
+        One might want to include image crop reshaping after this step
+        """
+        if self._img_crop is None:
+            # compute image crop using global / original coordinates
+            x1, y1, x2, y2 = self.bbox.corners((self.W, self.H))
+            self.img_crop = self.img_orig[:, y1:y2, x1:x2]
+            # fixme: do we have to reshape crop to specific size?
+        return self._img_crop
+
+    @img_crop.setter
+    def img_crop(self, crop: torch.Tensor) -> None:
+        """Set image crop."""
+        self._img_crop = crop
+
+    @property
+    def w(self) -> int:
+        """Get the width of the cropped image"""
+        return self.img_crop.shape[-1]
+
+    @property
+    def H(self) -> int:
+        """Get the height of the original image"""
+        return self.img_orig.shape[-2]
+
+    @property
+    def h(self) -> int:
+        """Get the height of the cropped image"""
+        return self.img_crop.shape[-2]

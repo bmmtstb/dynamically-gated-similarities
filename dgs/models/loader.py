@@ -54,9 +54,9 @@ def module_loader(config: Config, module: str):
     # Module import and initialization
     if module == "backbone":
         if model_name == "AlphaPose":
-            from dgs.models.backbone import AlphaPoseBackbone
+            from dgs.models.backbone import AlphaPoseFullBackbone
 
-            return AlphaPoseBackbone(config, path)
+            return AlphaPoseFullBackbone(config, path)
     elif module == "visual_embedding_generator":
         if model_name == "torchreid":
             from dgs.models.embedding_generator import TorchreidModel

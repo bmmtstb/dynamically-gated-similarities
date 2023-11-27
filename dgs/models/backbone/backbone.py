@@ -31,31 +31,18 @@ class BackboneModule(BaseModule):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> BackboneOutput:
+    def forward(self, img_name: str, *args, **kwargs) -> BackboneOutput:
         """
         fixme: define the return type or class for backbone objects, because there will be plenty return values
 
         Obtain the model outputs for the current iteration.
 
         Args:
+            img_name: Name of the image to obain results for.
             *args:
             **kwargs:
 
         Returns:
 
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def precompute_values(self) -> None:
-        """
-        Use the backbone model to precompute all the necessary values
-
-        Predicts values for all given data and saves them to local files
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def load_precomputed(self) -> ...:
-        """Use the backbone model to load precomputed values exported by itself"""
         raise NotImplementedError
