@@ -9,11 +9,13 @@ from dgs.utils.types import Config
 
 TEST_CFG: Config = EasyDict(
     {
-        "device": "cpu",
         "print_prio": "debug",
+        "batch_size": 1,
+        "device": "cpu",
         "gpus": "",
         "sp": True,
         "training": False,
+        "num_workers": 0,
     }
 )
 

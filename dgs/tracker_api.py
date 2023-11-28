@@ -1,11 +1,14 @@
 """
 Base Tracker API structure of tracking via dynamically gated similarities
 """
+import torch
 
 from dgs.models.backbone.backbone import BackboneModule
+from dgs.models.data import BaseDataset
 from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
-from dgs.models.loader import module_loader
+from dgs.models.loader import get_data_loader, module_loader
 from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.states import BackboneOutputs
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
 
@@ -46,6 +49,7 @@ class DGSTracker:
 
         # set up models
         self.m_backbone: BackboneModule = module_loader(self.cfg, "backbone")
+        self.m_backbone = torch.compile(self.m_backbone)
 
         self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
         # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
@@ -57,11 +61,28 @@ class DGSTracker:
         # self.m_alpha = ...
 
     @enable_keyboard_interrupt
-    def update(self):
+    def run(self) -> None:
+        """Run Tracker."""
+        # dataset
+        dataset: BaseDataset = module_loader(self.cfg, "data")
+
+        # dataloader
+        data_loader = get_data_loader(self.cfg, dataset)
+        for batch_idx, batch in enumerate(data_loader):
+            batch: BackboneOutputs
+            print(batch_idx)
+            print(batch)
+
+    @enable_keyboard_interrupt
+    def update(self, batch) -> None:
         """
         One step of tracking algorithm.
         Either predict new state or load new results
+
+        Args:
+            batch: A single batch of data
         """
+
         raise NotImplementedError
 
     @enable_keyboard_interrupt

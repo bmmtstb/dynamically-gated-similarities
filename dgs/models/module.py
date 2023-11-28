@@ -13,16 +13,18 @@ from dgs.utils.exceptions import InvalidParameterException, ValidationException
 from dgs.utils.types import Config, Device, NodePath, Validations
 
 module_validations: Validations = {
+    "batch_size": ["int", ("gte", 1)],
+    "print_prio": [("in", PRINT_PRIORITY)],
     "device": ["str", ("or", (("in", ["cuda", "cpu"]), ("instance", torch.device)))],
     "gpus": [lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
-    "print_prio": [("in", PRINT_PRIORITY)],
+    "num_workers": ["int", ("gte", 0)],
     "sp": [("instance", bool)],
     "training": [("instance", bool)],
 }
 
 
 def enable_keyboard_interrupt(func: callable) -> callable:
-    """Call module.terminate() on Keyboard Interruption (e.g. ctrl+c), which makes sure that all threads are stopped.
+    """Call module.terminate() on Keyboard Interruption (e.g., ctrl+c), which makes sure that all threads are stopped.
 
     Args:
         func: The decorated function
@@ -70,6 +72,9 @@ class BaseModule(ABC):
                 those key-based paths may be even deeper, just make sure that only information about this specific model
                 is stored in params
         """
+        # init torch module
+        super().__init__()
+
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
         self._path: NodePath = path

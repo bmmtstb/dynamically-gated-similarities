@@ -1,7 +1,7 @@
 """
-Definition of default configuration for dynamically gated similarity tracker
+Definition of default configuration for dynamically gated similarity tracker.
 
-These values are used, iff the given config does not set own values
+These values are used, iff the given config does not set own values.
 """
 import torch
 from easydict import EasyDict
@@ -12,14 +12,23 @@ cfg = EasyDict()
 # General #
 # ####### #
 
+cfg.batch_size = 8
 cfg.print_prio = "normal"
-cfg.working_memory_size = 30
+# cfg.working_memory_size = 30
 
 # torch and device settings
 cfg.device = "cuda"
-cfg.gpus = [0 if torch.cuda.device_count() >= 1 else -1]  # use gpu=0 or none, on multi-GPU systems use list of int
+cfg.gpus = [0] if torch.cuda.is_available() else [-1]  # use gpu=0 or none, on multi-GPU systems use list of int
+cfg.num_workers = 0  # number of subprocesses to use for data loading during torch DataLoader
 cfg.sp = True  # single or multiprocess
 cfg.training = False
+
+# ####### #
+# Dataset #
+# ####### #
+cfg.data = EasyDict()
+cfg.data.model = "AlphaPoseLoader"
+cfg.data.path = "./de"
 
 # ############## #
 # Backbone Model #
@@ -29,7 +38,6 @@ cfg.backbone.model = "AlphaPose"
 cfg.backbone.cfg_path = "./dependencies/AlphaPose_Fork/configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml"
 cfg.backbone.checkpoint = "./dependencies/AlphaPose_Fork/pretrained_models/fast_res50_256x192.pth"
 cfg.backbone.mode = "video"
-cfg.backbone.batchsize = 8
 cfg.backbone.data = "./data/test.mkv"
 cfg.backbone.additional_opt = None
 

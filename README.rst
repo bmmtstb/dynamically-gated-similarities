@@ -59,23 +59,25 @@ Abbreviations and Definitions
 
 It is expected that all joints have 2D coordinates, but 3D should be possible with minor adjustments.
 
-Images in PyTorch have shape: `[B x C x H x W]` and for plotting in matplotlib `[B x H x W x C]`.
+Images in PyTorch have shape: ``[B x C x H x W]`` and for plotting in matplotlib `[B x H x W x C]`.
 Single images don't have the first dimension `[C x H x W]`.
 
-+--------------------------+--------------------------------------------------------------+
-|  Name                    | Description                                                  |
-+==========================+==============================================================+
-| J                        | Number of joint-key-points in the given model (e.g. coco=17) |
-+--------------------------+--------------------------------------------------------------+
-| C                        | Number of channels of the current image (e.g. RGB=3)         |
-+--------------------------+--------------------------------------------------------------+
-| B                        | Current batch-size                                           |
-+--------------------------+--------------------------------------------------------------+
-| N                        | Number of detections in the current frame                    |
-+--------------------------+--------------------------------------------------------------+
-| H,W                      | Height and Width of the current image                        |
-+--------------------------+--------------------------------------------------------------+
-| h,w                      | Specific given height or width                               |
-+--------------------------+--------------------------------------------------------------+
-| E :sub:`V`, E :sub:`P`   | Embedding size, denoted for visual or pose based shape       |
-+--------------------------+--------------------------------------------------------------+
++----------------------------+---------------------------------------------------------------+
+|  Name                      | Description                                                   |
++============================+===============================================================+
+| J                          | Number of joint-key-points in the given model (e.g. coco=17)  |
++----------------------------+---------------------------------------------------------------+
+| C                          | Number of channels of the current image (e.g. RGB=3)          |
++----------------------------+---------------------------------------------------------------+
+| B                          | Current batch-size                                            |
++----------------------------+---------------------------------------------------------------+
+| N                          | Number of detections in the current frame                     |
++----------------------------+---------------------------------------------------------------+
+| H,W                        | Height and Width of the current image                         |
++----------------------------+---------------------------------------------------------------+
+| h,w                        | Specific given height or width                                |
++----------------------------+---------------------------------------------------------------+
+| HM\ :sub:`H`, HM\ :sub:`W` | Size of the heatmap, equals size of the cropped resized image |
++----------------------------+---------------------------------------------------------------+
+| E\ :sub:`V`, E\ :sub:`P`   | Embedding size, denoted for visual or pose based shape        |
++----------------------------+---------------------------------------------------------------+

@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import torch
 
-from dgs.models.bbox import BoundingBox
+from dgs.models.torchbbox.bbox import BoundingBox
 from dgs.utils.exceptions import BoundingBoxException
 from dgs.utils.types import Device
 from tests.helper import test_multiple_devices

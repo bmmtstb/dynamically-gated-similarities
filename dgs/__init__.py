@@ -1,7 +1,7 @@
 """
 Tracking via Dynamically Gated Similarities
 
-TODO Provide general package information
+TODO Provide more package information
 """
 
 __version__ = "0.0.1"

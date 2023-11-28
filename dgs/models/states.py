@@ -1,10 +1,13 @@
 """
 definitions and helpers for pose-state(s)
 """
+from collections import UserList
+
 import torch
 
-from dgs.models.bbox import BoundingBox
-from dgs.utils.types import Config, PoseStateTuple
+from dgs.models.torchbbox.bbox import BoundingBox
+from dgs.models.torchbbox.bboxes import BoundingBoxes, BoundingBoxesIterable
+from dgs.utils.types import Config, Device, PoseStateTuple
 
 
 class PoseState:
@@ -155,7 +158,7 @@ class PoseStates:
 
     def __getitem__(self, item: int | slice) -> PoseState | list[PoseState]:
         """
-        Overwrite get-item call (PoseStates[i]) to obtain pose state by indices.
+        Override get-item call (PoseStates[i]) to obtain pose state by indices.
         Supports python indexing using slices.
         Returns the exact torch tensor because it is not possible to add further parameters to this call.
         Therefore, if you want to obtain a detached and cloned tensor use self.get_state(..., copy=True)
@@ -179,7 +182,7 @@ class PoseStates:
 
     def __iadd__(self, other: PoseState):
         """
-        Overwrite += to use append()
+        Override += to use append()
 
         Args:
             other: tuple of pose state to append to self
@@ -224,13 +227,13 @@ class BackboneOutput:
         self.img_name: str = kwargs.get("img_name")
         self._img_crop: torch.Tensor = kwargs.get("img_crop", None)
         self.heatmaps: torch.Tensor = kwargs.get("hm", None)
-        self.ids = kwargs.get("ids", None)  # fixme type?
+        self.ids = kwargs.get("ids", None)  # fixme type? use?
         self.jcs: torch.Tensor = kwargs.get("jcs", None)
         self.visibility: torch.Tensor = kwargs.get("vis", None)
         self.bbox: BoundingBox = kwargs.get("bbox", None)
 
     def to(self, *args, **kwargs) -> "BackboneOutput":
-        """Override torch tensor to for the whole object."""
+        """Override torch.Tensor.to() for the whole object."""
         for name in ["img_orig", "_img_crop", "heatmaps", "jcs", "bbox"]:
             setattr(self, name, getattr(self, name).to(*args, **kwargs))
         return self
@@ -295,3 +298,131 @@ class BackboneOutput:
     def h(self) -> int:
         """Get the height of the cropped image"""
         return self.img_crop.shape[-2]
+
+    def cast_visibility(
+        self,
+        dtype: torch.dtype = torch.bool,
+        round_: int = 0,
+        overwrite: bool = False,
+        device: Device = None,
+    ) -> torch.Tensor:
+        """Cast and return visibility as tensor.
+
+        The visibility might have an arbitrary tensor type, this function allows getting one specific variant.
+
+        Args:
+            dtype: The new torch dtype of the tensor.
+            round_: Number of decimals to round floats to before type casting.
+                Defaults to zero.
+                There will be no rounding on minus one.
+                When information is compressed, e.g., when casting from float to bool,
+                simply calling float might not be enough to cast 0.9 to True.
+                Keep in mind, that torch.round() is not really differentiable and does not really allow backpropagation.
+                See https://discuss.pytorch.org/t/torch-round-gradient/28628/4 for more information.
+            overwrite: Whether self.visibility will be overwritten or not.
+            device: Which device the tensor is being sent to.
+                Defaults to the device visibility on which the visibility tensor lies.
+
+        Returns:
+            A type-cast version of the tensor.
+
+            If overwrite is True, the returned tensor will be the same as self.visibility,
+            including the computational graph.
+            Visibility will potentially be overwritten with a new dtype.
+
+            If overwrite is False, the returned tensor will be a detached and cloned instance of self.visibility.
+
+        """
+        raise NotImplementedError
+
+
+class BackboneOutputs(UserList):
+    """Class for storing backbone outputs.
+
+    Original image shape: `[B x C x H x W]`
+    Cropped image shape: `[C x h x w]`
+    """
+
+    def __init__(self, outputs: BoundingBoxesIterable = None) -> None:
+        self.data: list[BackboneOutput]  # will be set by calling init of UserList
+
+        super().__init__(outputs)
+
+    def __setitem__(self, key: int, value: BoundingBox) -> None:
+        self.data[key] = value
+
+    def insert(self, i: int, item: BoundingBox):
+        self.data.insert(i, item)
+
+    def append(self, item: BoundingBox) -> None:
+        raise NotImplementedError
+
+    def extend(self, other: BoundingBoxesIterable | BoundingBoxes):
+        raise NotImplementedError
+
+    def __getitem__(self, item: int) -> BoundingBox:
+        raise NotImplementedError
+
+    def __iadd__(self, other: BoundingBoxesIterable | BoundingBoxes) -> BoundingBoxes:
+        raise NotImplementedError
+
+    def __add__(self, other: BoundingBoxesIterable | BoundingBoxes) -> BoundingBoxes:
+        raise NotImplementedError
+
+    def __contains__(self, item: BoundingBox) -> bool:
+        raise NotImplementedError
+
+    def __eq__(self, other: BoundingBoxes) -> bool:
+        raise NotImplementedError
+
+    @property
+    def image_crops(self) -> torch.Tensor:
+        """Get all the image crops as a single tensor.
+
+        Returns:
+            torch tensor of shape [len x C x h x w]
+        """
+        raise NotImplementedError()
+
+    @property
+    def image_origs(self) -> torch.Tensor:
+        """Get all the original images as a single tensor.
+
+        Returns:
+            torch tensor of shape [len x C x H x W]
+        """
+        raise NotImplementedError
+
+    @property
+    def names(self) -> list[str]:
+        """Get a list of all the filenames in this object."""
+        raise NotImplementedError
+
+    @property
+    def heatmaps(self) -> torch.FloatTensor:
+        r"""Get all the heatmaps as a single tensor.
+
+        Returns:
+            torch float tensor of shape ``[J x HM\ :sub:`H` x HM\ :sub:`W`]``
+        """
+        raise NotImplementedError
+
+    @property
+    def jcss(self):
+        """Get all the joint confidence scores as a single tensor."""
+        raise NotImplementedError
+
+    @property
+    def visibilities(self):
+        """Get all the visibilities as a single tensor."""
+        raise NotImplementedError
+
+    @property
+    def bboxes(self) -> BoundingBoxes:
+        """Get all the bounding boxes as a single tensor."""
+        raise NotImplementedError
+
+    @property
+    def outputs(self) -> list[BackboneOutput]:
+        """Alternate name to get data, to be consistent to single BackboneOutput."""
+        return self.data

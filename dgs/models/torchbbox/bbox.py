@@ -51,7 +51,7 @@ class BoundingBox:
     """
 
     # there a many attributes and they can get used, so please the linter
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
     def __init__(self, **kwargs) -> None:
         """Initialize the bounding-box object.
@@ -437,6 +437,10 @@ class BoundingBox:
     def contains(self, point: torch.Tensor) -> bool:
         """Return whether this bounding box contains a given point."""
         return bool(self.top <= point[1] <= self.bottom and self.left <= point[0] <= self.right)
+
+    def iou(self, other: "BoundingBox") -> torch.FloatTensor:
+        """Compute intersection over union between self and other."""
+        raise NotImplementedError
 
     def __repr__(self) -> str:
         """Return a representation of the bounding box"""

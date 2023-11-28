@@ -32,7 +32,8 @@ from alphapose.utils.webcam_detector import WebCamDetectionLoader
 from alphapose.utils.writer import DataWriter, DEFAULT_VIDEO_SAVE_OPT as AP_DEF_VIDEO_SAVE_OPT
 from detector.apis import get_detector as get_ap_detector  # alphapose detector
 from dgs.models.backbone.backbone import BackboneModule
-from dgs.models.states import BackboneOutput
+from dgs.models.data import BaseDataset
+from dgs.models.states import BackboneOutput, BackboneOutputs
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.exceptions import InvalidParameterException, InvalidPathException
 from dgs.utils.types import Config, NodePath, Validations
@@ -111,6 +112,8 @@ class AlphaPoseFullBackbone(BackboneModule):
             self.img_names_desc = tqdm(range(self.det_loader.length), dynamic_ncols=True, smoothing=0)
 
         self.writer = self._init_writer()
+
+        raise NotImplementedError("This module is not fully implemented and should not be used for now.")
 
     def _init_ap_args(self) -> EasyDict:
         """AlphaPose needs a custom dict for args / opt (changes names...).
@@ -338,7 +341,7 @@ class AlphaPoseFullBackbone(BackboneModule):
             self.det_loader.clear_queues()
 
 
-class AlphaPoseLoader(BackboneModule):
+class AlphaPoseLoader(BackboneModule, BaseDataset):
     """Load precomputed json files"""
 
     def __init__(self, config: Config, path: NodePath) -> None:
@@ -347,6 +350,7 @@ class AlphaPoseLoader(BackboneModule):
         self.validate_params(ap_load_validations)
 
         self.json: dict = read_json(self.params["path"])
+        self.img_names: list[str] = []
 
     def forward(self, img_name: str, *args, **kwargs) -> BackboneOutput:
         data: dict = self.json.get(img_name, None)
@@ -354,3 +358,13 @@ class AlphaPoseLoader(BackboneModule):
             raise InvalidPathException(f"Image name or path '{img_name}' does not exist in precomputed values.")
 
         return ...
+
+    def __len__(self) -> int:
+        return len(self.img_names)
+
+    def __getitem__(self, idx: int) -> BackboneOutput:
+        return self.forward(self.img_names[idx])
+
+    def __getitems__(self, indices: list[int]) -> BackboneOutputs:
+        """Batched getter for dataset"""
+        raise NotImplementedError

@@ -1,7 +1,7 @@
 """
 definition of regularly used types
 """
-from typing import Callable
+from typing import Callable, Union
 
 import torch
 from easydict import EasyDict
@@ -18,4 +18,4 @@ PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 
 
 # Torch
-Device = torch.device | str
+Device = Union[torch.device, str]
