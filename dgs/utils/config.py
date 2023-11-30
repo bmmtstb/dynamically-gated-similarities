@@ -12,8 +12,8 @@ from easydict import EasyDict
 
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidConfigException
+from dgs.utils.files import is_project_file, project_to_abspath
 from dgs.utils.types import Config, FilePath, Validator
-from dgs.utils.utils import is_project_file, project_to_abspath
 
 VALIDATIONS: dict[str, Validator] = {
     "None": (lambda x, _: x is None),

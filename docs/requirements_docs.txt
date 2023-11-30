@@ -4,7 +4,9 @@ easydict
 numpy
 scipy
 terminaltables
+matplotlib
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
+torch==2.1.*
+torchvision==0.16.*

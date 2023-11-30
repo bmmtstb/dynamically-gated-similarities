@@ -5,6 +5,7 @@ from typing import Callable, Union
 
 import torch
 from easydict import EasyDict
+from torchvision.tv_tensors import Image as tv_Image, Video as tv_Video
 
 # Configuration
 Config = dict[str, any] | EasyDict  # is actually an EasyDict but can't use that as variable type hint
@@ -19,3 +20,15 @@ PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 
 # Torch
 Device = Union[torch.device, str]
+
+# Images
+TVImage = tv_Image
+TVVideo = tv_Video
+TorchFloatImage = torch.FloatTensor
+Image = Union[TVImage, TorchFloatImage]
+
+TorchImages = tv_Image
+TorchFloatImages = torch.FloatTensor
+Images = Union[TorchImages, TorchFloatImages]
+
+ImgShape = tuple[int, int]  # (w, h) as target width and height of the image

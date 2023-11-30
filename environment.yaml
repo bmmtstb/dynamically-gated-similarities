@@ -1,47 +1,48 @@
 name: DGS
 
 channels:
-  - "nvidia/label/cuda-11.8.0"
+    - "nvidia/label/cuda-11.8.0"
 
 dependencies:
-  - python==3.10.*
-  - pip
-  - cuda-toolkit  # conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
-  - pytorch::torchvision=0.16.*
-  - pytorch::torchaudio=2.1.*
-  - pytorch::pytorch-cuda=11.8
-  - pytorch::pytorch=2.1.*
-  - conda-forge::black
-  - conda-forge::cython=3.0.*
-  - conda-forge::easydict
-  #  - conda-forge::fvcore
-  - conda-forge::gdown
-  - conda-forge::jinja2
-  - conda-forge::munkres  # hungarian algorithm
-  - conda-forge::natsort
-  - conda-forge::ninja
-  - conda-forge::numpy
-  - conda-forge::pycocotools=2.0.*
-  #  - conda-forge::pytorch3d
-  - conda-forge::pyyaml=6.0.*  # yaml
-  - conda-forge::scipy
-  - conda-forge::terminaltables
-  - conda-forge::tensorboard
-  - conda-forge::tensorboardx
-  - conda-forge::typeguard
-  - conda-forge::tqdm
-  - conda-forge::visdom
-  - fastai::opencv-python-headless
-  - pip:
-      # Additional Packages for DGS
-      - pylint
-      - opencv-python  # so pip doesn't complain when torchreid tries to install cv2
-      - sphinx  # build docs
-      # Set up halpecocotools
-      - -e ./dependencies/halpecocotools/PythonAPI
-      # Torchreid - install requirements and Set up torchreid and cythonize
-      # somehow installing requirements does not work just by calling setup,
-      - -r ./dependencies/torchreid/requirements.txt
-      - -e ./dependencies/torchreid
-      # Requirements for Alpha Pose
-      - -e ./dependencies/AlphaPose_Fork
+    - python==3.10.*
+    - pip
+    - cuda-toolkit  # conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
+    - pytorch::torchvision=0.16.*
+    - pytorch::torchaudio=2.1.*
+    - pytorch::pytorch-cuda=11.8
+    - pytorch::pytorch=2.1.*
+    - conda-forge::black
+    - conda-forge::cython=3.0.*
+    - conda-forge::easydict
+    #  - conda-forge::fvcore
+    - conda-forge::gdown
+    - conda-forge::jinja2
+    - conda-forge::matplotlib
+    - conda-forge::munkres  # hungarian algorithm
+    - conda-forge::natsort
+    - conda-forge::ninja
+    - conda-forge::numpy
+    - conda-forge::pycocotools=2.0.*
+    #  - conda-forge::pytorch3d
+    - conda-forge::pyyaml=6.0.*  # yaml
+    - conda-forge::scipy
+    - conda-forge::terminaltables
+    - conda-forge::tensorboard
+    - conda-forge::tensorboardx
+    - conda-forge::typeguard
+    - conda-forge::tqdm
+    - conda-forge::visdom
+    - fastai::opencv-python-headless
+    -   pip:
+            # Additional Packages for DGS
+            - pylint
+            - opencv-python  # so pip doesn't complain when torchreid tries to install cv2
+            - sphinx  # build docs
+            # Set up halpecocotools
+            - -e ./dependencies/halpecocotools/PythonAPI
+            # Torchreid - install requirements and Set up torchreid and cythonize
+            # somehow installing requirements does not work just by calling setup,
+            - -r ./dependencies/torchreid/requirements.txt
+            - -e ./dependencies/torchreid
+            # Requirements for Alpha Pose
+            - -e ./dependencies/AlphaPose_Fork

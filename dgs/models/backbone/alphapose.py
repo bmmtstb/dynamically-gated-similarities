@@ -36,8 +36,8 @@ from dgs.models.data import BaseDataset
 from dgs.models.states import BackboneOutput, BackboneOutputs
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.exceptions import InvalidParameterException, InvalidPathException
+from dgs.utils.files import is_dir, is_file, project_to_abspath, read_json
 from dgs.utils.types import Config, NodePath, Validations
-from dgs.utils.utils import is_dir, is_file, project_to_abspath, read_json
 
 # default is mostly consistent with demo inference of AlphaPose
 ap_default_opt: Config = EasyDict(
@@ -345,11 +345,20 @@ class AlphaPoseLoader(BackboneModule, BaseDataset):
     """Load precomputed json files"""
 
     def __init__(self, config: Config, path: NodePath) -> None:
-        super().__init__(config, path)
+        super(BaseDataset, self).__init__(config=config, path=path)
 
         self.validate_params(ap_load_validations)
 
-        self.json: dict = read_json(self.params["path"])
+        json = read_json(self.params["path"])
+        self.json: dict[str, dict]
+        # different AP output formats
+        if isinstance(json, list):
+            self.json = {d["image_id"]: d for d in json}
+        elif isinstance(json, dict):
+            self.json = json
+        else:
+            raise NotImplementedError(f"JSON file {self.params['path']} does not contain known instances.")
+
         self.img_names: list[str] = []
 
     def forward(self, img_name: str, *args, **kwargs) -> BackboneOutput:

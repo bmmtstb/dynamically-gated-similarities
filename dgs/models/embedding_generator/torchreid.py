@@ -4,8 +4,8 @@ Visual Re-ID module using the torchreid package.
 import torch
 
 from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
+from dgs.utils.files import project_to_abspath
 from dgs.utils.types import Config
-from dgs.utils.utils import project_to_abspath
 from torchreid import models
 from torchreid.models import __model_factory as torchreid_models
 from torchreid.utils.torchtools import load_pretrained_weights

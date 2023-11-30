@@ -152,6 +152,8 @@ class BoundingBox:
             image_size: (W, H) width and height of the original image, as upper bound for the corners.
 
         Returns:
+            output shape: [4] - integer values
+
             Integer values of the four bbox corners in xyxy format.
         """
         corners = torch.round(torch.FloatTensor([self.left, self.top, self.right, self.bottom]))

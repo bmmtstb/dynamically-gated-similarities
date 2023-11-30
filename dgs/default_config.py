@@ -28,7 +28,7 @@ cfg.training = False
 # ####### #
 cfg.data = EasyDict()
 cfg.data.model = "AlphaPoseLoader"
-cfg.data.path = "./de"
+cfg.data.path = "./results/own_videos_old_track/3_3_alphapose_results.json"  # fixme provide example
 
 # ############## #
 # Backbone Model #

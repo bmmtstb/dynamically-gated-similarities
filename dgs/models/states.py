@@ -340,7 +340,7 @@ class BackboneOutputs(UserList):
     """Class for storing backbone outputs.
 
     Original image shape: `[B x C x H x W]`
-    Cropped image shape: `[C x h x w]`
+    Cropped image shape: `[B x C x h x w]`
     """
 
     def __init__(self, outputs: BoundingBoxesIterable = None) -> None:
@@ -360,15 +360,6 @@ class BackboneOutputs(UserList):
     def extend(self, other: BoundingBoxesIterable | BoundingBoxes):
         raise NotImplementedError
 
-    def __getitem__(self, item: int) -> BoundingBox:
-        raise NotImplementedError
-
-    def __iadd__(self, other: BoundingBoxesIterable | BoundingBoxes) -> BoundingBoxes:
-        raise NotImplementedError
-
-    def __add__(self, other: BoundingBoxesIterable | BoundingBoxes) -> BoundingBoxes:
-        raise NotImplementedError
-
     def __contains__(self, item: BoundingBox) -> bool:
         raise NotImplementedError
 
@@ -382,7 +373,7 @@ class BackboneOutputs(UserList):
         Returns:
             torch tensor of shape [len x C x h x w]
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def image_origs(self) -> torch.Tensor:

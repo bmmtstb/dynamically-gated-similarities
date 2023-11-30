@@ -81,19 +81,14 @@ def module_loader(config: Config, module: str):
 
 
 def get_data_loader(config: Config, dataset: TorchDataset) -> TorchDataLoader:
-    """...
-
-    With the DataLoader in place, call something like:
-
-    ::
-
-        for batch_idx, batch in enumerate(dataloader):
-            do stuff
+    """Set up torch DataLoader with some params from config.
 
     Args:
         config: Overall tracker configuration
         dataset: Reference to torch Dataset
 
+    Returns:
+        A torch DataLoader for the given dataset.
     """
     data_loader = TorchDataLoader(
         dataset=dataset, batch_size=config["batch_size"], num_workers=config["num_workers"], shuffle=False
