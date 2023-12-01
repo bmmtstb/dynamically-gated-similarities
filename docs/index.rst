@@ -13,10 +13,11 @@ Keep on reading
 
 Class and Method definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 .. autosummary::
-    :nosignatures:
     :toctree: dgs_autosummary
-    :template: custom-module-template.rst
+    :template: module.rst
     :recursive:
 
     dgs

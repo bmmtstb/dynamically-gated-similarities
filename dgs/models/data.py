@@ -11,7 +11,7 @@ from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
 from dgs.models.states import BackboneOutput, BackboneOutputs
-from dgs.utils.image import CustomCrop, CustomToAspect
+from dgs.utils.image import CustomCropResize, CustomToAspect
 from dgs.utils.types import Config, ImgShape, NodePath
 
 
@@ -92,7 +92,7 @@ class BaseDataset(TorchDataset, BaseModule):
         )
 
     @staticmethod
-    def transform_crop_resize(target_size: ImgShape) -> tvt.Compose:
+    def transform_crop_resize() -> tvt.Compose:
         """Given one single image, with its corresponding bounding boxes and key-points,
         obtain a cropped image for every bounding box with localized key-points.
 
@@ -106,9 +106,6 @@ class BaseDataset(TorchDataset, BaseModule):
             "mode": str,\
         }
 
-        Args:
-            target_size: (w, h) as width and height of the image that is put as input into the tracker
-
         Returns:
             A composed torchvision function that accepts a dict as input.
 
@@ -118,7 +115,7 @@ class BaseDataset(TorchDataset, BaseModule):
                 Now contains the image crops as tensor of shape ``[N x C x H x W]``
 
             bboxes
-                ... ? ``[N x 4]``
+                Zero, one, or multiple bounding boxes for this image as tensor of shape ``[N x 4]``
 
                 And the bounding boxes got transformed into the XYWH format.
 
@@ -128,12 +125,10 @@ class BaseDataset(TorchDataset, BaseModule):
         return tvt.Compose(
             [
                 tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),  # xyxy to easily obtain ltrb
-                CustomCrop(),  # crop the image at the four corners specified in bboxes
-                CustomToAspect(),  # make sure the image has the correct aspect ratio for the backbone model
-                tvt.Resize(
-                    target_size, antialias=True
-                ),  # make sure the image has the correct input size for the backbone model
-                tvt.ClampBoundingBoxes(),
-                tvt.SanitizeBoundingBoxes(),
+                tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
+                tvt.SanitizeBoundingBoxes(),  # clean up bboxes
+                CustomCropResize(),  # crop the image at the four corners specified in bboxes
+                tvt.ClampBoundingBoxes(),  # duplicate ?
+                tvt.SanitizeBoundingBoxes(),  # duplicate ?
             ]
         )

@@ -1,5 +1,5 @@
 """
-Definition of custom exceptions
+Definition of custom exceptions.
 """
 
 
@@ -12,7 +12,7 @@ class InvalidConfigException(Exception):
 
 
 class ValidationException(Exception):
-    """Exception to raise if there is something wrong with the validation object"""
+    """Exception to raise if there is something wrong with the validation object."""
 
 
 class InvalidPathException(OSError):
@@ -21,35 +21,3 @@ class InvalidPathException(OSError):
 
 class BoundingBoxException(Exception):
     """Exception to raise if a given bounding-box is invalid."""
-
-
-class DimensionMismatchException(Exception):
-    """
-    Exception for any custom size or dimension mismatches
-    """
-
-    def __init__(self, expected: int | list[int, ...] | tuple[int, ...], actual: int, title: str = "") -> None:
-        if len(title) > 0:
-            title += " - "
-        super().__init__(f"{title} Dimension mismatch, expected: {expected}, actual: {actual}")
-
-
-class PathException(Exception):
-    """
-    Exception for missing or otherwise faulty paths or folders
-    """
-
-    def __init__(self, path: str):
-        super().__init__(f'Path: "{path}" does not exist.')
-
-
-class FileException(Exception):
-    """
-    Exception for missing or otherwise faulty files
-    """
-
-    def __init__(self, file_name: str, path: str | None = None):
-        text: str = "Could not find file " + str(file_name)
-        if path is not None:
-            text += " at path " + str(path)
-        super().__init__(text)

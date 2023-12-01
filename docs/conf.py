@@ -38,6 +38,7 @@ release = __version__
 extensions = [
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.autodoc",  # Core library for html generation from docstrings
+    "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
 ]
@@ -47,11 +48,19 @@ autodoc_mock_imports = [
     "alphapose",
     "detector",
     "halpecocotools",
-    "torchreid",
+    "jinja2",
+    "opencv-python",
+    "matplotlib",
     "natsort",
+    "ninja",
+    "numpy",
+    "pytorch",
+    "torch",
+    "torchvision",
+    "torchgen",
+    "torchreid",
     "tqdm",
     "visdom",
-    "opencv-python",
 ]
 
 # File parsing
@@ -59,7 +68,7 @@ source_suffix = [".rst", ".md"]
 source_parsers = {".md": "recommonmark.parser.CommonMarkParser"}
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "docs_venv"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"

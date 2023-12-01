@@ -8,13 +8,21 @@ Withing torch the images have channels in order of RGB.
 Matplotlib uses a different order for the images: `[B x H x W x C]`.
 The channel for matplotlib is RGB too.
 """
+from typing import Union
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from torchvision.transforms.v2 import ToPILImage
 
 from dgs.utils.constants import JOINT_CONNECTIONS_ITOP
-from dgs.utils.types import TVImage
+from dgs.utils.types import Image, TVImage
 from dgs.utils.utils import torch_to_numpy
+
+
+def torch_show(img: Image) -> None:
+    """Show a torch image using the systems image tool."""
+    ToPILImage()(img).show()
 
 
 def torch_to_matplotlib(img: TVImage) -> np.ndarray:
@@ -51,10 +59,10 @@ def save_or_show(
         kwargs: all kwargs that savefig or show accept
     """
     if file_path == "":
-        # just show plot
+        # just show the plot
         plt.show(block=plot_block, **kwargs)
     else:
-        # add file extension if not present yet
+        # add the file extension if not present yet
         if not file_path.endswith(plot_format):
             file_path += "." + plot_format
         # save plot
@@ -87,7 +95,7 @@ def show_tensor_image(img: TVImage, file_path: str = "", **kwargs) -> None:
 
 def show_2d_joints(
     img: TVImage,
-    joints: torch.Tensor | np.ndarray,
+    joints: Union[torch.Tensor, np.ndarray],
     file_path: str = "",
     **kwargs,
 ) -> None:
