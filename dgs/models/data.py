@@ -18,8 +18,8 @@ from dgs.utils.types import Config, ImgShape, NodePath
 class BaseDataset(TorchDataset, BaseModule):
     """Custom Dataset"""
 
-    # store list of filenames as np array, to reduce memory usage on multiple devices
     filenames: np.ndarray
+    """(np.ndarray) store list of filenames as numpy array, to reduce memory usage on multiple devices"""
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)

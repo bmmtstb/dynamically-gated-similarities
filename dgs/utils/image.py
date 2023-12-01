@@ -67,7 +67,7 @@ def load_video(filepath: FilePath, **kwargs) -> TVVideo:
     requires_grad = kwargs.get("requires_grad", False)
 
     # read video, save frames and discard audio
-    frames, *_ = read_video(fp, output_format="TCHW")
+    frames, *_ = read_video(fp, output_format="TCHW", pts_unit="sec")
 
     return tv_tensors.Video(frames, dtype=dtype, device=device, requires_grad=requires_grad)
 
@@ -221,15 +221,16 @@ class CustomToAspect(Torch_NN_Module):
             image: One or multiple torchvision images either as byte or float image
                 with a shape of ``[B x C x H x W]``.
             bboxes: Zero, one, or multiple bounding boxes per image.
-                With N detections and a batch size of B the shape is at max ``[B*N x 4]``.
-                Keep in mind, that bboxes has to be a 2 dimensional tensor,
+                With N detections and a batch size of B, the bounding boxes have a max shape of ``[B*N x 4]``.
+                Also, keep in mind that bboxes has to be a two-dimensional tensor,
                 because every image in this batch can have a different number of detections.
-                The order of the bounding boxes will stay the same.
+                The ordering of the bounding boxes will stay the same.
             coordinates: Joint-coordinates as key-points with coordinates in relation to the original image.
-                With N detections per image and a batch size of B the shape is at max ``[B*N x J x 2|3]``.
+                With N detections per image and a batch size of B,
+                the coordinates have a max shape of ``[B*N x J x 2|3]``.
                 Batch and detections are stacked in one dimension,
                 because every image in this batch can have a different number of detections.
-                The order of the coordinates will stay the same.
+                The ordering of the coordinates will stay the same.
             output_size: (w, h) as target width and height of the image
             mode: See class description. Default "zero-pad"
 
@@ -238,10 +239,6 @@ class CustomToAspect(Torch_NN_Module):
             Default 2
 
             fill: See parameter fill of torchvision.transforms.v2.Pad()
-
-        Todo:
-            * is it possible to get this to work with batches of images?
-              -> iff resize is called here, all the images would have the same shape afterwards
 
         Returns:
             Structured dict with updated image(s), bboxes and coordinates.
@@ -424,9 +421,8 @@ class CustomCropResize(Torch_NN_Module):
                 Similar to the modes of CustomToAspect, except there is one additional case 'outside-crop' available.
             output_size: (w, h) as target width and height of the image
 
-        Todo:
-            * is it possible to get this to work with batches of images?
-              Possibly flatten B and N dimension and keep indices somewhere...
+        Todo is it possible to get this to work with batches of images?
+            Possibly flatten B and N dimension and keep indices somewhere...
 
         Returns:
             Will replace image and coordinates with the newly computed values.

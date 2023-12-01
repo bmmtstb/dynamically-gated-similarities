@@ -50,8 +50,17 @@ class BaseModule(ABC):
     """
     Every Module is a building block that can be replaced with other building blocks.
     This defines a base module all of those building blocks inherit.
-    This class should not be called directly only inherited by other classes.
+    This class should not be called directly and should only be inherited by other classes.
 
+    Every module has access to the global configuration for parameters like the modules' device(s).
+    Additionally, every module will have own parameters (params) which are a sub node of the overall configuration.
+
+    Args:
+        config: The overall configuration of the whole algorithm
+        path: Keys of config to the parameters of the current module
+            e.g. the parameters for the pose estimator will be located in a pose-estimator subgroup of the config
+            those key-based paths may be even deeper, just make sure that only information about this specific model
+            is stored in params
 
     Attributes:
         config (Config): The overall configuration of the whole algorithm
@@ -61,17 +70,6 @@ class BaseModule(ABC):
 
     @enable_keyboard_interrupt
     def __init__(self, config: Config, path: NodePath):
-        """
-        Every module has access the global configuration for parameters like the modules' device(s).
-        Additionally, every module will have own parameters (params) which are a sub node of the overall configuration.
-
-        Args:
-            config: The overall configuration of the whole algorithm
-            path: Keys of config to the parameters of the current module
-                e.g. the parameters for the pose estimator will be located in a pose-estimator subgroup of the config
-                those key-based paths may be even deeper, just make sure that only information about this specific model
-                is stored in params
-        """
         # init torch module
         super().__init__()
 

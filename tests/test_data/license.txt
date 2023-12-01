@@ -1,0 +1,5 @@
+The image with the name '283-200x300.jpg' is courtesy of https://picsum.photos/
+
+The following media is courtesy of https://file-examples.com/
+* file_example_AVI_640_800kB.avi
+* file_example_PNG_500kB.png
