@@ -35,7 +35,7 @@ class TorchreidModel(EmbeddingGeneratorModule):
             # custom model params
             load_pretrained_weights(m, project_to_abspath(self.model_weights))
 
-        # send model to device
+        # send model to the device
         self.model = self.configure_torch_model(m)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:

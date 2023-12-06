@@ -20,7 +20,7 @@ Defaults to use AlphaPose as Backbone but should be extendable to use others.
 from abc import abstractmethod
 
 from dgs.models.module import BaseModule
-from dgs.models.states import BackboneOutput
+from dgs.models.states import DataSample
 
 
 class BackboneModule(BaseModule):
@@ -31,7 +31,7 @@ class BackboneModule(BaseModule):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, img_name: str, *args, **kwargs) -> BackboneOutput:
+    def forward(self, img_name: str, *args, **kwargs) -> DataSample:
         """
         fixme: define the return type or class for backbone objects, because there will be plenty return values
 

@@ -1,40 +1,77 @@
 """
 Module for handling data loading and preprocessing using torch Datasets.
 """
-from abc import abstractmethod
 
-import numpy as np
 import torch
 import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TorchDataset
 from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
-from dgs.models.states import BackboneOutput, BackboneOutputs
-from dgs.utils.image import CustomCropResize, CustomToAspect
-from dgs.utils.types import Config, ImgShape, NodePath
+from dgs.models.states import DataSample
+from dgs.utils.image import CustomCropResize, CustomToAspect, load_image
+from dgs.utils.types import Config, ImgShape, NodePath, Validations
+
+base_dataset_validations: Validations = {
+    # "resize_mode": ["str", ("in", CustomToAspect.modes)],
+    # "backbone_size": [("or",
+    #   ("and", ("instance", list), ("len", 2), lambda x: x[0] > 0 and x[1] > 0),
+    #   ("None", ...))
+    # ],
+    "crop_mode": ["str", ("in", CustomToAspect.modes)],
+    "crop_size": [("instance", list), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
+}
 
 
 class BaseDataset(TorchDataset, BaseModule):
-    """Custom Dataset"""
+    """Base class for custom datasets.
 
-    filenames: np.ndarray
-    """(np.ndarray) store list of filenames as numpy array, to reduce memory usage on multiple devices"""
+    Using the Bounding Box as Index
+    -------------------------------
+    The BaseDataset assumes that one sample of data (one __getitem__ call) contains one single bounding box.
+    It should be possible to work with a plain dict,
+    but to have a few quality-of-life features, the DataSample class was implemented.
+
+
+
+    Why not use the Image ID as Index?
+    ----------------------------------
+    This is **not** chosen since the batch-size might vary when using the image index to create batches,
+    because every image can have a different number of detections.
+    With a batch size of B, we obtain B original images.
+    Every one of those has a specific number of detections N, ranging from zero to an arbitrary number.
+
+    This means that for obtaining batches of a constant size, it is necessary to 'flatten' the inputs.
+    Thus creating a mapping from image name and bounding box to the respective data.
+    With that in place, the DataLoader can retrieve batches with the same batch size.
+    The detections of one image might be split into different batches.
+
+    The other option is to have batches with slightly different sizes.
+    The DataLoader loads a fixed batch of images, the Dataset computes the resulting detections and returns those.
+
+    Methods:
+        self.transform_resize_image
+        self.transform_crop_resize
+    """
+
+    data: list[DataSample]
+    """List of all the data samples. Indexed per bounding box instead of per image.
+    
+    Every dict contains a single bounding box sample.
+    """
+
+    def __call__(self, *args, **kwargs) -> any:
+        """Has to override call from BaseModule"""
+        raise NotImplementedError("Dataset can't be called.")
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
-        # structured_input: dict[str, any] = {
-        # "image": None, "bboxes": None, "coordinates": None, "mode": None, "output_size": None,
-        # }
-
-    @abstractmethod
     def __len__(self) -> int:
         """Override len() functionality for torch."""
-        return len(self.filenames)
+        return len(self.data)
 
-    @abstractmethod
-    def __getitem__(self, idx: int) -> BackboneOutput:
+    def __getitem__(self, idx: int) -> DataSample:
         """Retrieve data at index from given dataset.
 
         Args:
@@ -43,18 +80,20 @@ class BaseDataset(TorchDataset, BaseModule):
         Returns:
             Precomputed backbone output
         """
-        raise NotImplementedError
+        sample = self.data[idx]
+        if "image_crop" not in sample or "local_coordinates" not in sample:
+            structured_input = {
+                "image": load_image(sample.filepath),
+                "bboxes": sample.bbox,
+                "coordinates": sample.keypoints,
+                "output_size": self.params["crop_size"],
+                "mode": self.params["crop_mode"],
+            }
+            new_sample = self.transform_crop_resize()(structured_input)
+            sample.image_crop = new_sample["image_crop"]
+            sample.local_keypoints = new_sample["local_coordinates"]
 
-    def __getitems__(self, indices: list[int]) -> BackboneOutputs:
-        """Get batch of data given list of indices.
-
-        This method accepts a list of filename indices within this batch and returns a list of samples.
-        Subclasses can optionally implement __getitems__() for speeding up batched samples loading.
-
-        Args:
-            indices: A list of filename indices to retrieve the image data from
-        """
-        raise NotImplementedError
+        return sample
 
     @staticmethod
     def transform_resize_image(backbone_size: ImgShape) -> tvt.Compose:
@@ -78,9 +117,6 @@ class BaseDataset(TorchDataset, BaseModule):
         """
         return tvt.Compose(
             [
-                tvt.ToDtype(
-                    {tv_tensors.Image: torch.uint8}, scale=True
-                ),  # kind of optional, because either load image returns uint8 or another dtype was wanted
                 CustomToAspect(),  # make sure the image has the correct aspect ratio for the backbone model
                 tvt.Resize(
                     backbone_size, antialias=True

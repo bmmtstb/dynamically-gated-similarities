@@ -1,12 +1,14 @@
 """
 definitions and helpers for pose-state(s)
 """
-from collections import UserList
+from collections import UserDict
 
 import torch
+from torchvision import tv_tensors
 
-from dgs.models.torchbbox.bbox import BoundingBox
-from dgs.models.torchbbox.bboxes import BoundingBoxes, BoundingBoxesIterable
+from dgs.utils.exceptions import InvalidPathException
+from dgs.utils.files import is_file
+from dgs.utils.image import load_image
 from dgs.utils.types import Config, Device, PoseStateTuple
 
 
@@ -212,208 +214,229 @@ class PoseStates:
         self.bboxes.append(bbox.to(self.config["device"]))
 
 
-class BackboneOutput:
-    """Class for storing backbone outputs.
+class DataSample(UserDict):
+    """Class for storing a single sample of data.
 
-    Original image shape: `[B x C x H x W]`
-    Cropped image shape: `[C x h x w]`
+    During initialization, the following keys have to be given:
+
+    filepath
+        (str)
+
+        the filepath of the image
+
+    bbox
+        (tv_tensors.BoundingBoxes), shape ``[4]``
+
+        One single bounding box as torchvision bounding box in global coordinates.
+
+    keypoints
+        (tv_tensors.Mask), shape ``[J x 2|3]``
+
+        The key points for this bounding box as torchvision mask (?) in global coordinates.
+
+    person_id (optional)
+        (int)
+
+        the person id, only required for training and validation
+
+
+    The model might be given additional values or compute further optional values:
+
+    heatmap (optional)
+        (torch.FloatTensor), shape ``[J x h x w]``
+
+        The heatmap of this bounding box.
+
+    local_keypoints (optional)
+        (tv_tensors.Mask), shape ``[J x 2|3]``
+
+        The key points for this bounding box as torchvision mask (?) in local coordinates.
+
+    image (optional)
+        (tv_tensor.Image), shape ``[C x H x W]``
+
+        The original image, resized to the respective shape of the backbone input.
+
+    image_crop (optional)
+        (tv_tensor.Image), shape ``[C x h x w]``
+
+        The content of the original image cropped using the bbox.
+
+    joint_weight (optional)
+        (torch.FloatTensor), shape ``[J]``
+
+        Some kind of joint- or key-point confidence.
+        E.g., the joint confidence score (JCS) of AlphaPose or the joint visibility of the PoseTrack21 dataset.
     """
 
     # there a many attributes and they can get used, so please the linter
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, **kwargs) -> None:
-        self.img_orig: torch.Tensor = torch.squeeze(kwargs.get("img_orig"))
-        self.img_name: str = kwargs.get("img_name")
-        self._img_crop: torch.Tensor = kwargs.get("img_crop", None)
-        self.heatmaps: torch.Tensor = kwargs.get("hm", None)
-        self.ids = kwargs.get("ids", None)  # fixme type? use?
-        self.jcs: torch.Tensor = kwargs.get("jcs", None)
-        self.visibility: torch.Tensor = kwargs.get("vis", None)
-        self.bbox: BoundingBox = kwargs.get("bbox", None)
+    def __init__(
+        self, filepath: str, bbox: tv_tensors.BoundingBoxes, keypoints: tv_tensors.Mask, person_id: int = -1, **kwargs
+    ) -> None:
+        super().__init__(**kwargs)
 
-    def to(self, *args, **kwargs) -> "BackboneOutput":
+        self.data["filepath"]: str = filepath
+        self.data["bbox"]: tv_tensors.BoundingBoxes = bbox
+        self.data["keypoints"]: tv_tensors.Mask = keypoints
+        if person_id >= 0:
+            self.data["person_id"]: int = person_id
+
+        self._validate()
+
+    def _validate(self) -> None:
+        """Validate the data."""
+        # filepath
+        if not is_file(self.data["filepath"]):
+            raise InvalidPathException(filepath=self.data["filepath"])
+        # bbox
+        if not isinstance(self.data["bbox"], tv_tensors.BoundingBoxes):
+            raise TypeError(f"Bounding box is expected to be tv_tensor.BoundingBoxes, but is {self.data['bbox']}")
+        if self.data["bbox"].shape[-1] != 4:
+            raise ValueError(
+                f"The last dimension of the bounding box is expected to have a value of 4, "
+                f"but it is {self.data['bbox'].shape[-1]}"
+            )
+        # keypoints
+        if not isinstance(self.data["keypoints"], tv_tensors.Mask):
+            raise TypeError(f"The key points are expected to be tv_tensor.Mask, but they are {self.data['keypoints']}")
+        if not 2 <= self.data["keypoints"].shape[-1] <= 3:
+            raise ValueError(
+                f"The key points should be two- or three-dimensional, "
+                f"but they have a shape of {self.data['keypoints'].shape}"
+            )
+
+    def to(self, *args, **kwargs) -> "DataSample":
         """Override torch.Tensor.to() for the whole object."""
-        for name in ["img_orig", "_img_crop", "heatmaps", "jcs", "bbox"]:
-            setattr(self, name, getattr(self, name).to(*args, **kwargs))
+        for attr in ["img_orig", "_img_crop", "heatmaps", "jcs", "visibility", "bbox"]:
+            if getattr(self, attr) is not None:
+                setattr(self, attr, getattr(self, attr).to(*args, **kwargs))
         return self
 
     def __str__(self) -> str:
         """Overwrite representation to be image name."""
-        return self.img_name
+        return f"{self.data['filepath']} {self.data['bbox']}"
 
-    def contains_img_name(self, name: str) -> bool:
-        """Returns whether the image has given name"""
-        return self.img_name == name
+    def get_original(self) -> tv_tensors.Image:
+        """Get the original image from the given filepath"""
+        if "original" not in self.data or not self.data["original"]:
+            self.data["original"] = load_image(self.data["filepath"])
+        return self.data["original"]
 
-    def contains_id(self, id_) -> bool:
-        """Returns whether the id is part of this object's ids"""
-        return id_ in self.ids
+    @property
+    def filepath(self) -> str:
+        return self.data["filepath"]
+
+    @property
+    def bbox(self) -> tv_tensors.BoundingBoxes:
+        return self.data["bbox"]
+
+    @property
+    def keypoints(self) -> tv_tensors.Mask:
+        return self.data["keypoints"]
 
     @property
     def J(self) -> int:
         """Get number of joints"""
-        return self.heatmaps.shape[0]
+        return self.data["keypoints"].shape[-2]
 
     @property
-    def C(self) -> int:
-        """Get number of channels in image"""
-        # might use 0 or 1, because image can have dimension for batch size (of one)
-        return self.img_orig.shape[-3]
+    def heatmap(self) -> torch.FloatTensor:
+        return self.data["heatmap"]
+
+    @heatmap.setter
+    def heatmap(self, heatmap: torch.FloatTensor) -> None:
+        self.data["heatmap"] = heatmap
 
     @property
-    def W(self) -> int:
-        """Get the width of the original image"""
-        return self.img_orig.shape[-1]
+    def local_keypoints(self) -> tv_tensors.Mask:
+        return self.data["local_keypoints"]
+
+    @local_keypoints.setter
+    def local_keypoints(self, value: tv_tensors.Mask):
+        """Set local key points with a little bit of validation."""
+        if value.shape[-2] != self.J:
+            raise ValueError(f"Number of joints of new value {value.shape[-2]} is expected to be equal to J {self.J}")
+        if value.shape[-1] != self.keypoints.shape[-1]:
+            raise ValueError(
+                f"Number of dimensions of local keypoints {value.shape[-1]} "
+                f"should be equal to the value in global key points {self.keypoints.shape[-1]}"
+            )
+        self.data["local_keypoints"] = value
 
     @property
-    def img_crop(self) -> torch.Tensor:
-        """Get the plain image crop or compute it if it's not yet available.
+    def image(self) -> tv_tensors.Image:
+        return self.data["image"]
 
-        One might want to include image crop reshaping after this step
-        """
-        if self._img_crop is None:
-            # compute image crop using global / original coordinates
-            x1, y1, x2, y2 = self.bbox.corners((self.W, self.H))
-            self.img_crop = self.img_orig[:, y1:y2, x1:x2]
-            # fixme: do we have to reshape crop to specific size?
-        return self._img_crop
-
-    @img_crop.setter
-    def img_crop(self, crop: torch.Tensor) -> None:
-        """Set image crop."""
-        self._img_crop = crop
+    @image.setter
+    def image(self, value: tv_tensors.Image) -> None:
+        self.data["image"] = value
 
     @property
-    def w(self) -> int:
-        """Get the width of the cropped image"""
-        return self.img_crop.shape[-1]
+    def image_crop(self) -> tv_tensors.Image:
+        return self.data["image_crop"]
+
+    @image_crop.setter
+    def image_crop(self, value: tv_tensors.Image) -> None:
+        self.data["image_crop"] = value
 
     @property
-    def H(self) -> int:
-        """Get the height of the original image"""
-        return self.img_orig.shape[-2]
+    def joint_weight(self) -> torch.Tensor:
+        return self.data["joint_weight"]
 
-    @property
-    def h(self) -> int:
-        """Get the height of the cropped image"""
-        return self.img_crop.shape[-2]
+    @joint_weight.setter
+    def joint_weight(self, value: torch.Tensor) -> None:
+        self.data["joint_weight"] = value
 
-    def cast_visibility(
+    def cast_joint_weight(
         self,
-        dtype: torch.dtype = torch.bool,
-        round_: int = 0,
+        dtype: torch.dtype = torch.float32,
+        decimals: int = 0,
         overwrite: bool = False,
         device: Device = None,
     ) -> torch.Tensor:
-        """Cast and return visibility as tensor.
+        """Cast and return the joint weight as tensor.
 
-        The visibility might have an arbitrary tensor type, this function allows getting one specific variant.
+        The weight might have an arbitrary tensor type, this function allows getting one specific variant.
+
+        E.g., the visibility might be a boolean value or a model certainty.
+
+        Note:
+            Keep in mind,
+            that torch.round() is not really differentiable and does not really allow backpropagation.
+            See https://discuss.pytorch.org/t/torch-round-gradient/28628/4 for more information.
 
         Args:
             dtype: The new torch dtype of the tensor.
-            round_: Number of decimals to round floats to before type casting.
-                Defaults to zero.
-                There will be no rounding on minus one.
-                When information is compressed, e.g., when casting from float to bool,
+                Default torch.float32.
+
+            decimals: Number of decimals to round floats to, before type casting.
+                Default 0 (round to integer).
+
+                When the value of decimals is set to -1 (minus one),
+                there will only be type casting and no rounding at all.
+                But keep in mind that when information is compressed, e.g., when casting from float to bool,
                 simply calling float might not be enough to cast 0.9 to True.
-                Keep in mind, that torch.round() is not really differentiable and does not really allow backpropagation.
-                See https://discuss.pytorch.org/t/torch-round-gradient/28628/4 for more information.
-            overwrite: Whether self.visibility will be overwritten or not.
+
+            overwrite: Whether self.joint_weight will be overwritten or not.
+
             device: Which device the tensor is being sent to.
                 Defaults to the device visibility on which the visibility tensor lies.
 
         Returns:
             A type-cast version of the tensor.
 
-            If overwrite is True, the returned tensor will be the same as self.visibility,
+            If overwrite is True, the returned tensor will be the same as self.joint_weight,
             including the computational graph.
-            Visibility will potentially be overwritten with a new dtype.
 
-            If overwrite is False, the returned tensor will be a detached and cloned instance of self.visibility.
-
+            If overwrite is False, the returned tensor will be a detached and cloned instance of self.joint_weight.
         """
-        raise NotImplementedError
-
-
-class BackboneOutputs(UserList):
-    """Class for storing backbone outputs.
-
-    Original image shape: `[B x C x H x W]`
-    Cropped image shape: `[B x C x h x w]`
-    """
-
-    def __init__(self, outputs: BoundingBoxesIterable = None) -> None:
-        self.data: list[BackboneOutput]  # will be set by calling init of UserList
-
-        super().__init__(outputs)
-
-    def __setitem__(self, key: int, value: BoundingBox) -> None:
-        self.data[key] = value
-
-    def insert(self, i: int, item: BoundingBox):
-        self.data.insert(i, item)
-
-    def append(self, item: BoundingBox) -> None:
-        raise NotImplementedError
-
-    def extend(self, other: BoundingBoxesIterable | BoundingBoxes):
-        raise NotImplementedError
-
-    def __contains__(self, item: BoundingBox) -> bool:
-        raise NotImplementedError
-
-    def __eq__(self, other: BoundingBoxes) -> bool:
-        raise NotImplementedError
-
-    @property
-    def image_crops(self) -> torch.Tensor:
-        """Get all the image crops as a single tensor.
-
-        Returns:
-            torch tensor of shape [len x C x h x w]
-        """
-        raise NotImplementedError
-
-    @property
-    def image_origs(self) -> torch.Tensor:
-        """Get all the original images as a single tensor.
-
-        Returns:
-            torch tensor of shape [len x C x H x W]
-        """
-        raise NotImplementedError
-
-    @property
-    def names(self) -> list[str]:
-        """Get a list of all the filenames in this object."""
-        raise NotImplementedError
-
-    @property
-    def heatmaps(self) -> torch.FloatTensor:
-        r"""Get all the heatmaps as a single tensor.
-
-        Returns:
-            torch float tensor of shape ``[J x HM\ :sub:`H` x HM\ :sub:`W`]``
-        """
-        raise NotImplementedError
-
-    @property
-    def jcss(self):
-        """Get all the joint confidence scores as a single tensor."""
-        raise NotImplementedError
-
-    @property
-    def visibilities(self):
-        """Get all the visibilities as a single tensor."""
-        raise NotImplementedError
-
-    @property
-    def bboxes(self) -> BoundingBoxes:
-        """Get all the bounding boxes as a single tensor."""
-        raise NotImplementedError
-
-    @property
-    def outputs(self) -> list[BackboneOutput]:
-        """Alternate name to get data, to be consistent to single BackboneOutput."""
-        return self.data
+        if overwrite and decimals >= 0:
+            return self.joint_weight.round_(decimals=decimals).to(device=device, dtype=dtype)
+        if overwrite:
+            return self.joint_weight.to(device=device, dtype=dtype)
+        new_weights = self.joint_weight.detach().clone().to(device=device, dtype=dtype)
+        if decimals >= 0:
+            new_weights.round_(decimals=decimals)
+        return new_weights.to(device=device, dtype=dtype)

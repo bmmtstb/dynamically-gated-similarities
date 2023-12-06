@@ -28,7 +28,9 @@ cfg.training = False
 # ####### #
 cfg.data = EasyDict()
 cfg.data.model = "AlphaPoseLoader"
-cfg.data.path = "./results/own_videos_old_track/3_3_alphapose_results.json"  # fixme provide example
+cfg.data.path = "./results/json/3_3_alphapose_results.json"  # fixme provide example
+cfg.data.crop_mode = "outside-crop"
+cfg.data.crop_size = [256, 256]
 
 # ############## #
 # Backbone Model #

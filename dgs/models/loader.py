@@ -91,7 +91,10 @@ def get_data_loader(config: Config, dataset: TorchDataset) -> TorchDataLoader:
         A torch DataLoader for the given dataset.
     """
     data_loader = TorchDataLoader(
-        dataset=dataset, batch_size=config["batch_size"], num_workers=config["num_workers"], shuffle=False
+        dataset=dataset,
+        batch_size=config["batch_size"],
+        num_workers=config["num_workers"],
+        shuffle=False,
     )
     # https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
     # By default, num_workers is set to 0.

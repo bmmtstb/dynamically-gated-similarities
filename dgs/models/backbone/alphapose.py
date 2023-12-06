@@ -33,11 +33,11 @@ from alphapose.utils.writer import DataWriter, DEFAULT_VIDEO_SAVE_OPT as AP_DEF_
 from detector.apis import get_detector as get_ap_detector  # alphapose detector
 from dgs.models.backbone.backbone import BackboneModule
 from dgs.models.data import BaseDataset
-from dgs.models.states import BackboneOutput, BackboneOutputs
+from dgs.models.states import DataSample
 from dgs.utils.config import fill_in_defaults, load_config
-from dgs.utils.exceptions import InvalidParameterException, InvalidPathException
+from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.files import is_dir, is_file, project_to_abspath, read_json
-from dgs.utils.types import Config, NodePath, Validations
+from dgs.utils.types import Config, FilePath, NodePath, Validations
 
 # default is mostly consistent with demo inference of AlphaPose
 ap_default_opt: Config = EasyDict(
@@ -299,27 +299,9 @@ class AlphaPoseFullBackbone(BackboneModule):
         # do not save results
         return DataWriter(self.ap_cfg_file, self.ap_args, queueSize=self.params["qsize"]).start()
 
-    def forward(self, *args, **kwargs) -> BackboneOutput:
-        """Predict next backbone output."""
-        input_imgs, orig_img, im_name, boxes, scores, ids, cropped_boxes = self.det_loader.read()
-        if boxes is None or boxes.nelement() == 0:
-            self.writer.save(None, None, None, None, None, orig_img, im_name)
-        input_imgs = input_imgs.to(self.device)
-        data_length = input_imgs.size(0)
-        b: int = self.params["posebatch"]
-
-        # heatmaps for (possibly) multiple batches of size b
-        hm = []
-        for j in range(data_length // b + min(1, data_length % b)):
-            hm.append(self.pose_model(input_imgs[j * b : min((j + 1) * b, data_length)]))
-
-        hm = torch.cat(hm).to(self.device)
-
-        self.writer.save(boxes, scores, ids, hm, cropped_boxes, orig_img, im_name)
-
-        return BackboneOutput(
-            bbox=boxes, jcs=scores, ids=ids, hm=hm, bbox_crop=cropped_boxes, img_orig=orig_img, img_name=im_name
-        )
+    def forward(self, *args, **kwargs) -> DataSample:
+        """Predict the next backbone output."""
+        raise NotImplementedError
 
     def terminate(self) -> None:
         print("Stopping AlphaPose models")
@@ -341,7 +323,7 @@ class AlphaPoseFullBackbone(BackboneModule):
             self.det_loader.clear_queues()
 
 
-class AlphaPoseLoader(BackboneModule, BaseDataset):
+class AlphaPoseLoader(BaseDataset):
     """Load precomputed json files"""
 
     def __init__(self, config: Config, path: NodePath) -> None:
@@ -359,21 +341,15 @@ class AlphaPoseLoader(BackboneModule, BaseDataset):
         else:
             raise NotImplementedError(f"JSON file {self.params['path']} does not contain known instances.")
 
-        self.img_names: list[str] = []
+        self.img_folder_path: FilePath = self.params.get("img_folder_path", "")
+        self.data: list[DataSample] = self.ap_to_data_sample()
 
-    def forward(self, img_name: str, *args, **kwargs) -> BackboneOutput:
-        data: dict = self.json.get(img_name, None)
-        if data is None:
-            raise InvalidPathException(f"Image name or path '{img_name}' does not exist in precomputed values.")
-
-        return ...
-
-    def __len__(self) -> int:
-        return len(self.img_names)
-
-    def __getitem__(self, idx: int) -> BackboneOutput:
-        return self.forward(self.img_names[idx])
-
-    def __getitems__(self, indices: list[int]) -> BackboneOutputs:
-        """Batched getter for dataset"""
-        raise NotImplementedError
+    def ap_to_data_sample(self) -> list[DataSample]:
+        for detection in self.json:
+            yield DataSample(
+                filepath=os.path.join(self.img_folder_path, detection["image_id"]),
+                bbox=detection["bbox"],
+                keypoints=detection["keypoints"],
+                person_id=detection["idx"] if "idx" in detection else -1,
+                # score=detection["score"],
+            )

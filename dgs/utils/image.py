@@ -3,9 +3,10 @@ Utility for handling images in pytorch.
 
 Loading, saving, manipulating of RGB-images.
 
-Within pytorch an image is a FloatTensor with a shape of ``[C x h x w]``.
+Within pytorch an image is a Byte-, Uint8-, or Float-Tensor with a shape of ``[C x h x w]``.
+Within torchvision an image is a tv_tensor.Image object with the same shape.
 A Batch of torch images therefore has a shape of ``[B x C x h x w]``.
-Withing torch the images have channels in order of RGB.
+Within pytorch and torchvision, the images have channels in order of RGB.
 
 RGB Images in cv2 have a shape of ``[h x w x C]`` and the channels are in order GBR.
 Grayscale Images in cv2 have a shape of ``[h x w]``.
@@ -228,8 +229,9 @@ class CustomToAspect(Torch_NN_Module):
             coordinates: Joint-coordinates as key-points with coordinates in relation to the original image.
                 With N detections per image and a batch size of B,
                 the coordinates have a max shape of ``[B*N x J x 2|3]``.
-                Batch and detections are stacked in one dimension,
-                because every image in this batch can have a different number of detections.
+                Either batch and detections are stacked in one dimension,
+                because every image in this batch can have a different number of detections,
+                or there is not batched dimension at all.
                 The ordering of the coordinates will stay the same.
             output_size: (w, h) as target width and height of the image
             mode: See class description. Default "zero-pad"
@@ -241,7 +243,7 @@ class CustomToAspect(Torch_NN_Module):
             fill: See parameter fill of torchvision.transforms.v2.Pad()
 
         Returns:
-            Structured dict with updated image(s), bboxes and coordinates.
+            Structured dict with updated and overwritten image(s), bboxes and coordinates.
             All additional input values are passed down as well.
         """
 
@@ -425,12 +427,12 @@ class CustomCropResize(Torch_NN_Module):
             Possibly flatten B and N dimension and keep indices somewhere...
 
         Returns:
-            Will replace image and coordinates with the newly computed values.
+            Will add additional keys for the cropped image and the local coordinates with the newly computed values.
+            Namely 'image_crop' for extracted image and 'local_coordinates' for the localized key points.
 
             The new shape of the images is ``[N x C x w x h]``.
 
             The shape of the coordinates will stay the same.
-
         """
         # pylint: disable=too-many-locals,too-many-arguments
         self._validate_inputs(image=image, bboxes=bboxes, coordinates=coordinates, mode=mode)
@@ -519,9 +521,9 @@ class CustomCropResize(Torch_NN_Module):
             )
 
         return {
-            "image": torch.stack(img_crops),
+            "image_crop": torch.stack(img_crops),
             "bboxes": bboxes,
-            "coordinates": torch.stack(coord_crops),
+            "local_coordinates": torch.stack(coord_crops),
             "mode": mode,
             **kwargs,
         }

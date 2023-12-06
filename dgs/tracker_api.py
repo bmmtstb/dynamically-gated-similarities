@@ -8,7 +8,7 @@ from dgs.models.data import BaseDataset
 from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
 from dgs.models.loader import get_data_loader, module_loader
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.states import BackboneOutputs
+from dgs.models.states import DataSample
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
 
@@ -69,7 +69,7 @@ class DGSTracker:
         # dataloader
         data_loader = get_data_loader(self.cfg, dataset)
         for batch_idx, batch in enumerate(data_loader):
-            batch: BackboneOutputs
+            batch: DataSample  # fixme correct? or is it list of dict, or is it dict with fancy torch stuff
             print(batch_idx)
             print(batch)
 

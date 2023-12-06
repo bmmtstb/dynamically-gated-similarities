@@ -18,6 +18,12 @@ class ValidationException(Exception):
 class InvalidPathException(OSError):
     """Exception to raise if a given path is invalid."""
 
+    def __init__(self, *args, filepath: str = None):
+        if filepath:
+            super().__init__(f"{filepath} is not a valid path.")
+        else:
+            super().__init__(*args)
+
 
 class BoundingBoxException(Exception):
     """Exception to raise if a given bounding-box is invalid."""
