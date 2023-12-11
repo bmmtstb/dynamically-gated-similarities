@@ -1,10 +1,8 @@
 """
 Base Tracker API structure of tracking via dynamically gated similarities
 """
-import torch
 
-from dgs.models.backbone.backbone import BackboneModule
-from dgs.models.data import BaseDataset
+from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
 from dgs.models.loader import get_data_loader, module_loader
 from dgs.models.module import enable_keyboard_interrupt
@@ -48,8 +46,8 @@ class DGSTracker:
         self.wm = ...
 
         # set up models
-        self.m_backbone: BackboneModule = module_loader(self.cfg, "backbone")
-        self.m_backbone = torch.compile(self.m_backbone)
+        # self.m_backbone: BackboneModule = module_loader(self.cfg, "backbone")
+        # self.m_backbone = torch.compile(self.m_backbone)
 
         self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
         # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
@@ -64,7 +62,7 @@ class DGSTracker:
     def run(self) -> None:
         """Run Tracker."""
         # dataset
-        dataset: BaseDataset = module_loader(self.cfg, "data")
+        dataset: BaseDataset = module_loader(self.cfg, "dataset")
 
         # dataloader
         data_loader = get_data_loader(self.cfg, dataset)
@@ -94,4 +92,9 @@ class DGSTracker:
         """Terminate tracker and make sure to stop all submodules and (possible) parallel threads."""
         model_names = ["backbone", "m_vis_reid", "m_vis_siml", "m_pose_reid", "m_pose_warp", "m_pose_siml"]
         for name in model_names:
-            getattr(self, name).terminate()
+            if (
+                hasattr(self, name)  # Model exists
+                and hasattr(getattr(self, name), "terminate")  # model has attribute terminate
+                and callable(getattr(getattr(self, name), "terminate"))  # model.terminate is callable
+            ):
+                getattr(self, name).terminate()

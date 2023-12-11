@@ -16,6 +16,7 @@ dependencies:
     - conda-forge::easydict
     #  - conda-forge::fvcore
     - conda-forge::gdown
+    - conda-forge::imagesize
     - conda-forge::jinja2
     - conda-forge::matplotlib
     - conda-forge::munkres  # hungarian algorithm

@@ -1,10 +1,11 @@
-sphinx
-pyyaml
 easydict
-numpy
-scipy
-terminaltables
+imagesize
 matplotlib
+numpy
+pyyaml
+scipy
+sphinx
+terminaltables
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu

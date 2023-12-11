@@ -1,17 +1,18 @@
-pyyaml
-easydict
-numpy
-pylint
+av # for FFmpeg libraries and loading videos
 black
+easydict
+imagesize
+matplotlib
+munkres
 natsort
+numpy
+opencv-python
+pylint
+pyyaml
 scipy
+terminaltables
 tqdm
 visdom
-opencv-python
-munkres
-terminaltables
-matplotlib
-av
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu

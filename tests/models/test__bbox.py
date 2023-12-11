@@ -36,7 +36,11 @@ class TestBoundingBox(unittest.TestCase):
         for kwargs, error_msg, msg in [
             ({}, "format has to be specified", "empty kwargs"),
             ({"wrong": XYWH}, "Unknown bbox format during initialization.", "wrong kwarg name"),
-            ({"xyxy": XYXY, "wrong": XYWH}, "Unknown bbox format during initialization.", "right and wrong kwarg name"),
+            (
+                {"xyxy": XYXY, "wrong": XYWH},
+                "Unknown bbox format during initialization.",
+                "right and wrong kwarg name",
+            ),
             ({"xyah": None}, "At least one bbox has to have a value.", "None in kwargs"),
             ({"xyxy": torch.Tensor([1, 1, 101, 201, 1])}, "have to have length of 4.", "Tensor too long"),
             ({"xyah": torch.Tensor([1, 1, 101])}, "have to have length of 4.", "Tensor too short"),
@@ -154,7 +158,7 @@ class TestBoundingBox(unittest.TestCase):
                 1000,
                 1000,
                 torch.IntTensor([0, 0, 10, 1], device=device),
-                "Negative bbox coordinates",
+                "Negative bboxes coordinates",
             ),
         ]:
             with self.subTest(msg=f"{msg}"):

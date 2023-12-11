@@ -1,12 +1,10 @@
 """
 Helpers for visualizing data.
 
-Within pytorch an image is a FloatTensor with a shape of ``[C x h x w]``.
-A Batch of torch images therefore has a shape of ``[B x C x h x w]``.
-Withing torch the images have channels in order of RGB.
+For pytorch, torchvision and cv2 image descriptions, see the `image file description <image_util_page>`_.
 
 Matplotlib uses a different order for the images: `[B x H x W x C]`.
-The channel for matplotlib is RGB too.
+At least, the channel for matplotlib is RGB too.
 """
 from typing import Union
 
@@ -16,13 +14,24 @@ from matplotlib import pyplot as plt
 from torchvision.transforms.v2 import ToPILImage
 
 from dgs.utils.constants import JOINT_CONNECTIONS_ITOP
-from dgs.utils.types import Image, TVImage
+from dgs.utils.types import Images, TVImage
 from dgs.utils.utils import torch_to_numpy
 
 
-def torch_show(img: Image) -> None:
-    """Show a torch image using the systems image tool."""
-    ToPILImage()(img).show()
+def torch_show_image(imgs: Images, show: bool = True) -> None:
+    """Show a torch image using matplotlib."""
+    plt.rcParams["savefig.bboxes"] = "tight"  # fixme why is this necessary?
+
+    if not isinstance(imgs, list):
+        imgs = [imgs]
+    _, axs = plt.subplots(ncols=len(imgs), squeeze=False)
+    for i, img in enumerate(imgs):
+        img = img.detach()
+        img = ToPILImage()(img)
+        axs[0, i].imshow(np.asarray(img))
+        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+    if show:
+        plt.show()
 
 
 def torch_to_matplotlib(img: TVImage) -> np.ndarray:

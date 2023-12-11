@@ -8,7 +8,7 @@ from dgs.utils.types import Config, NodePath
 
 module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be removed?
     "backbone": ["backbone"],
-    "data": ["data"],
+    "dataset": ["dataset"],
     "visual_embedding_generator": ["visual_embedding_generator"],
     "visual_similarity": ["visual_embedding_generator", "similarity"],
     "pose_embedding_generator": ["pose_embedding_generator"],
@@ -17,8 +17,8 @@ module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be rem
 }
 
 submodules: dict[str, list[str]] = {
-    "data": ["AlphaPoseLoader"],
-    "backbone": ["AlphaPose", "AlphaPoseLoader"],
+    "dataset": ["AlphaPoseLoader", "PoseTrack21Loader"],
+    "backbone": ["AlphaPose"],
     "visual_embedding_generator": ["torchreid"],
     "pose_embedding_generator": [],
     "pose_warping_module": ["kalman"],
@@ -71,11 +71,15 @@ def module_loader(config: Config, module: str):
             from dgs.models.pose_warping import KalmanFilterWarpingModel
 
             return KalmanFilterWarpingModel(config, path)
-    elif module == "data":
+    elif module == "dataset":
         if model_name == "AlphaPoseLoader":
-            from dgs.models.backbone.alphapose import AlphaPoseLoader
+            from dgs.models.dataset.alphapose import AlphaPoseLoader
 
             return AlphaPoseLoader(config, path)
+        if model_name == "PoseTrack21Loader":
+            from dgs.models.dataset.posetrack import PoseTrack21Loader
+
+            return PoseTrack21Loader(config, path)
 
     raise NotImplementedError(f"Something went wrong while loading module '{module}'")
 

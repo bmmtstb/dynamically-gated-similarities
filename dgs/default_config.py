@@ -26,11 +26,11 @@ cfg.training = False
 # ####### #
 # Dataset #
 # ####### #
-cfg.data = EasyDict()
-cfg.data.model = "AlphaPoseLoader"
-cfg.data.path = "./results/json/3_3_alphapose_results.json"  # fixme provide example
-cfg.data.crop_mode = "outside-crop"
-cfg.data.crop_size = [256, 256]
+cfg.dataset = EasyDict()
+cfg.dataset.model = "AlphaPoseLoader"
+cfg.dataset.path = "./results/json/3_3_alphapose_results.json"  # fixme provide example
+cfg.dataset.crop_mode = "outside-crop"
+cfg.dataset.crop_size = [256, 256]
 
 # ############## #
 # Backbone Model #

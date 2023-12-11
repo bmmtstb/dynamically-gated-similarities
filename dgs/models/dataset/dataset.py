@@ -28,7 +28,7 @@ class BaseDataset(TorchDataset, BaseModule):
 
     Using the Bounding Box as Index
     -------------------------------
-    The BaseDataset assumes that one sample of data (one __getitem__ call) contains one single bounding box.
+    The BaseDataset assumes that one sample of dataset (one __getitem__ call) contains one single bounding box.
     It should be possible to work with a plain dict,
     but to have a few quality-of-life features, the DataSample class was implemented.
 
@@ -42,7 +42,7 @@ class BaseDataset(TorchDataset, BaseModule):
     Every one of those has a specific number of detections N, ranging from zero to an arbitrary number.
 
     This means that for obtaining batches of a constant size, it is necessary to 'flatten' the inputs.
-    Thus creating a mapping from image name and bounding box to the respective data.
+    Thus creating a mapping from image name and bounding box to the respective dataset.
     With that in place, the DataLoader can retrieve batches with the same batch size.
     The detections of one image might be split into different batches.
 
@@ -55,7 +55,7 @@ class BaseDataset(TorchDataset, BaseModule):
     """
 
     data: list[DataSample]
-    """List of all the data samples. Indexed per bounding box instead of per image.
+    """Generator or List of all the dataset samples. Indexed per bounding box instead of per image.
     
     Every dict contains a single bounding box sample.
     """
@@ -75,7 +75,7 @@ class BaseDataset(TorchDataset, BaseModule):
         """Retrieve data at index from given dataset.
 
         Args:
-            idx: index of the data object. Is a reference to the same object as len().
+            idx: index of the dataset object. Is a reference to the same object as len().
 
         Returns:
             Precomputed backbone output
@@ -122,7 +122,7 @@ class BaseDataset(TorchDataset, BaseModule):
                     backbone_size, antialias=True
                 ),  # make sure the image has the correct input size for the backbone model
                 tvt.ClampBoundingBoxes(),  # keep bboxes in their canvas_size
-                tvt.SanitizeBoundingBoxes(labels_getter="bboxes"),  # clean up bboxes if available
+                tvt.SanitizeBoundingBoxes(),  # clean up bboxes if available
                 tvt.ToDtype({tv_tensors.Image: torch.float32}, scale=True),
             ]
         )
@@ -153,7 +153,7 @@ class BaseDataset(TorchDataset, BaseModule):
             bboxes
                 Zero, one, or multiple bounding boxes for this image as tensor of shape ``[N x 4]``
 
-                And the bounding boxes got transformed into the XYWH format.
+                And the bounding boxes got transformed into the XYWH box_format.
 
             coordinates:
                 Now contains the joint coordinates of every detection in local coordinates in shape ``[N x J x 2|3]``
@@ -162,9 +162,9 @@ class BaseDataset(TorchDataset, BaseModule):
             [
                 tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),  # xyxy to easily obtain ltrb
                 tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
-                tvt.SanitizeBoundingBoxes(),  # clean up bboxes
+                # tvt.SanitizeBoundingBoxes(),  # clean up bboxes
                 CustomCropResize(),  # crop the image at the four corners specified in bboxes
                 tvt.ClampBoundingBoxes(),  # duplicate ?
-                tvt.SanitizeBoundingBoxes(),  # duplicate ?
+                # tvt.SanitizeBoundingBoxes(),  # duplicate ?
             ]
         )

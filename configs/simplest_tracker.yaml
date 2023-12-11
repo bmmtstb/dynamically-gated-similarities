@@ -8,8 +8,9 @@ training: off
 
 batch_size: 128
 
-data:
-    model: "AlphaPoseLoader"
+dataset:
+    model: "PoseTrack21Loader"
+    path: "./data/PoseTrack21/posetrack_data/train/000001_bonn_train.json"
 
 # Modules
 

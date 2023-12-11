@@ -24,11 +24,13 @@ Device = Union[torch.device, str]
 # Images
 TVImage = tv_Image
 TVVideo = tv_Video
-TorchFloatImage = torch.FloatTensor
-Image = Union[TVImage, TorchFloatImage]
+ByteImage = torch.ByteTensor
+FloatImage = torch.FloatTensor
+Image = Union[TVImage, ByteImage, FloatImage]
 
-TorchImages = tv_Image
-TorchFloatImages = torch.FloatTensor
-Images = Union[TorchImages, TorchFloatImages]
+TVImages = tv_Image
+ByteImages = torch.ByteTensor
+FloatImages = torch.FloatTensor
+Images = Union[TVImages, ByteImages, FloatImages]
 
 ImgShape = tuple[int, int]  # (w, h) as target width and height of the image
