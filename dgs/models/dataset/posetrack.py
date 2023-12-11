@@ -45,8 +45,8 @@ class PoseTrack21Loader(BaseDataset):
         for k, v in self.map_img_id_to_img_obj.items():
             # Add the full file path to the image
             self.map_img_id_to_img_obj[k]["file_path"] = os.path.join(self.img_folder_path, v["file_name"])
-            # Add original image shape
-            self.map_img_id_to_img_obj[k]["img_shape"]: ImgShape = imagesize.get(v["file_path"])  # (w,h)
+            # Add original image shape with imagesize output (w,h) and our own format (h, w)
+            self.map_img_id_to_img_obj[k]["img_shape"]: ImgShape = imagesize.get(v["file_path"])[::-1]
 
         # generator for data
         self.data: list[DataSample] = self.pt21_to_data_sample()

@@ -9,6 +9,7 @@ Within pytorch an image is a Byte-, Uint8-, or Float-Tensor with a shape of ``[C
 Within torchvision an image is a tv_tensor.Image object with the same shape.
 A Batch of torch images therefore has a shape of ``[B x C x h x w]``.
 Within pytorch and torchvision, the images have channels in order of RGB.
+The size / shape of an image is given as tuple (and sometimes list) of ints in the form of (h, w).
 
 RGB Images in cv2 have a shape of ``[h x w x C]`` and the channels are in order GBR.
 Grayscale Images in cv2 have a shape of ``[h x w]``.
@@ -135,7 +136,9 @@ class CustomTransformValidator:
 
         necessary_keys = ["image", "labels", "mode", "output_size"]
         if any(k not in structured_dict for k in necessary_keys):
-            raise KeyError(f"CustomCropResize got invalid kwargs, expected {necessary_keys} but got {kwargs.keys()}")
+            raise KeyError(
+                f"CustomCropResize got invalid kwargs, expected {necessary_keys} but got {structured_dict.keys()}"
+            )
 
         image: tv_tensors.Image = structured_dict.pop("image")
         labels: tuple = structured_dict.pop("labels")
@@ -168,6 +171,8 @@ class CustomTransformValidator:
                 f"Bounding boxes and coordinates have mismatching dimension or shape in batch. "
                 f"The shapes are - bboxes: {bboxes.shape}, coords: {coordinates.shape}"
             )
+        if bboxes.format != tv_tensors.BoundingBoxFormat.XYWH:
+            raise ValueError(f"Bounding boxes should be in XYWH format, but are in {bboxes.format}")
 
         # output_size
         if not isinstance(output_size, (Iterable, tuple)) or len(output_size) != 2:
@@ -272,7 +277,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
                 because every image in this batch can have a different number of detections,
                 or there is not batched dimension at all.
                 The ordering of the coordinates will stay the same.
-            output_size: (w, h) as target width and height of the image
+            output_size: (h, w) as target height and width of the image
             mode: See class description. Default "zero-pad"
 
             aspect_round_decimals: (int) (optional)
@@ -351,7 +356,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
             padding_mode = "constant"
 
         # compute padding value
-        padding: list[int] = compute_padding(self.W, self.H, self.new_w / self.new_h)
+        padding: list[int] = compute_padding(old_w=self.W, old_h=self.H, target_aspect=self.new_w / self.new_h)
         # pad image, bboxes, and coordinates using the computed values
         padded_image: tv_tensors.Image = tv_tensors.wrap(
             tvt_pad(image, padding=padding, fill=padding_fill, padding_mode=padding_mode), like=image
@@ -413,6 +418,12 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
     Additionally, the coordinates will be transformed to use the local coordinate system.
     """
 
+    H: int
+    W: int
+
+    h: int
+    w: int
+
     def forward(self, *args, **kwargs) -> dict[str, any]:
         """Extract all bounding boxes out of an image and resize them to the new shape.
 
@@ -424,7 +435,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
                 coordinates: The joint coordinates in global frame as ``[N x J x 2|3]``
             mode: The mode for resizing.
                 Similar to the modes of CustomToAspect, except there is one additional case 'outside-crop' available.
-            output_size: (w, h) as target width and height of the image
+            output_size: (h, w) as target height and width of the image
 
         Todo is it possible to get this to work with batches of images?
             Possibly flatten B and N dimension and keep indices somewhere...
@@ -441,8 +452,8 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         image, bboxes, coordinates, output_size, mode, kwargs = self._validate_inputs(*args, **kwargs)
 
         # extract shapes for padding
-        *_, H, W = image.shape
-        h, w = output_size
+        *_, self.H, self.W = image.shape
+        self.h, self.w = output_size
 
         img_crops: list[tv_tensors.Image] = []
         image_crop: tv_tensors.Image
@@ -452,67 +463,13 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         # use torch to round and then cast the bboxes to int
         bboxes_corners = torch.round(bboxes, decimals=0).to(dtype=torch.int)
         for i, (corners, coords) in enumerate(zip(bboxes_corners, coordinates)):
-            # extract corners from current bboxes
-            left, top, width, height = corners
-
             if mode == "outside-crop":
-                # reuse compute_padding() to compute the corners
-                # the bboxes has the old shape, the output size is the target shape
-                padding = compute_padding(width, height, w / h)
-                # padding contains positive values for ltrb.
-                # left and top need to subtract those and width and height need to add the paddings of both sides
-                new_left: int = left - padding[0]
-                new_top: int = top - padding[1]
-                new_width: int = width + padding[0] + padding[2]
-                new_height: int = height + padding[1] + padding[3]
-
-                # one more time make sure that the new corners and sizes are within the original image
-                modified: bool = False
-                if new_left < 0:
-                    new_left = 0
-                    modified = True
-                if new_top < 0:
-                    new_top = 0
-                    modified = True
-                if new_width + new_left >= W:
-                    new_width = W - 1
-                    modified = True
-                if new_height + new_top >= H:
-                    new_height = H - 1
-                    modified = True
-
-                image_crop = tv_tensors.wrap(
-                    tvt_v2.functional.crop(image, left=new_left, top=new_top, width=new_width, height=new_height),
-                    like=image,
-                )
-
-                # the coordinates need to have three dimensions
-                coord_crop = tv_tensors.wrap(
-                    tvt_v2.functional.crop(
-                        coords.unsqueeze(0), left=new_left, top=new_top, width=new_width, height=new_height
-                    ),
-                    like=coordinates,
-                )
-
-                if modified:
-                    # zero-pad the result if the computed corners were faulty
-                    modified_data: dict[str, any] = tv_tensors.wrap(
-                        CustomToAspect(
-                            image=image_crop,
-                            bboxes=bboxes[i],
-                            coordinates=coord_crop,
-                            output_size=output_size,
-                            # mode="zero-pad",
-                        ),
-                        like=image,
-                    )
-                    image_crop = modified_data["image"]
-                    bboxes[i] = modified_data["bboxes"]
-                    coord_crop = modified_data["coordinates"]
-
+                image_crop, coord_crop = self._handle_outside_crop(output_size, i, coords, corners, image, bboxes)
             else:
+                # extract corners from current bboxes
+                left, top, width, height = corners
                 image_crop = tv_tensors.wrap(
-                    tvt_v2.functional.crop(image, left=left, top=top, width=width, height=height), like=image
+                    tvt_crop(image, left=left, top=top, width=width, height=height), like=image
                 )
 
                 coord_crop = tv_tensors.wrap(
@@ -532,3 +489,56 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             "mode": mode,
             **kwargs,
         }
+
+    def _handle_outside_crop(
+        self,
+        output_size: ImgShape,
+        i: int,
+        coordinates: tv_tensors.Mask,
+        corners: torch.Tensor,
+        image: TVImage,
+        bboxes: tv_tensors.BoundingBoxes,
+    ) -> tuple[TVImage, tv_tensors.Mask]:
+        """Handle method outside crop to keep forward cleaner"""
+        # extract corners from current bboxes
+        left, top, box_width, box_height = corners
+        # reuse compute_padding() to compute the corners
+        # the bboxes has the old shape, the output size is the target shape
+        padding = compute_padding(old_w=box_width, old_h=box_height, target_aspect=self.w / self.h)
+        # padding contains positive values for ltrb
+        # left and top need to subtract those paddings
+        # width and height need to add the paddings of both sides
+        # all values have to be within the image boundaries
+        new_left: int = min(max(left - padding[0], 0), self.W - 1)
+        new_top: int = min(max(top - padding[1], 0), self.H - 1)
+        new_width: int = max(min(box_width + padding[0] + padding[2], self.W - 1), 0)
+        new_height: int = max(min(box_height + padding[1] + padding[3], self.H - 1), 0)
+
+        # Compute the image and coordinate crops
+        image_crop = tv_tensors.wrap(
+            tvt_v2.functional.crop(image, left=new_left, top=new_top, width=new_width, height=new_height),
+            like=image,
+        )
+        coord_crop = tv_tensors.wrap(
+            tvt_v2.functional.crop(coordinates, left=new_left, top=new_top, width=new_width, height=new_height),
+            like=coordinates,
+        )
+
+        # There are some edge cases, especially if the new values are on the maxima,
+        # that the image still does not have the right aspect ratio.
+        # Therefore, the result is padded with zeros if the aspect doesn't match.
+        modified_data: dict[str, any] = tv_tensors.wrap(
+            CustomToAspect(
+                image=image_crop,
+                bboxes=bboxes[i],
+                coordinates=coord_crop,
+                output_size=output_size,
+                # mode="zero-pad",
+            ),
+            like=image,
+        )
+        image_crop = modified_data["image"]
+        bboxes[i] = modified_data["bboxes"]  # overwrite bboxes in place
+        coord_crop = modified_data["coordinates"]
+
+        return image_crop, coord_crop

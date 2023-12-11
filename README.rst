@@ -73,9 +73,9 @@ Single images don't have the first dimension `[C x H x W]`.
 +----------------------------+---------------------------------------------------------------+
 | N                          | Number of detections in the current frame                     |
 +----------------------------+---------------------------------------------------------------+
-| H,W                        | Height and Width of the current image                         |
+| H,W                        | Height and Width of the current image, as image shape: (H, W) |
 +----------------------------+---------------------------------------------------------------+
-| h,w                        | Specific given height or width                                |
+| h,w                        | Specific given height or width, as image shape: (h, w)        |
 +----------------------------+---------------------------------------------------------------+
 | HM\ :sub:`H`, HM\ :sub:`W` | Size of the heatmap, equals size of the cropped resized image |
 +----------------------------+---------------------------------------------------------------+

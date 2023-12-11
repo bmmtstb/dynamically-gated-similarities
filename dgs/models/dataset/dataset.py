@@ -110,7 +110,7 @@ class BaseDataset(TorchDataset, BaseModule):
         }
 
         Args:
-            backbone_size: (w, h) as width and height of the image that is put as input into backbone
+            backbone_size: (h, w) as height and width of the image that is put as input into backbone
 
         Returns:
             A composed torchvision function that accepts a dict as input

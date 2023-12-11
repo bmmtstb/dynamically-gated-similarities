@@ -162,7 +162,7 @@ class TestBoundingBox(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg=f"{msg}"):
-                self.assertTrue(torch.allclose(bbox.corners((W, H)), corners))
+                self.assertTrue(torch.allclose(bbox.corners((H, W)), corners))
 
     @test_multiple_devices
     def test_contains(self, device: Device):

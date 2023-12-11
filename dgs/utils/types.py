@@ -33,4 +33,4 @@ ByteImages = torch.ByteTensor
 FloatImages = torch.FloatTensor
 Images = Union[TVImages, ByteImages, FloatImages]
 
-ImgShape = tuple[int, int]  # (w, h) as target width and height of the image
+ImgShape = tuple[int, int]  # (h, w) as target height and width of the image

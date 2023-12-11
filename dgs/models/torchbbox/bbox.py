@@ -149,7 +149,7 @@ class BoundingBox:
         Use the four side properties to compute the corners in xyxy / ltrb format.
 
         Args:
-            image_size: (W, H) width and height of the original image, as upper bound for the corners.
+            image_size: (H, W) width and height of the original image, as upper bound for the corners.
 
         Returns:
             output shape: [4] - integer values
@@ -157,10 +157,10 @@ class BoundingBox:
             Integer values of the four bbox corners in xyxy format.
         """
         corners = torch.round(torch.FloatTensor([self.left, self.top, self.right, self.bottom]))
+        H, W = image_size
+        # create upper image shape
         # make sure to use max - 1 to be in range
-        img_shape: torch.IntTensor = (
-            torch.IntTensor([image_size[0], image_size[1], image_size[0], image_size[1]], device=self._device) - 1
-        )
+        img_shape: torch.IntTensor = torch.IntTensor([W, H, W, H], device=self._device) - 1
         return torch.clamp(corners, torch.zeros_like(img_shape), img_shape).to(dtype=torch.int)
 
     @property
