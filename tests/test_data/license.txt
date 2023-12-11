@@ -1,5 +1,16 @@
-The image with the name '283-200x300.jpg' is courtesy of https://picsum.photos/
+The images with the names like `id-w00xh00.jpg` are courtesy of https://picsum.photos/.
+They are all the same underlying base photo in different aspects and resolutions.
+List of images:
+* '866-200x300.jpg'
+* '866-200x800.jpg'
+* '866-300x200.jpg'
+* '866-500x500.jpg'
+* '866-500x1000.jpg'
+* '866-800x200.jpg'
+* '866-1000x500.jpg'
+* '866-1000x1000.jpg'
 
-The following media is courtesy of https://file-examples.com/
+The following media is courtesy of https://file-examples.com/.
+They are just to test loading of different file types.
 * file_example_AVI_640_800kB.avi
 * file_example_PNG_500kB.png

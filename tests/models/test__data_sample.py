@@ -16,14 +16,14 @@ DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     DUMMY_BBOX_TENSOR, format=tv_tensors.BoundingBoxFormat.XYWH, canvas_size=(1000, 1000)
 )
 
-DUMMY_FILE_PATH: str = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/283-200x300.jpg"))
+DUMMY_FILE_PATH: str = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"))
 
 
 class TestDataSample(unittest.TestCase):
     def test_init_regular(self):
         for fp, bbox, kp, out_fp, out_bbox, out_kp in [
             (
-                os.path.join(PROJECT_ROOT, "./tests/test_data/283-200x300.jpg"),
+                os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),
                 DUMMY_BBOX,
                 DUMMY_KEY_POINTS,
                 DUMMY_FILE_PATH,
@@ -31,7 +31,7 @@ class TestDataSample(unittest.TestCase):
                 DUMMY_KEY_POINTS,
             ),
             (
-                "./tests/test_data/283-200x300.jpg",
+                "./tests/test_data/866-200x300.jpg",
                 DUMMY_BBOX,
                 DUMMY_KEY_POINTS_TENSOR,
                 DUMMY_FILE_PATH,

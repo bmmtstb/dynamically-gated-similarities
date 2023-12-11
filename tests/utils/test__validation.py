@@ -164,10 +164,10 @@ class TestDataSampleValidation(unittest.TestCase):
                     validate_dimensions(tensor=tensor, dims=dims),
 
     def test_validate_file_path(self):
-        full_path = os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/283-200x300.jpg"))
+        full_path = os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"))
         for file_path in [
-            "./tests/test_data/283-200x300.jpg",
-            os.path.join(PROJECT_ROOT, "tests/test_data/283-200x300.jpg"),
+            "./tests/test_data/866-200x300.jpg",
+            os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"),
         ]:
             with self.subTest(msg=f"file_path: {file_path}"):
                 self.assertEqual(

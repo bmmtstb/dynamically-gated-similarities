@@ -1,9 +1,24 @@
+import os.path
 import unittest
 
 import imagesize
 
 from dgs.utils.files import project_to_abspath
 from dgs.utils.image import compute_padding, load_image, load_video
+
+# Map image name to shape.
+# Shape is torch shape and therefore [C x H x W].
+TEST_IMAGES: dict[str, tuple[int, int, int]] = {
+    "866-200x300.jpg": (3, 300, 200),
+    "866-200x800.jpg": (3, 800, 200),
+    "866-300x200.jpg": (3, 200, 300),
+    "866-500x500.jpg": (3, 500, 500),
+    "866-500x1000.jpg": (3, 1000, 500),
+    "866-800x200.jpg": (3, 200, 800),
+    "866-1000x500.jpg": (3, 500, 1000),
+    "866-1000x1000.jpg": (3, 1000, 1000),
+    "file_example_PNG_500kB.png": (3, 566, 850),
+}
 
 
 class TestImageUtils(unittest.TestCase):
@@ -28,13 +43,11 @@ class TestImageUtils(unittest.TestCase):
 
 class TestImage(unittest.TestCase):
     def test_load_image(self):
-        for fp, shape in [
-            ("./tests/test_data/283-200x300.jpg", (3, 300, 200)),
-            ("./tests/test_data/file_example_PNG_500kB.png", (3, 566, 850)),
-        ]:
-            with self.subTest(msg=f"image name: {fp}"):
+        for file_name, shape in TEST_IMAGES.items():
+            with self.subTest(msg=f"image name: {file_name}"):
+                fp = project_to_abspath(os.path.join("./tests/test_data/", file_name))
                 self.assertEqual(load_image(fp).shape, shape)
-                self.assertEqual(imagesize.get(project_to_abspath(fp)), shape[-1:-3:-1])
+                self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
 
 
 class TestVideo(unittest.TestCase):
