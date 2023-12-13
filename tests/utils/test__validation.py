@@ -18,7 +18,7 @@ DUMMY_IMAGE_TENSOR: torch.ByteTensor = torch.ByteTensor(torch.ones((1, 3, 10, 20
 DUMMY_IMAGE: tv_tensors.Image = tv_tensors.Image(DUMMY_IMAGE_TENSOR)
 
 DUMMY_KEY_POINTS_TENSOR: torch.Tensor = torch.rand((1, 20, 2))
-DUMMY_KEY_POINTS: tv_tensors.Mask = tv_tensors.Mask(DUMMY_KEY_POINTS_TENSOR)
+DUMMY_KEY_POINTS: torch.Tensor = DUMMY_KEY_POINTS_TENSOR.detach().clone()
 
 DUMMY_BBOX_TENSOR: torch.Tensor = torch.ones((1, 4)) * 10
 DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
@@ -72,16 +72,16 @@ class TestDataSampleValidation(unittest.TestCase):
             (DUMMY_KEY_POINTS, 3, 20, 2, DUMMY_KEY_POINTS),
             (DUMMY_KEY_POINTS_TENSOR, None, None, None, DUMMY_KEY_POINTS),
             (DUMMY_KEY_POINTS, None, None, None, DUMMY_KEY_POINTS),
-            (torch.ones((1, 10, 3)), 3, None, None, tv_tensors.Mask(torch.ones((1, 10, 3)))),  # test 3d
-            (torch.ones((1, 10, 3)), None, None, None, tv_tensors.Mask(torch.ones((1, 10, 3)))),
-            (torch.ones((10, 3)), 3, None, None, tv_tensors.Mask(torch.ones((1, 10, 3)))),  # make more dims
+            (torch.ones((1, 10, 3)), 3, None, None, torch.ones((1, 10, 3))),  # test 3d
+            (torch.ones((1, 10, 3)), None, None, None, torch.ones((1, 10, 3))),
+            (torch.ones((10, 3)), 3, None, None, torch.ones((1, 10, 3))),  # make more dims
             (
                 torch.ones((1, 1, 1, 10, 3)),
                 3,
                 None,
                 None,
-                tv_tensors.Mask(torch.ones((1, 10, 3))),
-            ),  # reduce the amount of dims
+                torch.ones((1, 10, 3)),
+            ),  # reduce the number of dimensions
         ]:
             with self.subTest(msg=f"key points: {key_points}, dims: {dims}"):
                 self.assertTrue(

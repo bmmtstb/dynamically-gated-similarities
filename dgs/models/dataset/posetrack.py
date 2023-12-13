@@ -73,7 +73,7 @@ class PoseTrack21Loader(BaseDataset):
                         format="XYWH",  # all PT21 bboxes are in box_format XYWH
                         canvas_size=self.map_img_id_to_img_obj[anno["image_id"]]["img_shape"][::-1],  # canvas (h,w)
                     ),
-                    keypoints=tv_tensors.Mask(keypoints),
+                    keypoints=keypoints,
                     person_id=anno["person_id"] if "person_id" in anno else -1,
                     # additional values which are not required
                     joint_weight=visibility,

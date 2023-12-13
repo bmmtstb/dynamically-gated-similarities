@@ -86,7 +86,7 @@ class AlphaPoseLoader(BaseDataset):
                         format="XYWH",
                         canvas_size=imagesize.get(file_path),
                     ),
-                    keypoints=tv_tensors.Mask(keypoints),
+                    keypoints=keypoints,
                     person_id=detection["idx"] if "idx" in detection else -1,
                     # additional values which are not required
                     image_id=detection["image_id"],

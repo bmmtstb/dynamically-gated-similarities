@@ -42,8 +42,10 @@ def project_to_abspath(filepath: FilePath) -> FilePath:
     Raises:
         InvalidPathException if the path doesn't exist globally or locally.
     """
-    if os.path.isfile(filepath) or os.path.isdir(filepath) or os.path.isabs(filepath):
-        return os.path.normpath(filepath)
+    if os.path.isfile(filepath) or os.path.isdir(filepath):
+        if os.path.isabs(filepath):
+            return os.path.normpath(filepath)
+        return os.path.abspath(filepath)
     if is_project_file(filepath) or is_project_dir(filepath):
         return os.path.normpath(os.path.join(PROJECT_ROOT, filepath))
     raise InvalidPathException(f"{filepath} is neither local nor global path.")

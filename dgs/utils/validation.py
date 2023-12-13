@@ -141,11 +141,11 @@ def validate_filepath(file_path: FilePath) -> FilePath:
 
 def validate_key_points(
     key_points: torch.Tensor, dims: Union[int, None] = 3, nof_joints: int = None, joint_dim: int = None
-) -> tv_tensors.Mask:
-    """Given a tensor of key points, validate them and return them as torchvision tensor mask.
+) -> torch.Tensor:
+    """Given a tensor of key points, validate them and return them as torch tensor of the correct shape.
 
     Args:
-        key_points: torch tensor or tv_tensor.Mask object
+        key_points: torch tensor
         dims: Number of dimensions key_points should have.
             Use None to not force any number of dimensions.
             Defaults to three dimensions with the key point dimensions as ``[B x J x 2|3]``.
@@ -155,7 +155,7 @@ def validate_key_points(
             Default None does not validate the dimensionality additionally to being two or three.
 
     Returns:
-        key points as tv_tensor.Mask object with exactly dims dimensions.
+        key points as torch tensor with exactly the requested number of dimensions: ``[... x nof_joints x joint_dim]``
 
     Raises:
         TypeError
@@ -163,8 +163,8 @@ def validate_key_points(
         ValueError
             If the key points are neither two- nor three-dimensional.
     """
-    if not isinstance(key_points, (torch.Tensor, tv_tensors.Mask)):
-        raise TypeError(f"Key points should be torch tensor or tv_tensor Mask but is {type(key_points)}")
+    if not isinstance(key_points, torch.Tensor):
+        raise TypeError(f"Key points should be torch tensor but is {type(key_points)}")
 
     if not 2 <= key_points.shape[-1] <= 3:
         raise ValueError(
@@ -180,4 +180,4 @@ def validate_key_points(
     if dims is not None:
         key_points = validate_dimensions(key_points, dims)
 
-    return tv_tensors.Mask(key_points)
+    return key_points

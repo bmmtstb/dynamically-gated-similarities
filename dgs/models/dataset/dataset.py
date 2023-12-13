@@ -9,7 +9,7 @@ from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
 from dgs.models.states import DataSample
-from dgs.utils.image import CustomCropResize, CustomToAspect, load_image
+from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.types import Config, ImgShape, NodePath, Validations
 
 base_dataset_validations: Validations = {
@@ -60,6 +60,9 @@ class BaseDataset(TorchDataset, BaseModule):
     Every dict contains a single bounding box sample.
     """
 
+    cropped_shape: ImgShape
+    """Shape of the cropped image"""
+
     def __call__(self, *args, **kwargs) -> any:
         """Has to override call from BaseModule"""
         raise NotImplementedError("Dataset can't be called.")
@@ -96,7 +99,7 @@ class BaseDataset(TorchDataset, BaseModule):
         return sample
 
     @staticmethod
-    def transform_resize_image(backbone_size: ImgShape) -> tvt.Compose:
+    def transform_resize_image() -> tvt.Compose:
         """Given an image, bboxes, and key-points, resize them with custom modes.
 
         This transform expects a custom structured input as a dict.
@@ -104,13 +107,10 @@ class BaseDataset(TorchDataset, BaseModule):
         >>> structured_input: dict[str, any] = {\
             "image": tv_tensors.Image,\
             "bboxes": tv_tensors.BoundingBoxes,\
-            "coordinates": tv_tensors.Mask,\
+            "coordinates": torch.Tensor,\
             "output_size": ImgShape,\
             "mode": str,\
         }
-
-        Args:
-            backbone_size: (h, w) as height and width of the image that is put as input into backbone
 
         Returns:
             A composed torchvision function that accepts a dict as input
@@ -118,9 +118,7 @@ class BaseDataset(TorchDataset, BaseModule):
         return tvt.Compose(
             [
                 CustomToAspect(),  # make sure the image has the correct aspect ratio for the backbone model
-                tvt.Resize(
-                    backbone_size, antialias=True
-                ),  # make sure the image has the correct input size for the backbone model
+                CustomResize(),
                 tvt.ClampBoundingBoxes(),  # keep bboxes in their canvas_size
                 tvt.SanitizeBoundingBoxes(),  # clean up bboxes if available
                 tvt.ToDtype({tv_tensors.Image: torch.float32}, scale=True),
@@ -137,7 +135,7 @@ class BaseDataset(TorchDataset, BaseModule):
         >>> structured_input: dict[str, any] = {\
             "image": tv_tensors.Image,\
             "bboxes": tv_tensors.BoundingBoxes,\
-            "coordinates": tv_tensors.Mask,\
+            "coordinates": torch.Tensor,\
             "output_size": ImgShape,\
             "mode": str,\
         }

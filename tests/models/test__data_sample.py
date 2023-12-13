@@ -9,7 +9,7 @@ from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.image import load_image
 
 DUMMY_KEY_POINTS_TENSOR: torch.Tensor = torch.rand((1, 20, 2))
-DUMMY_KEY_POINTS: tv_tensors.Mask = tv_tensors.Mask(DUMMY_KEY_POINTS_TENSOR)
+DUMMY_KEY_POINTS = DUMMY_KEY_POINTS_TENSOR.detach().clone()
 
 DUMMY_BBOX_TENSOR: torch.Tensor = torch.ones((1, 4)) * 10
 DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(

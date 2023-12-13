@@ -235,9 +235,9 @@ class DataSample(UserDict):
         One single bounding box as torchvision bounding box in global coordinates.
 
     keypoints
-        (tv_tensors.Mask), shape ``[1 x J x 2|3]``
+        (torch.Tensor), shape ``[1 x J x 2|3]``
 
-        The key points for this bounding box as torchvision mask (?) in global coordinates.
+        The key points for this bounding box as torch tensor in global coordinates.
 
     person_id (optional)
         (int)
@@ -253,9 +253,9 @@ class DataSample(UserDict):
         The heatmap of this bounding box.
 
     local_keypoints (optional)
-        (tv_tensors.Mask), shape ``[1 x J x 2|3]``
+        (torch.Tensor), shape ``[1 x J x 2|3]``
 
-        The key points for this bounding box as torchvision mask (?) in local coordinates.
+        The key points for this bounding box as torch tensor in local coordinates.
 
     image (optional)
         (tv_tensor.Image), shape ``[C x H x W]``
@@ -278,7 +278,7 @@ class DataSample(UserDict):
     # pylint: disable=too-many-instance-attributes
 
     def __init__(
-        self, filepath: str, bbox: tv_tensors.BoundingBoxes, keypoints: tv_tensors.Mask, person_id: int = -1, **kwargs
+        self, filepath: str, bbox: tv_tensors.BoundingBoxes, keypoints: torch.Tensor, person_id: int = -1, **kwargs
     ) -> None:
         super().__init__(**kwargs)
 
@@ -286,7 +286,7 @@ class DataSample(UserDict):
         # make sure bboxes has shape [1 x 4]
         self.data["bbox"]: tv_tensors.BoundingBoxes = validate_bboxes(bbox)
         # make sure keypoints has shape [1 x J x 2|3]
-        self.data["keypoints"]: tv_tensors.Mask = validate_key_points(keypoints)
+        self.data["keypoints"]: torch.Tensor = validate_key_points(keypoints)
         if person_id >= 0:
             self.data["person_id"]: int = person_id
 
@@ -311,7 +311,7 @@ class DataSample(UserDict):
         return self.data["bbox"]
 
     @property
-    def keypoints(self) -> tv_tensors.Mask:
+    def keypoints(self) -> torch.Tensor:
         assert len(self.data["keypoints"].shape) == 3, "key points has wrong dimensions"
         return self.data["keypoints"]
 
@@ -341,12 +341,12 @@ class DataSample(UserDict):
         self.data["heatmap"] = validate_dimensions(heatmap, 4)
 
     @property
-    def local_keypoints(self) -> tv_tensors.Mask:
+    def local_keypoints(self) -> torch.Tensor:
         assert len(self.data["local_keypoints"].shape) == 3, "local key points has wrong dimensions"
         return self.data["local_keypoints"]
 
     @local_keypoints.setter
-    def local_keypoints(self, value: tv_tensors.Mask):
+    def local_keypoints(self, value: torch.Tensor):
         """Set local key points with a little bit of validation."""
         # use validate_key_points to make sure local key points have the correct shape [1 x J x 2|3]
         self.data["local_keypoints"] = validate_key_points(value, nof_joints=self.J, joint_dim=self.keypoints.shape[-1])
