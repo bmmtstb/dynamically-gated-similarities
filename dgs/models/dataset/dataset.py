@@ -87,8 +87,8 @@ class BaseDataset(TorchDataset, BaseModule):
         if "image_crop" not in sample or "local_coordinates" not in sample:
             structured_input = {
                 "image": load_image(sample.filepath),
-                "bboxes": sample.bbox,
-                "coordinates": sample.keypoints,
+                "box": sample.bbox,
+                "keypoints": sample.keypoints,
                 "output_size": self.params["crop_size"],
                 "mode": self.params["crop_mode"],
             }
@@ -106,8 +106,8 @@ class BaseDataset(TorchDataset, BaseModule):
 
         >>> structured_input: dict[str, any] = {\
             "image": tv_tensors.Image,\
-            "bboxes": tv_tensors.BoundingBoxes,\
-            "coordinates": torch.Tensor,\
+            "box": tv_tensors.BoundingBoxes,\
+            "keypoints": torch.Tensor,\
             "output_size": ImgShape,\
             "mode": str,\
         }
@@ -134,8 +134,8 @@ class BaseDataset(TorchDataset, BaseModule):
 
         >>> structured_input: dict[str, any] = {\
             "image": tv_tensors.Image,\
-            "bboxes": tv_tensors.BoundingBoxes,\
-            "coordinates": torch.Tensor,\
+            "box": tv_tensors.BoundingBoxes,\
+            "keypoints": torch.Tensor,\
             "output_size": ImgShape,\
             "mode": str,\
         }

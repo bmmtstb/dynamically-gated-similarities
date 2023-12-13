@@ -287,8 +287,8 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
     W: int
     original_aspect: float
 
-    new_h: int
-    new_w: int
+    h: int
+    w: int
     target_aspect: float
 
     def forward(self, *args, **kwargs) -> dict[str, any]:
@@ -331,8 +331,8 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         self.H, self.W = image.shape[-2:]
         self.original_aspect: float = self.W / self.H
 
-        self.new_h, self.new_w = output_size
-        self.target_aspect: float = self.new_w / self.new_h
+        self.h, self.w = output_size
+        self.target_aspect: float = self.w / self.h
 
         a_r_decimals: int = int(kwargs.get("aspect_round_decimals", 2))
 
@@ -393,7 +393,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
             padding_mode = "constant"
 
         # compute padding value
-        padding: list[int] = compute_padding(old_w=self.W, old_h=self.H, target_aspect=self.new_w / self.new_h)
+        padding: list[int] = compute_padding(old_w=self.W, old_h=self.H, target_aspect=self.w / self.h)
         if padding_mode in ["reflect", "symmetric"] and (
             max(padding[0], padding[2]) >= image.shape[-1] or max(padding[1], padding[3]) >= image.shape[-2]
         ):
@@ -405,15 +405,12 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         )
         padded_bboxes: tv_tensors.BoundingBoxes = tv_tensors.wrap(tvt_pad(bboxes, padding=padding), like=bboxes)
 
-        if coordinates.shape[-1] == 2:
-            padded_coords: torch.Tensor = coordinates + torch.Tensor(
-                [padding[0], padding[1]], device=coordinates.device
-            )
-        else:
+        diff = [padding[0], padding[1]]
+
+        if coordinates.shape[-1] == 3:
             # fixme: 3d coordinates have no padding in the third dimension ?
-            padded_coords: torch.Tensor = coordinates + torch.Tensor(
-                [padding[0], padding[1], 0], device=coordinates.device
-            )
+            diff.append(0)
+        padded_coords: torch.Tensor = coordinates + torch.Tensor(diff, device=coordinates.device)
 
         return {
             "image": padded_image,
@@ -432,29 +429,28 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
     ) -> dict:
         """To keep forward uncluttered, handle the inside cropping or extracting separately."""
 
-        # Compute the differences. Where diff is greater than 0, the dimension needs to be modified.
-        height_diff = int(self.new_w / self.original_aspect - self.new_h)
-        width_diff = int(self.original_aspect * self.new_h - self.new_w)
+        # Compute the new height and new width of the inside crop.
+        # At least one of both will be equal to the current H or W
+        # When W stays the same: W / nh = w / h
+        # When H stays the same: nw / H = w / h
+        nh = min(int(self.W / self.w * self.h), self.H)
+        nw = min(int(self.H / self.h * self.w), self.W)
 
-        if height_diff > 0:
-            new_shape: list[int] = [self.W, self.H - height_diff]
-        elif width_diff > 0:
-            new_shape: list[int] = [self.W - width_diff, self.H]
-        else:
-            raise ArithmeticError("During computing the sizes for cropping, something unexpected happened.")
+        cropped_image: tv_tensors.Image = tv_tensors.wrap(tvt_center_crop(image, output_size=[nh, nw]), like=image)
 
-        cropped_image: tv_tensors.Image = tv_tensors.wrap(tvt_center_crop(image, output_size=new_shape), like=image)
-        cropped_bboxes: tv_tensors.BoundingBoxes = tv_tensors.wrap(
-            tvt_center_crop(bboxes, output_size=new_shape), like=bboxes
-        )
+        # W = delta_w + nw, H = delta_h + nh
+        delta = [self.W - nw, self.H - nh]
 
-        if coordinates.shape[-1] == 2:
-            cropped_coords: torch.Tensor = coordinates - 0.5 * torch.Tensor([max(width_diff, 0), max(height_diff, 0)])
-        else:
-            # fixme: 3d coordinates have no padding in the third dimension ?
-            cropped_coords: torch.Tensor = coordinates - 0.5 * torch.Tensor(
-                [max(width_diff, 0), max(height_diff, 0), 0], device=coordinates.device
-            )
+        # use delta to shift bbox, such that the bbox uses local coordinates
+        box_diff = 0.5 * torch.FloatTensor(delta + [0, 0], device=coordinates.device)
+        cropped_bboxes: tv_tensors.BoundingBoxes = tv_tensors.wrap(bboxes - box_diff, like=bboxes)
+
+        # use delta to shift the coordinates, such that they use local coordinates
+        if coordinates.shape[-1] == 3:
+            # fixme: 3d coordinates have no crop in the third dimension ?
+            delta.append(0)
+
+        cropped_coords: torch.Tensor = coordinates - 0.5 * torch.FloatTensor(delta, device=coordinates.device)
 
         return {
             "image": cropped_image,
@@ -482,7 +478,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         For bboxes and coordinates, N has to be at least 1. Possibly add a dummy dimension.
 
         Keyword Args:
-            image: One single image as tv_tensor.Image of shape ``[(1 x) C x W x H]``
+            image: One single image as tv_tensor.Image of shape ``[(1 x) C x H x W]``
             box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
             keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
             mode: The mode for resizing.
@@ -496,7 +492,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             Will overwrite the image and keypoints keys
             with the values of the newly computed cropped image and the local coordinates.
 
-            The new shape of the images is ``[N x C x w x h]``.
+            The new shape of the images is ``[N x C x h x w]``.
 
             The shape of the coordinates will stay the same.
 
@@ -614,7 +610,7 @@ class CustomResize(Torch_NN_Module, CustomTransformValidator):
         """Resize image, bbox and key points in one go.
 
         Keyword Args:
-            image: One single image as tv_tensor.Image of shape ``[B x C x W x H]``
+            image: One single image as tv_tensor.Image of shape ``[B x C x H x W]``
             box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
             keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
             output_size: (h, w) as target height and width of the image
@@ -623,14 +619,14 @@ class CustomResize(Torch_NN_Module, CustomTransformValidator):
             Will overwrite the image, bbox, and key points with the newly computed values.
             Key Points will be in local image coordinates.
 
-            The new shape of the images is ``[B x C x w x h]``.
+            The new shape of the images is ``[B x C x h x w]``.
         """
         image, bboxes, coordinates, output_size, kwargs, *_ = self._validate_inputs(
             necessary_keys=["image", "box", "keypoints", "output_size"], *args, **kwargs
         )
 
         # extract shapes for padding
-        *_, self.H, self.W = image.shape
+        self.H, self.W = image.shape[-2:]
         self.h, self.w = output_size
 
         image = tv_tensors.wrap(tvt_resize(image, size=list(output_size), antialias=True), like=image)

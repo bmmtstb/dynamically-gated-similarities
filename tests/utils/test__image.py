@@ -1,5 +1,6 @@
 import os.path
 import unittest
+from math import ceil
 
 import imagesize
 import torch
@@ -269,6 +270,61 @@ class TestCustomToAspect(unittest.TestCase):
                         # test mode: should not have changed
                         self.assertEqual(mode, res["mode"])
 
+    def test_inside_crop(self):
+        out_shapes: list[ImgShape] = [(100, 100), (200, 100), (100, 200)]
+
+        for out_shape in out_shapes:
+            h, w = out_shape
+
+            for img_name in TEST_IMAGES.keys():
+                img = load_test_image(img_name)
+
+                H, W = img.shape[-2:]
+                mode = "inside-crop"
+                with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
+                    data = create_structured_data(image=img, out_shape=out_shape, mode=mode)
+
+                    nh = min(int(W / w * h), H)
+                    nw = min(int(H / h * w), W)
+                    l = 0.5 * (W - nw)
+                    t = 0.5 * (H - nh)
+
+                    # get result - without Resize!
+                    res: dict[str, any] = CustomToAspect()(data)
+
+                    # test result
+                    new_image = res["image"]
+                    new_bboxes = res["box"]
+                    new_coords = res["keypoints"]
+
+                    # test image shape: subtract padding from image shape
+                    self.assertEqual(new_image.shape[-2:], (nh, nw))
+                    # test image is sub-image, shape is: [B x C x nh x nw]
+                    self.assertTrue(
+                        torch.allclose(
+                            img[:, :, int(t) : nh + int(t), ceil(l) : nw + ceil(l)],
+                            new_image,
+                        )
+                    )
+                    # test bboxes: bboxes should have shifted xy but the same w and h (without resizing)
+                    self.assertTrue(
+                        torch.allclose(
+                            tv_tensors.BoundingBoxes(
+                                [-l, -t, W, H], format="XYWH", canvas_size=(H, W), dtype=torch.float32
+                            ),
+                            new_bboxes,
+                        )
+                    )
+
+                    # test key points: diagonal of key_points has to stay diagonal, just shifted
+                    self.assertTrue(
+                        torch.allclose(create_coordinate_diagonal(H, W) - torch.FloatTensor([l, t]), new_coords)
+                    )
+                    # test output_size: should not have changed
+                    self.assertEqual(out_shape, res["output_size"])
+                    # test mode: should not have changed
+                    self.assertEqual(mode, res["mode"])
+
 
 class TestCustomResize(unittest.TestCase):
     def test_resize(self):
@@ -320,7 +376,7 @@ class TestCustomResize(unittest.TestCase):
 
 class TestCustomCropResize(unittest.TestCase):
     def test_outside_crop(self):
-        out_shapes: list[ImgShape] = [(100, 100), (200, 100), (100, 200)]
+        out_shapes: list[ImgShape] = [(500, 500), (200, 100), (100, 200)]
         bbox_l, bbox_t, bbox_w, bbox_h = 20, 30, 50, 40
 
         for out_shape in out_shapes:

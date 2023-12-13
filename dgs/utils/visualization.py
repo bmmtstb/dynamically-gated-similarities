@@ -20,7 +20,7 @@ from dgs.utils.utils import torch_to_numpy
 
 def torch_show_image(imgs: Images, show: bool = True) -> None:
     """Show a torch image using matplotlib."""
-    plt.rcParams["savefig.bboxes"] = "tight"  # fixme why is this necessary?
+    # plt.rcParams["savefig.bboxes"] = "tight"  # fixme why is this necessary?
 
     if not isinstance(imgs, list):
         imgs = [imgs]
@@ -77,7 +77,7 @@ def save_or_show(
         # save plot
         plt.savefig(fname=file_path, format=plot_format, **kwargs)
     if plot_close:
-        # plot / fig finalised, so close it
+        # plot / fig finalized, so close it
         plt.close()
 
 
