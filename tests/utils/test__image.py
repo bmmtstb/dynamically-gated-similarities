@@ -98,7 +98,7 @@ class TestImage(unittest.TestCase):
         for file_name, shape in TEST_IMAGES.items():
             with self.subTest(msg=f"image name: {file_name}"):
                 fp = project_to_abspath(os.path.join("./tests/test_data/", file_name))
-                self.assertEqual(load_image(fp).shape, shape)
+                self.assertEqual(load_image(fp).shape[-3:], shape)
                 self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
 
 

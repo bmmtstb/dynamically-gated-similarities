@@ -43,6 +43,14 @@ VALIDATIONS: dict[str, Validator] = {
     "endswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.endswith(d)),
     "file exists": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
     "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
+    "file exists in folder": (
+        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isfile(os.path.join(f, x))
+    ),
+    "folder exists": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(x)),
+    "folder exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(os.path.join(PROJECT_ROOT, x))),
+    "folder exists in folder": (
+        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isdir(os.path.join(f, x))
+    ),
     # additional logical operators for nested validations
     "not": (lambda x, d: not VALIDATIONS[d[0]](x, d[1])),
     "and": (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),

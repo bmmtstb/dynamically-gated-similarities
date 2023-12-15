@@ -1,5 +1,5 @@
 """
-helper methods for tests
+Helper methods for tests.
 """
 import os
 

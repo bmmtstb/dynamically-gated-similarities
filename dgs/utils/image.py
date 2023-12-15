@@ -14,7 +14,7 @@ The size / shape of an image is given as tuple (and sometimes list) of ints in t
 RGB Images in cv2 have a shape of ``[h x w x C]`` and the channels are in order GBR.
 Grayscale Images in cv2 have a shape of ``[h x w]``.
 """
-from typing import Iterable
+from typing import Iterable, Union
 
 import torch
 import torchvision.transforms.v2 as tvt
@@ -29,15 +29,15 @@ from torchvision.transforms.v2.functional import (
 )
 
 from dgs.utils.files import project_to_abspath
-from dgs.utils.types import FilePath, ImgShape, TVImage, TVVideo
-from dgs.utils.validation import validate_bboxes, validate_key_points
+from dgs.utils.types import FilePath, FilePaths, ImgShape, TVImage, TVVideo
+from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
 
-def load_image(filepath: FilePath, **kwargs) -> TVImage:
+def load_image(filepath: Union[FilePath, FilePaths], **kwargs) -> TVImage:
     """Load an image from a given filepath.
 
     Args:
-        filepath: Absolute or local filepath to the image.
+        filepath: Single string or list of absolute or local filepaths to the image.
 
     Keyword Args:
         dtype: The dtype of the image, most likely uint8, byte, or float. Default torch.uint8
@@ -45,16 +45,21 @@ def load_image(filepath: FilePath, **kwargs) -> TVImage:
         requires_grad: Whether image tensor should include gradient. Default False
 
     Returns:
-        Torch uint8 / byte tensor with its original shape of ``[C x H x W]``.
+        Torch uint8 / byte tensor with its original shape of ``[B x C x H x W]``.
+        Will always have four dimensions.
     """
-    fp: FilePath = project_to_abspath(filepath)
+    paths: FilePaths = validate_filepath(filepath)
 
     dtype = kwargs.get("dtype", torch.uint8)
     device = kwargs.get("device", "cpu")
     requires_grad = kwargs.get("requires_grad", False)
+    read_mode = kwargs.get("read_mode", ImageReadMode.RGB)
 
     return tv_tensors.Image(
-        read_image(fp, mode=ImageReadMode.RGB), dtype=dtype, device=device, requires_grad=requires_grad
+        torch.stack([read_image(path, mode=read_mode) for path in paths]),
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
     )
 
 

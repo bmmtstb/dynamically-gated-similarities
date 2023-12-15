@@ -41,7 +41,7 @@ class TestDataSample(unittest.TestCase):
         ]:
             with self.subTest(msg=f"fp: {fp}, bbox: {bbox}, kp: {kp}"):
                 ds = DataSample(filepath=fp, bbox=bbox, keypoints=kp)
-                self.assertEqual(ds.filepath, out_fp)
+                self.assertEqual(ds.filepath, tuple([out_fp]))
                 self.assertTrue(torch.allclose(ds.bbox, out_bbox))
                 self.assertTrue(torch.allclose(ds.keypoints, out_kp))
 

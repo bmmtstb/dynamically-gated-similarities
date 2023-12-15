@@ -10,6 +10,7 @@ from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
     validate_filepath,
+    validate_ids,
     validate_images,
     validate_key_points,
 )
@@ -26,7 +27,7 @@ DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
 )
 
 
-class TestDataSampleValidation(unittest.TestCase):
+class TestValidation(unittest.TestCase):
     def test_validate_image(self):
         for image, dims, output in [
             (DUMMY_IMAGE_TENSOR, 4, DUMMY_IMAGE),
@@ -164,16 +165,39 @@ class TestDataSampleValidation(unittest.TestCase):
                     validate_dimensions(tensor=tensor, dims=dims),
 
     def test_validate_file_path(self):
-        full_path = os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"))
+        full_path = tuple([os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"))])
         for file_path in [
             "./tests/test_data/866-200x300.jpg",
             os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"),
+            ["./tests/test_data/866-200x300.jpg"],
         ]:
             with self.subTest(msg=f"file_path: {file_path}"):
                 self.assertEqual(
-                    validate_filepath(file_path=file_path),
+                    validate_filepath(file_paths=file_path),
                     full_path,
                 )
+
+    def test_validate_ids(self):
+        for tensor, output in [
+            (1, torch.ones(1).to(dtype=torch.int32)),
+            (123456, torch.IntTensor([123456])),
+            (torch.ones((1, 1, 100, 1)), torch.ones(1).to(dtype=torch.int32)),
+            (torch.ones((2, 1)), torch.ones(2).to(dtype=torch.int32)),
+            (torch.ones(20), torch.ones(20).to(dtype=torch.int32)),
+            (torch.IntTensor([[1, 2, 3, 4]]), torch.IntTensor([1, 2, 3, 4])),
+        ]:
+            with self.subTest(msg=f"ids: {tensor}"):
+                self.assertTrue(torch.allclose(validate_ids(ids=tensor), output))
+
+    def test_validate_ids_exceptions(self):
+        for tensor, exception_type in [
+            (np.ones((1, 10)), TypeError),
+            (torch.ones((2, 5)), ValueError),
+            (torch.ones((1, 2, 1, 5)), ValueError),
+        ]:
+            with self.subTest():
+                with self.assertRaises(exception_type):
+                    validate_ids(ids=tensor),
 
 
 if __name__ == "__main__":

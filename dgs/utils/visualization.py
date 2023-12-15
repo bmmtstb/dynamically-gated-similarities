@@ -12,17 +12,27 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torchvision.transforms.v2 import ToPILImage
+from torchvision.utils import make_grid
 
-from dgs.utils.constants import JOINT_CONNECTIONS_ITOP
-from dgs.utils.types import Images, TVImage
+from dgs.utils.types import Image, TVImage
 from dgs.utils.utils import torch_to_numpy
 
 
-def torch_show_image(imgs: Images, show: bool = True) -> None:
-    """Show a torch image using matplotlib."""
-    # plt.rcParams["savefig.bboxes"] = "tight"  # fixme why is this necessary?
+def torch_show_image(imgs: Union[Image, list[Image]], show: bool = True) -> None:
+    """Show a single torch image using matplotlib.
 
-    if not isinstance(imgs, list):
+    Args:
+        imgs: some kind of torch image to be shown.
+            The image can be a modified image, batch of images or list of images.
+            Additionally, modified images like with bboxes, skeleton, or grid of images.
+            The shape is only three-dimensional: ``[B x C x H x W]``
+        show: Whether to show the image.
+            Set show as false to print multiple images at once, or to modify the plt object.
+            Default: True
+    """
+    if isinstance(imgs, torch.Tensor) and len(imgs.shape) == 4:
+        imgs = make_grid(imgs)
+    elif not isinstance(imgs, list):
         imgs = [imgs]
     _, axs = plt.subplots(ncols=len(imgs), squeeze=False)
     for i, img in enumerate(imgs):
@@ -75,77 +85,8 @@ def save_or_show(
         if not file_path.endswith(plot_format):
             file_path += "." + plot_format
         # save plot
+        plt.rcParams["savefig.bbox"] = "tight"  # fixme why is this necessary?
         plt.savefig(fname=file_path, format=plot_format, **kwargs)
     if plot_close:
         # plot / fig finalized, so close it
         plt.close()
-
-
-def show_tensor_image(img: TVImage, file_path: str = "", **kwargs) -> None:
-    """Display a single tensor image using matplotlib.
-
-    Args:
-        img: ``[C x H x W]`` - image to be shown
-        file_path: acts as boolean,
-            the file is shown if file_path is empty and will be saved otherwise at file_path location.
-
-    Keyword Args:
-        see save_or_show()
-    """
-    np_img = torch_to_matplotlib(img)
-    plt.imshow(np_img)
-    plt.axis("off")
-
-    # set bbox_inches to "tight" if it does not have a value yet
-    kwargs.setdefault("bbox_inches", "tight")
-    # handle displaying
-    save_or_show(file_path=file_path, **kwargs)
-
-
-def show_2d_joints(
-    img: TVImage,
-    joints: Union[torch.Tensor, np.ndarray],
-    file_path: str = "",
-    **kwargs,
-) -> None:
-    """Creates a plot to show 2d joint coordinates on image.
-
-    Args:
-        img: C x H x W - image as ByteTensor
-        joints: K x 2|3 - 2d or 3d joint coordinates
-        file_path: acts as boolean, the file will be shown, if string is empty, otherwise the file is saved at file_path
-
-    Keyword Args:
-        show_points: whether to print the joint coordinates as points. Default True
-        show_skeleton: whether to print the skeleton. Default True
-        switch_xy: switch x and y coordinate of joint coords, because images may have switched directions. Default True
-
-        Additionally, see save_or_show()
-    """
-    # K, d = joints.shape
-    if isinstance(joints, torch.Tensor):
-        np_joints = torch_to_numpy(joints)
-    else:
-        np_joints = joints
-
-    np_img = torch_to_matplotlib(img)
-    plt.imshow(np_img)
-
-    if kwargs.get("switch_xy", True):
-        np_joints[:, [1, 0]] = np_joints[:, [0, 1]]
-
-    if kwargs.get("show_points", True):
-        # print 2d points
-        for c in np_joints:
-            plt.scatter(c[0], c[1], color="b")
-
-    if kwargs.get("show_skeleton", True):
-        # print joint connections (skeleton)
-        for start, end, color in JOINT_CONNECTIONS_ITOP:  # fixme define or load joint configurations
-            plt.plot(
-                [np_joints[start][0], np_joints[end][0]],
-                [np_joints[start][1], np_joints[end][1]],
-                color=color,
-            )
-
-    save_or_show(file_path=file_path, bbox_inches="tight", pad_inches=0.1, **kwargs)

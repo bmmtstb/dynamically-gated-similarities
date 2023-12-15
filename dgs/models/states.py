@@ -2,16 +2,19 @@
 definitions and helpers for pose-state(s)
 """
 from collections import UserDict
+from typing import Union
 
 import torch
+from torch.utils.data import default_collate
 from torchvision import tv_tensors
 
 from dgs.utils.image import load_image
-from dgs.utils.types import Config, Device, Image, PoseStateTuple, TVImage
+from dgs.utils.types import Config, Device, FilePaths, Image, PoseStateTuple, TVImage
 from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
     validate_filepath,
+    validate_ids,
     validate_images,
     validate_key_points,
 )
@@ -252,7 +255,7 @@ class DataSample(UserDict):
 
         The heatmap of this bounding box.
 
-    local_keypoints (optional)
+    keypoints_local (optional)
         (torch.Tensor), shape ``[1 x J x 2|3]``
 
         The key points for this bounding box as torch tensor in local coordinates.
@@ -278,17 +281,22 @@ class DataSample(UserDict):
     # pylint: disable=too-many-instance-attributes
 
     def __init__(
-        self, filepath: str, bbox: tv_tensors.BoundingBoxes, keypoints: torch.Tensor, person_id: int = -1, **kwargs
+        self,
+        filepath: str | list[str],
+        bbox: tv_tensors.BoundingBoxes,
+        keypoints: torch.Tensor,
+        person_id: Union[int, torch.IntTensor, torch.Tensor] = None,
+        **kwargs,
     ) -> None:
         super().__init__(**kwargs)
 
-        self.data["filepath"]: str = validate_filepath(filepath)
+        self.data["filepath"]: FilePaths = validate_filepath(filepath)
         # make sure bboxes has shape [1 x 4]
         self.data["bbox"]: tv_tensors.BoundingBoxes = validate_bboxes(bbox)
         # make sure keypoints has shape [1 x J x 2|3]
         self.data["keypoints"]: torch.Tensor = validate_key_points(keypoints)
-        if person_id >= 0:
-            self.data["person_id"]: int = person_id
+        if person_id is not None:
+            self.data["person_id"]: int = validate_ids(person_id)
 
     def to(self, *args, **kwargs) -> "DataSample":
         """Override torch.Tensor.to() for the whole object."""
@@ -302,7 +310,9 @@ class DataSample(UserDict):
         return f"{self.data['filepath']} {self.data['bbox']}"
 
     @property
-    def filepath(self) -> str:
+    def filepath(self) -> FilePaths:
+        """If data filepath has a single entry, return the filepath as a string, otherwise return the list."""
+        assert len(self.data["filepath"]) >= 1
         return self.data["filepath"]
 
     @property
@@ -317,9 +327,14 @@ class DataSample(UserDict):
 
     @property
     def J(self) -> int:
-        """Get number of joints"""
+        """Get number of joints."""
         assert len(self.data["keypoints"].shape) == 3, "DataSample key points has wrong shape"
         return self.data["keypoints"].shape[-2]
+
+    @property
+    def B(self):
+        """Get the batch size."""
+        return self.bbox.shape[-2]
 
     @property
     def joint_dim(self) -> int:
@@ -341,21 +356,21 @@ class DataSample(UserDict):
         self.data["heatmap"] = validate_dimensions(heatmap, 4)
 
     @property
-    def local_keypoints(self) -> torch.Tensor:
-        assert len(self.data["local_keypoints"].shape) == 3, "local key points has wrong dimensions"
-        return self.data["local_keypoints"]
+    def keypoints_local(self) -> torch.Tensor:
+        assert len(self.data["keypoints_local"].shape) == 3, "local key points has wrong dimensions"
+        return self.data["keypoints_local"]
 
-    @local_keypoints.setter
-    def local_keypoints(self, value: torch.Tensor):
+    @keypoints_local.setter
+    def keypoints_local(self, value: torch.Tensor):
         """Set local key points with a little bit of validation."""
         # use validate_key_points to make sure local key points have the correct shape [1 x J x 2|3]
-        self.data["local_keypoints"] = validate_key_points(value, nof_joints=self.J, joint_dim=self.keypoints.shape[-1])
+        self.data["keypoints_local"] = validate_key_points(value, nof_joints=self.J, joint_dim=self.keypoints.shape[-1])
 
     @property
     def image(self) -> TVImage:
         """Get the original image or retrieve it using filepath"""
-        if "image" not in self.data or not self.data["image"]:
-            self.data["image"] = validate_images(load_image(self.data["filepath"]))
+        if "image" not in self.data or self.data["image"] is None:
+            self.data["image"] = load_image(self.data["filepath"])
         assert len(self.data["image"].shape) == 4, "image has wrong dimensions"
         return self.data["image"]
 
@@ -374,12 +389,11 @@ class DataSample(UserDict):
 
     @property
     def joint_weight(self) -> torch.Tensor:
-        assert len(self.data["joint_weight"].shape) == 2, "joint weight has wrong dimensions"
         return self.data["joint_weight"]
 
     @joint_weight.setter
     def joint_weight(self, value: torch.Tensor) -> None:
-        self.data["joint_weight"] = value
+        self.data["joint_weight"] = value.view(self.B, self.J, 1)
 
     def cast_joint_weight(
         self,
@@ -432,3 +446,43 @@ class DataSample(UserDict):
         if decimals >= 0:
             new_weights.round_(decimals=decimals)
         return new_weights.to(device=device, dtype=dtype)
+
+
+def collate_data_samples(batch: list[DataSample]) -> DataSample:
+    """Collate function for multiple DataSamples, to flatten / squeeze the shapes.
+
+    Args:
+        batch: A list of DataSamples, each containing a single sample / bounding box.
+
+    Returns:
+        One single DataSample object, containing a batch of samples / bounding boxes.
+    """
+    B = len(batch)
+    # The default collate function messes up a few of the dimensions and removes custom tv_tensor classes.
+    c_batch: DataSample = default_collate(batch)
+
+    # validate and convert images, key points and bounding boxes
+    for key in c_batch.keys():
+        if key.startswith("image") and not key.endswith("_id"):
+            c_batch[key] = validate_images(c_batch[key])
+        if key.startswith("keypoints"):
+            c_batch[key] = validate_key_points(c_batch[key])
+        if "bbox" in key:
+            # bounding boxes are regular tensors now, convert them back using the values of the first batch-entry
+            # we need at least one entry of the original batch
+            bboxes = tv_tensors.BoundingBoxes(
+                c_batch[key].squeeze_(),
+                canvas_size=batch[0][key].canvas_size,
+                format=batch[0][key].format,
+            )
+            c_batch[key] = validate_bboxes(bboxes)
+        if "id" == key or key.endswith("_id"):
+            c_batch[key] = validate_ids(c_batch[key])
+        if "joint_weight" == key:
+            c_batch[key] = c_batch[key].view((B, -1, 1))
+        if "filepath" == key:
+            # default collate does return a list of a tuple, remove nesting
+            if isinstance(c_batch[key], (list, tuple)) and len(c_batch[key]) == 1:
+                c_batch[key] = c_batch[key][0]
+
+    return DataSample(**c_batch)

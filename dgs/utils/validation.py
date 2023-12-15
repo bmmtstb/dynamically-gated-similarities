@@ -1,14 +1,14 @@
 """
 Utilities for validating recurring data types.
 """
-from typing import Union
+from typing import Iterable, Union
 
 import torch
 from torchvision import tv_tensors
 
 from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import is_file, project_to_abspath
-from dgs.utils.types import FilePath, Image, TVImage
+from dgs.utils.types import FilePath, FilePaths, Image, TVImage
 
 
 def validate_bboxes(
@@ -84,6 +84,52 @@ def validate_dimensions(tensor: torch.Tensor, dims: int) -> torch.Tensor:
     return tensor
 
 
+def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePaths:
+    """Validate the file path.
+
+    Args:
+        file_paths: Path to the file as a string or a file object.
+
+    Returns:
+        The validated file path.
+
+    Raises:
+        InvalidPathException
+            If the file path does not exist.
+    """
+    if isinstance(file_paths, (list, tuple)):
+        return tuple(validate_filepath(file_path)[0] for file_path in file_paths)
+    if not is_file(file_paths):
+        raise InvalidPathException(filepath=file_paths)
+
+    return tuple([project_to_abspath(filepath=file_paths)])
+
+
+def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
+    """Given a tensor validate whether it contains one or multiple IDs.
+
+    Args:
+        ids: Arbitrary torch tensor to check.
+
+    Returns:
+        Torch integer tensor with one dimension.
+    """
+    if isinstance(ids, int):
+        ids = torch.IntTensor([ids])
+
+    if not isinstance(ids, torch.Tensor):
+        raise TypeError(f"The input should be a torch tensor but is {type(ids)}")
+
+    ids.squeeze_()
+
+    if len(ids.shape) == 0:
+        ids.unsqueeze_(-1)
+    elif len(ids.shape) != 1:
+        raise ValueError(f"IDs should have only one dimension, but shape is {ids.shape}")
+
+    return ids.to(dtype=torch.int32)
+
+
 def validate_images(images: Image, dims: Union[int, None] = 4) -> TVImage:
     """Given one single or multiple images, validate them and return a torchvision-tensor image.
 
@@ -103,7 +149,9 @@ def validate_images(images: Image, dims: Union[int, None] = 4) -> TVImage:
         ValueError
             If the image channel has the wrong dimensionality.
     """
-    if not isinstance(images, (torch.ByteTensor, torch.FloatTensor, tv_tensors.Image)):
+    if not isinstance(images, (torch.Tensor, torch.ByteTensor, torch.FloatTensor, tv_tensors.Image)) or not (
+        isinstance(images, torch.Tensor) and images.dtype in [torch.float32, torch.uint8]  # iff tensor, check dtype
+    ):
         raise TypeError(f"Image should be torch tensor or tv_tensor Image but is {type(images)}")
 
     if dims is not None:
@@ -118,25 +166,6 @@ def validate_images(images: Image, dims: Union[int, None] = 4) -> TVImage:
         )
 
     return tv_tensors.Image(images)
-
-
-def validate_filepath(file_path: FilePath) -> FilePath:
-    """Validate the file path.
-
-    Args:
-        file_path: Path to the file as a string or a file object.
-
-    Returns:
-        The validated file path.
-
-    Raises:
-        InvalidPathException
-            If the file path does not exist.
-    """
-    if not is_file(file_path):
-        raise InvalidPathException(filepath=file_path)
-
-    return project_to_abspath(filepath=file_path)
 
 
 def validate_key_points(
@@ -166,9 +195,10 @@ def validate_key_points(
     if not isinstance(key_points, torch.Tensor):
         raise TypeError(f"Key points should be torch tensor but is {type(key_points)}")
 
-    if not 2 <= key_points.shape[-1] <= 3:
+    if joint_dim is None and not 2 <= key_points.shape[-1] <= 3:
         raise ValueError(
-            f"The key points should be two- or three-dimensional, but they have a shape of {key_points.shape[-1]}"
+            f"By default, the key points should be two- or three-dimensional, "
+            f"but they have a shape of {key_points.shape[-1]}"
         )
 
     if joint_dim is not None and key_points.shape[-1] != joint_dim:

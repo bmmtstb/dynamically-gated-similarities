@@ -1,6 +1,7 @@
 """
 Module for handling data loading and preprocessing using torch Datasets.
 """
+import os
 
 import torch
 import torchvision.transforms.v2 as tvt
@@ -9,17 +10,15 @@ from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
 from dgs.models.states import DataSample
+from dgs.utils.files import is_project_file, project_to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
-from dgs.utils.types import Config, ImgShape, NodePath, Validations
+from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations  # pylint: disable=unused-import
+from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
 
 base_dataset_validations: Validations = {
-    # "resize_mode": ["str", ("in", CustomToAspect.modes)],
-    # "backbone_size": [("or",
-    #   ("and", ("instance", list), ("len", 2), lambda x: x[0] > 0 and x[1] > 0),
-    #   ("None", ...))
-    # ],
     "crop_mode": ["str", ("in", CustomToAspect.modes)],
-    "crop_size": [("instance", list), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
+    "crop_size": [("instance", tuple), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
+    "dataset_path": ["str", "folder exists in project"],
 }
 
 
@@ -60,9 +59,6 @@ class BaseDataset(TorchDataset, BaseModule):
     Every dict contains a single bounding box sample.
     """
 
-    cropped_shape: ImgShape
-    """Shape of the cropped image"""
-
     def __call__(self, *args, **kwargs) -> any:
         """Has to override call from BaseModule"""
         raise NotImplementedError("Dataset can't be called.")
@@ -86,15 +82,15 @@ class BaseDataset(TorchDataset, BaseModule):
         sample = self.data[idx]
         if "image_crop" not in sample or "local_coordinates" not in sample:
             structured_input = {
-                "image": load_image(sample.filepath),
-                "box": sample.bbox,
-                "keypoints": sample.keypoints,
+                "image": validate_images(load_image(sample.filepath)),
+                "box": validate_bboxes(sample.bbox),
+                "keypoints": validate_key_points(sample.keypoints),
                 "output_size": self.params["crop_size"],
                 "mode": self.params["crop_mode"],
             }
             new_sample = self.transform_crop_resize()(structured_input)
-            sample.image_crop = new_sample["image_crop"]
-            sample.local_keypoints = new_sample["local_coordinates"]
+            sample.image_crop = new_sample["image"]
+            sample.keypoints_local = new_sample["keypoints"]
 
         return sample
 
@@ -160,9 +156,30 @@ class BaseDataset(TorchDataset, BaseModule):
             [
                 tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),  # xyxy to easily obtain ltrb
                 tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
-                # tvt.SanitizeBoundingBoxes(),  # clean up bboxes
+                tvt.SanitizeBoundingBoxes(),  # clean up bboxes
                 CustomCropResize(),  # crop the image at the four corners specified in bboxes
                 tvt.ClampBoundingBoxes(),  # duplicate ?
-                # tvt.SanitizeBoundingBoxes(),  # duplicate ?
+                tvt.SanitizeBoundingBoxes(),  # duplicate ?
             ]
         )
+
+    def get_filepath_in_dataset(self, filepath: FilePath) -> FilePath:
+        """Given an arbitrary filepath, return its absolute path.
+
+        1. check whether the file is a valid absolute file
+        2. check whether the file is a project file
+        3. check whether the file is a file within this dataset
+
+        Returns:
+            The absolute path to the found file.
+
+        Raises:
+            FileNotFoundError: If the file is not found
+        """
+        if os.path.isfile(filepath):
+            return filepath
+        if is_project_file(filepath):
+            return project_to_abspath(filepath)
+        if is_project_file(os.path.join(self.params["dataset_path"], str(filepath))):
+            return project_to_abspath(os.path.join(self.params["dataset_path"], str(filepath)))
+        raise FileNotFoundError(f"Could not find path file at {filepath}")

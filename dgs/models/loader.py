@@ -3,6 +3,7 @@ Given config, load modules
 """
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
+from dgs.models.states import collate_data_samples
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
 
@@ -17,7 +18,7 @@ module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be rem
 }
 
 submodules: dict[str, list[str]] = {
-    "dataset": ["AlphaPoseLoader", "PoseTrack21Loader"],
+    "dataset": ["AlphaPoseLoader", "PoseTrack21Loader", "PoseTrack21JSON"],
     "backbone": ["AlphaPose"],
     "visual_embedding_generator": ["torchreid"],
     "pose_embedding_generator": [],
@@ -36,8 +37,9 @@ def module_loader(config: Config, module: str):
     Returns:
         Instance of the submodule with its config
     """
-    # this model will have many module imports, to load only what we need, keep the imports local
-    # pylint: disable=import-outside-toplevel
+    # This model will have many module imports and branches.
+    # It should only load what is needed and keep imports local.
+    # pylint: disable=import-outside-toplevel, too-many-branches
 
     # model config validation
     if module not in module_paths:
@@ -80,6 +82,10 @@ def module_loader(config: Config, module: str):
             from dgs.models.dataset.posetrack import PoseTrack21Loader
 
             return PoseTrack21Loader(config, path)
+        if model_name == "PoseTrack21JSON":
+            from dgs.models.dataset.posetrack import PoseTrack21JSON
+
+            return PoseTrack21JSON(config, path)
 
     raise NotImplementedError(f"Something went wrong while loading module '{module}'")
 
@@ -99,6 +105,7 @@ def get_data_loader(config: Config, dataset: TorchDataset) -> TorchDataLoader:
         batch_size=config["batch_size"],
         num_workers=config["num_workers"],
         shuffle=False,
+        collate_fn=collate_data_samples,
     )
     # https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
     # By default, num_workers is set to 0.

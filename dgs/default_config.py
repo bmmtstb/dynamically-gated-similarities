@@ -27,10 +27,12 @@ cfg.training = False
 # Dataset #
 # ####### #
 cfg.dataset = EasyDict()
-cfg.dataset.model = "AlphaPoseLoader"
-cfg.dataset.path = "./results/json/3_3_alphapose_results.json"  # fixme provide example
-cfg.dataset.crop_mode = "outside-crop"
-cfg.dataset.crop_size = [256, 256]
+cfg.dataset.model = "PoseTrack21JSON"
+cfg.dataset.dataset_path = "./data/PoseTrack21/"  # overall dataset path
+cfg.dataset.path = "./posetrack_data/val/000342_mpii_test.json"  # path to data (absolute, local, or within dataset)
+
+cfg.dataset.crop_mode = "zero-pad"
+cfg.dataset.crop_size = (256, 256)  #
 
 # ############## #
 # Backbone Model #

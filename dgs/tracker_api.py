@@ -3,12 +3,12 @@ Base Tracker API structure of tracking via dynamically gated similarities
 """
 
 from dgs.models.dataset.dataset import BaseDataset
-from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
 from dgs.models.loader import get_data_loader, module_loader
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.states import DataSample
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
+from dgs.utils.visualization import torch_show_image
 
 
 class DGSTracker:
@@ -49,7 +49,7 @@ class DGSTracker:
         # self.m_backbone: BackboneModule = module_loader(self.cfg, "backbone")
         # self.m_backbone = torch.compile(self.m_backbone)
 
-        self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
+        # self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
         # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
 
         # self.m_pose_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "pose_embedding_generator")
@@ -67,9 +67,9 @@ class DGSTracker:
         # dataloader
         data_loader = get_data_loader(self.cfg, dataset)
         for batch_idx, batch in enumerate(data_loader):
-            batch: DataSample  # fixme correct? or is it list of dict, or is it dict with fancy torch stuff
+            batch: DataSample
+            torch_show_image(batch.image)
             print(batch_idx)
-            print(batch)
 
     @enable_keyboard_interrupt
     def update(self, batch) -> None:
