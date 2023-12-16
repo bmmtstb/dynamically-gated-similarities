@@ -2,10 +2,12 @@
 Module for handling data loading and preprocessing using torch Datasets.
 """
 import os
+from typing import Callable, Type, Union
 
 import torch
 import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
@@ -20,6 +22,69 @@ base_dataset_validations: Validations = {
     "crop_size": [("instance", tuple), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
     "dataset_path": ["str", "folder exists in project"],
 }
+
+
+def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tensor:
+    """Collate a batch of tensors into a single one.
+
+    Will use torch.cat() if the first dimension has a shape of one, otherwise torch.stack()
+    """
+    if len(batch[0].shape) > 0 and batch[0].shape[0] == 1:
+        return torch.cat(batch)
+    return torch.stack(batch)
+
+
+def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> tv_tensors.BoundingBoxes:
+    """Collate a batch of bounding boxes into a single one.
+    It is expected that all bounding boxes have the same canvas size and format.
+
+    Raises:
+        ValueError: If the batch of bounding boxes has different attributes.
+    """
+    bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
+    canvas_size = batch[0].canvas_size
+    if any(bb.format != bb_format or bb.canvas_size != canvas_size for bb in batch):
+        raise ValueError("Canvas size and format has to be equal for all bounding boxes in a batch.")
+
+    return tv_tensors.BoundingBoxes(
+        torch.cat(batch),
+        canvas_size=canvas_size,
+        format=bb_format,
+    )
+
+
+def collate_tvt_tensors(
+    batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
+) -> Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
+    """Collate a batch of tv_tensors into a batched version of it."""
+    return tv_tensors.wrap(torch.cat(batch), like=batch[0])
+
+
+def collate_data_samples(batch: list[DataSample]) -> DataSample:
+    """Collate function for multiple DataSamples, to flatten / squeeze the shapes and keep the tv_tensors classes.
+
+    The default collate function messes up a few of the dimensions and removes custom tv_tensor classes.
+    Therefore, add custom collate functions for the tv_tensors classes.
+    Additionally, custom torch tensor collate, which stacks tensors only if first dimension != 1, cat otherwise.
+
+    Args:
+        batch: A list of DataSamples, each containing a single sample / bounding box.
+
+    Returns:
+        One single DataSample object, containing a batch of samples / bounding boxes.
+    """
+    custom_collate_map: dict[Type, Callable] = default_collate_fn_map.copy()
+    custom_collate_map.update(
+        {
+            str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
+            tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
+            tv_tensors.BoundingBoxes: collate_bboxes,
+            (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
+            torch.Tensor: collate_tensors,
+        }
+    )
+    c_batch: dict[str, any] = collate(batch, collate_fn_map=custom_collate_map)
+    return DataSample(**c_batch)
 
 
 class BaseDataset(TorchDataset, BaseModule):
@@ -116,7 +181,7 @@ class BaseDataset(TorchDataset, BaseModule):
                 CustomToAspect(),  # make sure the image has the correct aspect ratio for the backbone model
                 CustomResize(),
                 tvt.ClampBoundingBoxes(),  # keep bboxes in their canvas_size
-                tvt.SanitizeBoundingBoxes(),  # clean up bboxes if available
+                # tvt.SanitizeBoundingBoxes(),  # clean up bboxes if available
                 tvt.ToDtype({tv_tensors.Image: torch.float32}, scale=True),
             ]
         )
@@ -156,10 +221,10 @@ class BaseDataset(TorchDataset, BaseModule):
             [
                 tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),  # xyxy to easily obtain ltrb
                 tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
-                tvt.SanitizeBoundingBoxes(),  # clean up bboxes
+                # tvt.SanitizeBoundingBoxes(),  # clean up bboxes
                 CustomCropResize(),  # crop the image at the four corners specified in bboxes
                 tvt.ClampBoundingBoxes(),  # duplicate ?
-                tvt.SanitizeBoundingBoxes(),  # duplicate ?
+                # tvt.SanitizeBoundingBoxes(),  # duplicate ?
             ]
         )
 

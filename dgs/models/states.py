@@ -5,7 +5,6 @@ from collections import UserDict
 from typing import Union
 
 import torch
-from torch.utils.data import default_collate
 from torchvision import tv_tensors
 
 from dgs.utils.image import load_image
@@ -446,43 +445,3 @@ class DataSample(UserDict):
         if decimals >= 0:
             new_weights.round_(decimals=decimals)
         return new_weights.to(device=device, dtype=dtype)
-
-
-def collate_data_samples(batch: list[DataSample]) -> DataSample:
-    """Collate function for multiple DataSamples, to flatten / squeeze the shapes.
-
-    Args:
-        batch: A list of DataSamples, each containing a single sample / bounding box.
-
-    Returns:
-        One single DataSample object, containing a batch of samples / bounding boxes.
-    """
-    B = len(batch)
-    # The default collate function messes up a few of the dimensions and removes custom tv_tensor classes.
-    c_batch: DataSample = default_collate(batch)
-
-    # validate and convert images, key points and bounding boxes
-    for key in c_batch.keys():
-        if key.startswith("image") and not key.endswith("_id"):
-            c_batch[key] = validate_images(c_batch[key])
-        if key.startswith("keypoints"):
-            c_batch[key] = validate_key_points(c_batch[key])
-        if "bbox" in key:
-            # bounding boxes are regular tensors now, convert them back using the values of the first batch-entry
-            # we need at least one entry of the original batch
-            bboxes = tv_tensors.BoundingBoxes(
-                c_batch[key].squeeze_(),
-                canvas_size=batch[0][key].canvas_size,
-                format=batch[0][key].format,
-            )
-            c_batch[key] = validate_bboxes(bboxes)
-        if "id" == key or key.endswith("_id"):
-            c_batch[key] = validate_ids(c_batch[key])
-        if "joint_weight" == key:
-            c_batch[key] = c_batch[key].view((B, -1, 1))
-        if "filepath" == key:
-            # default collate does return a list of a tuple, remove nesting
-            if isinstance(c_batch[key], (list, tuple)) and len(c_batch[key]) == 1:
-                c_batch[key] = c_batch[key][0]
-
-    return DataSample(**c_batch)

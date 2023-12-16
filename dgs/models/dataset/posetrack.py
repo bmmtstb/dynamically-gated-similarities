@@ -14,8 +14,8 @@ from dgs.models.states import DataSample
 from dgs.utils.files import project_to_abspath, read_json
 from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations
 
-pt21_loader_validations: Validations = {"path": []}
-pt21_json_validations: Validations = {"path": []}
+pt21_loader_validations: Validations = {"path": [None]}
+pt21_json_validations: Validations = {"path": [None]}
 
 
 def validate_pt21_json(json: dict) -> None:

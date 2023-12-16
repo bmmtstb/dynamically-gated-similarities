@@ -3,7 +3,7 @@ Given config, load modules
 """
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
-from dgs.models.states import collate_data_samples
+from dgs.models.dataset.dataset import collate_data_samples
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
 
