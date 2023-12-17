@@ -8,7 +8,7 @@ import torch
 from torchvision import tv_tensors
 
 from dgs.utils.image import load_image
-from dgs.utils.types import Config, Device, FilePaths, Image, PoseStateTuple, TVImage
+from dgs.utils.types import Config, Device, FilePaths, Heatmap, Image, PoseStateTuple, TVImage
 from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
@@ -222,55 +222,65 @@ class PoseStates:
 
 
 class DataSample(UserDict):
-    """Class for storing a single sample of data.
+    """Class for storing one or multiple samples of data.
+
+    By default, the DataSample validates all new inputs.
+    If you validate elsewhere, or you dont wan't validation for performance reasons, it can be turned off.
+
 
     During initialization, the following keys have to be given:
+    -----------------------------------------------------------
 
     filepath
-        (str)
+        (tuple[str]), length ``B``
 
-        the filepath of the image
+        The respective filepath of every image
 
     bbox
-        (tv_tensors.BoundingBoxes), shape ``[1 x 4]``
+        (tv_tensors.BoundingBoxes), shape ``[B x 4]``
 
         One single bounding box as torchvision bounding box in global coordinates.
 
     keypoints
-        (torch.Tensor), shape ``[1 x J x 2|3]``
+        (torch.Tensor), shape ``[B x J x 2|3]``
 
         The key points for this bounding box as torch tensor in global coordinates.
 
     person_id (optional)
-        (int)
+        (torch.IntTensor), shape ``[B]``
 
-        the person id, only required for training and validation
+        The person id, only required for training and validation
 
 
-    The model might be given additional values or compute further optional values:
+    Additional Values:
+    ------------------
+
+    The model might be given additional values during initialization,
+    given at any time using the underlying dict or given setters,
+    or compute further optional values:
 
     heatmap (optional)
-        (torch.FloatTensor), shape ``[1 x J x h x w]``
+        (torch.FloatTensor), shape ``[B x J x h x w]``
 
         The heatmap of this bounding box.
 
     keypoints_local (optional)
-        (torch.Tensor), shape ``[1 x J x 2|3]``
+        (torch.Tensor), shape ``[B x J x 2|3]``
 
         The key points for this bounding box as torch tensor in local coordinates.
 
     image (optional)
-        (tv_tensor.Image), shape ``[C x H x W]``
+        (tv_tensor.Image), shape ``[B x C x H x W]``
 
         The original image, resized to the respective shape of the backbone input.
 
     image_crop (optional)
-        (tv_tensor.Image), shape ``[C x h x w]``
+        (tv_tensor.Image), shape ``[B x C x h x w]``
 
         The content of the original image cropped using the bbox.
 
     joint_weight (optional)
-        (torch.FloatTensor), shape ``[1 x J]``
+        (torch.FloatTensor), shape ``[B x J x 1]``
 
         Some kind of joint- or key-point confidence.
         E.g., the joint confidence score (JCS) of AlphaPose or the joint visibility of the PoseTrack21 dataset.
@@ -285,17 +295,28 @@ class DataSample(UserDict):
         bbox: tv_tensors.BoundingBoxes,
         keypoints: torch.Tensor,
         person_id: Union[int, torch.IntTensor, torch.Tensor] = None,
+        validate: bool = True,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
 
-        self.data["filepath"]: FilePaths = validate_filepath(filepath)
-        # make sure bboxes has shape [1 x 4]
-        self.data["bbox"]: tv_tensors.BoundingBoxes = validate_bboxes(bbox)
-        # make sure keypoints has shape [1 x J x 2|3]
-        self.data["keypoints"]: torch.Tensor = validate_key_points(keypoints)
+        self._validate = validate
+
+        if validate:
+            filepath = validate_filepath(filepath)
+            bbox = validate_bboxes(bbox)
+            keypoints = validate_key_points(keypoints)
+            person_id = validate_ids(person_id) if person_id is not None else None
+
+        self.data["filepath"]: FilePaths = filepath
+        self.data["bbox"]: tv_tensors.BoundingBoxes = bbox
+        self.data["keypoints"]: torch.Tensor = keypoints
         if person_id is not None:
-            self.data["person_id"]: int = validate_ids(person_id)
+            self.data["person_id"]: torch.IntTensor = person_id
+
+        for k, v in kwargs.items():
+            if hasattr(self, k) and callable(getattr(self, k)):
+                setattr(self, k, v)
 
     def to(self, *args, **kwargs) -> "DataSample":
         """Override torch.Tensor.to() for the whole object."""
@@ -333,6 +354,7 @@ class DataSample(UserDict):
     @property
     def B(self):
         """Get the batch size."""
+        assert self.bbox.shape[-2] == len(self.filepath) and self.keypoints.shape[-2] == self.bbox.shape[-2]
         return self.bbox.shape[-2]
 
     @property
@@ -345,25 +367,34 @@ class DataSample(UserDict):
         return self.data["heatmap"]
 
     @heatmap.setter
-    def heatmap(self, heatmap: torch.FloatTensor) -> None:
+    def heatmap(self, heatmap: Heatmap) -> None:
         """Set heatmap with a little bit of validation"""
         if heatmap.shape[-2] != self.J:
             raise ValueError(
                 f"Number of joints of new heatmap {heatmap.shape[-2]} is expected to be equal to J {self.J}"
             )
-        # make sure that heatmap has shape [1 x J x h x w]
-        self.data["heatmap"] = validate_dimensions(heatmap, 4)
+        # make sure that heatmap has shape [B x J x h x w]
+        self.data["heatmap"] = validate_dimensions(heatmap, 4) if self._validate else heatmap
 
     @property
     def keypoints_local(self) -> torch.Tensor:
-        assert len(self.data["keypoints_local"].shape) == 3, "local key points has wrong dimensions"
+        assert "keypoints_local" in self
+        assert len(self.data["keypoints_local"].shape) == 3, "local key points have wrong dimensions"
+        assert (
+            self.data["keypoints_local"].shape[-1] == self.joint_dim
+            and self.data["keypoints_local"].shape[-2] == self.J
+        ), "local key points have wrong shape"
         return self.data["keypoints_local"]
 
     @keypoints_local.setter
     def keypoints_local(self, value: torch.Tensor):
         """Set local key points with a little bit of validation."""
         # use validate_key_points to make sure local key points have the correct shape [1 x J x 2|3]
-        self.data["keypoints_local"] = validate_key_points(value, nof_joints=self.J, joint_dim=self.keypoints.shape[-1])
+        self.data["keypoints_local"] = (
+            validate_key_points(value, nof_joints=self.J, joint_dim=self.keypoints.shape[-1])
+            if self._validate
+            else value
+        )
 
     @property
     def image(self) -> TVImage:
@@ -375,7 +406,7 @@ class DataSample(UserDict):
 
     @image.setter
     def image(self, value: Image) -> None:
-        self.data["image"]: TVImage = validate_images(value)
+        self.data["image"]: TVImage = validate_images(value) if self._validate else value
 
     @property
     def image_crop(self) -> TVImage:
@@ -384,7 +415,7 @@ class DataSample(UserDict):
 
     @image_crop.setter
     def image_crop(self, value: Image) -> None:
-        self.data["image_crop"]: TVImage = validate_images(value)
+        self.data["image_crop"]: TVImage = validate_images(value) if self._validate else value
 
     @property
     def joint_weight(self) -> torch.Tensor:

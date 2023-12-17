@@ -8,7 +8,7 @@ from torchvision import tv_tensors
 
 from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import is_file, project_to_abspath
-from dgs.utils.types import FilePath, FilePaths, Image, TVImage
+from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage
 
 
 def validate_bboxes(
@@ -105,6 +105,40 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePa
     return tuple([project_to_abspath(filepath=file_paths)])
 
 
+def validate_heatmaps(
+    heatmaps: Union[torch.Tensor, Heatmap], dims: Union[int, None] = 4, nof_joints: int = None
+) -> Heatmap:
+    """
+
+    Args:
+        heatmaps: tensor-like object
+        dims: Number of dimensions heatmaps should have.
+            Use None to not force any number of dimensions.
+            Defaults to four dimensions with the heatmap dimensions as ``[B x J x w x h]``.
+        nof_joints: The number of joints the heatmap should have.
+            Default None does not validate the number of joints at all.
+
+    Returns:
+        The validated heatmaps as tensor with the correct type.
+
+    Raises:
+        TypeError
+            If the key point input is not a Tensor.
+        ValueError
+            If the key points are neither two- nor three-dimensional.
+    """
+    if not isinstance(heatmaps, (Heatmap, torch.Tensor)):
+        raise TypeError(f"heatmaps should be a Heatmap or torch tensor but are {type(heatmaps)}.")
+
+    if nof_joints is not None and heatmaps.shape[-3] != nof_joints:
+        raise ValueError(f"The number of joints should be {nof_joints} but is {heatmaps.shape[-2]}.")
+
+    if dims is not None:
+        heatmaps = validate_dimensions(heatmaps, dims)
+
+    return tv_tensors.Mask(heatmaps)
+
+
 def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
     """Given a tensor validate whether it contains one or multiple IDs.
 
@@ -152,13 +186,13 @@ def validate_images(images: Image, dims: Union[int, None] = 4) -> TVImage:
     if not isinstance(images, (torch.Tensor, torch.ByteTensor, torch.FloatTensor, tv_tensors.Image)) or not (
         isinstance(images, torch.Tensor) and images.dtype in [torch.float32, torch.uint8]  # iff tensor, check dtype
     ):
-        raise TypeError(f"Image should be torch tensor or tv_tensor Image but is {type(images)}")
+        raise TypeError(f"Image should be torch tensor or tv_tensor Image but is {type(images)}.")
 
     if dims is not None:
         images = validate_dimensions(images, dims)
 
     if len(images.shape) < 3:
-        raise ValueError(f"Image should have at least 3 dimensions. Shape: {images.shape}")
+        raise ValueError(f"Image should have at least 3 dimensions. Shape: {images.shape}.")
 
     if images.shape[-3] not in [1, 3, 4]:
         raise ValueError(
@@ -190,10 +224,10 @@ def validate_key_points(
         TypeError
             If the key point input is not a Tensor.
         ValueError
-            If the key points are neither two- nor three-dimensional.
+            If the key points or joints have the wrong dimensionality.
     """
     if not isinstance(key_points, torch.Tensor):
-        raise TypeError(f"Key points should be torch tensor but is {type(key_points)}")
+        raise TypeError(f"Key points should be torch tensor but is {type(key_points)}.")
 
     if joint_dim is None and not 2 <= key_points.shape[-1] <= 3:
         raise ValueError(
@@ -202,10 +236,10 @@ def validate_key_points(
         )
 
     if joint_dim is not None and key_points.shape[-1] != joint_dim:
-        raise ValueError(f"The dimensionality of the joints should be {joint_dim} but is {key_points.shape[-1]}")
+        raise ValueError(f"The dimensionality of the joints should be {joint_dim} but is {key_points.shape[-1]}.")
 
     if nof_joints is not None and key_points.shape[-2] != nof_joints:
-        raise ValueError(f"The number of joints should be {nof_joints} but is {key_points.shape[-2]}")
+        raise ValueError(f"The number of joints should be {nof_joints} but is {key_points.shape[-2]}.")
 
     if dims is not None:
         key_points = validate_dimensions(key_points, dims)

@@ -18,7 +18,7 @@ from dgs.utils.types import Image, TVImage
 from dgs.utils.utils import torch_to_numpy
 
 
-def torch_show_image(imgs: Union[Image, list[Image]], show: bool = True) -> None:
+def torch_show_image(imgs: Union[Image, list[Image]], show: bool = True, **kwargs) -> None:
     """Show a single torch image using matplotlib.
 
     Args:
@@ -31,7 +31,7 @@ def torch_show_image(imgs: Union[Image, list[Image]], show: bool = True) -> None
             Default: True
     """
     if isinstance(imgs, torch.Tensor) and len(imgs.shape) == 4:
-        imgs = make_grid(imgs)
+        imgs = [make_grid(imgs, nrow=kwargs.get("nrow", 8))]
     elif not isinstance(imgs, list):
         imgs = [imgs]
     _, axs = plt.subplots(ncols=len(imgs), squeeze=False)
