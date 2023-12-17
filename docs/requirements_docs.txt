@@ -7,6 +7,7 @@ pyyaml
 scipy
 sphinx
 terminaltables
+tqdm
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu
