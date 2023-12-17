@@ -90,7 +90,7 @@ class BaseModule(ABC):
             self.validate_params(module_validations, "config")
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
-        """Given per key validations, validate this module's parameters.
+        r"""Given per key validations, validate this module's parameters.
 
         Throws exceptions on invalid or nonexistent params.
 
@@ -113,26 +113,25 @@ class BaseModule(ABC):
                         acting as replacements for "any" and "all".
 
         Example:
-            This results in more or less the validation for the config of the BaseModule.
+            This example is an excerpt of the validation of the BaseModule-configuration.
 
             ::
-
-                validations = {
-                    "device": [
-                        "str",
-                        ("or", (
-                            ("in", ["cuda", "cpu"]),
-                            ("instance", torch.device)
-                        ))
-                    ],
-                    "print_prio": [("in", PRINT_PRIORITY)],
-                    "callable": (lambda value: value == 1)
-                }
+                >>> validations = {                             \
+                    "device": [                                 \
+                            "str",                              \
+                            ("or", (                            \
+                                ("in", ["cuda", "cpu"]),        \
+                                ("instance", torch.device)      \
+                    ))                                          \
+                        ],                                      \
+                        "print_prio": [("in", PRINT_PRIORITY)], \
+                        "callable": (lambda value: value == 1)  \
+                    }
 
             And within the class `__init__` call:
-            ::
 
-                >> self.validate_params()
+            ::
+                >>> self.validate_params()
 
         Raises:
             InvalidParameterException: If one of the parameters is invalid
@@ -197,9 +196,9 @@ class BaseModule(ABC):
             priority: Priority on which this will print.
                 Value has to be in PRINT_PRIO.
                 But this is kind of counterintuitive:
-                - Use "normal" if you want to print it all the time as long as cfg.print_prio is not "none"
-                - Use "debug" if you want to print it iff cfg.print_prio is either "debug" or "alL"
-                - Use "all" if you want to print it iff cfg.print_prio == "alL"
+                - Use 'normal' if you want to print it all the time as long as cfg.print_prio is not 'none'
+                - Use 'debug' if you want to print it iff cfg.print_prio is either 'debug' or 'all'
+                - Use 'all' if you want to print it iff cfg.print_prio == 'all'
 
 
 

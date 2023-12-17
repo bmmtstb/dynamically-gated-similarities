@@ -2,19 +2,26 @@
 Load bboxes and poses from an existing .json file of the PoseTrack21 dataset.
 
 See https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md#reid-pose-tracking for type definitions.
+
+
+PoseTrack21 format:
+
+* Bounding boxes have format XYWH
+* The 17 key points and their respective visibilities are stored in one list of len 51 [x_i, y_i, vis_i, ...]
 """
 import os
 
 import imagesize
 import torch
+from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors
+from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
 from dgs.utils.files import project_to_abspath, read_json
 from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations
 
-pt21_loader_validations: Validations = {"path": [None]}
 pt21_json_validations: Validations = {"path": [None]}
 
 
@@ -30,91 +37,150 @@ def validate_pt21_json(json: dict) -> None:
         )
 
 
-class PoseTrack21Loader(BaseDataset):
-    """Load given PoseTrack JSON files.
+def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
+    """Load PoseTrack JSON files.
 
-    The files can either be:
+    The path parameter can be one of the following:
 
-    * under a given directory
+    * a path to a directory
     * a single json filepath
     * a list of json filepaths
+
+    In all cases, the path can be
+        a global path,
+        a path relative to the package,
+        or a local path under the dataset_path directory.
+
     """
+    ds = PoseTrack21(config, path)
+
+    ds_path = ds.params["path"]
+
+    paths: list[FilePath]
+    if isinstance(ds_path, (list, tuple)):
+        paths = ds_path
+    else:
+        # path is either directory or single json file
+        abs_path: FilePath = ds.get_path_in_dataset(ds_path)
+        if os.path.isfile(abs_path):
+            paths = [abs_path]
+        else:
+            paths = [
+                os.path.normpath(os.path.join(abs_path, child_path))
+                for child_path in os.listdir(abs_path)
+                if child_path.endswith(".json")
+            ]
+
+    return ConcatDataset(
+        [PoseTrack21JSON(config=config, path=path, json_path=p) for p in tqdm(paths, desc="loading datasets")]
+    )
+
+
+class PoseTrack21(BaseDataset):
+    """Non-Abstract class for PoseTrack21 dataset."""
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super(BaseDataset, self).__init__(config=config, path=path)
 
-        self.validate_params(pt21_loader_validations)
+    def arbitrary_to_ds(self, a) -> DataSample:
+        raise NotImplementedError
 
 
 class PoseTrack21JSON(BaseDataset):
     """Load a single precomputed json file."""
 
-    json: dict[str, dict]
-    """The content of the given PoseTrack21 json file."""
-
-    def __init__(self, config: Config, path: NodePath) -> None:
+    def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
         super(BaseDataset, self).__init__(config=config, path=path)
 
         self.validate_params(pt21_json_validations)
 
         # validate and get the path to the json
-        path: FilePath = self.get_filepath_in_dataset(self.params["path"])
+        if json_path is None:
+            json_path: FilePath = self.get_path_in_dataset(self.params["path"])
+        else:
+            if self.print("debug"):
+                print(f"Used given json_path '{json_path}' instead of self.params['path'] '{self.params['path']}'")
 
         # validate and get json data
-        self.json = read_json(path)
-        validate_pt21_json(self.json)
+        json: dict[str, list[dict[str, any]]] = read_json(json_path)
+        validate_pt21_json(json)
 
-        # create a mapping from image id to all the information about this image that was provided by PT21
-        self.map_img_id: dict[int, dict[str, any]] = {img["image_id"]: img for img in self.json["images"]}
-        for k, v in self.map_img_id.items():
-            # Add the full file path to the image
-            self.map_img_id[k]["file_path"] = project_to_abspath(
-                os.path.join(self.params["dataset_path"], str(v["file_name"]))
-            )
-            # Add original image shape - imagesize output = (w,h) and our own format = (h, w)
-            self.map_img_id[k]["img_shape"]: ImgShape = imagesize.get(v["file_path"])[::-1]
+        # create a mapping from image id to full filepath
+        self.map_img_id_path: dict[int, FilePath] = {
+            img["image_id"]: project_to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
+            for img in json["images"]
+        }
 
-        # generate list of data samples
-        self.data: list[DataSample] = self.pt21_to_data_sample()
-        del self.json
+        # imagesize.get() output = (w,h) and our own format = (h, w)
 
-    def pt21_to_data_sample(self) -> list[DataSample]:
-        """Convert every detection in PoseTrack21 JSON file to DataSample.
+        self.img_shape: ImgShape = imagesize.get(list(self.map_img_id_path.values())[0])[::-1]
 
-        Returns:
-            samples: A list of DataSamples.
+        if any(imagesize.get(path)[::-1] != self.img_shape for img_id, path in self.map_img_id_path.items()):
+            raise ValueError(f"The images within a single folder should have equal shapes. json_path: {json_path}")
+
+        self.len = len(json["annotations"])
+        self.data: list[dict[str, any]] = json["annotations"]
+
+    def __len__(self) -> int:
+        return self.len
+
+    def __getitems__(self, indices: list[int]) -> DataSample:
+        """Given list of indices, return DataSample object.
+
+        Batching might be faster if we do not have to create DataSample twice.
+        Once for every single object, once for the batch.
         """
-        samples: list[DataSample] = []
-        for anno in self.json["annotations"]:
-            # Within PT21, the 17 key points and their visibility are stored in one list of len 51,
-            # with a sorting of: [x_i, y_i, vis_i, ...].
-            # By making sure the key points have three dimensions, we reduce the overhead later on.
-            keypoints, visibility = torch.split(
-                tensor=torch.FloatTensor(anno["keypoints"]).reshape((1, 17, 3)),
-                split_size_or_sections=[2, 1],
-                dim=-1,
-            )
-            samples.append(
-                DataSample(
-                    filepath=self.map_img_id[anno["image_id"]]["file_path"],
-                    bbox=tv_tensors.BoundingBoxes(
-                        anno["bbox"],
-                        format="XYWH",  # all PT21 bboxes are in box_format XYWH
-                        canvas_size=self.map_img_id[anno["image_id"]]["img_shape"][::-1],  # canvas (h,w)
-                    ),
-                    keypoints=keypoints,
-                    person_id=anno["person_id"] if "person_id" in anno else -1,
-                    # additional values which are not required
-                    joint_weight=visibility,
-                    track_id=anno["track_id"],
-                    id=anno["id"],
-                    image_id=anno["image_id"],
-                    category_id=anno["category_id"],
-                    bbox_head=tv_tensors.BoundingBoxes(
-                        anno["bbox_head"],
-                        format="XYWH",  # all PT21 bboxes are in box_format XYWH
-                        canvas_size=self.map_img_id[anno["image_id"]]["img_shape"][::-1],  # canvas (h,w)
-                    ),
-                )
-            )
-        return samples
+
+        def stack_key(key: str) -> torch.Tensor:
+            return torch.stack([torch.Tensor(self.data[i][key], device=self.device) for i in indices])
+
+        keypoints, visibility = torch.split(
+            tensor=torch.FloatTensor(
+                torch.stack([torch.Tensor(self.data[i]["keypoints"]).reshape((17, 3)) for i in indices]),
+                device=self.device,
+            ),
+            split_size_or_sections=[2, 1],
+            dim=-1,
+        )
+        return DataSample(
+            validate=False,
+            filepath=tuple(self.map_img_id_path[self.data[i]["image_id"]] for i in indices),
+            bbox=tv_tensors.BoundingBoxes(
+                stack_key("bbox"), format="XYWH", canvas_size=self.img_shape, device=self.device
+            ),
+            keypoints=keypoints,
+            person_id=stack_key("person_id").int(),
+            # additional values which are not required
+            joint_weight=visibility,
+            track_id=stack_key("track_id").int(),
+            id=stack_key("id").int(),
+            image_id=stack_key("image_id").int(),
+            category_id=stack_key("category_id").int(),
+            bbox_head=tv_tensors.BoundingBoxes(
+                stack_key("bbox_head"), format="XYWH", canvas_size=self.img_shape, device=self.device
+            ),
+        )
+
+    def arbitrary_to_ds(self, a: dict) -> DataSample:
+        """Convert raw PoseTrack21 annotations to DataSample object."""
+        keypoints, visibility = torch.split(
+            tensor=torch.FloatTensor(a["keypoints"], device=self.device).reshape((1, 17, 3)),
+            split_size_or_sections=[2, 1],
+            dim=-1,
+        )
+        return DataSample(
+            validate=False,  # This is given PT21 data, no need to validate...
+            filepath=self.map_img_id_path[a["image_id"]],
+            bbox=tv_tensors.BoundingBoxes(a["bbox"], format="XYWH", canvas_size=self.img_shape, device=self.device),
+            keypoints=keypoints,
+            person_id=a["person_id"] if "person_id" in a else -1,
+            # additional values which are not required
+            joint_weight=visibility,
+            track_id=a["track_id"],
+            id=a["id"],
+            image_id=a["image_id"],
+            category_id=a["category_id"],
+            bbox_head=tv_tensors.BoundingBoxes(
+                a["bbox_head"], format="XYWH", canvas_size=self.img_shape, device=self.device
+            ),
+        )

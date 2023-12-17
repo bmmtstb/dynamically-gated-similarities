@@ -46,9 +46,6 @@ class DGSTracker:
         self.wm = ...
 
         # set up models
-        # self.m_backbone: BackboneModule = module_loader(self.cfg, "backbone")
-        # self.m_backbone = torch.compile(self.m_backbone)
-
         # self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
         # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
 
@@ -58,14 +55,14 @@ class DGSTracker:
 
         # self.m_alpha = ...
 
+        self.dataset: BaseDataset = module_loader(self.cfg, "dataset")
+
     @enable_keyboard_interrupt
     def run(self) -> None:
         """Run Tracker."""
-        # dataset
-        dataset: BaseDataset = module_loader(self.cfg, "dataset")
-
+        assert hasattr(self, "dataset")
         # dataloader
-        data_loader = get_data_loader(self.cfg, dataset)
+        data_loader = get_data_loader(self.cfg, self.dataset)
         for batch_idx, batch in enumerate(data_loader):
             batch: DataSample
             torch_show_image(batch.image)
@@ -90,7 +87,7 @@ class DGSTracker:
 
     def terminate(self):
         """Terminate tracker and make sure to stop all submodules and (possible) parallel threads."""
-        model_names = ["backbone", "m_vis_reid", "m_vis_siml", "m_pose_reid", "m_pose_warp", "m_pose_siml"]
+        model_names = ["dataset", "backbone", "m_vis_reid", "m_vis_siml", "m_pose_reid", "m_pose_warp", "m_pose_siml"]
         for name in model_names:
             if (
                 hasattr(self, name)  # Model exists

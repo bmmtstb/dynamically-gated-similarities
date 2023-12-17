@@ -2,6 +2,7 @@
 Module for handling data loading and preprocessing using torch Datasets.
 """
 import os
+from abc import abstractmethod
 from typing import Callable, Type, Union
 
 import torch
@@ -12,7 +13,7 @@ from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
 from dgs.models.states import DataSample
-from dgs.utils.files import is_project_file, project_to_abspath
+from dgs.utils.files import is_project_dir, is_project_file, project_to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations  # pylint: disable=unused-import
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
@@ -84,7 +85,8 @@ def collate_data_samples(batch: list[DataSample]) -> DataSample:
         }
     )
     c_batch: dict[str, any] = collate(batch, collate_fn_map=custom_collate_map)
-    return DataSample(**c_batch)
+    # shouldn't need validation, because every single DataSample has been validated before.
+    return DataSample(**c_batch, validate=False)
 
 
 class BaseDataset(TorchDataset, BaseModule):
@@ -118,8 +120,8 @@ class BaseDataset(TorchDataset, BaseModule):
         self.transform_crop_resize
     """
 
-    data: list[DataSample]
-    """Generator or List of all the dataset samples. Indexed per bounding box instead of per image.
+    data: list
+    """List of all the dataset samples. Indexed per bounding box instead of per image.
     
     Every dict contains a single bounding box sample.
     """
@@ -132,7 +134,10 @@ class BaseDataset(TorchDataset, BaseModule):
         super().__init__(config=config, path=path)
 
     def __len__(self) -> int:
-        """Override len() functionality for torch."""
+        """Override len() functionality for torch.
+
+        The Length of the dataset is technically just len(data), but might be obtained otherwise.
+        """
         return len(self.data)
 
     def __getitem__(self, idx: int) -> DataSample:
@@ -144,20 +149,28 @@ class BaseDataset(TorchDataset, BaseModule):
         Returns:
             Precomputed backbone output
         """
-        sample = self.data[idx]
+        sample: DataSample = self.arbitrary_to_ds(self.data[idx])
         if "image_crop" not in sample or "local_coordinates" not in sample:
-            structured_input = {
-                "image": validate_images(load_image(sample.filepath)),
-                "box": validate_bboxes(sample.bbox),
-                "keypoints": validate_key_points(sample.keypoints),
-                "output_size": self.params["crop_size"],
-                "mode": self.params["crop_mode"],
-            }
-            new_sample = self.transform_crop_resize()(structured_input)
-            sample.image_crop = new_sample["image"]
-            sample.keypoints_local = new_sample["keypoints"]
-
+            self.get_image_crop(sample)
         return sample
+
+    @abstractmethod
+    def arbitrary_to_ds(self, a) -> DataSample:
+        """Given a single arbitrary data sample, convert it to a DataSample object."""
+        raise NotImplementedError
+
+    def get_image_crop(self, ds: DataSample):
+        """Add image crop and local keypoints to given sample"""
+        structured_input = {
+            "image": validate_images(load_image(ds.filepath)),
+            "box": validate_bboxes(ds.bbox),
+            "keypoints": validate_key_points(ds.keypoints),
+            "output_size": self.params["crop_size"],
+            "mode": self.params["crop_mode"],
+        }
+        new_sample = self.transform_crop_resize()(structured_input)
+        ds.image_crop = new_sample["image"]
+        ds.keypoints_local = new_sample["keypoints"]
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:
@@ -228,23 +241,24 @@ class BaseDataset(TorchDataset, BaseModule):
             ]
         )
 
-    def get_filepath_in_dataset(self, filepath: FilePath) -> FilePath:
-        """Given an arbitrary filepath, return its absolute path.
+    def get_path_in_dataset(self, path: FilePath) -> FilePath:
+        """Given an arbitrary file- or directory-path, return its absolute path.
 
-        1. check whether the file is a valid absolute file
-        2. check whether the file is a project file
-        3. check whether the file is a file within this dataset
+        1. check whether the path is a valid absolute path
+        2. check whether the path is a valid project path
+        3. check whether the path is an existing path within self.params["dataset_path"]
 
         Returns:
-            The absolute path to the found file.
+            The absolute found path to the file or directory.
 
         Raises:
-            FileNotFoundError: If the file is not found
+            FileNotFoundError: If the path is not found
         """
-        if os.path.isfile(filepath):
-            return filepath
-        if is_project_file(filepath):
-            return project_to_abspath(filepath)
-        if is_project_file(os.path.join(self.params["dataset_path"], str(filepath))):
-            return project_to_abspath(os.path.join(self.params["dataset_path"], str(filepath)))
-        raise FileNotFoundError(f"Could not find path file at {filepath}")
+        if os.path.exists(path):
+            return os.path.normpath(path)
+        if is_project_file(path) or is_project_dir(path):
+            return project_to_abspath(path)
+        dataset_path = os.path.join(self.params["dataset_path"], str(path))
+        if is_project_file(dataset_path) or is_project_dir(dataset_path):
+            return project_to_abspath(dataset_path)
+        raise FileNotFoundError(f"Could not find a path to file or directory at {path}")

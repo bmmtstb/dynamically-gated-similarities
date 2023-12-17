@@ -27,7 +27,7 @@ cfg.training = False
 # Dataset #
 # ####### #
 cfg.dataset = EasyDict()
-cfg.dataset.model = "PoseTrack21JSON"
+cfg.dataset.model = "PoseTrack21"
 cfg.dataset.dataset_path = "./data/PoseTrack21/"  # overall dataset path
 cfg.dataset.path = "./posetrack_data/val/000342_mpii_test.json"  # path to data (absolute, local, or within dataset)
 

@@ -13,7 +13,6 @@ from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
     validate_filepath,
-    validate_ids,
     validate_images,
     validate_key_points,
 )
@@ -291,10 +290,9 @@ class DataSample(UserDict):
 
     def __init__(
         self,
-        filepath: str | list[str],
+        filepath: str | list[str] | tuple[str, ...],
         bbox: tv_tensors.BoundingBoxes,
         keypoints: torch.Tensor,
-        person_id: Union[int, torch.IntTensor, torch.Tensor] = None,
         validate: bool = True,
         **kwargs,
     ) -> None:
@@ -306,13 +304,10 @@ class DataSample(UserDict):
             filepath = validate_filepath(filepath)
             bbox = validate_bboxes(bbox)
             keypoints = validate_key_points(keypoints)
-            person_id = validate_ids(person_id) if person_id is not None else None
 
         self.data["filepath"]: FilePaths = filepath
         self.data["bbox"]: tv_tensors.BoundingBoxes = bbox
         self.data["keypoints"]: torch.Tensor = keypoints
-        if person_id is not None:
-            self.data["person_id"]: torch.IntTensor = person_id
 
         for k, v in kwargs.items():
             if hasattr(self, k) and callable(getattr(self, k)):
@@ -328,6 +323,14 @@ class DataSample(UserDict):
     def __str__(self) -> str:
         """Overwrite representation to be image name."""
         return f"{self.data['filepath']} {self.data['bbox']}"
+
+    @property
+    def person_id(self) -> torch.IntTensor:
+        return self.data["person_id"]
+
+    @person_id.setter
+    def person_id(self, person_id: Union[int, torch.IntTensor]) -> None:
+        self.data["person_id"] = torch.IntTensor(person_id)
 
     @property
     def filepath(self) -> FilePaths:
@@ -364,6 +367,7 @@ class DataSample(UserDict):
 
     @property
     def heatmap(self) -> torch.FloatTensor:
+        """Get the heatmaps of this sample."""
         return self.data["heatmap"]
 
     @heatmap.setter
@@ -378,6 +382,7 @@ class DataSample(UserDict):
 
     @property
     def keypoints_local(self) -> torch.Tensor:
+        """Get local keypoints."""
         assert "keypoints_local" in self
         assert len(self.data["keypoints_local"].shape) == 3, "local key points have wrong dimensions"
         assert (

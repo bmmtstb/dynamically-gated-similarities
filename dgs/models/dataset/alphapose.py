@@ -50,48 +50,33 @@ class AlphaPoseLoader(BaseDataset):
         self.validate_params(ap_load_validations)
 
         json = read_json(self.params["path"])
-        self.json: dict[str, dict]
         # different AP output formats
         if isinstance(json, list):
-            self.json = {d["image_id"]: d for d in json}
-        elif isinstance(json, dict):
-            self.json = json
+            self.data: list[dict] = json
         else:
             raise NotImplementedError(f"JSON file {self.params['path']} does not contain known instances.")
 
         self.img_folder_path: FilePath = self.params.get("img_folder_path", "")
-        self.data: list[DataSample] = self.ap_to_data_sample()
 
-    def ap_to_data_sample(self) -> list[DataSample]:
-        """Convert every detection from AlphaPose to a DataSample object.
+    def arbitrary_to_ds(self, a) -> DataSample:
+        keypoints, visibility = torch.split(
+            tensor=torch.FloatTensor(a["keypoints"]).reshape((-1, 3)),
+            split_size_or_sections=[2, 1],
+            dim=1,
+        )
+        file_path = os.path.join(self.img_folder_path, a["image_id"])
 
-        Yields:
-            A list of DataSample objects.
-        """
-        samples: list[DataSample] = []
-
-        for detection in self.json:
-            keypoints, visibility = torch.split(
-                tensor=torch.FloatTensor(detection["keypoints"]).reshape((-1, 3)),
-                split_size_or_sections=[2, 1],
-                dim=1,
-            )
-            file_path = os.path.join(self.img_folder_path, detection["image_id"])
-
-            samples.append(
-                DataSample(
-                    filepath=file_path,
-                    bbox=tv_tensors.BoundingBoxes(
-                        detection["bboxes"],
-                        format="XYWH",
-                        canvas_size=imagesize.get(file_path),
-                    ),
-                    keypoints=keypoints,
-                    person_id=detection["idx"] if "idx" in detection else -1,
-                    # additional values which are not required
-                    image_id=detection["image_id"],
-                    joint_weight=visibility,
-                    person_score=detection["score"],  # fixme divide by 6 for COCO, by 1 for MPII...?
-                )
-            )
-        return samples
+        return DataSample(
+            filepath=file_path,
+            bbox=tv_tensors.BoundingBoxes(
+                a["bboxes"],
+                format="XYWH",
+                canvas_size=imagesize.get(file_path),
+            ),
+            keypoints=keypoints,
+            person_id=a["idx"] if "idx" in a else -1,
+            # additional values which are not required
+            image_id=a["image_id"],
+            joint_weight=visibility,
+            person_score=a["score"],  # fixme divide by 6 for COCO, by 1 for MPII...?
+        )

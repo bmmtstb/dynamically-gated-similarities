@@ -57,7 +57,7 @@ def mkdir_if_missing(dirname: FilePath) -> None:
         os.makedirs(dirname, exist_ok=True)
 
 
-def read_json(filepath: FilePath) -> dict | list:
+def read_json(filepath: FilePath) -> dict[any, any] | list[any]:
     """Reads json file from a path.
 
     Args:

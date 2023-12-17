@@ -9,7 +9,7 @@ training: off
 batch_size: 32
 
 dataset:
-    model: "PoseTrack21Loader"
+    model: "PoseTrack21"
 
 # Modules
 

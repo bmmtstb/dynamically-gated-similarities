@@ -18,7 +18,7 @@ module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be rem
 }
 
 submodules: dict[str, list[str]] = {
-    "dataset": ["AlphaPoseLoader", "PoseTrack21Loader", "PoseTrack21JSON"],
+    "dataset": ["AlphaPoseLoader", "PoseTrack21", "PoseTrack21JSON"],
     "backbone": ["AlphaPose"],
     "visual_embedding_generator": ["torchreid"],
     "pose_embedding_generator": [],
@@ -78,10 +78,10 @@ def module_loader(config: Config, module: str):
             from dgs.models.dataset.alphapose import AlphaPoseLoader
 
             return AlphaPoseLoader(config, path)
-        if model_name == "PoseTrack21Loader":
-            from dgs.models.dataset.posetrack import PoseTrack21Loader
+        if model_name == "PoseTrack21":
+            from dgs.models.dataset.posetrack import get_pose_track_21
 
-            return PoseTrack21Loader(config, path)
+            return get_pose_track_21(config, path)
         if model_name == "PoseTrack21JSON":
             from dgs.models.dataset.posetrack import PoseTrack21JSON
 
