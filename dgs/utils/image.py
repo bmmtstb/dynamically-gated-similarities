@@ -447,7 +447,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         delta = [self.W - nw, self.H - nh]
 
         # use delta to shift bbox, such that the bbox uses local coordinates
-        box_diff = torch.div(2, torch.tensor(delta + [0.0, 0.0], device=coordinates.device, dtype=torch.float32))
+        box_diff = torch.div(torch.tensor(delta + [0.0, 0.0], device=coordinates.device, dtype=torch.float32), 2)
         cropped_bboxes: tv_tensors.BoundingBoxes = tv_tensors.wrap(bboxes - box_diff, like=bboxes)
 
         # use delta to shift the coordinates, such that they use local coordinates
@@ -455,8 +455,8 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
             # fixme: 3d coordinates have no crop in the third dimension ?
             delta.append(0)
 
-        cropped_coords: torch.Tensor = coordinates - 0.5 * torch.tensor(
-            delta, device=coordinates.device, dtype=torch.float32
+        cropped_coords: torch.Tensor = coordinates - torch.div(
+            torch.tensor(delta, device=coordinates.device, dtype=torch.float32), 2
         )
 
         return {

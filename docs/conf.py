@@ -43,6 +43,9 @@ extensions = [
     "sphinx.ext.napoleon",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
+linkcheck_ignore = [
+    ".*bmmtstb\.github\.io\/dynamically\-gated\-similarities\/.*",  # Server is down while running docs workflow
+]
 linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
     ".*github\.io.*",
     ".*github\.com.*",
