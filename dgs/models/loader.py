@@ -18,7 +18,7 @@ module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be rem
     "visual_embedding_generator": ["visual_embedding_generator"],
     "visual_similarity": ["visual_similarity"],
     "pose_embedding_generator": ["pose_embedding_generator"],
-    "pose_similarity":   ["pose_similarity"],
+    "pose_similarity": ["pose_similarity"],
     "pose_warping_module": ["pose_warping_module"],
 }
 

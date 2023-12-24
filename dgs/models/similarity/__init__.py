@@ -17,11 +17,11 @@ from .similarity import (
 def get_similarity_module(name: str) -> Type[SimilarityModule]:
     """Given the name of one of the SimilarityModules, return an instance."""
     modules: dict[str, Type[SimilarityModule]] = {
-        "cosine":        CosineSimilarityModule,
-        "dot":           DotProductModule,
-        "euclidean":     EuclideanDistanceModule,
+        "cosine": CosineSimilarityModule,
+        "dot": DotProductModule,
+        "euclidean": EuclideanDistanceModule,
         "pairwise_dist": PairwiseDistanceModule,
-        "p_norm_dist":   PNormDistanceModule,
+        "p_norm_dist": PNormDistanceModule,
     }
     if name not in modules:
         raise InvalidParameterException(f"Unknown similarity with name: {name}.")

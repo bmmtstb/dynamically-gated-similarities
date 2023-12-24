@@ -42,15 +42,15 @@ DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32
 DUMMY_JOINT_WEIGHT: torch.FloatTensor = torch.tensor([i / J for i in range(J)]).view((1, J, 1)).float()
 
 DUMMY_DATA: dict[str, any] = {
-    "filepath":        DUMMY_FILE_PATH,
-    "bbox":            DUMMY_BBOX,
-    "keypoints":       DUMMY_KEY_POINTS_TENSOR,
+    "filepath": DUMMY_FILE_PATH,
+    "bbox": DUMMY_BBOX,
+    "keypoints": DUMMY_KEY_POINTS_TENSOR,
     "keypoints_local": DUMMY_KEY_POINTS_TENSOR,
-    "heatmap":         DUMMY_HM_TENSOR,
-    "image":           load_test_image(IMG_NAME),
-    "image_crop":      DUMMY_IMG,
-    "person_id":       10,
-    "joint_weight":    DUMMY_JOINT_WEIGHT,
+    "heatmap": DUMMY_HM_TENSOR,
+    "image": load_test_image(IMG_NAME),
+    "image_crop": DUMMY_IMG,
+    "person_id": 10,
+    "joint_weight": DUMMY_JOINT_WEIGHT,
 }
 
 
@@ -76,13 +76,13 @@ class TestDataSample(unittest.TestCase):
                 True,
             ),
             (  # no validation
-                    "./tests/test_data/866-200x300.jpg",
-                    DUMMY_BBOX_TENSOR,
-                    DUMMY_KEY_POINTS_TENSOR,
-                    "./tests/test_data/866-200x300.jpg",
-                    DUMMY_BBOX_TENSOR,
-                    DUMMY_KEY_POINTS_TENSOR,
-                    False,
+                "./tests/test_data/866-200x300.jpg",
+                DUMMY_BBOX_TENSOR,
+                DUMMY_KEY_POINTS_TENSOR,
+                "./tests/test_data/866-200x300.jpg",
+                DUMMY_BBOX_TENSOR,
+                DUMMY_KEY_POINTS_TENSOR,
+                False,
             ),
             (  # batched init
                 [DUMMY_FILE_PATH for _ in range(10)],

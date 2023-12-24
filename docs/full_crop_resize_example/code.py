@@ -41,12 +41,12 @@ if __name__ == "__main__":
 
     for i, mode in enumerate(CustomToAspect.modes):
         structured_input = {
-            "image":       validate_images(load_image("./docs/full_crop_resize_example/1_original.jpg")),
-            "box":         validate_bboxes(bboxes),
-            "keypoints":   validate_key_points(coords),
+            "image": validate_images(load_image("./docs/full_crop_resize_example/1_original.jpg")),
+            "box": validate_bboxes(bboxes),
+            "keypoints": validate_key_points(coords),
             "output_size": (200, 200),
-            "mode":        mode,
-            "fill":        (255, 0, 255),  # pink for fill pad
+            "mode": mode,
+            "fill": (255, 0, 255),  # pink for fill pad
         }
         r = transform_crop_resize()(structured_input)
         new_images = r["image"]

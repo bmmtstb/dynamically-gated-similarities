@@ -9,7 +9,7 @@ from dgs.utils.types import Config, NodePath, Validations
 
 lpbe_validations: Validations = {
     "hidden_layers": [("instance", (list, tuple, None))],
-    "input_shape":   ["int", ("gt", 0)],
+    "input_shape": ["int", ("gt", 0)],
     # "bias": [("isinstance", bool)]
 }
 
@@ -68,11 +68,11 @@ class LinearPoseBasedEmbeddingGenerator(TorchEmbeddingGeneratorModule):
         return self.configure_torch_model(
             nn.Sequential(
                 *[
-                     nn.Linear(
-                         in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias, device=self.device
-                     )
-                     for i in range(len(hidden_layers) - 1)
-                 ]
-                 + [nn.Sigmoid()]
+                    nn.Linear(
+                        in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias, device=self.device
+                    )
+                    for i in range(len(hidden_layers) - 1)
+                ]
+                + [nn.Sigmoid()]
             )
         )

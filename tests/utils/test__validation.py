@@ -48,9 +48,9 @@ class TestValidation(unittest.TestCase):
             ),
             (torch.ones((1, 1, 1, 3, 10, 20)).byte(), 4, DUMMY_IMAGE),
             (
-                    torch.ones((1, 1, 1, 3, 10, 20)).byte(),
+                torch.ones((1, 1, 1, 3, 10, 20)).byte(),
                 None,
-                    tv_tensors.Image(torch.ones((1, 1, 1, 3, 10, 20)).byte()),
+                tv_tensors.Image(torch.ones((1, 1, 1, 3, 10, 20)).byte()),
             ),
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
