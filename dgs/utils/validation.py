@@ -1,14 +1,62 @@
 """
 Utilities for validating recurring data types.
 """
+import os
 from typing import Iterable, Union
 
 import torch
 from torchvision import tv_tensors
 
+from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import is_file, project_to_abspath
-from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage
+from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage, Validator
+
+VALIDATIONS: dict[str, Validator] = {
+    "None":                     (lambda x, _: x is None),
+    "not None":                 (lambda x, _: x is not None),
+    "eq":                       (lambda x, d: x == d),
+    "neq":                      (lambda x, d: x != d),
+    "gt":                       (lambda x, d: isinstance(d, int | float) and x > d),
+    "gte":                      (lambda x, d: isinstance(d, int | float) and x >= d),
+    "lt":                       (lambda x, d: isinstance(d, int | float) and x < d),
+    "lte":                      (lambda x, d: isinstance(d, int | float) and x <= d),
+    "in":                       (lambda x, d: hasattr(d, "__contains__") and x in d),
+    "not in":                   (lambda x, d: x not in d),
+    "contains":                 (lambda x, d: hasattr(x, "__contains__") and d in x),
+    "not contains":             (lambda x, d: hasattr(x, "__contains__") and d not in x),
+    "str":                      (lambda x, _: isinstance(x, str)),
+    "int":                      (lambda x, _: isinstance(x, int)),
+    "float":                    (lambda x, _: isinstance(x, float)),
+    "number":                   (lambda x, _: isinstance(x, int | float)),
+    "instance":                 isinstance,
+    "isinstance":               isinstance,
+    "between":                  (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] < x < d[1]),
+    "within":                   (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] <= x <= d[1]),
+    "outside":                  (lambda x, d: isinstance(d, tuple) and len(d) == 2 and x < d[0] or x > d[1]),
+    "len":                      (lambda x, d: hasattr(x, "__len__") and len(x) == d),
+    "shorter":                  (lambda x, d: hasattr(x, "__len__") and len(x) <= d),
+    "longer":                   (lambda x, d: hasattr(x, "__len__") and len(x) >= d),
+    "startswith":               (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.startswith(d)),
+    "endswith":                 (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.endswith(d)),
+    "file exists":              (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
+    "file exists in project":   (
+        lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
+    "file exists in folder":    (
+        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isfile(os.path.join(f, x))
+    ),
+    "folder exists":            (lambda x, _: isinstance(x, FilePath) and os.path.isdir(x)),
+    "folder exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(os.path.join(PROJECT_ROOT, x))),
+    "folder exists in folder":  (
+        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isdir(os.path.join(f, x))
+    ),
+    # additional logical operators for nested validations
+    "not":                      (lambda x, d: not VALIDATIONS[d[0]](x, d[1])),
+    "and":                      (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
+    "or":                       (lambda x, d: any(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
+    "xor":                      (
+        lambda x, d: bool(VALIDATIONS[d[0][0]](x, d[0][1])) != bool(VALIDATIONS[d[1][0]](x, d[1][1]))),
+}
 
 
 def validate_bboxes(
@@ -37,9 +85,6 @@ def validate_bboxes(
     """
     if not isinstance(bboxes, tv_tensors.BoundingBoxes):
         raise TypeError(f"Bounding boxes should be torch tensor or tv_tensor Bounding Boxes but is {type(bboxes)}")
-
-    if bboxes.shape[-1] != 4:
-        raise ValueError(f"Bounding boxes should have a size of four in the last dimension, but is {bboxes.shape[-1]}")
 
     if box_format is not None and box_format != bboxes.format:
         raise ValueError(f"Bounding boxes are expected to be in format {box_format} but are in format {bboxes.format}")
@@ -130,7 +175,7 @@ def validate_heatmaps(
     if not isinstance(heatmaps, (Heatmap, torch.Tensor)):
         raise TypeError(f"heatmaps should be a Heatmap or torch tensor but are {type(heatmaps)}.")
 
-    if nof_joints is not None and heatmaps.shape[-3] != nof_joints:
+    if nof_joints is not None and (len(heatmaps.shape) < 3 or heatmaps.shape[-3] != nof_joints):
         raise ValueError(f"The number of joints should be {nof_joints} but is {heatmaps.shape[-2]}.")
 
     if dims is not None:
@@ -149,10 +194,10 @@ def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
         Torch integer tensor with one dimension.
     """
     if isinstance(ids, int):
-        ids = torch.IntTensor([ids])
+        ids = torch.tensor([ids], dtype=torch.int)
 
-    if not isinstance(ids, torch.Tensor):
-        raise TypeError(f"The input should be a torch tensor but is {type(ids)}")
+    if not isinstance(ids, torch.Tensor) or (isinstance(ids, torch.Tensor) and ids.dtype != torch.int):
+        raise TypeError(f"The input should be a torch int tensor but is {type(ids)}")
 
     ids.squeeze_()
 
@@ -245,3 +290,21 @@ def validate_key_points(
         key_points = validate_dimensions(key_points, dims)
 
     return key_points
+
+
+def validate_value(value: any, data: any, validation: str) -> bool:
+    """
+    Check a single value against a given predefined validation, possibly given some additional data
+
+    Args:
+        value: The value to validate.
+        data: Possibly additional data needed for validation, is ignored otherwise.
+        validation: The name of the validation to perform.
+
+    Returns:
+        Whether the given value is valid.
+    """
+    if validation not in VALIDATIONS:
+        raise KeyError(f"Validation {validation} does not exist.")
+
+    return VALIDATIONS[validation](value, data)

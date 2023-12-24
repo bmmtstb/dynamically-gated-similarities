@@ -10,21 +10,29 @@ from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
     validate_filepath,
+    validate_heatmaps,
     validate_ids,
     validate_images,
     validate_key_points,
 )
 
-DUMMY_IMAGE_TENSOR: torch.ByteTensor = torch.ByteTensor(torch.ones((1, 3, 10, 20), dtype=torch.uint8))
+J = 20
+
+DUMMY_IMAGE_TENSOR: torch.ByteTensor = torch.ones((1, 3, 10, 20)).byte()
 DUMMY_IMAGE: tv_tensors.Image = tv_tensors.Image(DUMMY_IMAGE_TENSOR)
 
-DUMMY_KEY_POINTS_TENSOR: torch.Tensor = torch.rand((1, 20, 2))
+DUMMY_KEY_POINTS_TENSOR: torch.Tensor = torch.rand((1, J, 2))
 DUMMY_KEY_POINTS: torch.Tensor = DUMMY_KEY_POINTS_TENSOR.detach().clone()
 
 DUMMY_BBOX_TENSOR: torch.Tensor = torch.ones((1, 4)) * 10
 DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     DUMMY_BBOX_TENSOR, format=tv_tensors.BoundingBoxFormat.XYWH, canvas_size=(1000, 1000)
 )
+
+DUMMY_HM_TENSOR: torch.FloatTensor = (
+    torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
+)
+DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32)
 
 
 class TestValidation(unittest.TestCase):
@@ -36,13 +44,13 @@ class TestValidation(unittest.TestCase):
             (
                 DUMMY_IMAGE_TENSOR.squeeze_(),
                 None,
-                tv_tensors.Image(torch.ByteTensor(torch.ones((3, 10, 20), dtype=torch.uint8))),
+                tv_tensors.Image(torch.ones((3, 10, 20)).byte()),
             ),
-            (torch.ByteTensor(torch.ones((1, 1, 1, 3, 10, 20), dtype=torch.uint8)), 4, DUMMY_IMAGE),
+            (torch.ones((1, 1, 1, 3, 10, 20)).byte(), 4, DUMMY_IMAGE),
             (
-                torch.ByteTensor(torch.ones((1, 1, 1, 3, 10, 20), dtype=torch.uint8)),
+                    torch.ones((1, 1, 1, 3, 10, 20)).byte(),
                 None,
-                tv_tensors.Image(torch.ByteTensor(torch.ones((1, 1, 1, 3, 10, 20), dtype=torch.uint8))),
+                    tv_tensors.Image(torch.ones((1, 1, 1, 3, 10, 20)).byte()),
             ),
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
@@ -56,12 +64,12 @@ class TestValidation(unittest.TestCase):
     def test_validate_images_exceptions(self):
         for image, dims, exception_type in [
             (np.ones((1, 3, 10, 20), dtype=int), None, TypeError),
-            (torch.BoolTensor(torch.ones((1, 3, 10, 20), dtype=torch.bool)), None, TypeError),
-            (torch.ByteTensor(torch.ones((1, 2, 10, 20), dtype=torch.uint8)), None, ValueError),
-            (torch.ByteTensor(torch.ones((1, 10, 10, 20), dtype=torch.uint8)), None, ValueError),
-            (torch.ByteTensor(torch.ones((1, 0, 10, 20), dtype=torch.uint8)), None, ValueError),
-            (torch.ByteTensor(torch.ones((10, 20), dtype=torch.uint8)), None, ValueError),
-            (torch.ByteTensor(torch.ones(1000, dtype=torch.uint8)), None, ValueError),
+            (torch.ones((1, 3, 10, 20)).bool(), None, TypeError),  # bool tensor
+            (torch.ones((1, 2, 10, 20)).byte(), None, ValueError),
+            (torch.ones((1, 10, 10, 20)).byte(), None, ValueError),
+            (torch.ones((1, 0, 10, 20)).byte(), None, ValueError),
+            (torch.ones((10, 20)).byte(), None, ValueError),
+            (torch.ones(1000).byte(), None, ValueError),
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
                 with self.assertRaises(exception_type):
@@ -180,11 +188,11 @@ class TestValidation(unittest.TestCase):
     def test_validate_ids(self):
         for tensor, output in [
             (1, torch.ones(1).to(dtype=torch.int32)),
-            (123456, torch.IntTensor([123456])),
-            (torch.ones((1, 1, 100, 1)), torch.ones(1).to(dtype=torch.int32)),
-            (torch.ones((2, 1)), torch.ones(2).to(dtype=torch.int32)),
-            (torch.ones(20), torch.ones(20).to(dtype=torch.int32)),
-            (torch.IntTensor([[1, 2, 3, 4]]), torch.IntTensor([1, 2, 3, 4])),
+            (123456, torch.tensor([123456]).int()),
+            (torch.ones((1, 1, 100, 1)).int(), torch.ones(1).to(dtype=torch.int32)),
+            (torch.ones((2, 1)).int(), torch.ones(2).to(dtype=torch.int32)),
+            (torch.ones(20).int(), torch.ones(20).to(dtype=torch.int32)),
+            (torch.tensor([[1, 2, 3, 4]]).int(), torch.tensor([1, 2, 3, 4]).int()),
         ]:
             with self.subTest(msg=f"ids: {tensor}"):
                 self.assertTrue(torch.allclose(validate_ids(ids=tensor), output))
@@ -192,12 +200,32 @@ class TestValidation(unittest.TestCase):
     def test_validate_ids_exceptions(self):
         for tensor, exception_type in [
             (np.ones((1, 10)), TypeError),
-            (torch.ones((2, 5)), ValueError),
-            (torch.ones((1, 2, 1, 5)), ValueError),
+            (torch.ones((2, 5)).float(), TypeError),
+            (torch.ones((2, 5)).int(), ValueError),
+            (torch.ones((1, 2, 1, 5)).int(), ValueError),
         ]:
             with self.subTest():
                 with self.assertRaises(exception_type):
                     validate_ids(ids=tensor),
+
+    def test_validate_heatmaps(self):
+        for tensor, dims, n_j, output in [
+            (DUMMY_HM_TENSOR, None, None, DUMMY_HM),
+            (torch.zeros((J, 10, 20)), 4, J, tv_tensors.Mask(torch.zeros((1, J, 10, 20)))),
+            (torch.zeros((1, 1, J, 10, 20)), 3, J, tv_tensors.Mask(torch.zeros((J, 10, 20)))),
+        ]:
+            with self.subTest(msg=f"heatmap: {tensor}"):
+                self.assertTrue(torch.allclose(validate_heatmaps(tensor, dims=dims, nof_joints=n_j), output))
+
+    def test_validate_heatmaps_exceptions(self):
+        for tensor, n_j, exception_type in [
+            (np.ones((1, 10)), None, TypeError),
+            (torch.ones((2, 5)), J, ValueError),
+            (torch.ones((J + 1, 2, 5)), J, ValueError),
+        ]:
+            with self.subTest(f"shape: {tensor.shape}, n_j: {n_j}, excp: {exception_type}"):
+                with self.assertRaises(exception_type):
+                    validate_heatmaps(tensor, nof_joints=n_j),
 
 
 if __name__ == "__main__":

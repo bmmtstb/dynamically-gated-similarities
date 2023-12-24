@@ -3,14 +3,16 @@ Base model class as lowest building block for dynamic modules
 """
 import inspect
 from abc import ABC, abstractmethod
+from functools import wraps
 
 import torch
 from torch.nn import Module
 
-from dgs.utils.config import get_sub_config, validate_value
+from dgs.utils.config import get_sub_config
 from dgs.utils.constants import PRINT_PRIORITY
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.types import Config, Device, NodePath, Validations
+from dgs.utils.types import Config, NodePath, Validations
+from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
     "batch_size": ["int", ("gte", 1)],
@@ -33,8 +35,8 @@ def enable_keyboard_interrupt(func: callable) -> callable:
         Decorated function, which will have advanced keyboard interruption.
     """
 
+    @wraps(func)  # pass information to sphinx through the decorator / wrapper
     def module_wrapper(cls, *args, **kwargs):
-        """wrapper for decorator"""
         try:
             func(cls, *args, **kwargs)
         except KeyboardInterrupt as e:
@@ -47,7 +49,11 @@ def enable_keyboard_interrupt(func: callable) -> callable:
 
 
 class BaseModule(ABC):
-    """
+    r"""
+
+    Description
+    -----------
+
     Every Module is a building block that can be replaced with other building blocks.
     This defines a base module all of those building blocks inherit.
     This class should not be called directly and should only be inherited by other classes.
@@ -55,24 +61,46 @@ class BaseModule(ABC):
     Every module has access to the global configuration for parameters like the modules' device(s).
     Additionally, every module will have own parameters (params) which are a sub node of the overall configuration.
 
+    Configuration
+    -------------
+
+    batch_size: (int, optional, default: 32)
+        The batch size of the tracker, also used in all other modules, if not specified otherwise.
+
+    device: (Device, optional, default="cuda")
+        The device to run this module and tracker on.
+
+    gpus: (list[int], optional, default=[0])
+        List of GPU IDs to use during multi-GPU training or running.
+
+    num_workers: (int, optional, default=0)
+        The number of additional workers, the torch DataLoader should use to load the datasets.
+
+    print_prio: (str, optional, default: "normal")
+        How much information should be printed while running.
+
+    sp: (bool, optional, default=True)
+        Whether to use a single process (sp) or use multiprocessing.
+        If sp is false, 'gpus' has to be defined.
+
+    training: (bool, optional, default=False)
+        Whether the torch modules should train or evaluate.
+
+    Attributes:
+        config: The overall configuration of the whole algorithm.
+        params: The parameters for this specific module.
+        _path: Location of params within config as a node path.
+
     Args:
         config: The overall configuration of the whole algorithm
         path: Keys of config to the parameters of the current module
             e.g. the parameters for the pose estimator will be located in a pose-estimator subgroup of the config
             those key-based paths may be even deeper, just make sure that only information about this specific model
-            is stored in params
-
-    Attributes:
-        config (Config): The overall configuration of the whole algorithm
-        params (Config): The parameters for this specific module
-        _path (NodePath): Location of params within config as a node path
+            is stored in params.
     """
 
     @enable_keyboard_interrupt
     def __init__(self, config: Config, path: NodePath):
-        # init torch module
-        super().__init__()
-
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
         self._path: NodePath = path
@@ -86,11 +114,11 @@ class BaseModule(ABC):
             )
 
         # validate config when calling BaseModule class and not when calling its children
-        if self.__class__.__name__ == "BaseModule":
+        if self.__class__.__name__ == "BaseModule":  # fixme always true, even for child modules
             self.validate_params(module_validations, "config")
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
-        r"""Given per key validations, validate this module's parameters.
+        """Given per key validations, validate this module's parameters.
 
         Throws exceptions on invalid or nonexistent params.
 
@@ -115,23 +143,21 @@ class BaseModule(ABC):
         Example:
             This example is an excerpt of the validation of the BaseModule-configuration.
 
-            ::
-                >>> validations = {                             \
-                    "device": [                                 \
-                            "str",                              \
-                            ("or", (                            \
-                                ("in", ["cuda", "cpu"]),        \
-                                ("instance", torch.device)      \
-                    ))                                          \
-                        ],                                      \
-                        "print_prio": [("in", PRINT_PRIORITY)], \
-                        "callable": (lambda value: value == 1)  \
-                    }
+            >>> validations = {
+                "device": [
+                        "str",
+                        ("or", (
+                            ("in", ["cuda", "cpu"]),
+                            ("instance", torch.device)
+                ))
+                    ],
+                    "print_prio": [("in", PRINT_PRIORITY)],
+                    "callable": (lambda value: value == 1),
+                }
 
-            And within the class `__init__` call:
+            And within the class :meth:`__init__` call:
 
-            ::
-                >>> self.validate_params()
+            >>> self.validate_params()
 
         Raises:
             InvalidParameterException: If one of the parameters is invalid
@@ -217,16 +243,16 @@ class BaseModule(ABC):
         return index_given <= index_current
 
     @property
-    def device(self) -> Device:
-        """Shorthand for get device property."""
-        return self.config["device"]
+    def device(self) -> torch.device:
+        """Shorthand for getting the device configuration."""
+        return torch.device(self.config["device"])
 
     def configure_torch_model(self, module: Module, train: bool = None) -> Module:
-        """Set compute mode and send model to device or parallel devices if applicable.
+        """Set compute mode and send model to the device or multiple parallel devices if applicable.
 
         Args:
             module: The torch module instance to configure.
-            train: Whether to train or eval this module, defaults to the value set in config.
+            train: Whether to train or eval this module, defaults to the value set in the base config.
 
         Returns:
             The module on the specified device or in parallel.
@@ -238,7 +264,7 @@ class BaseModule(ABC):
         else:
             module.eval()
         # send model to device(s)
-        if not self.config["sp"] and len(self.config.gpus) > 1:
+        if (not self.config["sp"] and len(self.config["gpus"]) > 1) or len(self.config["gpus"]) > 1:
             raise NotImplementedError("Parallel does not work yet.")
             # return DistributedDataParallel(module, device_ids=self.config.gpus).to(self.device)
         module.to(self.device)

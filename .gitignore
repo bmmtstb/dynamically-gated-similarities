@@ -175,9 +175,5 @@ cython_debug/
 /docs/dgs_autosummary
 /docs/_build
 
-# special venvs
-/docs/docs_venv
-/tests/test_venv
-
-# custom files
-/my_cleanup.sh
+# coverage and automated files
+/coverage/

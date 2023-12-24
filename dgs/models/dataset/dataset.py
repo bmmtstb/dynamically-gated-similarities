@@ -15,7 +15,7 @@ from dgs.models.module import BaseModule
 from dgs.models.states import DataSample
 from dgs.utils.files import is_project_dir, is_project_file, project_to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
-from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations  # pylint: disable=unused-import
+from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
 
 base_dataset_validations: Validations = {
@@ -23,6 +23,14 @@ base_dataset_validations: Validations = {
     "crop_size": [("instance", tuple), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
     "dataset_path": ["str", "folder exists in project"],
 }
+
+
+def collate_devices(batch: list[torch.device], *_args, **_kwargs) -> torch.device:
+    """Collate a batch of devices into a single device."""
+    device = batch[0]
+    if any(d != device for d in batch):
+        raise ValueError("Devices should be equal for each sample in a batch.")
+    return device
 
 
 def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tensor:
@@ -81,27 +89,30 @@ def collate_data_samples(batch: list[DataSample]) -> DataSample:
             tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
             tv_tensors.BoundingBoxes: collate_bboxes,
             (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
-            torch.Tensor: collate_tensors,
+            torch.device: collate_devices,
+            torch.Tensor: collate_tensors,  # override regular tensor collate to *not* add another dimension
         }
     )
     c_batch: dict[str, any] = collate(batch, collate_fn_map=custom_collate_map)
+
     # shouldn't need validation, because every single DataSample has been validated before.
     return DataSample(**c_batch, validate=False)
 
 
-class BaseDataset(TorchDataset, BaseModule):
+class BaseDataset(BaseModule, TorchDataset):
     """Base class for custom datasets.
 
     Using the Bounding Box as Index
     -------------------------------
-    The BaseDataset assumes that one sample of dataset (one __getitem__ call) contains one single bounding box.
+
+    The BaseDataset assumes that one sample of dataset (one :meth:`self.__getitem__` call)
+    contains one single bounding box.
     It should be possible to work with a plain dict,
     but to have a few quality-of-life features, the DataSample class was implemented.
 
-
-
     Why not use the Image ID as Index?
     ----------------------------------
+
     This is **not** chosen since the batch-size might vary when using the image index to create batches,
     because every image can have a different number of detections.
     With a batch size of B, we obtain B original images.
@@ -114,17 +125,10 @@ class BaseDataset(TorchDataset, BaseModule):
 
     The other option is to have batches with slightly different sizes.
     The DataLoader loads a fixed batch of images, the Dataset computes the resulting detections and returns those.
-
-    Methods:
-        self.transform_resize_image
-        self.transform_crop_resize
     """
 
     data: list
-    """List of all the dataset samples. Indexed per bounding box instead of per image.
-    
-    Every dict contains a single bounding box sample.
-    """
+    """Arbitrary data, which will be converted using :meth:`self.arbitrary_to_ds()`"""
 
     def __call__(self, *args, **kwargs) -> any:
         """Has to override call from BaseModule"""
@@ -149,7 +153,7 @@ class BaseDataset(TorchDataset, BaseModule):
         Returns:
             Precomputed backbone output
         """
-        sample: DataSample = self.arbitrary_to_ds(self.data[idx])
+        sample: DataSample = self.arbitrary_to_ds(self.data[idx]).to(self.device)
         if "image_crop" not in sample or "local_coordinates" not in sample:
             self.get_image_crop(sample)
         return sample
@@ -161,6 +165,8 @@ class BaseDataset(TorchDataset, BaseModule):
 
     def get_image_crop(self, ds: DataSample):
         """Add image crop and local keypoints to given sample"""
+        ds.to(self.device)
+
         structured_input = {
             "image": validate_images(load_image(ds.filepath)),
             "box": validate_bboxes(ds.bbox),
@@ -178,12 +184,12 @@ class BaseDataset(TorchDataset, BaseModule):
 
         This transform expects a custom structured input as a dict.
 
-        >>> structured_input: dict[str, any] = {\
-            "image": tv_tensors.Image,\
-            "box": tv_tensors.BoundingBoxes,\
-            "keypoints": torch.Tensor,\
-            "output_size": ImgShape,\
-            "mode": str,\
+        >>> structured_input: dict[str, any] = {
+            "image": tv_tensors.Image,
+            "box": tv_tensors.BoundingBoxes,
+            "keypoints": torch.Tensor,
+            "output_size": ImgShape,
+            "mode": str,
         }
 
         Returns:
@@ -206,12 +212,12 @@ class BaseDataset(TorchDataset, BaseModule):
 
         This transform expects a custom structured input as a dict.
 
-        >>> structured_input: dict[str, any] = {\
-            "image": tv_tensors.Image,\
-            "box": tv_tensors.BoundingBoxes,\
-            "keypoints": torch.Tensor,\
-            "output_size": ImgShape,\
-            "mode": str,\
+        >>> structured_input: dict[str, any] = {
+            "image": tv_tensors.Image,
+            "box": tv_tensors.BoundingBoxes,
+            "keypoints": torch.Tensor,
+            "output_size": ImgShape,
+            "mode": str,
         }
 
         Returns:

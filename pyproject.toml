@@ -19,6 +19,10 @@ classifiers = [
 ]
 dynamic = ["dependencies"]
 
+# ########## #
+# SETUPTOOLS #
+# ########## #
+
 [tool.setuptools]
 py-modules = ["dgs"]
 
@@ -32,6 +36,9 @@ docs = { file = ["./docs/requirements_docs.txt"] }
 Documentation = "https://bmmtstb.github.io/dynamically-gated-similarities/"
 Source = "https://github.com/bmmtstb/dynamically-gated-similarities"
 
+# ##### #
+# BLACK #
+# ##### #
 
 [tool.black]
 line-length = 120  # equal to .pylintrc
@@ -41,7 +48,50 @@ force-exclude = '''
 /(
       dependencies
     | data
-    | tests/test_venv
-    | docs/docs_venv
+    | .*/venv/
 )/
 '''
+
+# ######## #
+# COVERAGE #
+# ######## #
+
+[tool.coverage.run]
+branch = true
+data_file = ".coverage"
+source = ["dgs"]
+omit = [
+    "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
+]
+
+[tool.coverage.paths]
+source = ["dgs", "tests"]
+
+[tool.coverage.report]
+fail_under = 50  # fixme target is 80
+skip_covered = true
+skip_empty = true
+ignore_errors = true
+omit = [# files
+    "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
+]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__", # string representation of objects
+    "self.print\\(", # BaseModule.print()
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "assert ",
+    "raise NotImplementedError",
+    # Don't complain if non-runnable code isn't run:
+    "if __name__ == .__main__.:",
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "coverage/coverage_html_report"
+
+[tool.coverage.xml]
+output = "coverage/coverage.xml"

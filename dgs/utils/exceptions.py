@@ -4,11 +4,11 @@ Definition of custom exceptions.
 
 
 class InvalidParameterException(Exception):
-    """Exception to raise if one of the modules params is invalid."""
+    """Exception to raise if one of the modules params is invalid or missing."""
 
 
 class InvalidConfigException(Exception):
-    """Exception to raise if one value of a modules config is invalid."""
+    """Exception to raise if one value of a modules config is invalid or missing."""
 
 
 class ValidationException(Exception):
@@ -23,7 +23,3 @@ class InvalidPathException(OSError):
             super().__init__(f"{filepath} is not a valid path.")
         else:
             super().__init__(*args)
-
-
-class BoundingBoxException(Exception):
-    """Exception to raise if a given bounding-box is invalid."""

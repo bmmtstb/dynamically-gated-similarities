@@ -33,7 +33,7 @@ def create_bbox(H: int, W: int) -> tv_tensors.BoundingBoxes:
     """Create a valid bounding box with its corners on the corners of the original image."""
     return validate_bboxes(
         tv_tensors.BoundingBoxes(
-            torch.Tensor([0, 0, W, H]),
+            torch.tensor([0, 0, W, H]),
             format=tv_tensors.BoundingBoxFormat.XYWH,
             canvas_size=(H, W),  # H W
             dtype=torch.float32,
@@ -49,7 +49,7 @@ def create_coordinate_diagonal(H: int, W: int, amount: int = 11, left: float = 0
     step_size_w = W / (amount - 1)
     step_size_h = H / (amount - 1)
 
-    return validate_key_points(torch.Tensor([[left + i * step_size_w, top + i * step_size_h] for i in range(amount)]))
+    return validate_key_points(torch.tensor([[left + i * step_size_w, top + i * step_size_h] for i in range(amount)]))
 
 
 def create_structured_data(
@@ -263,7 +263,7 @@ class TestCustomToAspect(unittest.TestCase):
 
                         # test key points: diagonal of key_points has to stay diagonal, just shifted
                         self.assertTrue(
-                            torch.allclose(create_coordinate_diagonal(H, W) + torch.Tensor([l, t]), new_coords)
+                            torch.allclose(create_coordinate_diagonal(H, W) + torch.tensor([l, t]), new_coords)
                         )
                         # test output_size: should not have changed
                         self.assertEqual(out_shape, res["output_size"])
@@ -318,7 +318,9 @@ class TestCustomToAspect(unittest.TestCase):
 
                     # test key points: diagonal of key_points has to stay diagonal, just shifted
                     self.assertTrue(
-                        torch.allclose(create_coordinate_diagonal(H, W) - torch.FloatTensor([l, t]), new_coords)
+                        torch.allclose(
+                            create_coordinate_diagonal(H, W) - torch.tensor([l, t], dtype=torch.float32), new_coords
+                        )
                     )
                     # test output_size: should not have changed
                     self.assertEqual(out_shape, res["output_size"])
@@ -386,7 +388,7 @@ class TestCustomCropResize(unittest.TestCase):
                 H, W = img.shape[-2:]
 
                 custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
-                    torch.Tensor([bbox_l, bbox_t, bbox_w, bbox_h]),
+                    torch.tensor([bbox_l, bbox_t, bbox_w, bbox_h]),
                     canvas_size=(H, W),
                     format=tv_tensors.BoundingBoxFormat.XYWH,
                     dtype=torch.float32,

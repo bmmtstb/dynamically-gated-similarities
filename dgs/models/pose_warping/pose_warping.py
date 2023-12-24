@@ -26,13 +26,13 @@ class PoseWarpingModule(BaseModule):
 
         Parameters
         ----------
-        pose: tensor of shape [EP x J x 2]
+        pose: tensor of shape ``[EP x J x 2]``
             History of poses per track
 
-        jcs: tensor of shape [EP x J x 1]
+        jcs: tensor of shape ``[EP x J x 1]``
             History of JCS per track
 
-        bbox: tensor of shape [EP x 4]
+        bbox: tensor of shape ``[EP x 4]``
             History of bboxes per track
 
 

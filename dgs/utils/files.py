@@ -70,7 +70,7 @@ def read_json(filepath: FilePath) -> dict[any, any] | list[any]:
         InvalidPathException if filepath doesn't contain `.json` ending
     """
     if not filepath.endswith(".json"):
-        raise InvalidPathException(f"Presumed JSON file {filepath} does not have ending.")
+        raise InvalidPathException(f"Presumed JSON file {filepath} does not have .json ending.")
 
     fpath = project_to_abspath(filepath)
     with open(fpath, encoding="utf-8") as f:

@@ -5,8 +5,9 @@ import torch
 from easydict import EasyDict
 
 from dgs.default_config import cfg as default_config
-from dgs.utils.config import fill_in_defaults, get_sub_config, validate_value
+from dgs.utils.config import fill_in_defaults, get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
+from dgs.utils.validation import validate_value
 
 EMPTY_CONFIG = EasyDict({})
 SIMPLE_CONFIG = EasyDict({"foo": "foo foo", "second": "value"})
@@ -154,6 +155,7 @@ class TestFillInConfig(unittest.TestCase):
 
     def test_fill_in_defaults_raises(self):
         with self.assertRaises(InvalidConfigException):
+            # noinspection PyTypeChecker
             fill_in_defaults(None, SIMPLE_CONFIG)
 
 

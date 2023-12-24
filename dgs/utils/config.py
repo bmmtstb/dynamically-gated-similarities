@@ -3,60 +3,15 @@ Util- and helper-functions for handling configuration files and passing down sub
 
 Contains functions for validating configuration and parameter of modules.
 """
-import os
 from copy import deepcopy
 from typing import Union
 
 import yaml
 from easydict import EasyDict
 
-from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.files import is_project_file, project_to_abspath
-from dgs.utils.types import Config, FilePath, Validator
-
-VALIDATIONS: dict[str, Validator] = {
-    "None": (lambda x, _: x is None),
-    "not None": (lambda x, _: x is not None),
-    "eq": (lambda x, d: x == d),
-    "neq": (lambda x, d: x != d),
-    "gt": (lambda x, d: isinstance(d, int | float) and x > d),
-    "gte": (lambda x, d: isinstance(d, int | float) and x >= d),
-    "lt": (lambda x, d: isinstance(d, int | float) and x < d),
-    "lte": (lambda x, d: isinstance(d, int | float) and x <= d),
-    "in": (lambda x, d: hasattr(d, "__contains__") and x in d),
-    "not in": (lambda x, d: x not in d),
-    "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),
-    "not contains": (lambda x, d: hasattr(x, "__contains__") and d not in x),
-    "str": (lambda x, _: isinstance(x, str)),
-    "int": (lambda x, _: isinstance(x, int)),
-    "float": (lambda x, _: isinstance(x, float)),
-    "number": (lambda x, _: isinstance(x, int | float)),
-    "instance": isinstance,
-    "between": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] < x < d[1]),
-    "within": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] <= x <= d[1]),
-    "outside": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and x < d[0] or x > d[1]),
-    "len": (lambda x, d: hasattr(x, "__len__") and len(x) == d),
-    "shorter": (lambda x, d: hasattr(x, "__len__") and len(x) <= d),
-    "longer": (lambda x, d: hasattr(x, "__len__") and len(x) >= d),
-    "startswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.startswith(d)),
-    "endswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.endswith(d)),
-    "file exists": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
-    "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
-    "file exists in folder": (
-        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isfile(os.path.join(f, x))
-    ),
-    "folder exists": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(x)),
-    "folder exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(os.path.join(PROJECT_ROOT, x))),
-    "folder exists in folder": (
-        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isdir(os.path.join(f, x))
-    ),
-    # additional logical operators for nested validations
-    "not": (lambda x, d: not VALIDATIONS[d[0]](x, d[1])),
-    "and": (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
-    "or": (lambda x, d: any(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
-    "xor": (lambda x, d: bool(VALIDATIONS[d[0][0]](x, d[0][1])) != bool(VALIDATIONS[d[1][0]](x, d[1][1]))),
-}
+from dgs.utils.types import Config, FilePath
 
 
 def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
@@ -74,13 +29,13 @@ def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
         With a given configuration, this would look something like this.
         Keep in mind that most configs use the type EasyDict, but works the same.
 
-        >>> cfg: Config = {                                         \
-            "bar": {                                                \
-                "x": 1,                                             \
-                "y": 2,                                             \
-                "deeper": {                                         \
-                    "ore": "iron",                                  \
-                    "pickaxe": {"iron": 10, "diamond": 100.0},      \
+        >>> cfg: Config = {
+            "bar": {
+                "x": 1,
+                "y": 2,
+                "deeper": {
+                    "ore": "iron",
+                    "pickaxe": {"iron": 10, "diamond": 100.0},
         }}}
         >>> print(get_sub_config(cfg, ["bar", "deeper", "pickaxe"]))
         {"iron": 10, "diamond": 100.0}
@@ -171,21 +126,3 @@ def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
     if isinstance(config, EasyDict) or isinstance(default_cfg, EasyDict):
         return EasyDict(new_config)
     return new_config
-
-
-def validate_value(value: any, data: any, validation: str) -> bool:
-    """
-    Check a single value against a given predefined validation, possibly given some additional data
-
-    Args:
-        value: The value to validate.
-        data: Possibly additional data needed for validation, is ignored otherwise.
-        validation: The name of the validation to perform.
-
-    Returns:
-        Whether the given value is valid.
-    """
-    if validation not in VALIDATIONS:
-        raise KeyError(f"Validation {validation} does not exist.")
-
-    return VALIDATIONS[validation](value, data)

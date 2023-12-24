@@ -43,20 +43,24 @@ extensions = [
     "sphinx.ext.napoleon",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
+linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
+    ".*github\.io.*",
+    ".*github\.com.*",
+]
 # tell autodoc that we don't want these packages to be imported
 autodoc_mock_imports = [
     "alphapose",
     "detector",
     "halpecocotools",
     "opencv-python",
-    "matplotlib",
+    # "matplotlib",
     "natsort",
-    "numpy",
+    # "numpy",
     "pytorch",
     "torch",
     "torchvision",
     "torchreid",
-    "tqdm",
+    # "tqdm",
     "visdom",
 ]
 
@@ -65,7 +69,7 @@ source_suffix = [".rst", ".md"]
 source_parsers = {".md": "recommonmark.parser.CommonMarkParser"}
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "docs_venv"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "*/venv*", "venv*"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -73,6 +77,6 @@ pygments_style = "sphinx"
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "classic"
+html_theme = "nature"
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]

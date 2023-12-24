@@ -59,8 +59,8 @@ Abbreviations and Definitions
 
 It is expected that all joints have 2D coordinates, but 3D should be possible with minor adjustments.
 
-Images in PyTorch have shape: ``[B x C x H x W]`` and for plotting in matplotlib `[B x H x W x C]`.
-Single images don't have the first dimension `[C x H x W]`.
+Images in PyTorch have shape: ``[B x C x H x W]`` and for plotting in matplotlib ``[B x H x W x C]``.
+Single images don't have the first dimension ``[C x H x W]``.
 
 +----------------------------+---------------------------------------------------------------+
 |  Name                      | Description                                                   |

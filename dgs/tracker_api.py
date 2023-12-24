@@ -2,13 +2,15 @@
 Base Tracker API structure of tracking via dynamically gated similarities
 """
 
+from dgs.models.dataset import get_data_loader
 from dgs.models.dataset.dataset import BaseDataset
-from dgs.models.loader import get_data_loader, module_loader
+from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
+from dgs.models.loader import module_loader
 from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.similarity.similarity import SimilarityModule
 from dgs.models.states import DataSample
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
-from dgs.utils.visualization import torch_show_image
 
 
 class DGSTracker:
@@ -46,12 +48,12 @@ class DGSTracker:
         self.wm = ...
 
         # set up models
-        # self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
-        # self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
+        self.m_vis_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "visual_embedding_generator")
+        self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
 
-        # self.m_pose_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "pose_embedding_generator")
+        self.m_pose_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "pose_embedding_generator")
         # self.m_pose_warp: PoseWarpingModule = module_loader(self.cfg, "pose_warping_module")
-        # self.m_pose_siml: SimilarityModule = module_loader(self.cfg, "pose_similarity")
+        self.m_pose_siml: SimilarityModule = module_loader(self.cfg, "pose_similarity")
 
         # self.m_alpha = ...
 
@@ -61,12 +63,21 @@ class DGSTracker:
     def run(self) -> None:
         """Run Tracker."""
         assert hasattr(self, "dataset")
+        batch: DataSample
+
         # dataloader
         data_loader = get_data_loader(self.cfg, self.dataset)
+
+        # run for every batch in the dataloader
         for batch_idx, batch in enumerate(data_loader):
-            batch: DataSample
-            torch_show_image(batch.image)
             print(batch_idx)
+            vis_emb = self.m_vis_reid(batch.image)
+            vis_sim = self.m_vis_siml(vis_emb, vis_emb)
+
+            pose_emb = self.m_pose_reid(batch.keypoints)
+            pose_sim = self.m_pose_siml(pose_emb, pose_emb)
+
+            print(vis_sim, pose_sim)
 
     @enable_keyboard_interrupt
     def update(self, batch) -> None:
@@ -87,11 +98,7 @@ class DGSTracker:
 
     def terminate(self):
         """Terminate tracker and make sure to stop all submodules and (possible) parallel threads."""
-        model_names = ["dataset", "backbone", "m_vis_reid", "m_vis_siml", "m_pose_reid", "m_pose_warp", "m_pose_siml"]
-        for name in model_names:
-            if (
-                hasattr(self, name)  # Model exists
-                and hasattr(getattr(self, name), "terminate")  # model has attribute terminate
-                and callable(getattr(getattr(self, name), "terminate"))  # model.terminate is callable
-            ):
-                getattr(self, name).terminate()
+        for attr in self.__dict__:
+            # self has attribute terminate and it is a callable
+            if hasattr(getattr(self, attr), "terminate") and callable(getattr(getattr(self, attr), "terminate")):
+                getattr(self, attr).terminate()

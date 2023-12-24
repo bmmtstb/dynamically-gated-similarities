@@ -10,6 +10,8 @@ Keep on reading
     Installation Guide <installation>
     Dataset <datasets>
     Weights <weight_link>
+	Explanation of custom Crop and Resize transforms <full_crop_resize_example/resize_crop_example>
+
 
 Class and Method definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,6 +28,7 @@ Class and Method definitions
 Indices and tables
 ==================
 
-* :ref:`genindex`
+.. comment * :ref:`genindex`
+
 * :ref:`modindex`
 * :ref:`search`

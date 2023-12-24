@@ -6,7 +6,7 @@ from tests.helper import load_test_image, test_multiple_devices
 
 class TestTestHelpers(unittest.TestCase):
     device_id: int = 0
-    devices: list[Device] = ["cpu", "cuda"]
+    devices: list[Device] = ["cpu", "cuda:0"]
 
     @test_multiple_devices
     def test_test_multiple_devices(self, device):

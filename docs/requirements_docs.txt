@@ -1,4 +1,5 @@
 av
+coverage[toml]
 easydict
 imagesize
 matplotlib

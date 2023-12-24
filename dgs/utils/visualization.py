@@ -1,7 +1,7 @@
 """
 Helpers for visualizing data.
 
-For pytorch, torchvision and cv2 image descriptions, see the `image file description <image_util_page>`_.
+For pytorch, torchvision and cv2 image descriptions, see the :ref:`image file description <image_util_page>`.
 
 Matplotlib uses a different order for the images: `[B x H x W x C]`.
 At least, the channel for matplotlib is RGB too.
@@ -18,7 +18,9 @@ from dgs.utils.types import Image, TVImage
 from dgs.utils.utils import torch_to_numpy
 
 
-def torch_show_image(imgs: Union[Image, list[Image]], show: bool = True, **kwargs) -> None:
+def torch_show_image(
+    imgs: Union[Image, list[Image], torch.Tensor, list[torch.Tensor]], show: bool = True, **kwargs
+) -> None:
     """Show a single torch image using matplotlib.
 
     Args:

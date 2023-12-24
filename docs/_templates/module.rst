@@ -20,7 +20,7 @@
 
    {% block functions %}
        {% if functions %}
-           .. rubric:: {{ _('Functions') }}
+           .. rubric:: {{ _('Module Functions') }}
 
            .. autosummary::
               :toctree:
@@ -33,7 +33,7 @@
 
    {% block classes %}
        {% if classes %}
-           .. rubric:: {{ _('Classes') }}
+           .. rubric:: {{ _('Module Classes') }}
 
            .. autosummary::
               :toctree:
@@ -46,7 +46,7 @@
 
    {% block exceptions %}
        {% if exceptions %}
-           .. rubric:: {{ _('Exceptions') }}
+           .. rubric:: {{ _('Module Exceptions') }}
 
            .. autosummary::
               :toctree:

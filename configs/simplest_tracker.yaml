@@ -3,30 +3,20 @@ description: "Use the most basic module for every step."
 
 device: "cuda"
 print_prio: "normal"
-working_memory_size: 30
 training: off
 
-batch_size: 32
-
-dataset:
-    model: "PoseTrack21"
+batch_size: 8
 
 # Modules
 
-backbone:
-    model: "AlphaPose"
+dataset:
+    module_name: "PoseTrack21"
 
 visual_embedding_generator:
-    model: "torchreid"
-
-visual_similarity:
-    model: "dummy"
+    module_name: "torchreid"
 
 pose_embedding_generator:
-    model: "dummy"
+    module_name: "LinearPBEG"
 
 pose_warping_module:
-    model: "kalman"
-
-pose_similarity:
-    model: "dummy"
+    module_name: "kalman"

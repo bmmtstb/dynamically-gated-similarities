@@ -132,15 +132,14 @@ class PoseTrack21JSON(BaseDataset):
         """
 
         def stack_key(key: str) -> torch.Tensor:
-            return torch.stack([torch.Tensor(self.data[i][key], device=self.device) for i in indices])
+            return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
 
-        keypoints, visibility = torch.split(
-            tensor=torch.FloatTensor(
-                torch.stack([torch.Tensor(self.data[i]["keypoints"]).reshape((17, 3)) for i in indices]),
-                device=self.device,
-            ),
-            split_size_or_sections=[2, 1],
-            dim=-1,
+        keypoints, visibility = (
+            torch.tensor(
+                torch.stack([torch.tensor(self.data[i]["keypoints"]).reshape((17, 3)) for i in indices]),
+            )
+            .to(device=self.device, dtype=torch.float32)
+            .split([2, 1], dim=-1)
         )
         return DataSample(
             validate=False,
@@ -163,14 +162,14 @@ class PoseTrack21JSON(BaseDataset):
 
     def arbitrary_to_ds(self, a: dict) -> DataSample:
         """Convert raw PoseTrack21 annotations to DataSample object."""
-        keypoints, visibility = torch.split(
-            tensor=torch.FloatTensor(a["keypoints"], device=self.device).reshape((1, 17, 3)),
-            split_size_or_sections=[2, 1],
-            dim=-1,
+        keypoints, visibility = (
+            torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32)
+            .reshape((1, 17, 3))
+            .split([2, 1], dim=-1)
         )
         return DataSample(
             validate=False,  # This is given PT21 data, no need to validate...
-            filepath=self.map_img_id_path[a["image_id"]],
+            filepath=tuple([self.map_img_id_path[a["image_id"]]]),
             bbox=tv_tensors.BoundingBoxes(a["bbox"], format="XYWH", canvas_size=self.img_shape, device=self.device),
             keypoints=keypoints,
             person_id=a["person_id"] if "person_id" in a else -1,

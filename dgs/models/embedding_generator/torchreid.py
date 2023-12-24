@@ -2,8 +2,10 @@
 Visual Re-ID module using the torchreid package.
 """
 import torch
+from torch import nn
+from torchvision.transforms.v2.functional import to_dtype
 
-from dgs.models.embedding_generator.reid import EmbeddingGeneratorModule
+from dgs.models.embedding_generator.embedding_generator import TorchEmbeddingGeneratorModule
 from dgs.utils.files import project_to_abspath
 from dgs.utils.types import Config
 from torchreid import models
@@ -13,7 +15,7 @@ from torchreid.utils.torchtools import load_pretrained_weights
 torchreid_validations: Config = {"model_name": ["str", ("in", torchreid_models.keys())]}
 
 
-class TorchreidModel(EmbeddingGeneratorModule):
+class TorchreidModel(TorchEmbeddingGeneratorModule):
     """Given image crops, generate Re-ID embedding using the torchreid package.
 
     Model can use the default pretrained weights or custom weights.
@@ -24,19 +26,33 @@ class TorchreidModel(EmbeddingGeneratorModule):
 
         self.model_weights = self.params["weights"]
         self.is_pretrained = self.model_weights == "pretrained"
-        self.init_model()
+        self.model = self._init_model()
 
-    def init_model(self) -> None:
+    def _init_model(self) -> nn.Module:
         """Initialize torchreid model"""
         m = models.build_model(
-            name=self.params["model_name"], num_classes=self.embedding_size, pretrained=self.is_pretrained
+            name=self.params["model_name"],
+            num_classes=self.embedding_size,
+            pretrained=self.is_pretrained,
+            use_gpu=self.device.type == "cuda",
         )
         if not self.is_pretrained:
             # custom model params
             load_pretrained_weights(m, project_to_abspath(self.model_weights))
 
         # send model to the device
-        self.model = self.configure_torch_model(m)
+        return self.configure_torch_model(m)
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        return self.model(data)
+    def forward(self, *data: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Forward call of the torchreid model.
+
+        Notes:
+            Torchreid expects images to have float values.
+
+        Args:
+            data: The object to compute the embedding from.
+
+        Returns:
+            Output of this models' forward call.
+        """
+        return self.model(to_dtype(*data, dtype=torch.float32), **kwargs)

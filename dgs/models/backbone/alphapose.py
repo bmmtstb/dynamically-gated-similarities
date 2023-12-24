@@ -77,7 +77,7 @@ class AlphaPoseFullBackbone(BackboneModule):
 
         # load ap config file using given path
         self.ap_cfg_file: EasyDict = load_config(self.params["cfg_path"])
-        # create custom AP args / options
+        # create custom AP args
         self.ap_args: EasyDict = self._init_ap_args()
 
         # initialize detection loader

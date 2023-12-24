@@ -8,12 +8,23 @@ from easydict import EasyDict
 from torchvision.tv_tensors import Image as tv_Image, Mask as tv_Mask, Video as tv_Video
 
 # Configuration
-Config = dict[str, any] | EasyDict  # is actually an EasyDict but can't use that as variable type hint
+Config = Union[dict[str, any], EasyDict]  # is actually an EasyDict but can't use that as variable type hint
+"""A nested configuration, describing a module or the whole tracker."""
+
 NodePath = list[str]
+"""A list of key-names used for traversing through a Config."""
+
 FilePath = str
+"""The path to a file or directory. Can be project-local or global."""
+
 FilePaths = tuple[FilePath, ...]
-Validator = Callable[[any, any], bool]  # function for validating a value
-Validations = dict[str, list[str | tuple[str, any] | Validator | None]]
+"""Multiple FilePaths as tuple."""
+
+Validator = Callable[[any, any], bool]
+"""A function for validating a value of a Config object. Accepts up to two values and returns a boolean."""
+
+Validations = dict[str, list[Union[str, tuple[str, any], Validator, None]]]
+"""A dictionary of validations, mapping a value of a given Config to some sort of validation."""
 
 # Pose State
 PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
@@ -22,7 +33,7 @@ PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 
 # Torch
 Device = Union[torch.device, str]
-
+"""Torch device, either descriptive string (e.g. "cpu" or "cuda:0") or torch.device object."""
 
 # Images
 TVImage = tv_Image

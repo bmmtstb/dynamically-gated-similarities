@@ -1,5 +1,6 @@
 av # for FFmpeg libraries and loading videos
 black
+coverage[toml]
 easydict
 imagesize
 matplotlib

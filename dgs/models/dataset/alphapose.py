@@ -27,7 +27,6 @@ box
 idx
     The integer index of the detected person.
 """
-import os
 
 import imagesize
 import torch
@@ -36,7 +35,7 @@ from torchvision import tv_tensors
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
 from dgs.utils.files import read_json
-from dgs.utils.types import Config, FilePath, NodePath, Validations
+from dgs.utils.types import Config, NodePath, Validations
 
 ap_load_validations: Validations = {"path": ["str", "file exists in project", ("endswith", ".json")]}
 
@@ -45,36 +44,36 @@ class AlphaPoseLoader(BaseDataset):
     """Load precomputed json files."""
 
     def __init__(self, config: Config, path: NodePath) -> None:
-        super(BaseDataset, self).__init__(config=config, path=path)
+        super().__init__(config, path)
 
         self.validate_params(ap_load_validations)
 
         json = read_json(self.params["path"])
-        # different AP output formats
+
         if isinstance(json, list):
             self.data: list[dict] = json
         else:
             raise NotImplementedError(f"JSON file {self.params['path']} does not contain known instances.")
 
-        self.img_folder_path: FilePath = self.params.get("img_folder_path", "")
+        for detection in json:
+            path = self.get_path_in_dataset(detection["image_id"])
+            detection["full_img_path"] = tuple([path])
+            # imagesize.get() output = (w,h) and our own format = (h, w)
+            detection["canvas_size"] = imagesize.get(path)[::-1]
 
     def arbitrary_to_ds(self, a) -> DataSample:
-        keypoints, visibility = torch.split(
-            tensor=torch.FloatTensor(a["keypoints"]).reshape((-1, 3)),
-            split_size_or_sections=[2, 1],
-            dim=1,
+        """Here `a` is one dict of the AP-JSON containing image_id, category_id, keypoints, score, box, and idx."""
+        keypoints, visibility = (
+            torch.tensor(a["keypoints"], dtype=torch.float32, device=self.device)
+            .reshape((1, -1, 3))
+            .split([2, 1], dim=-1)
         )
-        file_path = os.path.join(self.img_folder_path, a["image_id"])
 
         return DataSample(
-            filepath=file_path,
-            bbox=tv_tensors.BoundingBoxes(
-                a["bboxes"],
-                format="XYWH",
-                canvas_size=imagesize.get(file_path),
-            ),
+            filepath=a["full_img_path"],
+            bbox=tv_tensors.BoundingBoxes(a["bboxes"], format="XYWH", canvas_size=a["canvas_size"]),
             keypoints=keypoints,
-            person_id=a["idx"] if "idx" in a else -1,
+            person_id=a["idx"],
             # additional values which are not required
             image_id=a["image_id"],
             joint_weight=visibility,

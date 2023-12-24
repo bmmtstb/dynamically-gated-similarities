@@ -1,6 +1,15 @@
 """
-Obtain values for pose, image crops, bounding boxes, and more.
+Different modules that can be used as a backbone to generate or retrieve data.
 """
-__all__ = ["AlphaPoseFullBackbone"]
+from typing import Type
 
-from dgs.models.backbone.alphapose import AlphaPoseFullBackbone
+from dgs.utils.exceptions import InvalidParameterException
+from .alphapose import AlphaPoseFullBackbone
+from .backbone import BackboneModule
+
+
+def get_backbone(name: str) -> Type[BackboneModule]:
+    """Given the name of one backbone module and return an instance."""
+    if name == "AlphaPose":
+        return AlphaPoseFullBackbone
+    raise InvalidParameterException(f"Unknown backbone with name: {name}.")

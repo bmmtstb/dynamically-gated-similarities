@@ -7,12 +7,11 @@ from typing import Union
 import torch
 from torchvision import tv_tensors
 
-from dgs.utils.image import load_image
 from dgs.utils.types import Config, Device, FilePaths, Heatmap, Image, PoseStateTuple, TVImage
 from dgs.utils.validation import (
     validate_bboxes,
-    validate_dimensions,
     validate_filepath,
+    validate_heatmaps,
     validate_images,
     validate_key_points,
 )
@@ -258,31 +257,26 @@ class DataSample(UserDict):
     given at any time using the underlying dict or given setters,
     or compute further optional values:
 
-    heatmap (optional)
-        (torch.FloatTensor), shape ``[B x J x h x w]``
+    device (Device, optional)
+        The torch device to use.
+        The default is the device, bbox is on.
 
-        The heatmap of this bounding box.
+    heatmap (torch.FloatTensor, optional)
+        The heatmap of this bounding box with a shape of shape ``[B x J x h x w]``.
 
-    keypoints_local (optional)
-        (torch.Tensor), shape ``[B x J x 2|3]``
+    image (tv_tensor.Image, optional)
+        The original image, resized to the respective shape of the backbone input. Shape ``[B x C x H x W]``
 
-        The key points for this bounding box as torch tensor in local coordinates.
+    image_crop (tv_tensor.Image, optional)
+        The content of the original image cropped using the bbox. shape ``[B x C x h x w]``
 
-    image (optional)
-        (tv_tensor.Image), shape ``[B x C x H x W]``
-
-        The original image, resized to the respective shape of the backbone input.
-
-    image_crop (optional)
-        (tv_tensor.Image), shape ``[B x C x h x w]``
-
-        The content of the original image cropped using the bbox.
-
-    joint_weight (optional)
-        (torch.FloatTensor), shape ``[B x J x 1]``
-
+    joint_weight (torch.FloatTensor, optional)
         Some kind of joint- or key-point confidence.
         E.g., the joint confidence score (JCS) of AlphaPose or the joint visibility of the PoseTrack21 dataset.
+        shape ``[B x J x 1]``
+
+    keypoints_local (torch.Tensor, optional)
+        The key points for this bounding box as torch tensor in local coordinates. shape ``[B x J x 2|3]``
     """
 
     # there a many attributes and they can get used, so please the linter
@@ -290,13 +284,13 @@ class DataSample(UserDict):
 
     def __init__(
         self,
-        filepath: str | list[str] | tuple[str, ...],
+        filepath: tuple[str, ...],
         bbox: tv_tensors.BoundingBoxes,
         keypoints: torch.Tensor,
         validate: bool = True,
         **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__()
 
         self._validate = validate
 
@@ -305,19 +299,25 @@ class DataSample(UserDict):
             bbox = validate_bboxes(bbox)
             keypoints = validate_key_points(keypoints)
 
+            assert bbox.device == keypoints.device
+
         self.data["filepath"]: FilePaths = filepath
-        self.data["bbox"]: tv_tensors.BoundingBoxes = bbox
-        self.data["keypoints"]: torch.Tensor = keypoints
+        self.data["bbox"]: tv_tensors.BoundingBoxes = (
+            bbox if "device" not in kwargs else bbox.to(device=kwargs["device"])
+        )
+        self.data["keypoints"]: torch.Tensor = keypoints.to(device=kwargs.get("device", bbox.device))
 
         for k, v in kwargs.items():
-            if hasattr(self, k) and callable(getattr(self, k)):
+            if hasattr(DataSample, k) and getattr(DataSample, k).fset is not None:
                 setattr(self, k, v)
+            else:
+                self.data[k] = v
 
     def to(self, *args, **kwargs) -> "DataSample":
         """Override torch.Tensor.to() for the whole object."""
-        for attr_key, attr_value in self.items():
+        for attr_value in self.values():
             if isinstance(attr_value, torch.Tensor):
-                setattr(self, attr_key, attr_value.to(*args, **kwargs))
+                attr_value.to(*args, **kwargs)
         return self
 
     def __str__(self) -> str:
@@ -329,8 +329,8 @@ class DataSample(UserDict):
         return self.data["person_id"]
 
     @person_id.setter
-    def person_id(self, person_id: Union[int, torch.IntTensor]) -> None:
-        self.data["person_id"] = torch.IntTensor(person_id)
+    def person_id(self, value: Union[int, torch.IntTensor]) -> None:
+        self.data["person_id"] = (torch.tensor(value).int() if isinstance(value, int) else value).to(device=self.device)
 
     @property
     def filepath(self) -> FilePaths:
@@ -340,24 +340,23 @@ class DataSample(UserDict):
 
     @property
     def bbox(self) -> tv_tensors.BoundingBoxes:
-        assert len(self.data["bbox"].shape) == 2, "DataSample bbox has wrong shape"
         return self.data["bbox"]
 
     @property
     def keypoints(self) -> torch.Tensor:
-        assert len(self.data["keypoints"].shape) == 3, "key points has wrong dimensions"
         return self.data["keypoints"]
 
     @property
     def J(self) -> int:
         """Get number of joints."""
-        assert len(self.data["keypoints"].shape) == 3, "DataSample key points has wrong shape"
         return self.data["keypoints"].shape[-2]
 
     @property
     def B(self):
         """Get the batch size."""
-        assert self.bbox.shape[-2] == len(self.filepath) and self.keypoints.shape[-2] == self.bbox.shape[-2]
+        # fixme this does not work during initialization
+        # if not (self.bbox.shape[-2] == len(self.filepath) == self.keypoints.shape[-3]):
+        #     raise ValueError("Obtained different batch sizes from bbox, key points and filepaths")
         return self.bbox.shape[-2]
 
     @property
@@ -366,61 +365,47 @@ class DataSample(UserDict):
         return self.data["keypoints"].shape[-1]
 
     @property
-    def heatmap(self) -> torch.FloatTensor:
+    def heatmap(self) -> Heatmap:
         """Get the heatmaps of this sample."""
         return self.data["heatmap"]
 
     @heatmap.setter
-    def heatmap(self, heatmap: Heatmap) -> None:
+    def heatmap(self, value: Heatmap) -> None:
         """Set heatmap with a little bit of validation"""
-        if heatmap.shape[-2] != self.J:
-            raise ValueError(
-                f"Number of joints of new heatmap {heatmap.shape[-2]} is expected to be equal to J {self.J}"
-            )
         # make sure that heatmap has shape [B x J x h x w]
-        self.data["heatmap"] = validate_dimensions(heatmap, 4) if self._validate else heatmap
+        self.data["heatmap"] = (validate_heatmaps(value) if self._validate else value).to(device=self.device)
 
     @property
     def keypoints_local(self) -> torch.Tensor:
         """Get local keypoints."""
-        assert "keypoints_local" in self
-        assert len(self.data["keypoints_local"].shape) == 3, "local key points have wrong dimensions"
-        assert (
-            self.data["keypoints_local"].shape[-1] == self.joint_dim
-            and self.data["keypoints_local"].shape[-2] == self.J
-        ), "local key points have wrong shape"
         return self.data["keypoints_local"]
 
     @keypoints_local.setter
-    def keypoints_local(self, value: torch.Tensor):
+    def keypoints_local(self, value: torch.Tensor) -> None:
         """Set local key points with a little bit of validation."""
         # use validate_key_points to make sure local key points have the correct shape [1 x J x 2|3]
         self.data["keypoints_local"] = (
             validate_key_points(value, nof_joints=self.J, joint_dim=self.keypoints.shape[-1])
             if self._validate
             else value
-        )
+        ).to(device=self.device)
 
     @property
     def image(self) -> TVImage:
         """Get the original image or retrieve it using filepath"""
-        if "image" not in self.data or self.data["image"] is None:
-            self.data["image"] = load_image(self.data["filepath"])
-        assert len(self.data["image"].shape) == 4, "image has wrong dimensions"
         return self.data["image"]
 
     @image.setter
     def image(self, value: Image) -> None:
-        self.data["image"]: TVImage = validate_images(value) if self._validate else value
+        self.data["image"]: TVImage = (validate_images(value) if self._validate else value).to(device=self.device)
 
     @property
     def image_crop(self) -> TVImage:
-        assert len(self.data["image_crop"].shape) == 4, "image crop has wrong dimensions"
         return self.data["image_crop"]
 
     @image_crop.setter
     def image_crop(self, value: Image) -> None:
-        self.data["image_crop"]: TVImage = validate_images(value) if self._validate else value
+        self.data["image_crop"]: TVImage = (validate_images(value) if self._validate else value).to(device=self.device)
 
     @property
     def joint_weight(self) -> torch.Tensor:
@@ -428,7 +413,7 @@ class DataSample(UserDict):
 
     @joint_weight.setter
     def joint_weight(self, value: torch.Tensor) -> None:
-        self.data["joint_weight"] = value.view(self.B, self.J, 1)
+        self.data["joint_weight"] = value.view(self.B, self.J, 1).to(device=self.device)
 
     def cast_joint_weight(
         self,
@@ -481,3 +466,14 @@ class DataSample(UserDict):
         if decimals >= 0:
             new_weights.round_(decimals=decimals)
         return new_weights.to(device=device, dtype=dtype)
+
+    @property
+    def device(self):
+        """Get the device of the DataSample. Defaults to the device of self.bbox if nothing is given."""
+        if "device" not in self.data:
+            self.data["device"] = self.bbox.device
+        return self.data["device"]
+
+    @device.setter
+    def device(self, value):
+        self.data["device"] = torch.device(value)

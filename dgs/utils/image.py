@@ -108,7 +108,7 @@ def compute_padding(old_w: int, old_h: int, target_aspect: float) -> list[int]:
     if height_padding < 0 < width_padding:
         # +1 pixel on the right if new shape is odd
         return [width_padding // 2, 0, width_padding // 2 + (width_padding % 2), 0]
-    raise ArithmeticError("During computing the sizes for padding, something unexpected happened.")
+    raise ArithmeticError("During computing the sizes for padding, something unexpected happened.")  # pragma: no cover
 
 
 class CustomTransformValidator:
@@ -415,7 +415,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         if coordinates.shape[-1] == 3:
             # fixme: 3d coordinates have no padding in the third dimension ?
             diff.append(0)
-        padded_coords: torch.Tensor = coordinates + torch.Tensor(diff, device=coordinates.device)
+        padded_coords: torch.Tensor = coordinates + torch.tensor(diff, device=coordinates.device)
 
         return {
             "image": padded_image,
@@ -447,7 +447,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         delta = [self.W - nw, self.H - nh]
 
         # use delta to shift bbox, such that the bbox uses local coordinates
-        box_diff = 0.5 * torch.FloatTensor(delta + [0, 0], device=coordinates.device)
+        box_diff = torch.div(2, torch.tensor(delta + [0.0, 0.0], device=coordinates.device, dtype=torch.float32))
         cropped_bboxes: tv_tensors.BoundingBoxes = tv_tensors.wrap(bboxes - box_diff, like=bboxes)
 
         # use delta to shift the coordinates, such that they use local coordinates
@@ -455,7 +455,9 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
             # fixme: 3d coordinates have no crop in the third dimension ?
             delta.append(0)
 
-        cropped_coords: torch.Tensor = coordinates - 0.5 * torch.FloatTensor(delta, device=coordinates.device)
+        cropped_coords: torch.Tensor = coordinates - 0.5 * torch.tensor(
+            delta, device=coordinates.device, dtype=torch.float32
+        )
 
         return {
             "image": cropped_image,
@@ -526,7 +528,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
                 # use torchvision cropping and modify the coords accordingly
                 left, top, width, height = corners
                 image_crop = tv_tensors.wrap(tvt_crop(image, top, left, height, width), like=image)
-                coord_crop = coords - torch.Tensor([left, top], device=coords.device)
+                coord_crop = coords - torch.tensor([left, top], device=coords.device)
 
             # Resize the image and coord crops to make them stackable again.
             # Use CustomToAspect to make the image the correct aspect ratio.
@@ -586,12 +588,12 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         )
 
         if coordinates.shape[-1] == 2:
-            coord_crop = coordinates - torch.Tensor([new_left, new_top]).to(
+            coord_crop = coordinates - torch.tensor([new_left, new_top]).to(
                 dtype=coordinates.dtype, device=coordinates.device
             )
         else:
             # fixme: 3d coordinates no cropping in the third dimension ?
-            coord_crop = coordinates - torch.Tensor([new_left, new_top, 0]).to(
+            coord_crop = coordinates - torch.tensor([new_left, new_top, 0]).to(
                 dtype=coordinates.dtype, device=coordinates.device
             )
 
@@ -637,10 +639,14 @@ class CustomResize(Torch_NN_Module, CustomTransformValidator):
         image = tv_tensors.wrap(tvt_resize(image, size=list(output_size), antialias=True), like=image)
         bboxes = tv_tensors.wrap(tvt_resize(bboxes, size=list(output_size), antialias=True), like=bboxes)
         if coordinates.shape[-1] == 2:
-            coordinates *= torch.FloatTensor([self.w / self.W, self.h / self.H], device=coordinates.device)
+            coordinates *= torch.tensor(
+                [self.w / self.W, self.h / self.H], dtype=torch.float32, device=coordinates.device
+            )
         else:
             # fixme: 3d coordinates have 0 in the third dimension ?
-            coordinates *= torch.FloatTensor([self.w / self.W, self.h / self.H, 0], device=coordinates.device)
+            coordinates *= torch.tensor(
+                [self.w / self.W, self.h / self.H, 0], dtype=torch.float32, device=coordinates.device
+            )
 
         return {
             "image": image,
