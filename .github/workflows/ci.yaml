@@ -32,4 +32,4 @@ jobs:
 
       - name: Test using unittest and run coverage
         run: |
-          coverage -m unittest discover ./tests/ "test__*.py"
+          coverage run -m unittest discover ./tests/ "test__*.py"
