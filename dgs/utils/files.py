@@ -29,9 +29,9 @@ def is_dir(filepath: FilePath) -> bool:
     return os.path.isdir(filepath) or is_project_dir(filepath)
 
 
-def project_to_abspath(filepath: FilePath) -> FilePath:
+def to_abspath(filepath: FilePath) -> FilePath:
     """Given a path return the absolute path of this file or directory.
-    Will first check if the filepath is an absolute file or path and then if it is a local project file.
+    Will first check if the filepath already is an absolute file or path and then if it is a local project file.
 
     Args:
         filepath: str or path object as local or abspath
@@ -72,7 +72,7 @@ def read_json(filepath: FilePath) -> dict[any, any] | list[any]:
     if not filepath.endswith(".json"):
         raise InvalidPathException(f"Presumed JSON file {filepath} does not have .json ending.")
 
-    fpath = project_to_abspath(filepath)
+    fpath = to_abspath(filepath)
     with open(fpath, encoding="utf-8") as f:
         obj = json.load(f)
     return obj
@@ -80,7 +80,7 @@ def read_json(filepath: FilePath) -> dict[any, any] | list[any]:
 
 def write_json(obj: dict, filepath: FilePath):
     """Writes to a json file."""
-    fpath = project_to_abspath(filepath)
+    fpath = to_abspath(filepath)
     mkdir_if_missing(os.path.dirname(fpath))
     with open(fpath, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=4, separators=(",", ": "))

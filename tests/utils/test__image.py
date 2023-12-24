@@ -8,7 +8,7 @@ import torchvision.transforms.v2 as tvt
 from torchvision import tv_tensors
 from torchvision.transforms.v2.functional import resize as tvt_resize
 
-from dgs.utils.files import project_to_abspath
+from dgs.utils.files import to_abspath
 from dgs.utils.image import compute_padding, CustomCropResize, CustomResize, CustomToAspect, load_image, load_video
 from dgs.utils.types import ImgShape, TVImage
 from dgs.utils.validation import validate_bboxes, validate_key_points
@@ -97,7 +97,7 @@ class TestImage(unittest.TestCase):
     def test_load_image(self):
         for file_name, shape in TEST_IMAGES.items():
             with self.subTest(msg=f"image name: {file_name}"):
-                fp = project_to_abspath(os.path.join("./tests/test_data/", file_name))
+                fp = to_abspath(os.path.join("./tests/test_data/", file_name))
                 self.assertEqual(load_image(fp).shape[-3:], shape)
                 self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
 

@@ -10,7 +10,7 @@ import yaml
 from easydict import EasyDict
 
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
-from dgs.utils.files import project_to_abspath
+from dgs.utils.files import to_abspath
 from dgs.utils.types import Config, FilePath
 
 
@@ -67,7 +67,7 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
         Loaded configuration as nested dictionary or easydict
     """
     try:
-        fp = project_to_abspath(filepath)
+        fp = to_abspath(filepath)
     except InvalidPathException as e:
         raise InvalidPathException(f"Could not load configuration from {filepath}, because no such path exists.") from e
 

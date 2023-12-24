@@ -13,7 +13,7 @@ from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
 from dgs.models.states import DataSample
-from dgs.utils.files import is_project_dir, is_project_file, project_to_abspath
+from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
@@ -263,8 +263,8 @@ class BaseDataset(BaseModule, TorchDataset):
         if os.path.exists(path):
             return os.path.normpath(path)
         if is_project_file(path) or is_project_dir(path):
-            return project_to_abspath(path)
+            return to_abspath(path)
         dataset_path = os.path.join(self.params["dataset_path"], str(path))
         if is_project_file(dataset_path) or is_project_dir(dataset_path):
-            return project_to_abspath(dataset_path)
+            return to_abspath(dataset_path)
         raise FileNotFoundError(f"Could not find a path to file or directory at {path}")

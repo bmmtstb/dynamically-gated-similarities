@@ -32,7 +32,7 @@ from dgs.models.backbone.backbone import BackboneModule
 from dgs.models.states import DataSample
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.exceptions import InvalidParameterException
-from dgs.utils.files import is_dir, is_file, project_to_abspath
+from dgs.utils.files import is_dir, is_file, to_abspath
 from dgs.utils.types import Config, NodePath, Validations
 
 # default is mostly consistent with demo inference of AlphaPose
@@ -168,7 +168,7 @@ class AlphaPoseFullBackbone(BackboneModule):
                     f"not a directory. Value is: {self.params['data']}"
                 )
 
-            detfile = project_to_abspath(self.params["data"])
+            detfile = to_abspath(self.params["data"])
 
             return FileDetectionLoader(
                 input_source=detfile,
@@ -198,7 +198,7 @@ class AlphaPoseFullBackbone(BackboneModule):
                     f"data must refer to a single video file but is {self.params['data']}"
                 )
 
-            videofile = project_to_abspath(self.params["data"])
+            videofile = to_abspath(self.params["data"])
 
             return DetectionLoader(
                 input_source=videofile,
@@ -216,7 +216,7 @@ class AlphaPoseFullBackbone(BackboneModule):
             Either single image file, name of txt-file containing file-paths, or whole image folder
             """
             filenames: list[str] = []
-            data: str = project_to_abspath(str(self.params["data"]))
+            data: str = to_abspath(str(self.params["data"]))
 
             if is_file(data) and not str(data).endswith(".txt"):  # single image file
                 filenames = [data]

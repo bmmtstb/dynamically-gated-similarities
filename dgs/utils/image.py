@@ -28,7 +28,7 @@ from torchvision.transforms.v2.functional import (
     resize as tvt_resize,
 )
 
-from dgs.utils.files import project_to_abspath
+from dgs.utils.files import to_abspath
 from dgs.utils.types import FilePath, FilePaths, ImgShape, TVImage, TVVideo
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
@@ -70,7 +70,7 @@ def load_video(filepath: FilePath, **kwargs) -> TVVideo:
         A batch of torch uint8 / byte images with their original shape of ``[T x C x H x W]``.
         With T being the number of frames in the video.
     """
-    fp: FilePath = project_to_abspath(filepath)
+    fp: FilePath = to_abspath(filepath)
 
     dtype = kwargs.get("dtype", torch.uint8)
     device = kwargs.get("device", "cpu")

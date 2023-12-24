@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
-from dgs.utils.files import project_to_abspath, read_json
+from dgs.utils.files import read_json, to_abspath
 from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations
 
 pt21_json_validations: Validations = {"path": [None]}
@@ -107,7 +107,7 @@ class PoseTrack21JSON(BaseDataset):
 
         # create a mapping from image id to full filepath
         self.map_img_id_path: dict[int, FilePath] = {
-            img["image_id"]: project_to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
+            img["image_id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
             for img in json["images"]
         }
 

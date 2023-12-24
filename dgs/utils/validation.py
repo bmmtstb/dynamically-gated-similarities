@@ -9,7 +9,7 @@ from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException
-from dgs.utils.files import is_file, project_to_abspath
+from dgs.utils.files import is_file, to_abspath
 from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage, Validator
 
 VALIDATIONS: dict[str, Validator] = {
@@ -146,7 +146,7 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePa
     if not is_file(file_paths):
         raise InvalidPathException(filepath=file_paths)
 
-    return tuple([project_to_abspath(filepath=file_paths)])
+    return tuple([to_abspath(filepath=file_paths)])
 
 
 def validate_heatmaps(
