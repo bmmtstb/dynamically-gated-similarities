@@ -15,6 +15,7 @@ from dgs.utils.types import Config, NodePath, Validations
 from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
+    "name": ["str", ("longer", 2)],
     "batch_size": ["int", ("gte", 1)],
     "print_prio": [("in", PRINT_PRIORITY)],
     "device": ["str", ("or", (("in", ["cuda", "cpu"]), ("instance", torch.device)))],

@@ -12,6 +12,7 @@ cfg = EasyDict()
 # General #
 # ####### #
 
+# cfg.name = "DEFAULT"  # shouldn't be set, to force user to give it a name
 cfg.batch_size = 32
 cfg.print_prio = "normal"
 cfg.working_memory_size = 30

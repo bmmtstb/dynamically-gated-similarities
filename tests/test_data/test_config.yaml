@@ -1,0 +1,16 @@
+name: "Configuration for tests"
+description: "Do not use, will most likely not work"
+
+device: "cpu"
+print_prio: "high"
+training: off
+
+batch_size: 1
+
+# Modules
+
+dataset:
+    module_name: "PoseTrack21"
+    kwargs:
+        more_data: true
+        even_more_data: [1,2,3,4]

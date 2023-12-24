@@ -9,8 +9,8 @@ from typing import Union
 import yaml
 from easydict import EasyDict
 
-from dgs.utils.exceptions import InvalidConfigException
-from dgs.utils.files import is_project_file, project_to_abspath
+from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
+from dgs.utils.files import project_to_abspath
 from dgs.utils.types import Config, FilePath
 
 
@@ -66,13 +66,16 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
     Returns:
         Loaded configuration as nested dictionary or easydict
     """
-    if is_project_file(filepath):
-        filepath = project_to_abspath(filepath)
-    with open(filepath, encoding="utf-8") as file:
+    try:
+        fp = project_to_abspath(filepath)
+    except InvalidPathException as e:
+        raise InvalidPathException(f"Could not load configuration from {filepath}, because no such path exists.") from e
+
+    with open(fp, encoding="utf-8") as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
-        if easydict:
-            return EasyDict(config)
-        return config
+    if easydict:
+        return EasyDict(config)
+    return config
 
 
 def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:

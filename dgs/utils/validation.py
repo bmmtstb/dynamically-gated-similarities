@@ -62,7 +62,8 @@ def validate_bboxes(
     dims: Union[int, None] = 2,
     box_format: Union[tv_tensors.BoundingBoxFormat, None] = None,
 ) -> tv_tensors.BoundingBoxes:
-    """Given a tensor of bounding boxes, validate them and return them as torchvision-tensor bounding-boxes.
+    """Given a torchvision tensor of bounding boxes,
+    validate them and return them as a torchvision-tensor of bounding-boxes.
 
     Args:
         bboxes: tv_tensor.BoundingBoxes object

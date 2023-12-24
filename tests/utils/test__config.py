@@ -1,11 +1,12 @@
+import os
 import unittest
 from copy import deepcopy
 
 from easydict import EasyDict
 
 from dgs.default_config import cfg as default_config
-from dgs.utils.config import fill_in_defaults, get_sub_config
-from dgs.utils.exceptions import InvalidConfigException
+from dgs.utils.config import fill_in_defaults, get_sub_config, load_config
+from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 
 EMPTY_CONFIG = EasyDict({})
 SIMPLE_CONFIG = EasyDict({"foo": "foo foo", "second": "value"})
@@ -155,6 +156,42 @@ class TestFillInConfig(unittest.TestCase):
         with self.assertRaises(InvalidConfigException):
             # noinspection PyTypeChecker
             fill_in_defaults(None, SIMPLE_CONFIG)
+
+
+class TestLoadConfig(unittest.TestCase):
+    def test_load_config_easydict(self):
+        cfg = load_config("./tests/test_data/test_config.yaml")  # easydict=True
+        self.assertIsInstance(cfg, EasyDict)
+        self.assertEqual(cfg.device, "cpu")
+        self.assertTrue(cfg.dataset.kwargs.more_data, "Is not a nested EasyDict")
+        self.assertListEqual(cfg.dataset.kwargs.even_more_data, [1, 2, 3, 4])
+
+    def test_load_config_dict(self):
+        cfg = load_config("./tests/test_data/test_config.yaml", easydict=False)
+        self.assertIsInstance(cfg, dict)
+        self.assertEqual(cfg["device"], "cpu")
+        self.assertTrue(cfg["dataset"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
+        self.assertListEqual(cfg["dataset"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
+
+    def test_load_all_yaml_in_configs_dir(self):
+        abs_path = "./configs/"
+        paths = [
+            os.path.normpath(os.path.join(abs_path, child_path))
+            for child_path in os.listdir(abs_path)
+            if child_path.endswith(".yaml") or child_path.endswith(".yml")
+        ]
+        for path in paths:
+            cfg = load_config(path)
+            self.assertIsInstance(cfg, EasyDict)
+            self.assertIn("name", cfg)
+
+    def test_load_config_exception(self):
+        for fp in [
+            "./tests/test_data/other_config.yaml",
+            "./test_data/test_config.yaml",
+        ]:
+            with self.assertRaises(InvalidPathException):
+                _ = load_config(fp)
 
 
 if __name__ == "__main__":
