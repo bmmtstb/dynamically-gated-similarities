@@ -11,7 +11,7 @@ from typing import Type
 
 from dgs.utils.exceptions import InvalidParameterException
 from .embedding_generator import EmbeddingGeneratorModule
-from .pose_based import LinearPoseBasedEmbeddingGenerator
+from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from .torchreid import TorchreidModel
 
 
@@ -20,5 +20,7 @@ def get_embedding_generator(name: str) -> Type[EmbeddingGeneratorModule]:
     if name == "torchreid":
         return TorchreidModel
     if name == "LinearPBEG":
-        return LinearPoseBasedEmbeddingGenerator
+        return LinearPBEG
+    if name == "KeyPointConvolutionPBEG":
+        return KeyPointConvolutionPBEG
     raise InvalidParameterException(f"Unknown embedding generator with name: {name}.")

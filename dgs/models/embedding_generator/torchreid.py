@@ -3,19 +3,19 @@ Visual Re-ID module using the torchreid package.
 """
 import torch
 from torch import nn
+from torchreid.reid import models
+from torchreid.reid.models import __model_factory as torchreid_models
+from torchreid.reid.utils.torchtools import load_pretrained_weights
 from torchvision.transforms.v2.functional import to_dtype
 
-from dgs.models.embedding_generator.embedding_generator import TorchEmbeddingGeneratorModule
+from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.utils.files import to_abspath
 from dgs.utils.types import Config
-from torchreid import models
-from torchreid.models import __model_factory as torchreid_models
-from torchreid.utils.torchtools import load_pretrained_weights
 
 torchreid_validations: Config = {"model_name": ["str", ("in", torchreid_models.keys())]}
 
 
-class TorchreidModel(TorchEmbeddingGeneratorModule):
+class TorchreidModel(EmbeddingGeneratorModule):
     """Given image crops, generate Re-ID embedding using the torchreid package.
 
     Model can use the default pretrained weights or custom weights.

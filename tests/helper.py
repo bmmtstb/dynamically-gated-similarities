@@ -21,10 +21,9 @@ def test_multiple_devices(func: callable) -> callable:
     Returns:
         Decorated function with additional device argument
     """
+    devices: list[Device] = [torch.device("cpu")]
     if torch.cuda.is_available():
-        devices: list[Device] = ["cpu", "cuda:0"]
-    else:
-        devices: list[Device] = ["cpu"]
+        devices.append(torch.device("cuda:0"))
 
     def device_wrapper(cls, *args, **kwargs):
         for device in devices:

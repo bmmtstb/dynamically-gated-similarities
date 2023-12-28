@@ -29,7 +29,7 @@ VALIDATIONS: dict[str, Validator] = {
     "int": (lambda x, _: isinstance(x, int)),
     "float": (lambda x, _: isinstance(x, float)),
     "number": (lambda x, _: isinstance(x, int | float)),
-    "instance": isinstance,
+    "instance": isinstance,  # alias
     "isinstance": isinstance,
     "between": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] < x < d[1]),
     "within": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] <= x <= d[1]),

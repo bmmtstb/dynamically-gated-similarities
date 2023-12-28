@@ -1,7 +1,9 @@
 av # for FFmpeg libraries and loading videos
 black
+cython
 coverage[toml]
 easydict
+gdown
 imagesize
 matplotlib
 munkres
@@ -11,9 +13,14 @@ opencv-python
 pylint
 pyyaml
 scipy
+tensorboard
 terminaltables
+torchreid
 tqdm
 visdom
+
+# -r ../dependencies/torchreid/requirements.txt
+# -e ./dependencies/torchreid
 
 # torch cpu
 --extra-index-url https://download.pytorch.org/whl/cpu

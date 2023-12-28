@@ -49,7 +49,6 @@ With velocity scores, a parameter reduction is obtained with :math:`E_P \lt J \c
 from abc import abstractmethod
 
 import torch
-from torch import nn
 
 from dgs.models.module import BaseModule
 from dgs.utils.types import Config, NodePath, Validations
@@ -98,22 +97,3 @@ class EmbeddingGeneratorModule(BaseModule):
         """
 
         raise NotImplementedError
-
-
-class TorchEmbeddingGeneratorModule(EmbeddingGeneratorModule):
-    """Base class for handling modules of embedding generators which are torch modules."""
-
-    model: nn.Module
-    """The torch model of the Neural Network."""
-
-    def forward(self, *data: torch.Tensor, **kwargs) -> torch.Tensor:
-        """Forward call of this model.
-
-        Args:
-            data: The object to compute the embedding from.
-
-        Returns:
-            Output of this models' forward call.
-        """
-        # TODO flatten / view?
-        return self.model(*data, **kwargs)
