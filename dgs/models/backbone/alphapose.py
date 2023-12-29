@@ -118,7 +118,7 @@ class AlphaPoseFullBackbone(BackboneModule):
             and finally use the values of the default AP configuration.
 
         Returns:
-            Additional config for AlphaPose, which is expected to be an EasyDict.
+            Additional config for AlphaPose, which is expected to be an :obj:`EasyDict`.
         """
         # Add values from config to args
         args: Config = EasyDict()

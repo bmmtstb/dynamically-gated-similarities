@@ -43,7 +43,7 @@ def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
         1
 
     Returns:
-        Sub configuration, an excerpt of the original configuration, or single value.
+        Either a sub configuration, which is an excerpt of the original configuration, or a single value.
     """
     if not path:
         return config
@@ -64,7 +64,7 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
         easydict: Whether to output a plain dictionary or an EasyDict object, which behaves mostly the same.
             Defaults to true, because every dict function should work with an EasyDict.
     Returns:
-        Loaded configuration as nested dictionary or easydict
+        The loaded configuration as a nested dictionary or `EasyDict` object.
     """
     try:
         fp = to_abspath(filepath)
@@ -79,7 +79,8 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
 
 
 def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
-    """Use values of the default configuration to fill in missing values of the current configuration.
+    """Use values of a given configuration or the default configuration,
+    to fill in missing values of the current configuration.
 
     For the current configuration, all existing key-value pairs will stay the same.
     Additionally, keys only present in the default configuration will be added to the current configuration.
@@ -89,7 +90,7 @@ def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
         default_cfg: Default configuration as EasyDict or nested dict
 
     Returns:
-        Combined configuration
+        The combined configuration.
     """
 
     def deep_update(default_dict: Config, new_dict: Config) -> Config:
@@ -104,7 +105,7 @@ def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
             new_dict: new dictionary, these values will definitely be in the result
 
         Returns:
-            A modified version of dictionary 1 with recursively combined / updated values
+            A modified version of `default_dict` with recursively combined / updated values taken from `new_dict`.
         """
         if not isinstance(default_dict, dict):
             return new_dict

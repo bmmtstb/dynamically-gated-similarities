@@ -23,7 +23,7 @@ def _pose_state_tuple(multiplier: int | float, device: Device, dtype: torch.dtyp
         dtype: change dtype of tensor from int to something else
 
     Returns:
-        Tuple of three torch tensors with different shapes but same values
+        Tuple of three torch tensors with different shapes but same values.
     """
     return (
         torch.ones((K, DIM), dtype=dtype if dtype else torch.int, device=device) * multiplier,
@@ -38,12 +38,13 @@ def _set_up_default_states(device: Device) -> tuple[PoseStates, PoseStates, Pose
     Create empty and full pose states object on the given device.
 
     Args:
-        device: torch device or string
+        device: The torch device or respective string.
 
     Returns:
-        Three different PoseStates objects with zero, one, and maximum number of states
-        one_states: the tensors have negative float values of -1
-        full_states: the tensors have positive integer values of one times index
+        Three different `PoseStates` objects with zero, one, and maximum number of states.
+        zero_states: An empty `PoseStates` object.
+        one_states: The tensors have negative float values of -1.
+        full_states: The tensors have positive integer values of one times index.
     """
     cfg = EasyDict({"device": device})
 

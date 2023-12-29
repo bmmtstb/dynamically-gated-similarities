@@ -55,6 +55,7 @@ VALIDATIONS: dict[str, Validator] = {
     "or": (lambda x, d: any(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
     "xor": (lambda x, d: bool(VALIDATIONS[d[0][0]](x, d[0][1])) != bool(VALIDATIONS[d[1][0]](x, d[1][1]))),
 }
+"""A list of default validations to check values using :meth:`validate_value`."""
 
 
 def validate_bboxes(
@@ -66,7 +67,7 @@ def validate_bboxes(
     validate them and return them as a torchvision-tensor of bounding-boxes.
 
     Args:
-        bboxes: tv_tensor.BoundingBoxes object
+        bboxes: `tv_tensor.BoundingBoxes` object with an arbitrary shape, most likely ``[B x 4]``.
         dims: Number of dimensions bboxes should have.
             Use None to not force any number of dimensions.
             Defaults to two dimensions with the bounding box dimensions as ``[B x 4]``.
@@ -74,13 +75,11 @@ def validate_bboxes(
             Default None, and therefore no validation of the format.
 
     Returns:
-        bounding boxes as tv_tensor.BoundingBoxes object with exactly dims dimensions.
+        Bounding boxes as `tv_tensor.BoundingBoxes` object with exactly `dims` dimensions.
 
     Raises:
-        TypeError
-            If the bboxes input is not a Tensor.
-        ValueError
-            If the bboxes have the wrong shape or the bboxes have the wrong format.
+        TypeError: If the `bboxes` input is not a Tensor.
+        ValueError: If the `bboxes` have the wrong shape or the `bboxes` have the wrong format.
     """
     if not isinstance(bboxes, tv_tensors.BoundingBoxes):
         raise TypeError(f"Bounding boxes should be torch tensor or tv_tensor Bounding Boxes but is {type(bboxes)}")
@@ -100,20 +99,24 @@ def validate_dimensions(tensor: torch.Tensor, dims: int) -> torch.Tensor:
     """Given a tensor, make sure he has the correct number of dimensions.
 
     Args:
-        tensor: any torch tensor
+        tensor: Any `torch.tensor` or other object that can be converted to one.
         dims: Number of dimensions the tensor should have.
 
     Returns:
-        The tensor with the correct number of dimensions.
+        A `torch.tensor` with the correct number of dimensions.
 
     Raises:
-        TypeError
-            If the key point input is not a torch tensor.
-        ValueError
-            If the length of the key points is bigger than 'dims' and cannot be unsqueezed.
+        TypeError: If the `tensor` input is not a `torch.tensor` or cannot be cast to one.
+        ValueError: If the length of the `tensor` is bigger than `dims` and cannot be unsqueezed.
     """
     if not isinstance(tensor, torch.Tensor):
-        raise TypeError(f"The input should be a torch tensor but is {type(tensor)}")
+        try:
+            tensor = torch.tensor(tensor)
+        except TypeError as e:
+            raise TypeError(
+                f"The input should be a torch tensor or a type that can be converted to one. "
+                f"But `tensor` is {type(tensor)}"
+            ) from e
 
     if len(tensor.shape) > dims:
         tensor.squeeze_()
@@ -135,11 +138,10 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePa
         file_paths: Path to the file as a string or a file object.
 
     Returns:
-        The validated file path.
+        FilePaths: The validated file path.
 
     Raises:
-        InvalidPathException
-            If the file path does not exist.
+        InvalidPathException: If at least one of the paths in `file_paths` does not exist.
     """
     if isinstance(file_paths, (list, tuple)):
         return tuple(validate_filepath(file_path)[0] for file_path in file_paths)
@@ -152,7 +154,7 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePa
 def validate_heatmaps(
     heatmaps: Union[torch.Tensor, Heatmap], dims: Union[int, None] = 4, nof_joints: int = None
 ) -> Heatmap:
-    """
+    """Validate a given tensor of heatmaps, whether it has the correct format and shape.
 
     Args:
         heatmaps: tensor-like object
@@ -163,13 +165,11 @@ def validate_heatmaps(
             Default None does not validate the number of joints at all.
 
     Returns:
-        The validated heatmaps as tensor with the correct type.
+        Heatmap: The validated heatmaps as tensor with the correct type.
 
     Raises:
-        TypeError
-            If the key point input is not a Tensor.
-        ValueError
-            If the key points are neither two- nor three-dimensional.
+        TypeError: If the `heatmaps` input is not a Tensor or cannot be cast to one.
+        ValueError: If the `heatmaps` are neither two- nor three-dimensional.
     """
     if not isinstance(heatmaps, (Heatmap, torch.Tensor)):
         raise TypeError(f"heatmaps should be a Heatmap or torch tensor but are {type(heatmaps)}.")
@@ -184,13 +184,16 @@ def validate_heatmaps(
 
 
 def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
-    """Given a tensor validate whether it contains one or multiple IDs.
+    """Validate a given tensor or single integer value.
 
     Args:
         ids: Arbitrary torch tensor to check.
 
     Returns:
-        Torch integer tensor with one dimension.
+        torch.IntTensor: Torch integer tensor with one dimension.
+
+    Raises:
+        TypeError: If `ids` is not a `torch.IntTensor`.
     """
     if isinstance(ids, int):
         ids = torch.tensor([ids], dtype=torch.int)
@@ -217,15 +220,12 @@ def validate_images(images: Image, dims: Union[int, None] = 4) -> TVImage:
             Use None to not force any number of dimensions.
             Defaults to four dimensions with the image dimensions as ``[B x C x H x W]``.
 
-
     Returns:
-        image as tv_tensor.Image object with exactly dims dimensions.
+        TVImage: The images as `tv_tensor.Image` object with exactly `dims` dimensions.
 
     Raises:
-        TypeError
-            If the image is not a Tensor.
-        ValueError
-            If the image channel has the wrong dimensionality.
+        TypeError: If `images` is not a Tensor or cannot be cast to one.
+        ValueError: If the dimension of the `images` channels is wrong.
     """
     if not isinstance(images, (torch.Tensor, torch.ByteTensor, torch.FloatTensor, tv_tensors.Image)) or not (
         isinstance(images, torch.Tensor) and images.dtype in [torch.float32, torch.uint8]  # iff tensor, check dtype
@@ -252,23 +252,22 @@ def validate_key_points(
     """Given a tensor of key points, validate them and return them as torch tensor of the correct shape.
 
     Args:
-        key_points: torch tensor
-        dims: Number of dimensions key_points should have.
-            Use None to not force any number of dimensions.
+        key_points: One `torch.tensor` or any similarly structured data.
+        dims: The number of dimensions `key_points` should have.
+            Use `None` to not force any number of dimensions.
             Defaults to three dimensions with the key point dimensions as ``[B x J x 2|3]``.
-        nof_joints: The number of joints the key points should have.
-            Default None does not validate the number of joints at all.
-        joint_dim: The dimensionality the joints should have.
-            Default None does not validate the dimensionality additionally to being two or three.
+        nof_joints: The number of joints `key_points` should have.
+            Default `None` does not validate the number of joints at all.
+        joint_dim: The dimensionality the joint dimension should have.
+            Default `None` does not validate the dimensionality additionally to being two or three.
 
     Returns:
-        key points as torch tensor with exactly the requested number of dimensions: ``[... x nof_joints x joint_dim]``
+        torch.Tensor: The key points as a single `torch.tensor` with exactly the requested number of dimensions like
+        ``[... x nof_joints x joint_dim]``.
 
     Raises:
-        TypeError
-            If the key point input is not a Tensor.
-        ValueError
-            If the key points or joints have the wrong dimensionality.
+        TypeError: If the key point input is not a Tensor.
+        ValueError: If the key points or joints have the wrong dimensionality.
     """
     if not isinstance(key_points, torch.Tensor):
         raise TypeError(f"Key points should be torch tensor but is {type(key_points)}.")
@@ -292,8 +291,7 @@ def validate_key_points(
 
 
 def validate_value(value: any, data: any, validation: str) -> bool:
-    """
-    Check a single value against a given predefined validation, possibly given some additional data
+    """Check a single value against a given predefined validation, possibly given some additional data.
 
     Args:
         value: The value to validate.
@@ -301,7 +299,10 @@ def validate_value(value: any, data: any, validation: str) -> bool:
         validation: The name of the validation to perform.
 
     Returns:
-        Whether the given value is valid.
+        bool: Whether the given `value` is valid given the `validation` and possibly more `data`.
+
+    Raises:
+        KeyError: If the given `validation` does not exist.
     """
     if validation not in VALIDATIONS:
         raise KeyError(f"Validation {validation} does not exist.")

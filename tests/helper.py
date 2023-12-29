@@ -19,7 +19,7 @@ def test_multiple_devices(func: callable) -> callable:
         func: The decorated function
 
     Returns:
-        Decorated function with additional device argument
+        The decorated function with an additional 'device' keyword-argument.
     """
     devices: list[Device] = [torch.device("cpu")]
     if torch.cuda.is_available():

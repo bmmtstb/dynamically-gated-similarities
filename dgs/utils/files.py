@@ -44,13 +44,13 @@ def to_abspath(filepath: FilePath) -> FilePath:
     Will first check if the filepath already is an absolute file or path and then if it is a local project file.
 
     Args:
-        filepath: str or path object as local or abspath
+        filepath: str or path object as local or abspath.
 
     Returns:
         A valid path, global if it exists, otherwise local.
 
     Raises:
-        InvalidPathException if the path doesn't exist globally or locally.
+        InvalidPathException: If the path doesn't exist globally or locally.
     """
     if is_abs_file(filepath) or is_abs_dir(filepath):
         return os.path.normpath(filepath)
@@ -72,10 +72,10 @@ def read_json(filepath: FilePath) -> dict[any, any] | list[any]:
         filepath: str or path object with ending
 
     Returns:
-        Loaded json from file as dict
+        Loaded json from file as a dictionary.
 
     Raises:
-        InvalidPathException if filepath doesn't contain `.json` ending
+        InvalidPathException: If filepath doesn't contain `.json` ending.
     """
     if not filepath.endswith(".json"):
         raise InvalidPathException(f"Presumed JSON file {filepath} does not have .json ending.")

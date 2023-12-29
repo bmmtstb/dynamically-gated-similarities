@@ -47,9 +47,10 @@ def torch_show_image(
 
 
 def torch_to_matplotlib(img: TVImage) -> np.ndarray:
-    """
-    Convert a given single or batched torch image Tensor to a numpy.ndarray on the cpu.
+    """Convert a given single or batched torch image Tensor to a numpy.ndarray on the cpu.
     The dimensions are switched from ``[B x C x H x W]`` -> ``[B x H x W x C]``
+
+    Fixme: Can this be removed?
 
     Args:
         img: torch tensor image with dimensions of ``[B x C x H x W]``

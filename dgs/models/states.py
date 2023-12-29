@@ -39,14 +39,13 @@ class PoseState:
         self.bbox = bbox
 
     def __eq__(self, other) -> bool:
-        """
-        Equality between two PoseState objects
+        """Redefine the equality between two PoseState objects.
 
         Args:
-            other: PoseState object or PoseStateTuple to compare to
+            other: PoseState object or PoseStateTuple to compare to.
 
         Returns:
-            boolean, whether the two PoseState are equal
+            bool: Whether the two PoseState are equal.
         """
         if isinstance(other, PoseState):
             return (
@@ -79,14 +78,13 @@ class PoseState:
         return self
 
     def __getitem__(self, item: str | int) -> torch.Tensor:
-        """
-        Override PoseState["item"] to be class-specific
+        """Override PoseState["item"] to be class-specific.
 
         Args:
-            item: name of value to retrieve, has to be one value from ["pose", "jcs", "bbox"]
+            item: Name of the value to retrieve, has to be in `["pose", "jcs", "bbox"]`.
 
         Returns:
-            State with the given name as torch.Tensor
+            State with the given name as `torch.Tensor`.
         """
         if isinstance(item, str):
             return self.__getattribute__(str(item))
@@ -139,17 +137,16 @@ class PoseStates:
         return torch.stack(lot).to(self.config["device"])
 
     def get_states(self, items: int | slice = None, copy: bool = False) -> PoseState:
-        """
-        Obtain a copy of the three states within this queue.
+        """Obtain a copy of the three states within this queue.
         Due to multiprocessing, we technically have to freeze appending to ensure equal length and matching indices at
         all times, but as long as it doesn't make problems, this will be postponed.
 
         Args:
-            items: slice
-            copy: whether to create a detached and cloned copy of the current states or the real tensors
+            items: Index or slice of the state(s) to retrieve.
+            copy: Whether to create a detached and cloned copy of the current states or the real tensors.
 
         Returns:
-            Three stacked tensors of cloned and detached current state on the configured device
+            Three stacked tensors of cloned and detached current state on the configured device.
         """
         if isinstance(items, int):
             # to be able to use torch.stack later, make sure to keep a list and not the single tensors
@@ -164,8 +161,7 @@ class PoseStates:
         )
 
     def __getitem__(self, item: int | slice) -> PoseState | list[PoseState]:
-        """
-        Override get-item call (PoseStates[i]) to obtain pose state by indices.
+        """Override get-item call (PoseStates[i]) to obtain pose state by indices.
         Supports python indexing using slices.
         Returns the exact torch tensor because it is not possible to add further parameters to this call.
         Therefore, if you want to obtain a detached and cloned tensor use self.get_state(..., copy=True)
@@ -174,8 +170,7 @@ class PoseStates:
             item: index or slice of the states to obtain
 
         Returns:
-            Single pose state given integer item
-            List of pose states given slice
+            Either a single pose state given an integer item or a list of pose states given a slice.
         """
         if isinstance(item, int):
             return PoseState(self.poses[item], self.jcss[item], self.bboxes[item])
@@ -192,7 +187,7 @@ class PoseStates:
         Override += to use append()
 
         Args:
-            other: tuple of pose state to append to self
+            other: Tuple of pose state to append to self.
 
         Returns:
             Updated version of self.
@@ -453,10 +448,10 @@ class DataSample(UserDict):
         Returns:
             A type-cast version of the tensor.
 
-            If overwrite is True, the returned tensor will be the same as self.joint_weight,
+            If overwrite is True, the returned tensor will be the same as `self.joint_weight`,
             including the computational graph.
 
-            If overwrite is False, the returned tensor will be a detached and cloned instance of self.joint_weight.
+            If overwrite is False, the returned tensor will be a detached and cloned instance of `self.joint_weight`.
         """
         if overwrite and decimals >= 0:
             return self.joint_weight.round_(decimals=decimals).to(device=device, dtype=dtype)

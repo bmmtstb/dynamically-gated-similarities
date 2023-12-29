@@ -133,21 +133,19 @@ class CustomTransformValidator:
         It can be specified which values have to be validated.
 
         Args:
-            Expects the first value of args to be a structured dict containing all the values.
+            args: Expects the first value of args to be a structured dict containing all the values.
+            necessary_keys: A list of strings containing the names of the required keys in `args`.
+                Defaults to None.
 
         Returns:
-            Returns the values in the order they appear in necessary_keys.
+            Returns the values in the order they appear in `necessary_keys`.
 
-            Default: (image, box, keypoints, mode, output_size)
+            Default: A tuple containing the values for `(image, box, keypoints, mode, output_size)`.
 
         Raises:
-            Different errors and exceptions if the arguments are invalid
-
-            TypeError
-
-            KeyError
-
-            ValueError
+            TypeError:
+            KeyError: If a key from `necessary_keys` is not in `args`.
+            ValueError:
         """
         if len(args) != 1 or not isinstance(args[0], dict):
             raise TypeError(f"invalid args, expected one dict, but got {args}")
@@ -496,7 +494,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             Possibly flatten B and N dimension and keep indices somewhere...
 
         Returns:
-            Will overwrite the image and keypoints keys
+            Will overwrite the content of the 'image' and 'keypoints' keys
             with the values of the newly computed cropped image and the local coordinates.
 
             The new shape of the images is ``[N x C x h x w]``.

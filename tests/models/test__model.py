@@ -30,7 +30,7 @@ def _def_repl(key: str, value: any) -> Config:
         value: value to set
 
     Returns:
-        Modified copy of DEFAULT_CONFIG
+        A modified copy of `DEFAULT_CONFIG`.
     """
     new_cfg: Config = EasyDict(TEST_CFG.copy())
     new_cfg[key] = value

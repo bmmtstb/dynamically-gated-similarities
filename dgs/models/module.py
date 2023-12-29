@@ -185,8 +185,8 @@ class BaseModule(ABC):
             >>> self.validate_params()
 
         Raises:
-            InvalidParameterException: If one of the parameters is invalid
-            ValueError: If the argument validation has an unknown type
+            InvalidParameterException: If one of the parameters is invalid.
+            ValueError: If the argument validation has an unknown type.
 
         """
         for param_name, list_of_validations in validations.items():
@@ -247,14 +247,12 @@ class BaseModule(ABC):
             priority: Priority on which this will print.
                 Value has to be in PRINT_PRIO.
                 But this is kind of counterintuitive:
-                - Use 'normal' if you want to print it all the time as long as cfg.print_prio is not 'none'
-                - Use 'debug' if you want to print it iff cfg.print_prio is either 'debug' or 'all'
-                - Use 'all' if you want to print it iff cfg.print_prio == 'all'
-
-
+                - Use 'normal' if you want to print it all the time as long as `cfg.print_prio` is not 'none'
+                - Use 'debug' if you want to print it iff `cfg.print_prio` is either 'debug' or 'all'
+                - Use 'all' if you want to print it iff `cfg.print_prio == 'all'`
 
         Returns:
-            Whether the module is allowed to print given its priority.
+            bool: Whether the module is allowed to print given its priority.
         """
         try:
             index_given: int = PRINT_PRIORITY.index(priority)

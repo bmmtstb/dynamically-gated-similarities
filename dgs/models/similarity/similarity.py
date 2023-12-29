@@ -29,7 +29,7 @@ class SimilarityModule(BaseModule):
             d2: The second tensor with data.
 
         Returns:
-            The similarity between d1 and d2, as tensor.
+            The similarity between `d1` and `d2`, as `torch.Tensor`.
         """
         return self.func(d1, d2)
 

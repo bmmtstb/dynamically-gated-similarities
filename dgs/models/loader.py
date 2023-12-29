@@ -34,7 +34,7 @@ def module_loader(config: Config, module: str) -> M:
         module: Name of submodule to load
 
     Returns:
-        Instance of the submodule with its config
+        Initialized instance of the submodule with its config.
     """
     # This model will have one branch for every module
     # pylint: disable=too-many-branches

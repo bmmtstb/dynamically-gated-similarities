@@ -24,21 +24,13 @@ class PoseWarpingModule(BaseModule):
     def forward(self, pose: torch.Tensor, jcs: torch.Tensor, bbox: torch.Tensor) -> PoseState:
         """
 
-        Parameters
-        ----------
-        pose: tensor of shape ``[EP x J x 2]``
-            History of poses per track
+        Args:
+            pose: History of poses per track as `torch.Tensor` of shape ``[EP x J x 2]``.
+            jcs: History of JCS per track as `torch.Tensor` of shape ``[EP x J x 1]``.
+            bbox: History of bboxes per track as `torch.Tensor` of shape ``[EP x 4]``.
 
-        jcs: tensor of shape ``[EP x J x 1]``
-            History of JCS per track
-
-        bbox: tensor of shape ``[EP x 4]``
-            History of bboxes per track
-
-
-        Returns
-        -------
-        next pose state
+        Returns:
+            The next pose state.
         """
 
         raise NotImplementedError

@@ -77,10 +77,10 @@ def collate_data_samples(batch: list[DataSample]) -> DataSample:
     Additionally, custom torch tensor collate, which stacks tensors only if first dimension != 1, cat otherwise.
 
     Args:
-        batch: A list of DataSamples, each containing a single sample / bounding box.
+        batch: A list of `DataSamples`, each `DataSample` containing a single sample or bounding box.
 
     Returns:
-        One single DataSample object, containing a batch of samples / bounding boxes.
+        One single `DataSample` object, containing a batch of samples or bounding boxes.
     """
     custom_collate_map: dict[Type, Callable] = default_collate_fn_map.copy()
     custom_collate_map.update(
@@ -151,7 +151,7 @@ class BaseDataset(BaseModule, TorchDataset):
             idx: index of the dataset object. Is a reference to the same object as len().
 
         Returns:
-            Precomputed backbone output
+            The pre-computed backbone outputs.
         """
         sample: DataSample = self.arbitrary_to_ds(self.data[idx]).to(self.device)
         if "image_crop" not in sample or "local_coordinates" not in sample:
@@ -193,7 +193,7 @@ class BaseDataset(BaseModule, TorchDataset):
         }
 
         Returns:
-            A composed torchvision function that accepts a dict as input
+            A composed torchvision function that accepts a dict as input.
         """
         return tvt.Compose(
             [
@@ -226,15 +226,13 @@ class BaseDataset(BaseModule, TorchDataset):
             After calling this transform function, some values will have different shapes:
 
             image
-                Now contains the image crops as tensor of shape ``[N x C x H x W]``
-
+                Now contains the image crops as tensor of shape ``[N x C x H x W]``.
             bboxes
-                Zero, one, or multiple bounding boxes for this image as tensor of shape ``[N x 4]``
+                Zero, one, or multiple bounding boxes for this image as tensor of shape ``[N x 4]``.
+                And the bounding boxes got transformed into the `XYWH` format.
+            coordinates
+                Now contains the joint coordinates of every detection in local coordinates in shape ``[N x J x 2|3]``.
 
-                And the bounding boxes got transformed into the XYWH box_format.
-
-            coordinates:
-                Now contains the joint coordinates of every detection in local coordinates in shape ``[N x J x 2|3]``
         """
         return tvt.Compose(
             [
@@ -258,7 +256,7 @@ class BaseDataset(BaseModule, TorchDataset):
             The absolute found path to the file or directory.
 
         Raises:
-            FileNotFoundError: If the path is not found
+            FileNotFoundError: If the path is not found.
         """
         if os.path.exists(path):
             return os.path.normpath(path)

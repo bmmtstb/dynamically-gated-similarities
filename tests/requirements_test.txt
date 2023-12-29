@@ -15,7 +15,7 @@ pyyaml
 scipy
 tensorboard
 terminaltables
-torchreid
+# torchreid
 tqdm
 visdom
 

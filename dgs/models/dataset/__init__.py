@@ -26,14 +26,14 @@ def get_dataset(name: str) -> Type[BaseDataset]:
 
 
 def get_data_loader(config: Config, ds: TorchDataset) -> TorchDataLoader:
-    """Set up torch DataLoader with some params from config.
+    """Set up torch data loader with some params from config.
 
     Args:
-        config: Overall tracker configuration
-        ds: Reference to torch Dataset
+        config: Overall tracker configuration.
+        ds: Reference to torch Dataset.
 
     Returns:
-        A torch DataLoader for the given dataset.
+        A `torch.DataLoader` object for the given dataset.
     """
     data_loader = TorchDataLoader(
         dataset=ds,
