@@ -28,6 +28,7 @@ from torchvision.transforms.v2.functional import (
     resize as tvt_resize,
 )
 
+from dgs.utils.exceptions import ValidationException
 from dgs.utils.files import to_abspath
 from dgs.utils.types import FilePath, FilePaths, ImgShape, TVImage, TVVideo
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
@@ -148,7 +149,7 @@ class CustomTransformValidator:
             ValueError:
         """
         if len(args) != 1 or not isinstance(args[0], dict):
-            raise TypeError(f"invalid args, expected one dict, but got {args}")
+            raise TypeError(f"Invalid args, expected one dict, but got {args}")
 
         structured_dict: dict[str, any] = args[0]
         structured_dict.update(kwargs)
@@ -156,16 +157,17 @@ class CustomTransformValidator:
         if necessary_keys is None:
             necessary_keys = ["image", "box", "keypoints", "output_size", "mode"]
 
-        if any(k not in structured_dict for k in necessary_keys):
-            raise KeyError(
-                f"CustomTransformValidator got invalid structured dict, "
-                f"expected the following keys: {necessary_keys}, but got: {structured_dict.keys()}"
-            )
-
         return_values = []
 
         for key in necessary_keys:
+            if key not in structured_dict:
+                raise KeyError(f"Key: {key} was requested but is not in structured_dict.")
+
             new_value = structured_dict.pop(key)
+
+            if key not in self.validators or not hasattr(self, self.validators[key]):
+                raise ValidationException(f"Key: {key} is not in self.validators or there is no validation set.")
+
             getattr(self, self.validators[key])(new_value, structured_dict)
             return_values.append(new_value)
 
@@ -181,17 +183,18 @@ class CustomTransformValidator:
         return tuple(return_values)
 
     @staticmethod
-    def _validate_bboxes(bboxes: tv_tensors.BoundingBoxes, *args):  # pylint: disable=unused-argument
+    def _validate_bboxes(bboxes: tv_tensors.BoundingBoxes, *_args):
         """Validate the bounding boxes"""
         if not isinstance(bboxes, tv_tensors.BoundingBoxes):
             raise TypeError(f"Bounding boxes should be a tv_tensors.BoundingBoxes object but is {type(bboxes)}")
         if bboxes.format != tv_tensors.BoundingBoxFormat.XYWH:
             raise ValueError(f"Bounding boxes should be in XYWH format, but are in {bboxes.format}")
-        if len(bboxes.shape) != 2:
-            raise ValueError(f"Bounding boxes should have two dimensions, but shape is: {bboxes.shape}")
+        # It is not possible to create a 3D bbox object and therefore this will always be true
+        # if len(bboxes.shape) != 2:
+        #     raise ValueError(f"Bounding boxes should have two dimensions, but shape is: {bboxes.shape}")
 
     @staticmethod
-    def _validate_key_points(kp: torch.Tensor, *args):  # pylint: disable=unused-argument
+    def _validate_key_points(kp: torch.Tensor, *_args):
         """Validate the key points."""
         if not isinstance(kp, torch.Tensor):
             raise TypeError(f"key points should be a torch Tensor object but is {type(kp)}")
@@ -199,7 +202,7 @@ class CustomTransformValidator:
             raise ValueError(f"key points should have three dimensions, but shape is: {kp.shape}")
 
     @staticmethod
-    def _validate_mode(mode: str, structured_dict: dict[str, any], *args):  # pylint: disable=unused-argument
+    def _validate_mode(mode: str, structured_dict: dict[str, any], *_args):
         """Validate the mode."""
         if mode not in CustomToAspect.modes:
             raise KeyError(f"Mode: {mode} is not a valid mode.")
@@ -207,13 +210,13 @@ class CustomTransformValidator:
             raise KeyError("In fill-pad mode, fill should be a value of the structured dict and should not be None.")
 
     @staticmethod
-    def _validate_image(img: tv_tensors.Image, *args):  # pylint: disable=unused-argument
+    def _validate_image(img: tv_tensors.Image, *_args):
         """Validate the image."""
         if not isinstance(img, tv_tensors.Image):
             raise TypeError(f"image should be a tv_tensors.Image object but is {type(img)}")
 
     @staticmethod
-    def _validate_output_size(out_s: ImgShape, *args):  # pylint: disable=unused-argument
+    def _validate_output_size(out_s: ImgShape, *_args):
         """Validate the output size."""
         if not isinstance(out_s, (Iterable, tuple)) or len(out_s) != 2:
             raise TypeError(f"output_size is expected to be iterable or tuple of length 2, but is {out_s}")
@@ -411,7 +414,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         diff = [padding[0], padding[1]]
 
         if coordinates.shape[-1] == 3:
-            # fixme: 3d coordinates have no padding in the third dimension ?
+            # 3d coordinates have no padding in the third dimension
             diff.append(0)
         padded_coords: torch.Tensor = coordinates + torch.tensor(diff, device=coordinates.device)
 
@@ -450,7 +453,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
 
         # use delta to shift the coordinates, such that they use local coordinates
         if coordinates.shape[-1] == 3:
-            # fixme: 3d coordinates have no crop in the third dimension ?
+            # 3d coordinates have no crop in the third dimension
             delta.append(0)
 
         cropped_coords: torch.Tensor = coordinates - torch.div(
@@ -526,7 +529,10 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
                 # use torchvision cropping and modify the coords accordingly
                 left, top, width, height = corners
                 image_crop = tv_tensors.wrap(tvt_crop(image, top, left, height, width), like=image)
-                coord_crop = coords - torch.tensor([left, top], device=coords.device)
+                delta = [left, top]
+                if coords.shape[-1] == 3:
+                    delta.append(0)
+                coord_crop = coords - torch.tensor(delta, device=coords.device)
 
             # Resize the image and coord crops to make them stackable again.
             # Use CustomToAspect to make the image the correct aspect ratio.
