@@ -6,6 +6,7 @@ import torch
 from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
+from dgs.utils.exceptions import InvalidPathException, ValidationException
 from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
@@ -189,6 +190,15 @@ class TestValidation(unittest.TestCase):
                     full_path,
                 )
 
+    def test_validate_filepath_exceptions(self):
+        for fps, exception_type in [
+            ("", InvalidPathException),
+            (os.path.join(PROJECT_ROOT, "dummy"), InvalidPathException),
+        ]:
+            with self.subTest(msg=f"filepath: {fps}, exception_type={exception_type}"):
+                with self.assertRaises(exception_type):
+                    validate_filepath(file_paths=fps),
+
     def test_validate_ids(self):
         for tensor, output in [
             (1, torch.ones(1).to(dtype=torch.int32)),
@@ -254,6 +264,15 @@ class TestValidateValue(unittest.TestCase):
         ]:
             with self.subTest(msg=f"value: {value}, data: {data}, validation: {validation}"):
                 self.assertEqual(validate_value(value, data, validation), result)
+
+    def test_validate_value_raises(self):
+        for value, data, validation, exception_type in [
+            (None, None, "dummy", KeyError),
+            ([1, 2, 3], "a", "shorter", ValidationException),
+        ]:
+            with self.subTest(msg=f"value: {value}, data: {data}, validation: {validation}"):
+                with self.assertRaises(exception_type):
+                    validate_value(value, data, validation),
 
     def test_nested_validations(self):
         for value, data, validation, valid in [

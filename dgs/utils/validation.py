@@ -8,7 +8,7 @@ import torch
 from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
-from dgs.utils.exceptions import InvalidPathException
+from dgs.utils.exceptions import InvalidPathException, ValidationException
 from dgs.utils.files import is_file, to_abspath
 from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage, Validator
 
@@ -22,7 +22,7 @@ VALIDATIONS: dict[str, Validator] = {
     "lt": (lambda x, d: isinstance(d, int | float) and x < d),
     "lte": (lambda x, d: isinstance(d, int | float) and x <= d),
     "in": (lambda x, d: hasattr(d, "__contains__") and x in d),
-    "not in": (lambda x, d: x not in d),
+    "not in": (lambda x, d: hasattr(x, "__contains__") and x not in d),
     "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),
     "not contains": (lambda x, d: hasattr(x, "__contains__") and d not in x),
     "str": (lambda x, _: isinstance(x, str)),
@@ -31,14 +31,16 @@ VALIDATIONS: dict[str, Validator] = {
     "number": (lambda x, _: isinstance(x, int | float)),
     "instance": isinstance,  # alias
     "isinstance": isinstance,
-    "between": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] < x < d[1]),
-    "within": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and d[0] <= x <= d[1]),
-    "outside": (lambda x, d: isinstance(d, tuple) and len(d) == 2 and x < d[0] or x > d[1]),
+    "between": (lambda x, d: isinstance(x, int | float) and isinstance(d, tuple) and len(d) == 2 and d[0] < x < d[1]),
+    "within": (lambda x, d: isinstance(x, int | float) and isinstance(d, tuple) and len(d) == 2 and d[0] <= x <= d[1]),
+    "outside": (
+        lambda x, d: isinstance(x, int | float) and isinstance(d, tuple) and len(d) == 2 and x < d[0] or x > d[1]
+    ),
     "len": (lambda x, d: hasattr(x, "__len__") and len(x) == d),
     "shorter": (lambda x, d: hasattr(x, "__len__") and len(x) <= d),
     "longer": (lambda x, d: hasattr(x, "__len__") and len(x) >= d),
-    "startswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.startswith(d)),
-    "endswith": (lambda x, d: isinstance(x, str) and isinstance(d, str) and x.endswith(d)),
+    "startswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.startswith(d)),
+    "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
     "file exists": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
     "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
     "file exists in folder": (
@@ -306,5 +308,9 @@ def validate_value(value: any, data: any, validation: str) -> bool:
     """
     if validation not in VALIDATIONS:
         raise KeyError(f"Validation {validation} does not exist.")
-
-    return VALIDATIONS[validation](value, data)
+    try:
+        return VALIDATIONS[validation](value, data)
+    except Exception as e:
+        raise ValidationException(
+            f"Could not validate value {value} with data {data} for validation {validation}"
+        ) from e
