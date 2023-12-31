@@ -1,6 +1,6 @@
 av # for FFmpeg libraries and loading videos
 black
-cython
+Cython
 coverage[toml]
 easydict
 gdown
@@ -15,7 +15,7 @@ pyyaml
 scipy
 tensorboard
 terminaltables
-# torchreid
+torchreid==0.2.5
 tqdm
 visdom
 
