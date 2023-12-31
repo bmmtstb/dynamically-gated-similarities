@@ -112,7 +112,7 @@ def validate_dimensions(tensor: torch.Tensor, dims: int) -> torch.Tensor:
     if not isinstance(tensor, torch.Tensor):
         try:
             tensor = torch.tensor(tensor)
-        except TypeError as e:
+        except (TypeError, ValueError) as e:
             raise TypeError(
                 f"The input should be a torch tensor or a type that can be converted to one. "
                 f"But `tensor` is {type(tensor)}"

@@ -154,6 +154,8 @@ class TestValidation(unittest.TestCase):
             (torch.ones((1, 1, 1, 1, 5)), 1, torch.ones(5)),
             (torch.ones(5), 5, torch.ones((1, 1, 1, 1, 5))),
             (torch.ones((2, 1, 5)), 2, torch.ones((2, 5))),
+            (np.ones((2, 5), dtype=np.int32), 2, torch.ones(size=(2, 5), dtype=torch.int32)),
+            ([[1, 1]], 2, torch.tensor([[1, 1]])),
         ]:
             with self.subTest(msg=f"tensor: {tensor}, dims: {dims}"):
                 self.assertTrue(
@@ -165,11 +167,12 @@ class TestValidation(unittest.TestCase):
 
     def test_validate_dimensions_exceptions(self):
         for tensor, dims, exception_type in [
-            (np.ones((1, 1)), 1, TypeError),
+            ([[1, 1], [1]], 1, TypeError),
+            ("dummy", 1, TypeError),
             (torch.ones((2, 2, 5)), 2, ValueError),
             (torch.ones((2, 1, 5)), 1, ValueError),
         ]:
-            with self.subTest():
+            with self.subTest(msg=f"tensor: {tensor}, dims: {dims}, exception_type={exception_type}"):
                 with self.assertRaises(exception_type):
                     validate_dimensions(tensor=tensor, dims=dims),
 
