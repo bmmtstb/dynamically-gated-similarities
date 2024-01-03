@@ -1,6 +1,7 @@
-"""
-Modules for loading data.
+r"""
+Modules for loading data, including datasets and data loaders.
 The modules are a combination of my custom BaseModule and a regular torch Dataset.
+Additionally, I implemented a Dataset for the |PT21|_ dataset that can be loaded within |torchreid|_.
 """
 from typing import Type
 
@@ -10,14 +11,12 @@ from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Config
 from .alphapose import AlphaPoseLoader
 from .dataset import BaseDataset, collate_data_samples
-from .posetrack import PoseTrack21, PoseTrack21JSON
+from .posetrack import PoseTrack21JSON
 
 
 def get_dataset(name: str) -> Type[BaseDataset]:
     """Given the name of one dataset, return an instance."""
     # import only what is needed and reduce the chance for circular imports
-    if name == "PoseTrack21":
-        return PoseTrack21
     if name == "PoseTrack21JSON":
         return PoseTrack21JSON
     if name == "AlphaPoseLoader":
