@@ -129,6 +129,12 @@ class PoseTrack21JSON(BaseDataset):
 
         Batching might be faster if we do not have to create DataSample twice.
         Once for every single object, once for the batch.
+
+        Args:
+            indices: List of indices.
+
+        Returns:
+            A single DataSample object containing a batch of data.
         """
 
         def stack_key(key: str) -> torch.Tensor:
@@ -141,7 +147,7 @@ class PoseTrack21JSON(BaseDataset):
             .to(device=self.device, dtype=torch.float32)
             .split([2, 1], dim=-1)
         )
-        return DataSample(
+        ds = DataSample(
             validate=False,
             filepath=tuple(self.map_img_id_path[self.data[i]["image_id"]] for i in indices),
             bbox=tv_tensors.BoundingBoxes(
@@ -159,6 +165,9 @@ class PoseTrack21JSON(BaseDataset):
                 stack_key("bbox_head"), format="XYWH", canvas_size=self.img_shape, device=self.device
             ),
         )
+        # make sure to get image crop for batch
+        self.get_image_crop(ds)
+        return ds
 
     def arbitrary_to_ds(self, a: dict) -> DataSample:
         """Convert raw PoseTrack21 annotations to DataSample object."""

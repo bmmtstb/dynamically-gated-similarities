@@ -163,14 +163,19 @@ class BaseDataset(BaseModule, TorchDataset):
         """Given a single arbitrary data sample, convert it to a DataSample object."""
         raise NotImplementedError
 
-    def get_image_crop(self, ds: DataSample):
-        """Add image crop and local keypoints to given sample"""
+    def get_image_crop(self, ds: DataSample) -> None:
+        """Add image crop and local key points to given sample. Works for single or batched DataSample obejcts.
+
+        Modifies the given DataSample in place.
+        """
         ds.to(self.device)
 
+        ds.image = load_image(ds.filepath)
+
         structured_input = {
-            "image": validate_images(load_image(ds.filepath)),
-            "box": validate_bboxes(ds.bbox),
-            "keypoints": validate_key_points(ds.keypoints),
+            "image": ds.image,
+            "box": ds.bbox,
+            "keypoints": ds.keypoints,
             "output_size": self.params["crop_size"],
             "mode": self.params["crop_mode"],
         }

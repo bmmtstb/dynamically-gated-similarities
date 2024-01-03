@@ -481,20 +481,32 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
     w: int
 
     def forward(self, *args, **kwargs) -> dict[str, any]:
-        """Extract all bounding boxes out of an image and resize them to the new shape.
+        """Extract bounding boxes out of one or multiple images and resize the crops to the target shape.
 
-        For bboxes and coordinates, N has to be at least 1. Possibly add a dummy dimension.
+        For bboxes and coordinates, N has to be at least 1.
+
+        Either there is exactly one image or exactly as many stacked images as there are bounding boxes.
+        If there is one image, then there can be an arbitrary number (N) of bboxes and key points,
+        which will all be extracted from this single source image.
+        If there are exactly N equally sized images, with N bounding boxes and N key points,
+        every box will be extracted from exactly one image.
+
+        Note:
+            If you want to extract 3 bounding boxes from img1 and 2 from img2, either call this method twice,
+            or create an image as a stacked or expanded version of img1 and img2. This will only work,
+            iff img1 and img2 have the same shape!
+
+        Note:
+            The bboxes have to be one `tv_tensors.BoundingBoxes` object,
+            therefore, all boxes have to have the same format and canvas size.
 
         Keyword Args:
-            image: One single image as tv_tensor.Image of shape ``[(1 x) C x H x W]``
+            image: One single image or a batch of N images as tv_tensor.Image of shape ``[(N x) C x H x W]``
             box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
             keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
             mode: The mode for resizing.
                 Similar to the modes of CustomToAspect, except there is one additional case 'outside-crop' available.
             output_size: (h, w) as target height and width of the image
-
-        Todo is it possible to get this to work with batches of images?
-            Possibly flatten B and N dimension and keep indices somewhere...
 
         Returns:
             Will overwrite the content of the 'image' and 'keypoints' keys
@@ -504,7 +516,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
             The shape of the coordinates will stay the same.
 
-            The bounding boxes will not change and will still be in global coordinates.
+            The bounding boxes will not change at all and will therefore still be in global coordinates.
         """
         # pylint: disable=too-many-locals,too-many-arguments
         image, bboxes, coordinates, output_size, mode, kwargs, *_ = self._validate_inputs(*args, **kwargs)
@@ -516,19 +528,29 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         self.h, self.w = output_size
 
         img_crops: list[tv_tensors.Image] = []
-        image_crop: tv_tensors.Image
+        img_crop: tv_tensors.Image
         coord_crops: list[torch.Tensor] = []
         coord_crop: torch.Tensor
 
+        if bboxes.shape[0] != coordinates.shape[0]:
+            raise ValueError(f"Expected bounding boxes and key points to have the same number of dimensions.")
+
         # use torch to round and then cast the bboxes to int
         bboxes_corners = torch.round(bboxes, decimals=0).to(dtype=torch.int)
+
         for i, (corners, coords) in enumerate(zip(bboxes_corners, coordinates)):
+            # get current image
+            if len(image.shape) == 4 and image.shape[-4] > 1:
+                image_i = tv_tensors.wrap(image[i].unsqueeze(0), like=image)
+            else:
+                image_i = image
+
             if mode == "outside-crop":
-                image_crop, coord_crop = self._handle_outside_crop(coords, corners, image)
+                img_crop, coord_crop = self._handle_outside_crop(coords, corners, image_i)
             else:
                 # use torchvision cropping and modify the coords accordingly
                 left, top, width, height = corners
-                image_crop = tv_tensors.wrap(tvt_crop(image, top, left, height, width), like=image)
+                img_crop = tv_tensors.wrap(tvt_crop(image_i, top, left, height, width), like=image)
                 delta = [left, top]
                 if coords.shape[-1] == 3:
                     delta.append(0)
@@ -539,7 +561,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             # Mostly redundant for outside-crop mode, but even there are a few edge cases.
             modified_data: dict[str, any] = transform(
                 {
-                    "image": image_crop,
+                    "image": img_crop,
                     "box": validate_bboxes(tv_tensors.wrap(bboxes[i], like=bboxes)),
                     "keypoints": validate_key_points(coord_crop),
                     "output_size": output_size,

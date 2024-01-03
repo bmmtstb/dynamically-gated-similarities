@@ -21,7 +21,7 @@ from dgs.utils.image import (
     load_video,
 )
 from dgs.utils.types import ImgShape, TVImage
-from dgs.utils.validation import validate_bboxes, validate_key_points
+from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
 from helper import load_test_image
 
 # Map image name to shape.
@@ -40,7 +40,10 @@ TEST_IMAGES: dict[str, tuple[int, int, int]] = {
 
 
 def create_bbox(H: int, W: int) -> tv_tensors.BoundingBoxes:
-    """Create a valid bounding box with its corners on the corners of the original image."""
+    """Create a valid bounding box with its corners on the corners of the original image.
+
+    Shape: ``[1 x 4]``
+    """
     return validate_bboxes(
         tv_tensors.BoundingBoxes(
             torch.tensor([0, 0, W, H]),
@@ -57,6 +60,7 @@ def create_coordinate_diagonal(
     """Create valid key_points within the image.
 
     The key points form a diagonal from the point (left, top) dividing a rectangle with a given height H and width W.
+    Shape: ``[1 x amount x 3 if is_3d else 2]``
     """
     step_size_w = W / (amount - 1)
     step_size_h = H / (amount - 1)
@@ -595,6 +599,50 @@ class TestCustomCropResize(unittest.TestCase):
                         self.assertEqual(out_shape, res["output_size"])
                         # test mode: should not have changed
                         self.assertEqual(mode, res["mode"])
+
+    def test_batched_input(self):
+        out_shapes: list[ImgShape] = [(500, 500), (200, 100), (100, 200)]
+        bbox_l, bbox_t, bbox_w, bbox_h = [20, 30, 50, 40]
+        mode = "outside-crop"
+
+        for out_shape in out_shapes:
+            for img_name in TEST_IMAGES.keys():
+                img: tv_tensors.Image = load_test_image(img_name)
+                img = validate_images(img.expand(2, -1, -1, -1))
+
+                H, W = img.shape[-2:]
+
+                custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
+                    torch.tensor([[bbox_l, bbox_t, bbox_w, bbox_h], [bbox_l, bbox_t, bbox_w, bbox_h]]),
+                    canvas_size=(H, W),
+                    format=tv_tensors.BoundingBoxFormat.XYWH,
+                    dtype=torch.float32,
+                )
+
+                for _3d in [True, False]:
+                    custom_diag = create_coordinate_diagonal(H=bbox_h, W=bbox_w, left=bbox_l, top=bbox_t, is_3d=_3d)
+                    custom_diag = custom_diag.expand(2, -1, -1)
+
+                    with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
+                        data = create_structured_data(
+                            image=img, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
+                        )
+
+                        # get result - these are the resized and stacked images!
+                        res: dict[str, any] = CustomCropResize()(data)
+
+                        new_image = res["image"]
+                        new_bboxes = res["box"]
+                        new_coords = res["keypoints"]
+
+                        self.assertEqual(tuple(new_image.shape[-2:]), out_shape)
+                        self.assertEqual(new_image.shape[0], 2)
+                        self.assertEqual(new_bboxes.shape[0], 2)
+                        self.assertEqual(new_coords.shape[0], 2)
+
+                        self.assertTrue(torch.allclose(new_image[0], new_image[1]))
+                        self.assertTrue(torch.allclose(new_bboxes[0], new_bboxes[1]))
+                        self.assertTrue(torch.allclose(new_coords[0], new_coords[1]))
 
 
 if __name__ == "__main__":
