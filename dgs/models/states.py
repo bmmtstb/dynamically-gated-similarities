@@ -218,7 +218,7 @@ class DataSample(UserDict):
     """Class for storing one or multiple samples of data.
 
     By default, the DataSample validates all new inputs.
-    If you validate elsewhere, or you dont wan't validation for performance reasons, it can be turned off.
+    If you validate elsewhere, or you don't want validation for performance reasons, it can be turned off.
 
 
     During initialization, the following keys have to be given:
@@ -431,17 +431,13 @@ class DataSample(UserDict):
         Args:
             dtype: The new torch dtype of the tensor.
                 Default torch.float32.
-
             decimals: Number of decimals to round floats to, before type casting.
                 Default 0 (round to integer).
-
                 When the value of decimals is set to -1 (minus one),
                 there will only be type casting and no rounding at all.
                 But keep in mind that when information is compressed, e.g., when casting from float to bool,
                 simply calling float might not be enough to cast 0.9 to True.
-
             overwrite: Whether self.joint_weight will be overwritten or not.
-
             device: Which device the tensor is being sent to.
                 Defaults to the device visibility on which the visibility tensor lies.
 

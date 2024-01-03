@@ -16,7 +16,6 @@ from dgs.models.states import DataSample
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
-from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
 
 base_dataset_validations: Validations = {
     "crop_mode": ["str", ("in", CustomToAspect.modes)],
@@ -241,7 +240,7 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         return tvt.Compose(
             [
-                tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),  # xyxy to easily obtain ltrb
+                tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
                 tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
                 # tvt.SanitizeBoundingBoxes(),  # clean up bboxes
                 CustomCropResize(),  # crop the image at the four corners specified in bboxes

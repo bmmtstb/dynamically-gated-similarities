@@ -4,7 +4,7 @@ Different pose based embedding generators.
 import torch
 from torch import nn
 from torchvision import tv_tensors
-from torchvision.ops import box_convert
+from torchvision.transforms.v2.functional import convert_bounding_box_format
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.models.module import configure_torch_module
@@ -152,8 +152,6 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         if len(data) < 2:
             raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
         # extract key points and bboxes from data
-        kp: torch.Tensor
-        bboxes: tv_tensors.BoundingBoxes
         kp, bboxes, *_args = data
 
         # create new last dimension for the number of kernels -> 'nof_kernels'
@@ -163,12 +161,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         x = self.fc1(x)  # fc layers for key points only, defaults no nothing
 
         # convert bboxes to the specified type
-        out_fmt = (
-            self.params["bbox_format"].value.lower()
-            if isinstance(self.params["bbox_format"], tv_tensors.BoundingBoxFormat)
-            else self.params["bbox_format"].lower()
-        )
-        box_convert(bboxes, bboxes.format.value.lower(), out_fmt)
+        bboxes = convert_bounding_box_format(bboxes, new_format=self.params["bbox_format"])
 
         # Concatenate ``[B x (J)]`` and ``[B x 4]``, and input them into the second fc layers.
         # The activation function is called in this Sequential.
@@ -257,16 +250,9 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
                 )
             data, *args = data
         elif len(data) > 1:
-            kp: torch.Tensor
-            bboxes: tv_tensors.BoundingBoxes
             kp, bboxes, *args = data
             # convert bboxes to the specified type
-            out_fmt = (
-                self.params["bbox_format"].value.lower()
-                if isinstance(self.params["bbox_format"], tv_tensors.BoundingBoxFormat)
-                else self.params["bbox_format"].lower()
-            )
-            box_convert(bboxes, bboxes.format.value.lower(), out_fmt)
+            bboxes = convert_bounding_box_format(bboxes, new_format=self.params["bbox_format"])
             data = torch.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
         else:
             raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")

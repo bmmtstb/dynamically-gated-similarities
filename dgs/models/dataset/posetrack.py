@@ -1,5 +1,5 @@
 """
-Load bboxes and poses from an existing .json file of the PoseTrack21 dataset.
+Load bboxes and poses from an existing .json file of the |PT21|_ dataset.
 
 See https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md#reid-pose-tracking for type definitions.
 
@@ -42,15 +42,21 @@ def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
 
     The path parameter can be one of the following:
 
-    * a path to a directory
-    * a single json filepath
-    * a list of json filepaths
+    - a path to a directory
+    - a single json filepath
+    - a list of json filepaths
 
     In all cases, the path can be
         a global path,
         a path relative to the package,
         or a local path under the dataset_path directory.
 
+    Args:
+        config (Config): The overall configuration for the tracker.
+        path (NodePath): The path to the dataset-specific parameters.
+
+    Returns:
+        An instance of TorchDataset, containing the requested dataset(s) as concatenated torch dataset.
     """
     ds = PoseTrack21(config, path)
 
@@ -77,7 +83,10 @@ def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
 
 
 class PoseTrack21(BaseDataset):
-    """Non-Abstract class for PoseTrack21 dataset."""
+    """Non-Abstract class for PoseTrack21 dataset to be able to initialize it in :meth:`get_get_pose_track_21`.
+
+    Should not be instantiated.
+    """
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super(BaseDataset, self).__init__(config=config, path=path)

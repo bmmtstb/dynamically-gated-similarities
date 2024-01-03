@@ -8,6 +8,8 @@ With that said, it is possible to have different embedding shapes throughout the
 as long as the shapes match when inserting them into the similarity models.
 (Or there is a similarity model, that supports different shaped inputs...)
 
+Embedding Generators
+====================
 
 The default embedding generators can be separated into two main classes:
 
@@ -75,7 +77,7 @@ class EmbeddingGeneratorModule(BaseModule):
     """
 
     embedding_size: int
-    """The size of the embedding. It Does not necessarily have to match other embedding sizes."""
+    """The size of the embedding. It Does not necessarily have to match the size of other (different) embeddings."""
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
