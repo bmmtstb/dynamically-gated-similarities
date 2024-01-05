@@ -22,7 +22,7 @@ from dgs.utils.image import (
 )
 from dgs.utils.types import ImgShape, TVImage
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
-from helper import load_test_image
+from helper import load_test_image, load_test_images
 
 # Map image name to shape.
 # Shape is torch shape and therefore [C x H x W].
@@ -653,6 +653,23 @@ class TestCustomCropResize(unittest.TestCase):
                         self.assertTrue(torch.allclose(new_image[0], new_image[1]))
                         self.assertTrue(torch.allclose(new_bboxes[0], new_bboxes[1]))
                         self.assertTrue(torch.allclose(new_coords[0], new_coords[1]))
+
+    def test_exceptions(self):
+        for images, bboxes, coords, exception in [
+            (load_test_image("866-200x300.jpg"), create_bbox(10, 10), torch.zeros((10, 21, 2)), ValueError),
+            (
+                load_test_images(["866-200x300.jpg", "866-200x300.jpg"]),
+                tv_tensors.BoundingBoxes(torch.zeros((10, 4)), canvas_size=(10, 10), format="xywh"),
+                torch.zeros((10, 21, 2)),
+                ValueError,
+            ),
+        ]:
+            with self.subTest(msg=f"bboxes, coords, exception"):
+                data = create_structured_data(
+                    image=images, out_shape=(100, 100), mode="zero-pad", bbox=bboxes, key_points=coords
+                )
+                with self.assertRaises(exception):
+                    CustomCropResize()(data)
 
 
 if __name__ == "__main__":

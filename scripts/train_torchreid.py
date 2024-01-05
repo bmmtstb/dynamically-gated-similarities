@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # Specify ReID model
     model = build_model(
         name="osnet_x1_0",
-        num_classes=6878,  # max person id of PT21
+        num_classes=6879,  # max person id of PT21
         # use_gpu=True,
         # pretrained=True,
         # loss="softmax",
