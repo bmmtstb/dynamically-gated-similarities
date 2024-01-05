@@ -81,20 +81,22 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     """
     paths: FilePaths = validate_filepath(filepath)
 
-    dtype = kwargs.pop("dtype", torch.uint8)
-    device = kwargs.pop("device", "cpu")
-    requires_grad = kwargs.pop("requires_grad", False)
-    read_mode = kwargs.pop("read_mode", ImageReadMode.RGB)
+    # Make sure to extract kwargs for tv_tensors.Image creation before sending kwargs through the custom Compose.
+    image_kwargs = {
+        "dtype": kwargs.pop("dtype", torch.uint8),
+        "device": kwargs.pop("device", "cpu"),
+        "requires_grad": kwargs.pop("requires_grad", None),
+    }
 
     # load images
-    images = [read_image(path, mode=read_mode) for path in paths]
+    images = [read_image(path, mode=kwargs.pop("read_mode", ImageReadMode.RGB)) for path in paths]
 
     # if multiple images are loaded, reshape them to a given output_size
     if force_reshape:
         transform = tvt.Compose([CustomToAspect(), CustomResize()])
-        new_images = []
-        mode = kwargs.pop("mode", "zero-pad")
-        output_size = kwargs.pop("output_size", (256, 256))
+        new_images: list[TVImage] = []
+        mode: str = kwargs.pop("mode", "zero-pad")
+        output_size: ImgShape = kwargs.pop("output_size", (256, 256))
 
         for img in images:
             data = {
@@ -107,15 +109,11 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
             }
             new_images.append(transform(data)["image"])
         images = new_images
-    try:
-        return tv_tensors.Image(
-            torch.stack(images),
-            dtype=dtype,
-            device=device,
-            requires_grad=requires_grad,
-        )
-    except RuntimeError as e:
-        raise RuntimeError("All images should have the same shape.") from e
+
+    if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
+        raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
+
+    return tv_tensors.Image(torch.stack(images), **image_kwargs)
 
 
 def load_video(filepath: FilePath, **kwargs) -> TVVideo:

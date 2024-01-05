@@ -13,20 +13,34 @@ import os
 
 import imagesize
 import torch
+import torchvision.transforms.v2 as tvt
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
-from dgs.utils.files import read_json, to_abspath
+from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
+from dgs.utils.image import CustomCropResize, load_image
 from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations
+from torchreid.data import Dataset
+
+# Do not allow import of 'PoseTrack21' base dataset
+__all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
 
 pt21_json_validations: Validations = {"path": [None]}
 
 
 def validate_pt21_json(json: dict) -> None:
-    """Check whether the given json is valid for the PoseTrack21 dataset."""
+    """Check whether the given json is valid for the PoseTrack21 dataset.
+
+    Args:
+        json (dict): The content of the loaded json file as dictionary.
+
+    Raises:
+        ValueError: If json is not a dict.
+        KeyError: If json does not contain keys for 'images' or 'annotations'.
+    """
     if not isinstance(json, dict):
         raise ValueError(f"The PoseTrack21 json file is expected to be a dict, but was {type(json)}")
     if "images" not in json:
@@ -35,6 +49,22 @@ def validate_pt21_json(json: dict) -> None:
         raise KeyError(
             f"It is expected that a PoseTrack21 .json file has an annotations key. But keys are {json.keys()}"
         )
+
+
+def extract_all_bboxes(
+    dir_path: FilePath = "./data/PoseTrack21/",
+) -> None:
+    """Given the path to the |PT21| dataset, create a new ``crops`` folder containing the image crops of every
+    bounding box separated by test, train, and validation sets like the images.
+    Within every set is one folder per video ID, in which then lie the image crops.
+    The name of the crops is: ``{person_id}_{image_id}.jpg``.
+
+    Args:
+        dir_path (FilePath): The path to the |PT21| dataset directory.
+    """
+    dir_path = to_abspath(dir_path)
+
+    mkdir_if_missing(os.path.join(dir_path, "crops"))
 
 
 def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
@@ -201,3 +231,122 @@ class PoseTrack21JSON(BaseDataset):
                 a["bbox_head"], format="XYWH", canvas_size=self.img_shape, device=self.device
             ),
         )
+
+
+class PoseTrack21Torchreid(Dataset):
+    r"""Load PoseTrack21 as torchreid dataset.
+
+    Reference:
+        Doering et al. Posetrack21: A dataset for person search, multi-object tracking and multi-person pose tracking.
+        IEEE / CVF 2022.
+
+    URL: `<https://github.com/andoer/PoseTrack21>`_
+
+    Dataset statistics:
+        - identities: The training set contains 5474 unique person ids.
+        - images: 163411 images, divided into: 96215 train, 46751 test (gallery), and 20444 val (query)
+
+    Keyword Args:
+        transform_mode: Defines the resize mode, has to be in the modes of
+            :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
+    """
+
+    dataset_dir = "PoseTrack21"
+
+    def __init__(self, root="", **kwargs):
+        # get values from init call
+        self.transform_mode = kwargs.get("transform_mode", "zero-pad")
+        self.height = kwargs.get("height", 256)
+        self.width = kwargs.get("width", 256)
+
+        self.root = os.path.abspath(os.path.expanduser(root))
+        self.dataset_dir = os.path.join(self.root, self.dataset_dir)
+
+        # annotation directory
+        self.annotation_dir = os.path.join(self.dataset_dir, "posetrack_data")
+
+        # image directory
+        train_dir = os.path.join(self.dataset_dir, "images/train")
+        query_dir = os.path.join(self.dataset_dir, "images/val")
+        gallery_dir = os.path.join(self.dataset_dir, "images/val")  # fixme there are no annotations for test obviously
+
+        train = self.process_dir(train_dir)
+        query = self.process_dir(query_dir)
+        gallery = self.process_dir(gallery_dir)
+
+        self.check_before_run([self.dataset_dir, train_dir, query_dir, gallery_dir])
+
+        super().__init__(train, query, gallery, **kwargs)
+
+        self.transform = tvt.Compose(
+            [
+                tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
+                tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
+                # normalize the images using imagenet mean and std
+                tvt.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], inplace=True),
+                CustomCropResize(),
+            ]
+        )
+
+    def __getitem__(self, index: int):
+        img_path, pid, camid, dsetid, box = self.data[index]
+
+        # in torchreid img is expected to be a FloatTensor # fixme, or is it model dependent?
+        try:
+            img = load_image(
+                filepath=os.path.join(self.dataset_dir, img_path),
+                dtype=torch.float32,
+                requires_grad=False,
+            )
+        except RuntimeError:
+            # only reshape if necessary
+            img = load_image(
+                filepath=os.path.join(self.dataset_dir, img_path),
+                dtype=torch.float32,
+                force_reshape=True,
+                mode=self.transform_mode,
+                output_size=(1000, 1000),
+                requires_grad=False,
+            )
+
+        data = {
+            "image": img,
+            "box": tv_tensors.BoundingBoxes(box, format="XYWH", canvas_size=img.shape[-2:]),
+            "keypoints": torch.zeros((1, 1, 2)),
+            "mode": self.transform_mode,
+            "output_size": (self.height, self.width),
+        }
+        crop = self.transform(data)["image"].squeeze()  # expects 3D tensor [C, H, W]
+
+        item = {"img": crop, "pid": pid, "camid": camid, "impath": img_path, "dsetid": dsetid}
+        return item
+
+    def process_dir(self, dir_path: FilePath) -> list[tuple]:
+        """Process all the data of one directory"""
+        anno_dir = os.path.join(self.annotation_dir, dir_path.split("/")[-1])
+        data: list[tuple[str, int, int, int, torch.Tensor]] = []
+        # (path, pid, camid, dsetid, box)
+        # path: is the path to the image file
+        # pid: person id
+        # camid: id of the camera = 0 for all videos
+        # dsetid: dataset id = video_id with a leading 1 for mpii and 2 for bonn
+        # box: Bounding Box around the human as regular tensor with format XYWH
+
+        for _, _, files in os.walk(anno_dir):
+            for file in files:
+                file_id, source, *_ = str(file).split("_")
+                if not file.endswith(".json"):
+                    continue
+                json = read_json(os.path.join(anno_dir, file))
+                map_id_to_path: dict[int, str] = {i["id"]: i["file_name"] for i in json["images"]}
+                for anno in json["annotations"]:
+                    fp: str = map_id_to_path[anno["image_id"]]
+                    pid: int = anno["person_id"]
+                    dsetid: int = int(("1" if source == "mpii" else "2") + str(file_id))
+                    box: torch.Tensor = torch.tensor(anno["bbox"])
+                    data.append((fp, pid, 0, dsetid, box))
+        print(f"dir: {dir_path}, max person id: {max(d[1] for d in data)}")
+        return data
+
+    def download_dataset(self, dataset_dir, dataset_url) -> None:
+        raise NotImplementedError("See https://github.com/andoer/PoseTrack21 for more details.")

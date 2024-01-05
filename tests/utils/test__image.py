@@ -129,7 +129,7 @@ class TestImage(unittest.TestCase):
 
     def test_load_multiple_images_exception(self):
         fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ValueError):
             load_image(fps)
 
 

@@ -52,8 +52,8 @@ class TestTestHelpers(unittest.TestCase):
 
     def test_load_test_images_exception(self):
         for filenames, exception in [
-            (["866-200x300.jpg", "866-300x200.jpg"], RuntimeError),
-            (all_images, RuntimeError),
+            (["866-200x300.jpg", "866-300x200.jpg"], ValueError),
+            (all_images, ValueError),
         ]:
             with self.subTest(msg=f"filenames: {filenames}, exception: {exception}"):
                 with self.assertRaises(exception):

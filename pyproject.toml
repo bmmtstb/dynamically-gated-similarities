@@ -62,6 +62,7 @@ data_file = ".coverage"
 source = ["dgs"]
 omit = [
     "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
+    "*/utils/torchtools.py",  # copied from torchreid
 ]
 
 [tool.coverage.paths]
@@ -74,6 +75,7 @@ skip_empty = true
 ignore_errors = true
 omit = [# files
     "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
+    "*/utils/torchtools.py",  # copied from torchreid
 ]
 # Regexes for lines to exclude from consideration
 exclude_also = [
@@ -84,8 +86,10 @@ exclude_also = [
     # Don't complain if tests don't hit defensive assertion code:
     "assert ",
     "raise NotImplementedError",
+
     # Don't complain if non-runnable code isn't run:
     "if __name__ == .__main__.:",
+
     # Don't complain about abstract methods, they aren't run:
     "@(abc\\.)?abstractmethod",
 ]
