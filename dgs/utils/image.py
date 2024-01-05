@@ -34,34 +34,88 @@ from dgs.utils.types import FilePath, FilePaths, ImgShape, TVImage, TVVideo
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
 
-def load_image(filepath: Union[FilePath, FilePaths], **kwargs) -> TVImage:
-    """Load an image from a given filepath.
+def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False, **kwargs) -> TVImage:
+    """Load an image or multiple images given a single or multiple filepaths.
+
+    Notes:
+        To be able to return a single torch tensor while loading multiple images,
+        make sure that either the images have the same shape, or ``force_reshape`` is set to ``True``.
 
     Args:
         filepath: Single string or list of absolute or local filepaths to the image.
+        force_reshape: Whether to reshape the image(s) to a target shape.
+            The mode and size can be specified in the kwargs.
 
     Keyword Args:
         dtype: The dtype of the image, most likely uint8, byte, or float. Default torch.uint8
         device: Device the image should be on. Default "cpu"
         requires_grad: Whether image tensor should include gradient. Default False
+        read_mode: Which ImageReadMode to use while loading the images.
+        mode: If ``force_reshape`` is true, defines the resize mode, has to be in the modes of
+            :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
+        output_size: If ``force_reshape`` is true, defines the height and width of the returned images.
+            Default (256, 256).
+
+    Examples:
+        >>> img = load_image("./tests/test_data/866-200x300.jpg")
+        >>> print(img.shape)
+        torch.Size([1, 3, 300, 200])
+
+        >>> multiple_images = ["./tests/test_data/866-200x300.jpg", "./tests/test_data/866-1000x1000.jpg"]
+        >>> imgs = load_image(multiple_images)
+        Traceback (most recent call last):
+            ...
+        RuntimeError: All images should have the same shape.
+
+        >>> imgs = load_image(multiple_images, force_reshape=True, output_size=(300, 300))
+        >>> print(imgs.shape)
+        torch.Size([2, 3, 300, 300])
+
+    Raises:
+        RuntimeError: If images have different shapes but ``force_reshape`` is ``False``.
 
     Returns:
-        Torch uint8 / byte tensor with its original shape of ``[B x C x H x W]``.
-        Will always have four dimensions.
+        Torch uint8 / byte tensor with its original shape of ``[B x C x H x W]`` if force_reshape is false,
+        otherwise the returned shape depends on the ``output_size``.
+        The returned image will always have four dimensions.
     """
     paths: FilePaths = validate_filepath(filepath)
 
-    dtype = kwargs.get("dtype", torch.uint8)
-    device = kwargs.get("device", "cpu")
-    requires_grad = kwargs.get("requires_grad", False)
-    read_mode = kwargs.get("read_mode", ImageReadMode.RGB)
+    dtype = kwargs.pop("dtype", torch.uint8)
+    device = kwargs.pop("device", "cpu")
+    requires_grad = kwargs.pop("requires_grad", False)
+    read_mode = kwargs.pop("read_mode", ImageReadMode.RGB)
 
-    return tv_tensors.Image(
-        torch.stack([read_image(path, mode=read_mode) for path in paths]),
-        dtype=dtype,
-        device=device,
-        requires_grad=requires_grad,
-    )
+    # load images
+    images = [read_image(path, mode=read_mode) for path in paths]
+
+    # if multiple images are loaded, reshape them to a given output_size
+    if force_reshape:
+        transform = tvt.Compose([CustomToAspect(), CustomResize()])
+        new_images = []
+        mode = kwargs.pop("mode", "zero-pad")
+        output_size = kwargs.pop("output_size", (256, 256))
+
+        for img in images:
+            data = {
+                "image": tv_tensors.Image(img.detach().clone()),
+                "box": tv_tensors.BoundingBoxes(torch.zeros((1, 4)), format="XYWH", canvas_size=(1, 1)),
+                "keypoints": torch.zeros((1, 1, 2)),
+                "mode": mode,
+                "output_size": output_size,
+                **kwargs,
+            }
+            new_images.append(transform(data)["image"])
+        images = new_images
+    try:
+        return tv_tensors.Image(
+            torch.stack(images),
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+    except RuntimeError as e:
+        raise RuntimeError("All images should have the same shape.") from e
 
 
 def load_video(filepath: FilePath, **kwargs) -> TVVideo:
@@ -533,10 +587,10 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         coord_crop: torch.Tensor
 
         if bboxes.shape[0] != coordinates.shape[0]:
-            raise ValueError(f"Expected bounding boxes and key points to have the same number of dimensions.")
+            raise ValueError("Expected bounding boxes and key points to have the same number of dimensions.")
         if len(image.shape) == 4 and image.shape[-4] > 1 and image.shape[-4] != bboxes.shape[0]:
             raise ValueError(
-                f"If you provide multiple images, it is expected that they have the same length as the bounding boxes."
+                "If you provide multiple images, it is expected that they have the same length as the bounding boxes."
             )
 
         # use torch to round and then cast the bboxes to int

@@ -61,4 +61,4 @@ def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kw
     try:
         return validate_images(torch.cat(images))
     except RuntimeError as e:
-        raise RuntimeError(f"All images should have the same shape.") from e
+        raise RuntimeError("All images should have the same shape.") from e

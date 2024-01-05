@@ -115,12 +115,22 @@ class TestImageUtils(unittest.TestCase):
 
 
 class TestImage(unittest.TestCase):
-    def test_load_image(self):
+    def test_load_single_image(self):
         for file_name, shape in TEST_IMAGES.items():
             with self.subTest(msg=f"image name: {file_name}"):
                 fp = to_abspath(os.path.join("./tests/test_data/", file_name))
                 self.assertEqual(load_image(fp).shape[-3:], shape)
                 self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
+
+    def test_load_multiple_images_resized(self):
+        fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
+        size: ImgShape = (300, 500)
+        self.assertEqual(tuple(load_image(fps, force_reshape=True, output_size=size).shape), (9, 3, 300, 500))
+
+    def test_load_multiple_images_exception(self):
+        fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
+        with self.assertRaises(RuntimeError):
+            load_image(fps)
 
 
 class TestVideo(unittest.TestCase):
