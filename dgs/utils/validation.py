@@ -213,7 +213,7 @@ def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
     return ids.to(dtype=torch.int32)
 
 
-def validate_images(images: Image, dims: Union[int, None] = 4) -> TVImage:
+def validate_images(images: Union[Image, torch.Tensor], dims: Union[int, None] = 4) -> TVImage:
     """Given one single or multiple images, validate them and return a torchvision-tensor image.
 
     Args:

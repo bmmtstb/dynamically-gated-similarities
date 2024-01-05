@@ -534,6 +534,10 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
         if bboxes.shape[0] != coordinates.shape[0]:
             raise ValueError(f"Expected bounding boxes and key points to have the same number of dimensions.")
+        if len(image.shape) == 4 and image.shape[-4] > 1 and image.shape[-4] != bboxes.shape[0]:
+            raise ValueError(
+                f"If you provide multiple images, it is expected that they have the same length as the bounding boxes."
+            )
 
         # use torch to round and then cast the bboxes to int
         bboxes_corners = torch.round(bboxes, decimals=0).to(dtype=torch.int)
