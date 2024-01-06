@@ -169,7 +169,7 @@ def extract_all_bboxes(
                     "mode": transform_mode,
                     "output_size": crop_size,
                 }
-            )["image"]
+            )["image"].cpu()
 
             for fp, crop in zip(new_fps, crops):
                 write_jpeg(input=crop, filename=fp, quality=kwargs.get("quality", 90))
