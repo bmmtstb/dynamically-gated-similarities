@@ -360,9 +360,6 @@ class PoseTrack21Torchreid(ImageDataset):
     Args:
         root (str): Root directory of all the datasets. Default "./data/"
 
-    Attributes:
-        dataset_dir (str): Name of the directory containing the dataset within ``root``.
-
     Notes:
         The bbox crops are generated using :func:`extract_all_bboxes()`.
 
@@ -378,13 +375,14 @@ class PoseTrack21Torchreid(ImageDataset):
 
     """
 
-    dataset_dir: str = "PoseTrack21"
+    dataset_dir: FilePath = "PoseTrack21"
+    """Name of the directory containing the dataset within ``root``."""
 
     def __init__(self, root: str = "", **kwargs):
         self.root: FilePath = (
-            os.path.abspath(os.path.expanduser(root)) if len(root) else os.path.join(PROJECT_ROOT, "./data/")
+            os.path.abspath(os.path.expanduser(root)) if root else os.path.join(PROJECT_ROOT, "./data/")
         )
-        self.dataset_dir: FilePath = os.path.join(self.root, self.dataset_dir)
+        self.dataset_dir = os.path.join(self.root, self.dataset_dir)
 
         # annotation directory
         # self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data")

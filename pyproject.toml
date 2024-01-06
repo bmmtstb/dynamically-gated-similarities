@@ -63,6 +63,7 @@ source = ["dgs"]
 omit = [
     "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
     "*/utils/torchtools.py",  # copied from torchreid
+    "tracker_api.py",  # will only contain default tracker which cant really be tested without data
 ]
 
 [tool.coverage.paths]
