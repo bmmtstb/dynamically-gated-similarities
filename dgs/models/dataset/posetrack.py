@@ -10,19 +10,21 @@ PoseTrack21 format:
 * The 17 key points and their respective visibilities are stored in one list of len 51 [x_i, y_i, vis_i, ...]
 """
 import os
+import warnings
 
 import imagesize
 import torch
 import torchvision.transforms.v2 as tvt
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors
+from torchvision.io import write_jpeg
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.image import CustomCropResize, load_image
-from dgs.utils.types import Config, FilePath, ImgShape, NodePath, Validations
+from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, TVImage, Validations
 from torchreid.data import Dataset
 
 # Do not allow import of 'PoseTrack21' base dataset
@@ -52,7 +54,11 @@ def validate_pt21_json(json: dict) -> None:
 
 
 def extract_all_bboxes(
-    dir_path: FilePath = "./data/PoseTrack21/",
+    base_dataset_path: FilePath = "./data/PoseTrack21/",
+    data_dir: FilePath = "./posetrack_data_fast/",
+    crop_size: ImgShape = (256, 256),
+    transform_mode: str = "zero-pad",
+    **kwargs,
 ) -> None:
     """Given the path to the |PT21| dataset, create a new ``crops`` folder containing the image crops of every
     bounding box separated by test, train, and validation sets like the images.
@@ -60,11 +66,109 @@ def extract_all_bboxes(
     The name of the crops is: ``{person_id}_{image_id}.jpg``.
 
     Args:
-        dir_path (FilePath): The path to the |PT21| dataset directory.
-    """
-    dir_path = to_abspath(dir_path)
+        base_dataset_path (FilePath): The path to the |PT21| dataset directory.
+        data_dir (FilePath): The name of the directory containing the folders for the training and test annotations.
+        crop_size (ImgShape): The target shape of the image crops.
+        transform_mode (str): Defines the resize mode, has to be in the modes of
+            :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
 
-    mkdir_if_missing(os.path.join(dir_path, "crops"))
+    Keyword Args:
+        device (Device): Device to run the cropping on. Defaults to "cuda" if available "cpu" otherwise.
+        quality (int): The quality to save the jpegs as. Default 90. Default of torchvision is 75.
+        check_img_sizes (bool): Whether to check if all images in a given folder have the same size before stacking them
+            for cropping. Default False.
+    """
+    base_dataset_path = to_abspath(base_dataset_path)
+    annos_path = to_abspath(os.path.join(base_dataset_path, data_dir))
+    crops_path = os.path.join(base_dataset_path, "crops")
+
+    # extract kwargs
+    device: Device = kwargs.pop("device", "cuda" if torch.cuda.is_available() else "cpu")
+    quality: int = kwargs.pop("quality", 90)
+    check_img_sizes: bool = kwargs.pop("check_img_sizes", False)
+
+    mkdir_if_missing(crops_path)
+
+    transform = tvt.Compose(
+        [
+            tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
+            tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
+            CustomCropResize(),
+        ]
+    )
+
+    for abs_anno_path, _, files in tqdm(os.walk(annos_path), desc="datasets", position=0):
+        # skip directories that don't contain files, e.g., the folder containing the datasets
+        if len(files) == 0:
+            continue
+        # inside crops folder, create same structure as within images directory
+        # target      => .../PoseTrack21/crops/{train}/{dataset_name}/{img_id}_{person_id}.jpg
+        # abs_anno_path => .../PoseTrack21/images/{train}/{dataset_name}.json
+
+        # create folder {train} inside crops
+        train_folder_name = abs_anno_path.split("/")[-1]
+        crops_train_dir = os.path.join(crops_path, train_folder_name)
+        mkdir_if_missing(crops_train_dir)
+
+        for anno_file in tqdm(files, desc="annotation-files", position=1):
+            if not anno_file.endswith(".json"):
+                continue
+            try:
+                json = read_json(os.path.join(abs_anno_path, anno_file))
+                validate_pt21_json(json)
+            except Exception as e:
+                warnings.warn(str(e))
+                continue
+
+            # get the folder name which is the name of the sub-dataset and create the folder within crops
+            dataset_name = anno_file.split(".")[0]
+            crops_subset_path = os.path.join(crops_train_dir, dataset_name)
+            mkdir_if_missing(crops_subset_path)
+
+            # skip if the folder has the correct number of files
+            if len(os.listdir(crops_subset_path)) == len(json["annotations"]):
+                continue
+
+            # check that the image sizes in every folder match
+            if check_img_sizes and len(set(imagesize.get(os.path.join(crops_subset_path, f)) for f in files)) != 1:
+                warnings.warn(f"In folder {crops_subset_path} the images do not have the same size.")
+
+            # Because the images in every folder have the same shape,
+            # it is possible to stack them and use the batches on the GPU.
+            map_id_to_path: dict[int, FilePath] = {i["id"]: i["file_name"] for i in json["images"]}
+            img_fps: list[FilePath] = []
+            boxes: list = []
+            new_fps: list[FilePath] = []
+
+            for anno in json["annotations"]:
+                boxes.append(torch.tensor(anno["bbox"], dtype=torch.float32, device=device))
+
+                img_fps.append(os.path.join(base_dataset_path, map_id_to_path[anno["image_id"]]))
+
+                # There will be multiple detections per image.
+                # Therefore, the new image crop name has to include the image id and person id.
+                new_img_name = f"{anno['image_id']}_{str(anno['person_id'])}.jpg"
+                new_fps.append(os.path.join(crops_subset_path, new_img_name))
+
+            imgs: TVImage = load_image(
+                filepath=tuple(img_fps),
+                device=device,
+                requires_grad=False,
+            )
+
+            data = {
+                "image": imgs,
+                "box": tv_tensors.BoundingBoxes(
+                    torch.stack(boxes), format="XYWH", canvas_size=imgs.shape[-2:], device=device
+                ),
+                "keypoints": torch.zeros((imgs.shape[-4], 1, 2), device=device),
+                "mode": transform_mode,
+                "output_size": crop_size,
+            }
+            crops = transform(data)["image"].cpu()
+
+            for fp, crop in zip(new_fps, crops):
+                write_jpeg(input=crop, filename=fp, quality=quality)
 
 
 def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
@@ -298,7 +402,7 @@ class PoseTrack21Torchreid(Dataset):
                 dtype=torch.float32,
                 requires_grad=False,
             )
-        except RuntimeError:
+        except (ValueError, RuntimeError):
             # only reshape if necessary
             img = load_image(
                 filepath=os.path.join(self.dataset_dir, img_path),
