@@ -592,7 +592,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             )
 
         # use torch to round and then cast the bboxes to int
-        bboxes_corners = torch.round(bboxes, decimals=0).to(dtype=torch.int)
+        bboxes_corners = bboxes.round().to(dtype=torch.int)
 
         for i, (corners, coords) in enumerate(zip(bboxes_corners, coordinates)):
             # get current image
