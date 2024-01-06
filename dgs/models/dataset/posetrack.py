@@ -9,7 +9,9 @@ PoseTrack21 format:
 * Bounding boxes have format XYWH
 * The 17 key points and their respective visibilities are stored in one list of len 51 [x_i, y_i, vis_i, ...]
 """
+import glob
 import os
+import re
 import warnings
 
 import imagesize
@@ -22,10 +24,11 @@ from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
+from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.image import CustomCropResize, load_image
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, TVImage, Validations
-from torchreid.data import Dataset
+from torchreid.data import ImageDataset
 
 # Do not allow import of 'PoseTrack21' base dataset
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
@@ -341,7 +344,7 @@ class PoseTrack21JSON(BaseDataset):
         )
 
 
-class PoseTrack21Torchreid(Dataset):
+class PoseTrack21Torchreid(ImageDataset):
     r"""Load PoseTrack21 as torchreid dataset.
 
     Reference:
@@ -354,106 +357,92 @@ class PoseTrack21Torchreid(Dataset):
         - identities: The training set contains 5474 unique person ids.
         - images: 163411 images, divided into: 96215 train, 46751 test (gallery), and 20444 val (query)
 
-    Keyword Args:
-        transform_mode: Defines the resize mode, has to be in the modes of
-            :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
+    Args:
+        root (str): Root directory of all the datasets. Default "./data/"
+
+    Attributes:
+        dataset_dir (str): Name of the directory containing the dataset within ``root``.
+
+    Notes:
+        The bbox crops are generated using :func:`extract_all_bboxes()`.
+
+    Notes:
+        There is no test data, therefore, I simply duplicated the val folder and replaced the pids with 0.
+
+        >>> for abs_path, _, filenames in tqdm(os.walk("./data/PoseTrack21/crops/test/")):
+        ...     if len(filenames) == 0:
+        ...         continue
+        ...     for filename in filenames:
+        ...         img_id = filename.split(".")[0].split("_")[0]
+        ...         os.rename(os.path.join(abs_path, filename), os.path.join(abs_path, f"{img_id}_0.jpg"))
+
     """
 
-    dataset_dir = "PoseTrack21"
+    dataset_dir: str = "PoseTrack21"
 
-    def __init__(self, root="", **kwargs):
-        # get values from init call
-        self.transform_mode = kwargs.get("transform_mode", "zero-pad")
-        self.height = kwargs.get("height", 256)
-        self.width = kwargs.get("width", 256)
-
-        self.root = os.path.abspath(os.path.expanduser(root))
-        self.dataset_dir = os.path.join(self.root, self.dataset_dir)
+    def __init__(self, root: str = "", **kwargs):
+        self.root: FilePath = (
+            os.path.abspath(os.path.expanduser(root)) if len(root) else os.path.join(PROJECT_ROOT, "./data/")
+        )
+        self.dataset_dir: FilePath = os.path.join(self.root, self.dataset_dir)
 
         # annotation directory
-        self.annotation_dir = os.path.join(self.dataset_dir, "posetrack_data")
+        # self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data")
+        self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data_fast")
 
         # image directory
-        train_dir = os.path.join(self.dataset_dir, "images/train")
-        query_dir = os.path.join(self.dataset_dir, "images/val")
-        gallery_dir = os.path.join(self.dataset_dir, "images/val")  # fixme there are no annotations for test obviously
+        train_dir: FilePath = os.path.join(self.dataset_dir, "crops/train")
+        query_dir: FilePath = os.path.join(self.dataset_dir, "crops/val")
+        gallery_dir: FilePath = os.path.join(self.dataset_dir, "crops/test")
 
-        train = self.process_dir(train_dir)
-        query = self.process_dir(query_dir)
-        gallery = self.process_dir(gallery_dir)
+        train: list[tuple] = self.process_dir(train_dir, relabel=True)
+        query: list[tuple] = self.process_dir(query_dir)
+        gallery: list[tuple] = self.process_dir(gallery_dir)
 
         self.check_before_run([self.dataset_dir, train_dir, query_dir, gallery_dir])
 
         super().__init__(train, query, gallery, **kwargs)
 
-        self.transform = tvt.Compose(
-            [
-                tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
-                tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
-                # normalize the images using imagenet mean and std
-                tvt.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], inplace=True),
-                CustomCropResize(),
-            ]
-        )
+    @staticmethod
+    def process_dir(dir_path: FilePath, relabel: bool = False) -> list[tuple]:
+        """
+        Process all the data of one directory.
 
-    def __getitem__(self, index: int):
-        img_path, pid, camid, dsetid, box = self.data[index]
+        Args:
+            dir_path (FilePath): The absolute path to the directory containing images.
+                In this case will be something like '.../data/PoseTrack21/crops/train'.
+            relabel (bool): Whether to create labels from to pids, to reduce the number of parameters in the model.
+        """
+        img_paths = glob.glob(os.path.join(dir_path, "*/*.jpg"))
+        pattern = re.compile(r"(\d+)_(\d+)")
 
-        # in torchreid img is expected to be a FloatTensor # fixme, or is it model dependent?
-        try:
-            img = load_image(
-                filepath=os.path.join(self.dataset_dir, img_path),
-                dtype=torch.float32,
-                requires_grad=False,
-            )
-        except (ValueError, RuntimeError):
-            # only reshape if necessary
-            img = load_image(
-                filepath=os.path.join(self.dataset_dir, img_path),
-                dtype=torch.float32,
-                force_reshape=True,
-                mode=self.transform_mode,
-                output_size=(1000, 1000),
-                requires_grad=False,
-            )
+        pid_container = set()
+        for img_path in img_paths:
+            _, pid = map(int, pattern.search(img_path).groups())
+            if pid == -1:
+                continue  # junk images are just ignored
+            pid_container.add(pid)
+        pid2label: dict[int, int] = {pid: label for label, pid in enumerate(pid_container)}
 
-        data = {
-            "image": img,
-            "box": tv_tensors.BoundingBoxes(box, format="XYWH", canvas_size=img.shape[-2:]),
-            "keypoints": torch.zeros((1, 1, 2)),
-            "mode": self.transform_mode,
-            "output_size": (self.height, self.width),
-        }
-        crop = self.transform(data)["image"].squeeze()  # expects 3D tensor [C, H, W]
-
-        item = {"img": crop, "pid": pid, "camid": camid, "impath": img_path, "dsetid": dsetid}
-        return item
-
-    def process_dir(self, dir_path: FilePath) -> list[tuple]:
-        """Process all the data of one directory"""
-        anno_dir = os.path.join(self.annotation_dir, dir_path.split("/")[-1])
-        data: list[tuple[str, int, int, int, torch.Tensor]] = []
-        # (path, pid, camid, dsetid, box)
-        # path: is the path to the image file
+        data: list[tuple[str, int, int, int]] = []
+        # (path, pid, camid, dsetid)
+        # path: is the absolute path to the file of the cropped image
         # pid: person id
         # camid: id of the camera = 0 for all videos
         # dsetid: dataset id = video_id with a leading 1 for mpii and 2 for bonn
-        # box: Bounding Box around the human as regular tensor with format XYWH
 
-        for _, _, files in os.walk(anno_dir):
-            for file in files:
-                file_id, source, *_ = str(file).split("_")
-                if not file.endswith(".json"):
-                    continue
-                json = read_json(os.path.join(anno_dir, file))
-                map_id_to_path: dict[int, str] = {i["id"]: i["file_name"] for i in json["images"]}
-                for anno in json["annotations"]:
-                    fp: str = map_id_to_path[anno["image_id"]]
-                    pid: int = anno["person_id"]
-                    dsetid: int = int(("1" if source == "mpii" else "2") + str(file_id))
-                    box: torch.Tensor = torch.tensor(anno["bbox"])
-                    data.append((fp, pid, 0, dsetid, box))
-        print(f"dir: {dir_path}, max person id: {max(d[1] for d in data)}")
+        for img_path in img_paths:
+            _, pid = map(int, pattern.search(img_path).groups())
+            if pid == -1:
+                continue  # junk images are just ignored
+            if relabel:
+                pid = pid2label[pid]
+
+            # create dsetid as int({"1" if ds_type == "mpii" else "2"}{video_id})
+            ds_id, ds_type, *_ = img_path.split("/")[-2].split("_")
+            dsetid: int = int(f"{'1' if ds_type == 'mpii' else '2'}{str(ds_id)}")
+
+            data.append((img_path, pid, 0, dsetid))
         return data
 
     def download_dataset(self, dataset_dir, dataset_url) -> None:
