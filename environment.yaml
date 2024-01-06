@@ -30,8 +30,6 @@ dependencies:
     - conda-forge::pyyaml=6.0.*  # yaml
     - conda-forge::scipy
     - conda-forge::terminaltables
-    - conda-forge::tensorboard
-    - conda-forge::tensorboardx
     - conda-forge::typeguard
     - conda-forge::tqdm
     - conda-forge::visdom
