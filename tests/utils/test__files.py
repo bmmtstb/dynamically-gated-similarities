@@ -178,7 +178,13 @@ class TestFiles(unittest.TestCase):
                     with self.assertRaises(InvalidPathException):
                         _ = to_abspath(path)
                 else:
-                    self.assertEqual(to_abspath(path), result)
+                    abspath = to_abspath(path)
+                    self.assertEqual(abspath, result)
+                    # check whether the abspath was cleaned from redundant points
+                    if is_file(abspath):
+                        self.assertEqual(abspath.count("."), 1)
+                    else:
+                        self.assertEqual(abspath.count("."), 0)
 
 
 if __name__ == "__main__":
