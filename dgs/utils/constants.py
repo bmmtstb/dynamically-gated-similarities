@@ -8,8 +8,8 @@ import torch
 PRINT_PRIORITY: list[str] = ["none", "normal", "debug", "all"]
 """List of all the available print priorities."""
 
-PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-"""Path to project root directory."""
+PROJECT_ROOT: str = os.path.normpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+"""Path to this projects' root directory."""
 
 OKS_SIGMAS: dict[str, torch.FloatTensor] = {
     # pylint: disable=line-too-long

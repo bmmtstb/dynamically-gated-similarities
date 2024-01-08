@@ -241,9 +241,6 @@ class CustomTransformValidator:
             raise TypeError(f"Bounding boxes should be a tv_tensors.BoundingBoxes object but is {type(bboxes)}")
         if bboxes.format != tv_tensors.BoundingBoxFormat.XYWH:
             raise ValueError(f"Bounding boxes should be in XYWH format, but are in {bboxes.format}")
-        # It is not possible to create a 3D bbox object and therefore this will always be true
-        # if len(bboxes.shape) != 2:
-        #     raise ValueError(f"Bounding boxes should have two dimensions, but shape is: {bboxes.shape}")
 
     @staticmethod
     def _validate_key_points(kp: torch.Tensor, *_args):
