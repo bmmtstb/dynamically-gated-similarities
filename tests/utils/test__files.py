@@ -48,6 +48,45 @@ class TestFiles(unittest.TestCase):
             with self.subTest(msg=f"fp: {fp}, is: {is_pd}"):
                 self.assertEqual(is_project_dir(fp), is_pd)
 
+    def test_is_proj_file_w_root(self):
+        tests_folder = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/"))
+        for fp, root, is_pf in [
+            (r"./tests/utils/test__files.py", PROJECT_ROOT, True),  # this file
+            (r"./test__files.py", os.path.dirname(os.path.realpath(__file__)), True),
+            (r"./test_data/866-200x300.jpg", tests_folder, True),
+            (r"./test_data/866-201x301.jpg", tests_folder, False),  # wrong shape
+            (r"./test_data/", tests_folder, False),  # directory not path
+            (r"", tests_folder, False),  # empty string and directory
+            (r"./866-200x300.jpg", tests_folder, False),  # missing test_data folder
+            (prepend_base(r"./tests/utils/test__files.py"), PROJECT_ROOT, True),  # valid abspath which join ignores
+            (prepend_base(r"./tests/utils/test__files.py"), tests_folder, True),  # valid abspath which join ignores
+            (r"./tests/utils/test__files.py", "/dummy/", False),
+            (prepend_base(r"./tests/utils/test__files.py"), "dummy/dummy/", True),  # fixme: why is this true ??
+            (prepend_base(r"./test__files.py"), tests_folder, False),  # invalid abspath due to prepend adding sth wrong
+        ]:
+            with self.subTest(msg=f"fp: {fp}, root: {root}, is: {is_pf}"):
+                self.assertEqual(is_project_file(fp, root=root), is_pf)
+
+    def test_is_proj_dir_w_root(self):
+        tests_folder = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/"))
+        for fp, root, is_pd in [
+            (r"./tests/utils/test__files.py", PROJECT_ROOT, False),  # this file is a file not a dir
+            (r"./utils/test__files.py", tests_folder, False),  # this file is a file not a dir
+            (r"./tests/test_data/", PROJECT_ROOT, True),  # valid directory
+            (r"./test_data/", tests_folder, True),  # valid directory
+            (prepend_base(r"./tests/test_data/"), PROJECT_ROOT, True),  # valid directory in abspath, which join ignores
+            (prepend_base(r"./test_data/"), tests_folder, False),  # prepend made it to invalid path
+            (prepend_base(r"./tests/dummy/"), PROJECT_ROOT, False),  # invalid directory
+            (prepend_base(r"./dummy/"), tests_folder, False),  # invalid directory
+            (r"", PROJECT_ROOT, True),  # empty string is a valid local path
+            (r"", tests_folder, True),  # empty string is a valid local path
+            (r".", PROJECT_ROOT, True),  # this is a valid local path
+            (r".", tests_folder, True),  # this is a valid local path
+            (r"./test_data/", PROJECT_ROOT, False),  # missing tests folder
+        ]:
+            with self.subTest(msg=f"fp: {fp}, root: {root}, is: {is_pd}"):
+                self.assertEqual(is_project_dir(fp, root=root), is_pd)
+
     def test_is_abs_file(self):
         for fp, is_af in [
             (r"./tests/utils/test__files.py", False),  # this files local path
