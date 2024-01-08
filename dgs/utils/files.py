@@ -96,7 +96,7 @@ def to_abspath(filepath: FilePath, root: FilePath = PROJECT_ROOT) -> FilePath:
             Default: PROJECT_ROOT.
 
     Returns:
-        A valid path, if one exists, as an absolute path.
+        A valid path, if one exists, as an absolute and normalized path.
 
     Raises:
         InvalidPathException: If the path doesn't exist globally or locally.

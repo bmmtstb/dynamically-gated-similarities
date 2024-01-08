@@ -39,6 +39,8 @@ def extract_crops_from_images(
     """Given a list of original image paths and a list of target crops paths,
     use the given bounding boxes to extract their content as image crops and save them as new images.
 
+    Does only work if the images have the same size, because otherwise the bounding-boxes would not match anymore.
+
     Notes:
         It is expected that ``img_fps``, ``new_fps``, and ``boxes`` have the same length.
 
@@ -46,12 +48,12 @@ def extract_crops_from_images(
         img_fps: An iterable of absolute paths pointing to the original images.
         new_fps: An iterable of absolute paths pointing to the image crops.
         boxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
-        key_points:
+        key_points (torch.Tensor, optional): Key points of the respective images.
+            The key points will be transformed with the images. Default None just means that a placeholder is passed.
 
     Keyword Args:
         crop_size (ImgShape): The target shape of the image crops. Defaults to ``(256, 256)``.
         device (Device): Device to run the cropping on. Defaults to "cuda" if available "cpu" otherwise.
-        load_image (dict[str, any]): additional kwargs passed to load_image() function. Default {}.
         transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
             Defaults to a version of CustomCropResize.
         transform_mode (str): Defines the resize mode in the transform function.
@@ -85,7 +87,6 @@ def extract_crops_from_images(
         filepath=tuple(img_fps),
         device=device,
         requires_grad=False,
-        **kwargs.get("load_image", {}),
     )
 
     # pass original images through CustomResizeCrop transform and get the resulting image crops on the cpu
