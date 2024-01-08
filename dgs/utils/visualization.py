@@ -20,7 +20,7 @@ from dgs.utils.utils import torch_to_numpy
 
 def torch_show_image(
     imgs: Union[Image, list[Image], torch.Tensor, list[torch.Tensor]], show: bool = True, **kwargs
-) -> None:
+) -> None:  # pragma: no cover
     """Show a single torch image using matplotlib.
 
     Args:
@@ -46,7 +46,7 @@ def torch_show_image(
         plt.show()
 
 
-def torch_to_matplotlib(img: TVImage) -> np.ndarray:
+def torch_to_matplotlib(img: TVImage) -> np.ndarray:  # pragma: no cover
     """Convert a given single or batched torch image Tensor to a numpy.ndarray on the cpu.
     The dimensions are switched from ``[B x C x H x W]`` -> ``[B x H x W x C]``
 
@@ -69,7 +69,7 @@ def torch_to_matplotlib(img: TVImage) -> np.ndarray:
 
 def save_or_show(
     file_path: str, plot_format: str = "svg", plot_block: bool = False, plot_close: bool = True, **kwargs
-) -> None:
+) -> None:  # pragma: no cover
     """
     Helper for saving or showing the current plot
 

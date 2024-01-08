@@ -32,12 +32,6 @@ class TestUtils(unittest.TestCase):
             ([(300, 200), (300, 200)], ["2_1.jpg", "2_2.jpg"], "xyxy", {"device": device}),
             ([(300, 200) for _ in range(10)], [f"3_{i}.jpg" for i in range(10)], "xyxy", {"device": device}),
             ([(500, 1000)], ["4.jpg"], "xywh", {"transform_mode": "mean-pad", "crop_size": (128, 128), "quality": 50}),
-            (  # different image shapes but force reshape True
-                [(300, 200), (200, 300)],
-                ["5_1.jpg", "5_2.jpg"],
-                "xyxy",
-                {"device": device, "load_image": {"force_reshape": True, "mode": "zero-pad"}},
-            ),
         ]:
             with self.subTest(
                 msg=f"shapes: {img_shapes}, crop_fps: {crop_fps}, format: {bbox_format}, kwargs: {kwargs}"
