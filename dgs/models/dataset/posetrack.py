@@ -408,7 +408,7 @@ class PoseTrack21Torchreid(ImageDataset):
         gallery_dir: FilePath = os.path.join(self.dataset_dir, "crops/val")
 
         train: list[tuple] = self.process_dir(train_dir, relabel=True)
-        query: list[tuple] = self.process_dir(query_dir)
+        query: list[tuple] = self.process_dir(query_dir, path_glob="*.jpg", cam_id=1)
         gallery: list[tuple] = self.process_dir(gallery_dir)
 
         self.check_before_run([self.dataset_dir, train_dir, query_dir, gallery_dir])
@@ -416,7 +416,9 @@ class PoseTrack21Torchreid(ImageDataset):
         super().__init__(train, query, gallery, **kwargs)
 
     @staticmethod
-    def process_dir(dir_path: FilePath, relabel: bool = False) -> list[tuple[str, int, int, int]]:
+    def process_dir(
+        dir_path: FilePath, relabel: bool = False, path_glob: str = "*/*.jpg", cam_id: int = 0
+    ) -> list[tuple[str, int, int, int]]:  # pragma: no cover
         """
         Process all the data of one directory.
 
@@ -424,6 +426,8 @@ class PoseTrack21Torchreid(ImageDataset):
             dir_path (FilePath): The absolute path to the directory containing images.
                 In this case will be something like '.../data/PoseTrack21/crops/train'.
             relabel (bool): Whether to create labels from to pids, to reduce the number of parameters in the model.
+            path_glob (str): The glob pattern to find the images within the given ``dir_path``. Default "*/*.jpg".
+            cam_id (int): The id of the camera to use. Default 0. Has to change for query or gallery.
 
         Returns:
             data (list[tuple[str, int, int, int]]): A list of tuples containing the absolute image path,
@@ -431,8 +435,11 @@ class PoseTrack21Torchreid(ImageDataset):
                 The camera id is 0 for all videos.
                 The dataset id is the video_id with a leading 1 for mpii and 2 for bonn, to remove duplicates.
         """
-        img_paths = glob.glob(os.path.join(dir_path, "*/*.jpg"))
+        img_paths: list[str] = glob.glob(os.path.join(dir_path, path_glob))
         pattern = re.compile(r"(\d+)_(\d+)")
+
+        if len(img_paths) == 0:
+            raise OSError("Could not find any images.")
 
         pid_container = set()
         for img_path in img_paths:
@@ -446,7 +453,7 @@ class PoseTrack21Torchreid(ImageDataset):
         # (path, pid, camid, dsetid)
         # path: is the absolute path to the file of the cropped image
         # pid: person id
-        # camid: id of the camera = 0 for all videos
+        # camid: id of the camera = 0 for all train and gallery images; 1 for all in query
         # dsetid: dataset id = video_id with a leading 1 for mpii and 2 for bonn
 
         for img_path in img_paths:
@@ -457,17 +464,19 @@ class PoseTrack21Torchreid(ImageDataset):
                 pid = pid2label[pid]
 
             # create dsetid as int({"1" if ds_type == "mpii" else "2"}{video_id})
-            ds_id, ds_type, *_ = img_path.split("/")[-2].split("_")
-            dsetid: int = int(f"{'1' if ds_type == 'mpii' else '2'}{str(ds_id)}")
+            if "_" not in (ds_dir := img_path.split("/")[-2]):
+                dsetid: int = 0
+            else:
+                ds_id, ds_type, *_ = ds_dir.split("_")
+                dsetid: int = int(f"{'1' if ds_type == 'mpii' else '2'}{str(ds_id)}")
 
-            data.append((img_path, pid, 0, dsetid))
+            data.append((img_path, pid, cam_id, dsetid))
         return data
 
     # pylint: disable = unused-argument
-    @staticmethod
     def download_dataset(
-        dataset_dir: FilePath = "./data/PoseTrack21", dataset_url: Union[FilePath, None] = None, **kwargs
-    ) -> None:
+        self, dataset_dir: FilePath = "./data/PoseTrack21", dataset_url: Union[FilePath, None] = None, **kwargs
+    ) -> None:  # pragma: no cover
         """
 
         Args:
