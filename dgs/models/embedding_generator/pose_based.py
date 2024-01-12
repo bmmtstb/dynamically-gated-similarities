@@ -144,7 +144,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
                 )
                 for i in range(len(hidden_layers_all) - 1)
             ],
-            nn.Sigmoid(),
+            nn.Softmax(),
         )
 
     def forward(self, *data, **kwargs) -> torch.Tensor:
@@ -235,7 +235,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
                     )
                     for i in range(len(hidden_layers) - 1)
                 ],
-                nn.Sigmoid(),
+                nn.Softmax(),
             )
         )
 
