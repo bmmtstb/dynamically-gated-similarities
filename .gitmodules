@@ -9,3 +9,7 @@
 [submodule "dependencies/halpecocotools"]
 	path = dependencies/halpecocotools
 	url = https://github.com/Ambrosiussen/HalpeCOCOAPI.git
+[submodule "PoseTrack21"]
+	path = dependencies/PoseTrack21
+	url = https://github.com/anDoer/PoseTrack21.git
+	branch = main

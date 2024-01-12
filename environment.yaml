@@ -48,3 +48,5 @@ dependencies:
             - -e ./dependencies/torchreid
             # Alpha Pose plus its requirements - make sure this will be installed last!
             - -e ./dependencies/AlphaPose_Fork
+            # install PoseTrack21 evaluation toolkit
+            - -e ./dependencies/PoseTrack21/eval/posetrack21/
