@@ -41,10 +41,10 @@ dependencies:
             - opencv-python  # so pip doesn't complain when torchreid tries to install cv2
             - sphinx  # build docs
             # Set up halpecocotools
-            - ./dependencies/halpecocotools/PythonAPI
+            - -e ./dependencies/halpecocotools/PythonAPI
             # Torchreid - install requirements and Set up torchreid and cythonize
             # somehow installing requirements does not work just by calling setup,
             - -r ./dependencies/torchreid/requirements.txt
-            - ./dependencies/torchreid
-            # Requirements for Alpha Pose
-            - ./dependencies/AlphaPose_Fork
+            - -e ./dependencies/torchreid
+            # Alpha Pose plus its requirements - make sure this will be installed last!
+            - -e ./dependencies/AlphaPose_Fork

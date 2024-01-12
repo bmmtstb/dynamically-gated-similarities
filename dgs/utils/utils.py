@@ -2,6 +2,7 @@
 General utility functions.
 """
 import os.path
+import sys
 from typing import Union
 
 import numpy as np
@@ -33,7 +34,7 @@ def extract_crops_from_images(
     img_fps: Union[list[FilePath], FilePaths],
     new_fps: Union[list[FilePath], FilePaths],
     boxes: tv_tensors.BoundingBoxes,
-    key_points: Union[torch.Tensor, None] = None,
+    key_points: torch.Tensor = None,
     **kwargs,
 ) -> tuple[TVImage, torch.Tensor]:
     """Given a list of original image paths and a list of target crops paths,
@@ -67,8 +68,10 @@ def extract_crops_from_images(
     Raises:
         ValueError: If input lengths don't match.
     """
-    if not len(img_fps) == len(new_fps) == boxes.shape[-2]:
-        raise ValueError("There has to be an equal amount of image paths, crop paths and boxes.")
+    if not len(img_fps) == len(new_fps) == boxes.shape[-2] or (
+        key_points is not None and not len(key_points) == len(img_fps)
+    ):
+        raise ValueError("There has to be an equal amount of image-, crop-paths, boxes, and key points if present.")
 
     # extract kwargs
     device: Device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
@@ -100,9 +103,35 @@ def extract_crops_from_images(
         }
     )
     crops: torch.Tensor = res["image"].cpu()
+    kps: torch.Tensor = res["keypoints"].cpu()
 
-    for fp, crop in zip(new_fps, crops):
+    for fp, crop, kp in zip(new_fps, crops, kps):
         mkdir_if_missing(os.path.dirname(fp))
         write_jpeg(input=crop, filename=fp, quality=kwargs.get("quality", 90))
+        if key_points is not None:
+            torch.save(kp, str(fp).replace(".jpg", ".pt"))
 
     return crops.to(device=device), res["keypoints"]
+
+
+class HidePrint:
+    """Safely disable printing for a block of code.
+
+    Source: https://stackoverflow.com/a/45669280/5889825
+
+    Examples:
+        >>> with HidePrint():
+        ...     print("Hello")
+        ... print("Bye")
+        Bye
+    """
+
+    _original_stdout = None
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout

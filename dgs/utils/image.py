@@ -603,6 +603,10 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             else:
                 # use torchvision cropping and modify the coords accordingly
                 left, top, width, height = corners
+                left = max(left, 0)
+                top = max(top, 0)
+                width = max(width, 1)  # min width of 1
+                height = max(height, 1)  # min height of 1
                 img_crop = tv_tensors.wrap(tvt_crop(image_i, top, left, height, width), like=image)
                 delta = [left, top]
                 if coords.shape[-1] == 3:

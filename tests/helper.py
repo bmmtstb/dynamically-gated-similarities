@@ -2,6 +2,9 @@
 Helper methods for tests.
 """
 import os
+import sys
+from contextlib import contextmanager
+from io import StringIO
 from typing import Iterable
 
 import torch
@@ -43,3 +46,15 @@ def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kw
     return load_image(
         tuple(os.path.join("./tests/test_data/", fn) for fn in filenames), force_reshape=force_reshape, **kwargs
     )
+
+
+@contextmanager
+def capture_stdout(command, *args, **kwargs):
+    """Context manager for checking print to stdout."""
+    out, sys.stdout = sys.stdout, StringIO()
+    try:
+        command(*args, **kwargs)
+        sys.stdout.seek(0)
+        yield sys.stdout.read()
+    finally:
+        sys.stdout = out
