@@ -254,6 +254,44 @@ def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
     )
 
 
+def generate_pt21_submission(outfile: FilePath) -> None:
+    """Given data, generate a |PT21| submission file.
+
+    References:
+        https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md
+
+    Args:
+        outfile (FilePath):
+
+    Notes:
+        The structure of the PT21 submission file is similar to the structure of the inputs::
+
+            {
+                "images": [
+                    {
+                        "file_name": "images/train/000001_bonn_train/000000.jpg",
+                        "id": 10000010000,
+                        "frame_id": 10000010000
+                    },
+                ],
+                "annotations": [
+                    {
+                        "bbox": [x1,  y1, w, h],
+                        "image_id": 10000010000,
+                        "keypoints": [x1, y1, vis1, ..., x17, y17, vis17],
+                        "scores": [s1, ..., s17],
+                        "person_id": 1024,
+                        "track_id": 0
+                    },
+                ]
+            }
+
+        Additionally, note that the visibilities are ignored during evaluation.
+
+    """
+    raise NotImplementedError(f"Not implemented {outfile}")
+
+
 class PoseTrack21(BaseDataset):
     """Non-Abstract class for PoseTrack21 dataset to be able to initialize it in :meth:`get_get_pose_track_21`.
 
