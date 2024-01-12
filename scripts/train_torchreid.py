@@ -22,23 +22,31 @@ Notes:
     Images are resized to 256 × 128.
     Data augmentation includes random flip and random erasing.
 """
+from datetime import date
+from typing import Union
+
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from dgs.models.dataset.posetrack import PoseTrack21Torchreid
+from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
 from torchreid.data import ImageDataManager, register_image_dataset
 from torchreid.engine.image.softmax import ImageSoftmaxEngine
 from torchreid.models import build_model
 from torchreid.optim import build_lr_scheduler, build_optimizer
 
 if __name__ == "__main__":
-    LOG_DIR = "./results/torchreid/"
+    LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('YYYYMMDD')}/"
     MODEL_NAME = "osnet_x1_0"
     BATCH_TRAIN = 32
     HEIGHT = 256
     WIDTH = 256
-    TRANSFORMS = "random_flip"
-    MARKET1501_500K = False
+    TRANSFORMS: Union[str, list[str]] = "random_flip"
+    MARKET1501_500K: bool = False
+    USE_GPU: bool = True
+    DIST_METRIC: str = "cosine"  # "cosine" or "euclidean"
+    EPOCHS: int = 1
+    LOSS: str = "softmax"  # "softmax" or "triplet"
+    PRE_TRAINED: bool = False
 
     # noinspection PyTypeChecker
     register_image_dataset("PoseTrack21", PoseTrack21Torchreid)
@@ -52,39 +60,29 @@ if __name__ == "__main__":
         height=HEIGHT,
         width=WIDTH,
         batch_size_train=BATCH_TRAIN,
-        # use_gpu=True,
+        use_gpu=USE_GPU,
         workers=0,
         # num_cams=1,
         market1501_500k=MARKET1501_500K,
     )
     print(f"train pids: {data_manager.num_train_pids}")
 
-    # Specify ReID model
-    model = build_model(
-        name=MODEL_NAME,
-        num_classes=5474,  # nof pids in PT21
-        # use_gpu=True,
-        # pretrained=True,
-        # loss="softmax",
+    # Specify ReID model with num_classes = max(nof pids) -> in PT21
+    m = build_model(
+        name=MODEL_NAME, num_classes=5474, use_gpu=USE_GPU, pretrained=PRE_TRAINED, loss=LOSS
     ).cuda()  # send model to cuda, because torchreid doesn't do it properly
 
     writer = SummaryWriter(log_dir=LOG_DIR, filename_suffix=f"{MODEL_NAME}")
 
-    optim = build_optimizer(model=model)
-    sched = build_lr_scheduler(optimizer=optim)
-    engine = ImageSoftmaxEngine(
-        datamanager=data_manager,
-        model=model,
-        optimizer=optim,
-        scheduler=sched,
-        # use_gpu=True,
-    )
+    o = build_optimizer(model=m)
+    s = build_lr_scheduler(optimizer=o)
+    engine = ImageSoftmaxEngine(datamanager=data_manager, model=m, optimizer=o, scheduler=s, use_gpu=USE_GPU)
     # set a custom writer in engine
     engine.writer = writer
 
     print("Run Engine and save model after every epoch")
     engine.run(
         save_dir=LOG_DIR,
-        # dist_metric="cosine",
-        max_epoch=1,
+        dist_metric=DIST_METRIC,
+        max_epoch=EPOCHS,
     )

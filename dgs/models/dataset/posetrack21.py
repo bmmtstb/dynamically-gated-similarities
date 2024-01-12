@@ -22,6 +22,7 @@ from torchvision import tv_tensors
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
+from dgs.models.dataset.pose_dataset import PoseDataset
 from dgs.models.states import DataSample
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
@@ -91,8 +92,8 @@ def extract_crops_from_json_annotation(
     crops_subset_path = os.path.join(base_dataset_path, crops_dir, json_file.removesuffix(".json").split("/")[-1])
     mkdir_if_missing(crops_subset_path)
 
-    # skip if the folder has the correct number of files
-    if len(os.listdir(crops_subset_path)) == len(json["annotations"]):
+    # skip if the folder has the correct number of files (images + key points -> 2*len)
+    if len(os.listdir(crops_subset_path)) == 2 * len(json["annotations"]):
         return
 
     # Because the images in every folder have the same shape,
@@ -100,8 +101,9 @@ def extract_crops_from_json_annotation(
     map_id_to_path: dict[int, FilePath] = {i["id"]: i["file_name"] for i in json["images"]}
     d: dict[str, list] = {
         "img_fps": [],
-        "new_fps": [],
+        "new_img_fps": [],
         "boxes": [],
+        "key_points": [],
         "sizes": [],
     }
 
@@ -109,11 +111,17 @@ def extract_crops_from_json_annotation(
         d["boxes"].append(torch.tensor(anno["bbox"], dtype=torch.float32, device=device))
         img_fp: FilePath = os.path.normpath(os.path.join(base_dataset_path, map_id_to_path[anno["image_id"]]))
         d["img_fps"].append(img_fp)
-        d["sizes"].append(imagesize.get(img_fp))
+        # imagesize.get() output = (w,h) and our own format = (h, w)
+        d["sizes"].append(imagesize.get(img_fp)[::-1])
+        kp: torch.Tensor = torch.tensor(anno["keypoints"])
+        if kp.shape[0] == 51:
+            d["key_points"].append(kp.reshape((17, 3)).to(device=device, dtype=torch.float32))
+        else:  # empty key points
+            d["key_points"].append(torch.zeros((17, 3)).to(device=device, dtype=torch.float32))
 
         # There will be multiple detections per image.
         # Therefore, the new image crop name has to include the image id and person id.
-        d["new_fps"].append(
+        d["new_img_fps"].append(
             os.path.normpath(os.path.join(crops_subset_path, f"{anno['image_id']}_{str(anno['person_id'])}.jpg"))
         )
 
@@ -122,22 +130,28 @@ def extract_crops_from_json_annotation(
         warnings.warn(f"Not all the images within {json_file} have the same size. Sizes are: {set(d['sizes'])}")
 
     if individually:
-        for img_fp, size, new_fp, bbox in tqdm(
-            zip(d["img_fps"], d["sizes"], d["new_fps"], d["boxes"]), desc="imgs", position=2, total=len(d["sizes"])
+        for img_fp, size, new_fp, bbox, kp in tqdm(
+            zip(d["img_fps"], d["sizes"], d["new_img_fps"], d["boxes"], d["key_points"]),
+            desc="imgs",
+            position=2,
+            total=len(d["sizes"]),
+            leave=False,
         ):
             extract_crops_from_images(
                 img_fps=[img_fp],
                 new_fps=[new_fp],
                 boxes=tv_tensors.BoundingBoxes(bbox, format="XYWH", canvas_size=size, device=device),
+                key_points=kp.unsqueeze(0),
                 **kwargs,
             )
     else:
         extract_crops_from_images(
             img_fps=d["img_fps"],
-            new_fps=d["new_fps"],
+            new_fps=d["new_img_fps"],
             boxes=tv_tensors.BoundingBoxes(
                 torch.stack(d["boxes"]), format="XYWH", canvas_size=max(set(d["sizes"])), device=device
             ),
+            key_points=torch.stack(d["key_points"]).to(device=device),
             **kwargs,
         )
 
@@ -147,7 +161,8 @@ def extract_all_bboxes(
     anno_dir: FilePath = "./posetrack_data/",
     **kwargs,
 ) -> None:
-    """Given the path to the |PT21| dataset, create a new ``crops`` folder containing the image crops of every
+    """Given the path to the |PT21| dataset,
+    create a new ``crops`` folder containing the image crops and its respective key point coordinates of every
     bounding box separated by test, train, and validation sets like the images.
     Within every set is one folder per video ID, in which then lie the image crops.
     The name of the crops is: ``{person_id}_{image_id}.jpg``.
@@ -166,7 +181,10 @@ def extract_all_bboxes(
     mkdir_if_missing(crops_path)
 
     for abs_anno_path, _, files in tqdm(
-        os.walk(os.path.join(base_dataset_path, anno_dir)), desc="annotation-folders", position=0
+        os.walk(os.path.join(base_dataset_path, anno_dir)),
+        desc="annotation-folders",
+        position=0,
+        total=len([f for f in os.listdir(os.path.join(base_dataset_path, anno_dir)) if os.path.isdir(f)]),
     ):
         # skip directories that don't contain files, e.g., the folder containing the datasets
         if len(files) == 0:
@@ -176,10 +194,11 @@ def extract_all_bboxes(
         # abs_anno_path => .../PoseTrack21/images/{train}/{dataset_name}.json
 
         # create folder {train} inside crops
-        crops_train_dir = os.path.join(crops_path, abs_anno_path.split("/")[-1])
+        train_sub_folder = abs_anno_path.split("/")[-1]
+        crops_train_dir = os.path.join(crops_path, train_sub_folder)
         mkdir_if_missing(crops_train_dir)
 
-        for anno_file in tqdm(files, desc="annotation-files", position=1):
+        for anno_file in tqdm(files, desc="annotation-files", position=1, leave=False):
             extract_crops_from_json_annotation(
                 base_dataset_path=base_dataset_path,
                 json_file=os.path.join(abs_anno_path, anno_file),
@@ -242,7 +261,7 @@ class PoseTrack21(BaseDataset):
     """
 
     def __init__(self, config: Config, path: NodePath) -> None:
-        super(BaseDataset, self).__init__(config=config, path=path)
+        super().__init__(config=config, path=path)
 
     def arbitrary_to_ds(self, a) -> DataSample:
         raise NotImplementedError
@@ -252,7 +271,7 @@ class PoseTrack21JSON(BaseDataset):
     """Load a single precomputed json file."""
 
     def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
-        super(BaseDataset, self).__init__(config=config, path=path)
+        super().__init__(config=config, path=path)
 
         self.validate_params(pt21_json_validations)
 
@@ -356,8 +375,9 @@ class PoseTrack21JSON(BaseDataset):
         )
 
 
-class PoseTrack21Torchreid(ImageDataset):
+class PoseTrack21Torchreid(ImageDataset, PoseDataset):
     r"""Load PoseTrack21 as torchreid dataset.
+    Depending on the argument ``instance`` this Dataset either contains image crops or key point crops.
 
     Reference
     ---------
@@ -378,6 +398,8 @@ class PoseTrack21Torchreid(ImageDataset):
 
     Args:
         root (str): Root directory of all the datasets. Default "./data/".
+        instance (str): Whether this module works as an ImageDataset or a PoseDataset.
+            Has to be one of: ["images", "key_points"]. Default "all".
 
     Notes:
         The bbox crops are generated using either the modified :func:`self.download_dataset` or
@@ -388,36 +410,50 @@ class PoseTrack21Torchreid(ImageDataset):
         The query and gallery are used for testing,
         where for each image in the query you find similar persons in the gallery set.
     """
-    dataset_dir: FilePath = "PoseTrack21"
+    _junk_pids: list[int] = [-1]
 
+    dataset_dir: FilePath = "PoseTrack21"
     """Name of the directory containing the dataset within ``root``."""
 
-    def __init__(self, root: str = "", **kwargs):
+    def __init__(self, root: str = "", instance: str = "images", **kwargs):
         self.root: FilePath = (
             os.path.abspath(os.path.expanduser(root)) if root else os.path.join(PROJECT_ROOT, "./data/")
         )
         self.dataset_dir = os.path.join(self.root, self.dataset_dir)
+        self.instance: str = instance
 
         # annotation directory
-        # self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data")
-        self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data_fast")
+        self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data")
 
         # image directory
         train_dir: FilePath = os.path.join(self.dataset_dir, "crops/train")
         query_dir: FilePath = os.path.join(self.dataset_dir, "crops/query")
         gallery_dir: FilePath = os.path.join(self.dataset_dir, "crops/val")
 
-        train: list[tuple] = self.process_dir(train_dir, relabel=True)
-        query: list[tuple] = self.process_dir(query_dir, path_glob="*.jpg", cam_id=1)
-        gallery: list[tuple] = self.process_dir(gallery_dir)
+        if self.instance == "images":
+            train: list[tuple] = self.process_dir(train_dir, path_glob="*/*.jpg", relabel=True)
+            query: list[tuple] = self.process_dir(query_dir, path_glob="*.jpg", cam_id=1)
+            gallery: list[tuple] = self.process_dir(gallery_dir, path_glob="*/*.jpg")
+        elif self.instance == "key_points":
+            train: list[tuple] = self.process_dir(train_dir, path_glob="*/*.pt", relabel=True)
+            query: list[tuple] = self.process_dir(query_dir, path_glob="*.pt", cam_id=1)
+            gallery: list[tuple] = self.process_dir(gallery_dir, path_glob="*/*.pt")
+        else:
+            raise NotImplementedError(f"instance {self.instance} is not valid.")
 
         self.check_before_run([self.dataset_dir, train_dir, query_dir, gallery_dir])
 
         super().__init__(train, query, gallery, **kwargs)
 
-    @staticmethod
+    def __getitem__(self, index: int) -> dict[str, any]:
+        if self.instance == "images":
+            return ImageDataset.__getitem__(self, index)
+        if self.instance == "key_points":
+            return PoseDataset.__getitem__(self, index)
+        raise NotImplementedError(f"instance {self.instance} is not valid.")
+
     def process_dir(
-        dir_path: FilePath, relabel: bool = False, path_glob: str = "*/*.jpg", cam_id: int = 0
+        self, dir_path: FilePath, path_glob: str, relabel: bool = False, cam_id: int = 0
     ) -> list[tuple[str, int, int, int]]:  # pragma: no cover
         """
         Process all the data of one directory.
@@ -425,28 +461,31 @@ class PoseTrack21Torchreid(ImageDataset):
         Args:
             dir_path (FilePath): The absolute path to the directory containing images.
                 In this case will be something like '.../data/PoseTrack21/crops/train'.
-            relabel (bool): Whether to create labels from to pids, to reduce the number of parameters in the model.
-            path_glob (str): The glob pattern to find the images within the given ``dir_path``. Default "*/*.jpg".
-            cam_id (int): The id of the camera to use. Default 0. Has to change for query or gallery.
+            path_glob (str): The glob pattern to find the files within the given ``dir_path``.
+            relabel (bool, optional): Whether to create labels from to pids,
+                to reduce the number of parameters in the model. Default False.
+            cam_id (int, optional): The id of the camera to use.
+                The cam_id of the query dataset has to be different from the cam_id of the gallery,
+                see `this issue <https://github.com/KaiyangZhou/deep-person-reid/issues/442#issuecomment-868757430>`_
+                for more details.
+                Default 0.
 
         Returns:
             data (list[tuple[str, int, int, int]]): A list of tuples containing the absolute image path,
                 person id (label), camera id, and dataset id.
-                The camera id is 0 for all videos.
                 The dataset id is the video_id with a leading 1 for mpii and 2 for bonn, to remove duplicates.
+
+        Raises:
+            OSError: If there is no data.
         """
         img_paths: list[str] = glob.glob(os.path.join(dir_path, path_glob))
         pattern = re.compile(r"(\d+)_(\d+)")
 
         if len(img_paths) == 0:
-            raise OSError("Could not find any images.")
+            raise OSError(f"Could not find any instances using glob: {path_glob}.")
 
-        pid_container = set()
-        for img_path in img_paths:
-            _, pid = map(int, pattern.search(img_path).groups())
-            if pid == -1:
-                continue  # junk images are just ignored
-            pid_container.add(pid)
+        pid_container: set = set(int(pattern.search(fp).groups()[1]) for fp in img_paths)
+        pid_container -= set(self._junk_pids)  # junk images are just ignored
         pid2label: dict[int, int] = {pid: label for label, pid in enumerate(pid_container)}
 
         data: list[tuple[str, int, int, int]] = []
@@ -458,7 +497,7 @@ class PoseTrack21Torchreid(ImageDataset):
 
         for img_path in img_paths:
             _, pid = map(int, pattern.search(img_path).groups())
-            if pid == -1:
+            if pid in self._junk_pids:
                 continue  # junk images are just ignored
             if relabel:
                 pid = pid2label[pid]
@@ -473,18 +512,21 @@ class PoseTrack21Torchreid(ImageDataset):
             data.append((img_path, pid, cam_id, dsetid))
         return data
 
-    # pylint: disable = unused-argument
+    # I want download_dataset() to be callable using ``PoseTrack21Torchreid.download_dataset()``
+    # pylint: disable = unused-argument, arguments-differ
+    @staticmethod
     def download_dataset(
-        self, dataset_dir: FilePath = "./data/PoseTrack21", dataset_url: Union[FilePath, None] = None, **kwargs
+        dataset_dir: FilePath = "./data/PoseTrack21", dataset_url: Union[FilePath, None] = None, **kwargs
     ) -> None:  # pragma: no cover
-        """
+        """Originally intended to download the dataset, but authentication is required.
+        Therefore, this function will only extract the image crops and image-crop-local key-point coordinates,
+        given the full dataset.
 
         Args:
             dataset_dir (FilePath): Path to the directory containing the dataset. Default "./data/PoseTrack21".
             dataset_url (Union[FilePath, None]): Irrelevant here.
 
         Keyword Args:
-            anno_dir (FilePath): Path to the annotations within the dataset. Default "./posetrack_data/".
             crop_size (ImgShape): The target shape of the image crops. Defaults to ``(256, 256)``.
             device (Device): Device to run the cropping on. Defaults to "cuda" if available "cpu" otherwise.
             transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
@@ -492,17 +534,36 @@ class PoseTrack21Torchreid(ImageDataset):
             transform_mode (str): Defines the resize mode in the transform function.
                 Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
             quality (int): The quality to save the jpegs as. Default 90. The default of torchvision is 75.
+            individually (bool): Whether to extract the image crops for train and val individually.
+                The value has to be true for the 'query', due to different image shapes. Default False.
+
+        Warnings:
+            Warning: Information that this function only extracts the crops and does not download the dataset.
+
+        Notes:
+            There is no batched variant of the extract_crops... functions.
+            Either all images in the folder are stacked and processed, or only one image is computed at a time.
+            Depending on your processing power and (v)RAM,
+            computing the stack of up to 1000 images is quite bad for performance.
+            Therefore, it is possible to use the `individually=True` flag,
+            to compute the crop of every image individually.
+            Adding a little overhead, but it might still be faster in the end.
+            Takes roughly 30 minutes in total.
 
         Notes:
             For further information about the kwargs see :func:`~dgs.dataset.posetrack.extract_all_bboxes()`.
         """
         warnings.warn(
             "Download not implemented, will only extract crops. "
-            "For more information for the download see https://github.com/andoer/PoseTrack21 for more details."
+            "For more information for the download see https://github.com/andoer/PoseTrack21 for more details.",
+            Warning,
         )
         print("Extract crops from annotations.")
         extract_all_bboxes(
-            base_dataset_path=dataset_dir, anno_dir=kwargs.pop("anno_dir", "./posetrack_data/"), **kwargs
+            base_dataset_path=dataset_dir,
+            # anno_dir="./posetrack_data/",
+            individually=kwargs.pop("individually", False),
+            **kwargs,
         )
         print("Extract crops from query")
         extract_crops_from_json_annotation(

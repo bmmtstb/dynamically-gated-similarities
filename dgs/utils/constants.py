@@ -70,6 +70,22 @@ SKELETONS: dict[str, list[tuple[int, int]]] = {
         (13, 15),  # l_knee l_ankle
         (14, 16),  # r_knee r_ankle
     ],
+    "coco_no_ears": [
+        (0, 1),  # nose l_eye
+        (0, 2),  # nose r_eye
+        (0, 5),  # nose l_shoulder
+        (0, 6),  # nose r_shoulder
+        (5, 7),  # l_shoulder l_elbow
+        (6, 8),  # r_shoulder r_elbow
+        (7, 9),  # l_elbow l_wrist
+        (8, 10),  # r_elbow r_wrist
+        (5, 11),  # l_shoulder l_hip
+        (6, 12),  # r_shoulder r_hip
+        (11, 13),  # l_hip l_knee
+        (12, 14),  # r_hip r_knee
+        (13, 15),  # l_knee l_ankle
+        (14, 16),  # r_knee r_ankle
+    ],
 }
 
 KEY_POINT_NAMES: dict[str, list[str]] = {

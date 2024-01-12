@@ -11,7 +11,7 @@ from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Config
 from .alphapose import AlphaPoseLoader
 from .dataset import BaseDataset, collate_data_samples
-from .posetrack import PoseTrack21JSON
+from .posetrack21 import PoseTrack21JSON
 
 
 def get_dataset(name: str) -> Type[BaseDataset]:
