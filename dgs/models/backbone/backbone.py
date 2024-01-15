@@ -26,7 +26,7 @@ from dgs.models.states import DataSample
 class BackboneModule(BaseModule):
     """Abstract class for backbone models"""
 
-    def __call__(self, *args, **kwargs) -> ...:
+    def __call__(self, *args, **kwargs) -> DataSample:  # noqa
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 

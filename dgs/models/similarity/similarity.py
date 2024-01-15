@@ -17,7 +17,7 @@ class SimilarityModule(BaseModule):
 
     func: Callable[..., torch.Tensor]
 
-    def __call__(self, *args, **kwargs) -> any:
+    def __call__(self, *args, **kwargs) -> any:  # noqa
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 

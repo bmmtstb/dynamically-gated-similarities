@@ -237,7 +237,7 @@ class BaseModule(ABC):
                 )
 
     @abstractmethod
-    def __call__(self, *args, **kwargs) -> any:
+    def __call__(self, *args, **kwargs) -> any:  # noqa
         raise NotImplementedError
 
     def print(self, priority: str) -> bool:
