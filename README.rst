@@ -58,6 +58,7 @@ Abbreviations and Definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is expected that all joints have 2D coordinates, but 3D should be possible with minor adjustments.
+If joints have three-dimensions in the given code, it is expected, that the third dimension is the joint visibility.
 
 Images in PyTorch have shape: ``[B x C x H x W]`` and for plotting in matplotlib ``[B x H x W x C]``.
 Single images don't have the first dimension ``[C x H x W]``.
@@ -72,6 +73,8 @@ Single images don't have the first dimension ``[C x H x W]``.
 | B                          | Current batch-size                                            |
 +----------------------------+---------------------------------------------------------------+
 | N                          | Number of detections in the current frame                     |
++----------------------------+---------------------------------------------------------------+
+| T                          | Number of tracks at the current time                          |
 +----------------------------+---------------------------------------------------------------+
 | H,W                        | Height and Width of the current image, as image shape: (H, W) |
 +----------------------------+---------------------------------------------------------------+
