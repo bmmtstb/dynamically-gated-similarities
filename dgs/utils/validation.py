@@ -56,6 +56,7 @@ VALIDATIONS: dict[str, Validator] = {
     "and": (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
     "or": (lambda x, d: any(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
     "xor": (lambda x, d: bool(VALIDATIONS[d[0][0]](x, d[0][1])) != bool(VALIDATIONS[d[1][0]](x, d[1][1]))),
+    "optional": (lambda _x, _d: True),
 }
 """A list of default validations to check values using :meth:`validate_value`."""
 

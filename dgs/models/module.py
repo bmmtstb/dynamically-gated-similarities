@@ -26,7 +26,7 @@ module_validations: Validations = {
 }
 
 
-def enable_keyboard_interrupt(func: callable) -> callable:
+def enable_keyboard_interrupt(func: callable) -> callable:  # noqa
     """Call module.terminate() on Keyboard Interruption (e.g., ctrl+c), which makes sure that all threads are stopped.
 
     Args:
@@ -125,7 +125,7 @@ class BaseModule(ABC):
     """
 
     @enable_keyboard_interrupt
-    def __init__(self, config: Config, path: NodePath):
+    def __init__(self, config: Config, path: NodePath, validate_base: bool = False):
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
         self._path: NodePath = path
@@ -138,8 +138,8 @@ class BaseModule(ABC):
                 [int(i) for i in self.config["gpus"].split(",")] if torch.cuda.device_count() >= 1 else [-1]
             )
 
-        # validate config when calling BaseModule class and not when calling its children
-        if self.__class__.__name__ == "BaseModule":  # fixme always true, even for child modules
+        # validate config when calling BaseModule class and flag is True
+        if validate_base:
             self.validate_params(module_validations, "config")
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
@@ -186,8 +186,7 @@ class BaseModule(ABC):
 
         Raises:
             InvalidParameterException: If one of the parameters is invalid.
-            ValueError: If the argument validation has an unknown type.
-
+            ValidationException: If the validation list is invalid or contains an unknown validation.
         """
         for param_name, list_of_validations in validations.items():
             if len(list_of_validations) == 0:
@@ -195,18 +194,19 @@ class BaseModule(ABC):
                     f"Excepted at least one validation, but {param_name} in module {self.__class__.__name__} has zero."
                 )
 
+            # check whether param exists in self and raise error if a non-optional param is missing
+            if param_name not in getattr(self, attrib_name):
+                if "optional" in list_of_validations:
+                    continue  # value is optional and does not exist, skip validation
+                raise InvalidParameterException(f"{param_name} is expected to be in module {self.__class__.__name__}")
+
+            # it is now safe to get the value
+            value = getattr(self, attrib_name)[param_name]
+
             for validation in list_of_validations:
-                # check whether param exists in self
-                if param_name not in getattr(self, attrib_name):
-                    raise InvalidParameterException(
-                        f"{param_name} is expected to be in module {self.__class__.__name__}"
-                    )
-
-                if validation is None:
-                    # no validation required except the existence of the current key
+                # no validation required except the existence of the current key
+                if validation == "optional":
                     continue
-
-                value = getattr(self, attrib_name)[param_name]
 
                 # case custom callable
                 if callable(validation):

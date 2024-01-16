@@ -4,8 +4,9 @@ from unittest.mock import patch
 from easydict import EasyDict
 
 from dgs.models.module import BaseModule, module_validations as base_module_validation
-from dgs.utils.exceptions import InvalidParameterException
-from dgs.utils.types import Config
+from dgs.utils.config import insert_into_config
+from dgs.utils.exceptions import InvalidParameterException, ValidationException
+from dgs.utils.types import Config, NodePath
 
 TEST_CFG: Config = EasyDict(
     {
@@ -22,15 +23,14 @@ TEST_CFG: Config = EasyDict(
 
 
 def _def_repl(key: str, value: any) -> Config:
-    """
-    Create a copy of the default configuration and replace the given key with the new value
+    """Create a copy of the test configuration and replace the given key with the new value
 
     Args:
         key: key to replace
         value: value to set
 
     Returns:
-        A modified copy of `DEFAULT_CONFIG`.
+        A modified copy of `TEST_CFG`.
     """
     new_cfg: Config = EasyDict(TEST_CFG.copy())
     new_cfg[key] = value
@@ -73,6 +73,40 @@ class TestBaseModule(unittest.TestCase):
                 with self.assertRaises(InvalidParameterException) as context:
                     BaseModule(config=cfg, path=[]).validate_params(base_module_validation, "config")
                 self.assertTrue(err_str in str(context.exception))
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_validate_params(self):
+        path: NodePath = ["dummy"]
+        for validations, data, valid in [
+            ({"T": ["None"]}, {"T": None}, True),
+            ({"T": ["optional"]}, {}, True),
+            ({"T": [lambda _: True]}, {"T": None}, True),
+            ({"T": [lambda x: x is False]}, {"T": False}, True),
+            ({"T": ["number", ("gt", 0)]}, {}, False),
+            ({"T": ["optional"]}, {"T": None}, True),
+            ({"T": ["optional", "number", ("gt", 0)]}, {"T": 2}, True),
+            ({"T": ["optional", "number", ("gt", 0)]}, {"T": "No Number!"}, False),
+            ({"T1": ["optional"], "T2": ["optional"], "T3": ["optional"]}, {"T1": "No Number!", "T2": 2}, True),
+        ]:
+            with self.subTest(msg=f"validations: {validations}, data: {data}"):
+                m = BaseModule(config=insert_into_config(path, data), path=path)
+                try:
+                    m.validate_params(validations)
+                    self.assertTrue(valid)
+                except InvalidParameterException:
+                    self.assertFalse(valid)
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_validate_params(self):
+        path: NodePath = ["dummy"]
+        for validations, data, exception in [
+            ({"T": []}, {"T": None}, ValidationException),
+            ({"T": [None]}, {"T": None}, ValidationException),
+        ]:
+            with self.subTest(msg=f"validations: {validations}, data: {data}, exception: {exception}"):
+                m = BaseModule(config=insert_into_config(path, data), path=path)
+                with self.assertRaises(exception):
+                    m.validate_params(validations)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_print(self):

@@ -261,6 +261,7 @@ class TestValidateValue(unittest.TestCase):
             (1.0, float, "instance", True),
             (["1", "2", "3"], 1, "contains", False),
             (["1", "2", "3"], "1", "contains", True),
+            (..., ..., "optional", True),
         ]:
             with self.subTest(msg=f"value: {value}, data: {data}, validation: {validation}"):
                 self.assertEqual(validate_value(value, data, validation), result)
