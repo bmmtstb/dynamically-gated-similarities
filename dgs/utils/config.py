@@ -11,7 +11,7 @@ from easydict import EasyDict
 
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 from dgs.utils.files import to_abspath
-from dgs.utils.types import Config, FilePath
+from dgs.utils.types import Config, FilePath, NodePath
 
 
 def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
@@ -78,7 +78,7 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
     return config
 
 
-def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
+def fill_in_defaults(config: Config, default_cfg: Config = None, copy: bool = True) -> Config:
     """Use values of a given configuration or the default configuration,
     to fill in missing values of the current configuration.
 
@@ -88,6 +88,9 @@ def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
     Args:
         config: Current configuration as EasyDict or nested dict
         default_cfg: Default configuration as EasyDict or nested dict
+        copy: Whether to copy ``default_cgf`` before updating.
+            If ``default_cfg`` is None it will always be copied.
+            Default True.
 
     Returns:
         The combined configuration.
@@ -119,14 +122,48 @@ def fill_in_defaults(config: Config, default_cfg: Config = None) -> Config:
     if not isinstance(config, EasyDict | dict):
         raise InvalidConfigException(f"Config is expected to be dict or EasyDict, but is {type(config)}.")
 
-    if not default_cfg:
+    if default_cfg is None:
         from dgs.default_config import cfg  # pylint: disable=import-outside-toplevel
 
         default_cfg = cfg
+        copy = True  # copy will always be true for the default configuration
 
-    # make sure to create a copy of default config, values might get overwritten!
-    new_config: Config = deep_update(deepcopy(default_cfg), config)
+    # make sure to create a copy of default config, otherwise values might get overwritten involuntarily!
+    new_config: Config = deep_update(
+        deepcopy(default_cfg) if copy else default_cfg,
+        config,
+    )
 
     if isinstance(config, EasyDict) or isinstance(default_cfg, EasyDict):
         return EasyDict(new_config)
     return new_config
+
+
+def insert_into_config(path: NodePath, value: Config, original: Config = None, copy: bool = True) -> Config:
+    """Insert a sub-configuration at the given path into the original or a copy of it,
+    possibly overwriting existing values.
+
+    Args:
+        path: path to the place of the insertion as a list of strings.
+        value: A sub-configuration to be inserted at the given path.
+        original: The original configuration to be extended.
+            This config will be copied if ``copy`` is true, and modified otherwise.
+            The default `None` will always use a copy of the default configuration at ``dgs.default_config.cfg``.
+        copy: Whether to create a (deep-)copy of the original config or modify it inplace.
+            Default True, creates and returns a copy.
+
+    Returns:
+        A modified (copy) of the original with the given value inserted at the path.
+    """
+    if original is None:
+        from dgs.default_config import cfg  # pylint: disable=import-outside-toplevel
+
+        original = deepcopy(cfg)
+    else:
+        original = deepcopy(original) if copy else original
+
+    # create a nested config, to be able to use fill_in_defaults() later
+    for p in path[::-1]:
+        value = {p: value}
+
+    return fill_in_defaults(value, original, copy=copy)

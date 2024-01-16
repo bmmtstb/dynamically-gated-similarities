@@ -5,7 +5,7 @@ from copy import deepcopy
 from easydict import EasyDict
 
 from dgs.default_config import cfg as default_config
-from dgs.utils.config import fill_in_defaults, get_sub_config, load_config
+from dgs.utils.config import fill_in_defaults, get_sub_config, insert_into_config, load_config
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 
 EMPTY_CONFIG = EasyDict({})
@@ -85,32 +85,59 @@ class TestGetSubConfig(unittest.TestCase):
 
 class TestFillInConfig(unittest.TestCase):
     def test_fill_in_default(self):
-        for curr_cfg, default_cfg, result, msg in [
-            (EMPTY_CONFIG, SIMPLE_CONFIG, SIMPLE_CONFIG, "Adding to empty"),
-            (NESTED_CONFIG, NESTED_CONFIG, NESTED_CONFIG, "Same will stay - nested"),
-            (EMPTY_CONFIG, None, default_config, "get replaced by default config"),
-            (EasyDict({"bar": {"x": 1}}), NESTED_CONFIG, NESTED_CONFIG, "on same value replace nested recursively"),
-            ({"a": {"new": 1}}, {"a": 1, "b": 2}, {"a": {"new": 1}, "b": 2}, "Overwrite value with nested"),
-            ({"a": 1, "b": 2}, {"a": {"old": 1}}, {"a": 1, "b": 2}, "Overwrite nested with value"),
-            (EasyDict({"i": 1, "j": 2}), {"i": 0}, EasyDict({"i": 1, "j": 2}), "ED and D -> ED, duplicate"),
-            ({"i": 1, "j": 2}, EasyDict({"i": 0, "k": 3}), EasyDict({"i": 1, "j": 2, "k": 3}), "D and ED -> ED, add"),
-            ({"i": 1, "j": 2}, {"k": 3}, {"i": 1, "j": 2, "k": 3}, "D and D -> D, no overlap"),
-            (
-                EasyDict({"i": 1, "j": 2, "k": EasyDict({"a": 0})}),
-                EasyDict({"k": 0, "i": EasyDict({"b": 0})}),
-                EasyDict({"i": 1, "j": 2, "k": EasyDict({"a": 0})}),
-                "ED and ED -> ED, nested values",
-            ),
-            (
-                SIMPLE_CONFIG,
-                NESTED_CONFIG,
-                deepcopy(NESTED_CONFIG) | {"foo": "foo foo", "second": "value"},
-                "Add nested to simple",
-            ),
-            (NESTED_CONFIG, SIMPLE_CONFIG, deepcopy(NESTED_CONFIG) | {"second": "value"}, "Add simple to nested"),
-        ]:
-            with self.subTest(msg=f"{msg}"):
-                self.assertEqual(fill_in_defaults(curr_cfg, default_cfg), result)
+        for copy in [True, False]:
+            for curr_cfg, default_cfg, result, msg, *_stays in [
+                (deepcopy(EMPTY_CONFIG), deepcopy(SIMPLE_CONFIG), deepcopy(SIMPLE_CONFIG), "Add empty to simple", True),
+                (deepcopy(SIMPLE_CONFIG), deepcopy(EMPTY_CONFIG), deepcopy(SIMPLE_CONFIG), "Add simple to empty"),
+                (deepcopy(NESTED_CONFIG), deepcopy(NESTED_CONFIG), deepcopy(NESTED_CONFIG), "Same stay - nested", True),
+                (deepcopy(EMPTY_CONFIG), None, deepcopy(default_config), "get replaced by default config", True),
+                (
+                    EasyDict({"bar": {"x": 1}}),
+                    deepcopy(NESTED_CONFIG),
+                    deepcopy(NESTED_CONFIG),
+                    "on same value replace nested recursively",
+                    True,
+                ),
+                ({"a": {"new": 1}}, {"a": 1, "b": 2}, {"a": {"new": 1}, "b": 2}, "Overwrite value with nested"),
+                ({"a": 1, "b": 2}, {"a": {"old": 1}}, {"a": 1, "b": 2}, "Overwrite nested with value"),
+                (EasyDict({"i": 1, "j": 2}), {"i": 0}, EasyDict({"i": 1, "j": 2}), "ED and D -> ED, duplicate"),
+                (
+                    {"i": 1, "j": 2},
+                    EasyDict({"i": 0, "k": 3}),
+                    EasyDict({"i": 1, "j": 2, "k": 3}),
+                    "D and ED -> ED, add",
+                ),
+                ({"i": 1, "j": 2}, {"k": 3}, {"i": 1, "j": 2, "k": 3}, "D and D -> D, no overlap"),
+                (
+                    EasyDict({"i": 1, "j": 2, "k": EasyDict({"a": 0})}),
+                    EasyDict({"k": 0, "i": EasyDict({"b": 0})}),
+                    EasyDict({"i": 1, "j": 2, "k": EasyDict({"a": 0})}),
+                    "ED and ED -> ED, nested values",
+                ),
+                (
+                    deepcopy(SIMPLE_CONFIG),
+                    deepcopy(NESTED_CONFIG),
+                    deepcopy(NESTED_CONFIG) | {"foo": "foo foo", "second": "value"},
+                    "Add nested to simple",
+                ),
+                (
+                    deepcopy(NESTED_CONFIG),
+                    deepcopy(SIMPLE_CONFIG),
+                    deepcopy(NESTED_CONFIG) | {"second": "value"},
+                    "Add simple to nested",
+                ),
+            ]:
+                with self.subTest(msg=f"{msg}, copy: {copy}"):
+                    orig = deepcopy(default_cfg)
+                    self.assertEqual(fill_in_defaults(curr_cfg, default_cfg, copy=copy), result)
+                    # orig should stay the same
+                    # and catch the special cases:
+                    # - adding an empty cfg
+                    # - curr and new are the same
+                    if copy or (len(_stays) and _stays[0]):
+                        self.assertEqual(orig, default_cfg)
+                    else:
+                        self.assertNotEqual(orig, default_cfg)
         # test that no values were inserted into the defaults
         self.assertNotIn("second", NESTED_CONFIG)
         self.assertNotIn("bar", SIMPLE_CONFIG)
@@ -192,6 +219,79 @@ class TestLoadConfig(unittest.TestCase):
         ]:
             with self.assertRaises(InvalidPathException):
                 _ = load_config(fp)
+
+
+class TestInsertIntoConfig(unittest.TestCase):
+    def test_insert_into_config(self):
+        for path, value, default, copy, result in [
+            # empty path
+            ([], {"override": False}, {}, False, {"override": False}),
+            ([], {"override": False}, {}, True, {"override": False}),
+            ([], {"override": True}, {"override": False}, False, {"override": True}),
+            ([], {"override": True}, {"override": False}, True, {"override": True}),
+            # one nested deep
+            (["test"], {"override": False}, {}, False, {"test": {"override": False}}),
+            (["test"], {"override": False}, {}, True, {"test": {"override": False}}),
+            (["test"], {"override": True}, {"test": 0}, False, {"test": {"override": True}}),
+            (["test"], {"override": True}, {"test": 0}, True, {"test": {"override": True}}),
+            # default config
+            ([], {"override": False}, None, True, fill_in_defaults({"override": False})),
+            (
+                ["device"],
+                {"override": True},
+                None,
+                True,
+                fill_in_defaults({"device": {"override": True}}),
+            ),
+            # (["test"], {"override": False}, None, False, {"override": True}),  # don't want to modify the default cfg
+            # (["device"], {"override": True}, None, False, {"override": True}),  # don't want to modify the default cfg
+            # deeply nested
+            (
+                ["bar", "deeper", "pickaxe", "copper"],
+                {"override": False},
+                {},
+                False,
+                {"bar": {"deeper": {"pickaxe": {"copper": {"override": False}}}}},
+            ),
+            (
+                ["bar", "deeper", "pickaxe", "copper"],
+                {"override": False},
+                deepcopy(NESTED_CONFIG),
+                False,
+                fill_in_defaults({"bar": {"deeper": {"pickaxe": {"copper": {"override": False}}}}}, NESTED_CONFIG),
+            ),
+            (
+                ["bar", "deeper", "pickaxe", "copper"],
+                {"override": False},
+                deepcopy(NESTED_CONFIG),
+                True,
+                fill_in_defaults({"bar": {"deeper": {"pickaxe": {"copper": {"override": False}}}}}, NESTED_CONFIG),
+            ),
+            (
+                ["bar", "deeper", "ore"],
+                {"override": True},
+                deepcopy(NESTED_CONFIG),
+                False,
+                fill_in_defaults({"bar": {"deeper": {"ore": {"override": True}}}}, NESTED_CONFIG),
+            ),
+            (
+                ["bar", "deeper", "ore"],
+                {"override": True},
+                deepcopy(NESTED_CONFIG),
+                True,
+                fill_in_defaults({"bar": {"deeper": {"ore": {"override": True}}}}, NESTED_CONFIG),
+            ),
+        ]:
+            with self.subTest(msg=f"path: {path}, value: {value}, default: {default}, copy: {copy}, result: {result}"):
+                orig = deepcopy(default)
+                r = insert_into_config(path, value, original=default, copy=copy)
+                self.assertEqual(r, result)
+                # if copy is true, default should stay the same
+                # otherwise there should be updated values in default
+                if copy:
+                    self.assertEqual(orig, default)
+                else:
+                    self.assertEqual(get_sub_config(default, path), value)
 
 
 if __name__ == "__main__":
