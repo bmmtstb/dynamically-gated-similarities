@@ -59,10 +59,9 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
 
     KeyPointConvolutionPBEG
 
-
-
     Description
     -----------
+
     First, the convolution of the key points is computed using a given number of :attr:nof_kernels,
     which will return `J` values after flattening the convolution output.
     Those values are then inserted with the four bounding box values into the first fully connected layer.
@@ -144,7 +143,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
                 )
                 for i in range(len(hidden_layers_all) - 1)
             ],
-            nn.Softmax(),
+            nn.Softmax(dim=-1),
         )
 
     def forward(self, *data, **kwargs) -> torch.Tensor:
@@ -235,7 +234,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
                     )
                     for i in range(len(hidden_layers) - 1)
                 ],
-                nn.Softmax(),
+                nn.Softmax(dim=-1),
             )
         )
 
