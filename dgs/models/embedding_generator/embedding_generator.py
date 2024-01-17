@@ -85,7 +85,7 @@ class EmbeddingGeneratorModule(BaseModule):
 
         self.embedding_size = self.params["embedding_size"]
 
-    def __call__(self, *args, **kwargs) -> torch.Tensor:  # noqa
+    def __call__(self, *args, **kwargs) -> torch.Tensor:  # pragma: no cover
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 

@@ -129,7 +129,7 @@ class BaseDataset(BaseModule, TorchDataset):
     data: list
     """Arbitrary data, which will be converted using :meth:`self.arbitrary_to_ds()`"""
 
-    def __call__(self, *args, **kwargs) -> any:  # noqa
+    def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         """Has to override call from BaseModule"""
         raise NotImplementedError("Dataset can't be called.")
 

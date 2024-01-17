@@ -66,6 +66,7 @@ autodoc_mock_imports = [
     # "matplotlib",
     "natsort",
     # "numpy",
+    "posetrack21",
     "pytorch",
     "torch",
     "torchvision",

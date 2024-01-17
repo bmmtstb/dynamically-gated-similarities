@@ -16,7 +16,7 @@ class PoseWarpingModule(BaseModule):
     The goal of pose warping is to predict the next PoseState given information about the last (few) states.
     """
 
-    def __call__(self, *args, **kwargs) -> PoseState:  # noqa
+    def __call__(self, *args, **kwargs) -> PoseState:  # pragma: no cover
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 

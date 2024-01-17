@@ -21,7 +21,7 @@ class DynamicallyGatedSimilarities(BaseModule):
 
     """
 
-    def __call__(self, *args, **kwargs) -> any:  # noqa
+    def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
 
     @staticmethod
@@ -57,7 +57,7 @@ class DynamicallyGatedSimilarities(BaseModule):
 
         if s1.shape != s2.shape:
             raise ValueError(f"s1 and s2 should have the same shapes, but are: {s1.shape} {s2.shape}.")
-        elif len(alpha.shape) > 0 and alpha.shape[0] != 1 and alpha.shape[0] != s1.shape[0]:
+        if len(alpha.shape) > 0 and alpha.shape[0] != 1 and alpha.shape[0] != s1.shape[0]:
             raise ValueError(
                 f"If the length of the first dimension of alpha is not 1, "
                 f"the first dimension has to equal the first dimension of s1 and s2 but got {alpha.shape}."
