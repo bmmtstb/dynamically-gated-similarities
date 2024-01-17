@@ -1,3 +1,5 @@
+# PyPi dependencies
+
 av # for FFmpeg libraries and loading videos
 black
 Cython
@@ -22,7 +24,13 @@ visdom
 # -r ../dependencies/torchreid/requirements.txt
 # -e ./dependencies/torchreid
 
-# torch cpu
+# local dependencies
+
+# -e ./dependencies/PoseTrack21/eval/posetrack21/  # ignored by pylint, unused by pytest
+# -r ../dependencies/torchreid/requirements.txt  # ignored by pylint, unused by pytest
+# -e ./dependencies/torchreid  # ignored by pylint, unused by pytest
+
+# torch cpu as extra dependency
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.1.*
 torchvision==0.16.*
