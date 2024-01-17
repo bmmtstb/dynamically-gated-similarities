@@ -96,17 +96,12 @@ class PoseDataManager(DataManager):
             As long as no multi-GPU context is available, this value should not be changed.
             Default 0.
 
-    Attributes:
-        data_type (str): Is used within torchreid.
-        default_kwargs: A dict of default keyword arguments.
-            This dictionary is used to set default kwargs without passing hundreds of Arguments to `__init__()`.
-        params (dict[str, any]): Module parameters
-
     Notes:
         The original image-based transforms are overwritten to support key-points as input.
     """
 
     data_type: str = "pose"
+    """Is used within torchreid."""
 
     default_kwargs: dict[str, any] = {
         "combineall": False,
@@ -122,12 +117,18 @@ class PoseDataManager(DataManager):
         "verbose": False,
         "workers": 0,
     }
+    """A dict of default keyword arguments.
+    This dictionary is used to set default kwargs without passing hundreds of Arguments to `__init__()`.
+    """
+
+    params: dict[str, any]
+    """The parameters of this module."""
 
     def __init__(
         self, root: FilePath, sources: Type[PoseDataset] | list[Type[PoseDataset]], **kwargs: dict[str, any]
     ) -> None:
         # set default kwargs
-        self.params: dict[str, any] = self.default_kwargs.copy()
+        self.params = self.default_kwargs.copy()
         self.params.update(kwargs)
         self.root = root
 
