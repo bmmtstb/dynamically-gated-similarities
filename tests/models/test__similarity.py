@@ -33,6 +33,7 @@ class TestCombined(unittest.TestCase):
             ((1, 7), (7, 20), (7, 20), ValueError, "If alpha is two dimensional, the second dimension has to be 1"),
             ((1, 2, 1), (7, 20), (7, 20), ValueError, "alpha has the wrong shape"),
             ((8,), (7, 20), (7, 20), ValueError, "If the length of the first dimension of alpha is not 1, "),
+            ((2, 3, 4), (7, 20), (7, 20), ValueError, "alpha has the wrong shape"),
         ]:
             with self.subTest(msg=f"a_shape: {a_shape}, s1_shape: {s2_shape}, s1_shape: {s2_shape}"):
                 with self.assertRaises(exception):
