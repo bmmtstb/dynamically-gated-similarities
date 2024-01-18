@@ -22,7 +22,17 @@ cfg.device = "cpu"  # tests need cpu as the default device!
 cfg.gpus = [0] if torch.cuda.is_available() else [-1]  # use gpu=0 or none, on multi-GPU systems use list of int
 cfg.num_workers = 0  # number of subprocesses to use for data loading during torch DataLoader
 cfg.sp = True  # single or multiprocess
-cfg.training = False
+cfg.is_training = False
+
+# ######## #
+# Training #
+# ######## #
+cfg.training = EasyDict()
+cfg.training.batch_size = 32
+cfg.training.epochs = 1
+cfg.training.loss = "dummy"
+cfg.training.metric = "dummy"
+
 
 # ####### #
 # Dataset #
@@ -58,8 +68,7 @@ cfg.pose_embedding_generator = EasyDict()
 cfg.pose_embedding_generator.module_name = "LinearPBEG"
 cfg.pose_embedding_generator.embedding_size = 16
 cfg.pose_embedding_generator.hidden_layers = []
-cfg.pose_embedding_generator.input_type = "convolved"
-cfg.pose_embedding_generator.input_shape = (17, 2)  # (J, kp_dim)
+cfg.pose_embedding_generator.joint_shape = (17, 2)  # (J, kp_dim)
 cfg.pose_embedding_generator.bbox_format = "XYWH"  #
 # cfg.pose_embedding_generator.weights = "./weights/dummy.pth"
 

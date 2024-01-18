@@ -21,9 +21,9 @@ lpbe_validations: Validations = {
                 ("isinstance", tv_tensors.BoundingBoxFormat),
             ),
         )
-    ]
-    # "bias": [("isinstance", bool)]
-    # "nof_kernels": ["int", ("gt", 0)]
+    ],
+    "bias": ["optional", ("isinstance", bool)],
+    "nof_kernels": ["optional", "int", ("gt", 0)],
 }
 
 
@@ -31,14 +31,14 @@ def set_up_hidden_layer_sizes(input_size: int, output_size: int, hidden_layers: 
     """Given input and output size of an FC-NN, create a list of the sizes containing each hidden layer in the network.
     There might be zero hidden layers.
 
-    :param input_size: The size of the input.
-    :type input_size: int
-    :param output_size: The size of the output.
-    :type output_size: int
-    :param hidden_layers:
-    :type hidden_layers: list[int] | None
-    :return: The sizes of the hidden layers including input and output size.
-    :rtype: list[int]
+    Params:
+        input_size: The size of the input to the FC-Layers.
+        output_size: Output-size of the FC-Layers.
+        hidden_layers: A list containing the dimensions of each hidden layer in this network.
+            Default None means no hidden layers.
+
+    Returns:
+        The sizes of the hidden layers including input and output size.
     """
     layers: list[int] = [input_size]
     if not (hidden_layers is None or len(hidden_layers) == 0):
@@ -76,7 +76,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
     hidden_layers_kp: (Union[list[int], tuple[int, ...], None])
         Respective size of every hidden layer after the convolution of the key points.
         The value can be None to use only one single convolution layer to cast the inputs before adding the bboxes.
-    hidden_layers_all: (Union[list[int], tuple[int, ...], None])
+    hidden_layers: (Union[list[int], tuple[int, ...], None])
         Respective size of every hidden layer after adding the bounding boxes.
         The value can be None to use only one single linear NN-layer
         to cast the convoluted key points and bboxes to the outputs.
@@ -85,7 +85,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
     bias: (bool, optional, default=True)
         Whether to use a bias term in the linear layers.
     nof_kernels: (int, optional, default=5)
-        Only applicable with input_type='convolved' define the number of kernels to use for convolution.
+        Define the number of kernels to use for convolution.
     bbox_format: (Union[str, tv_tensors.BoundingBoxFormat], optional, default='XYWH')
         The format of the bounding box coordinates.
         This will have influence on the results.
@@ -132,7 +132,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         hidden_layers_all = set_up_hidden_layer_sizes(
             input_size=hidden_layers_kp[-2] + 4,  # last real layer-size of key point fc layers, defaults to J
             output_size=self.embedding_size,
-            hidden_layers=self.params.get("hidden_layers_all"),
+            hidden_layers=self.params.get("hidden_layers"),
         )
         self.fc2 = nn.Sequential(
             *[
@@ -147,7 +147,15 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         )
 
     def forward(self, *data, **kwargs) -> torch.Tensor:
-        """Forward pass of the custom key point convolution model."""
+        """Forward pass of the custom key point convolution model.
+
+        Params:
+            data: Tuple of size two containing the key-points and the corresponding bounding boxes.
+
+        Returns:
+            This modules' prediction,
+            describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
+        """
         if len(data) < 2:
             raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
         # extract key points and bboxes from data
@@ -239,7 +247,16 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         )
 
     def forward(self, *data, **kwargs) -> torch.Tensor:
-        """Forward pass of the linear pose-based embedding generator."""
+        """Forward pass of the linear pose-based embedding generator.
+
+        Params:
+            data: An already flattened tensor of shape ``[B x self.J * self.j_dim + 4]``.
+                Containing the values of the key-point coordinates and the bounding box.
+
+        Returns:
+            This modules' prediction,
+            describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
+        """
         if len(data) == 1:
             # expect that input is already flattened
             if self.print("debug"):

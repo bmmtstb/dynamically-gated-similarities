@@ -48,9 +48,9 @@ class PoseDataManager(DataManager):
     """Custom torchreid DataManager for pose-based data.
 
     Args:
-        root (str): Root path to the directory containing all the datasets.
-        sources (Type[PoseDataset] | list[Type[PoseDataset]]): The types of source pose dataset(s).
-        **kwargs (dict): Additional keyword arguments, see Other Parameters below.
+        root: Root path to the directory containing all the datasets.
+        sources: The types of source pose dataset(s).
+        **kwargs: Additional keyword arguments, see Other Parameters below.
 
     Other Parameters:
         combineall (bool):
@@ -124,9 +124,7 @@ class PoseDataManager(DataManager):
     params: dict[str, any]
     """The parameters of this module."""
 
-    def __init__(
-        self, root: FilePath, sources: Type[PoseDataset] | list[Type[PoseDataset]], **kwargs: dict[str, any]
-    ) -> None:
+    def __init__(self, root: FilePath, sources: Type[PoseDataset] | list[Type[PoseDataset]], **kwargs) -> None:
         # set default kwargs
         self.params = self.default_kwargs.copy()
         self.params.update(kwargs)

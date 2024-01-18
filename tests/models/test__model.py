@@ -16,7 +16,7 @@ TEST_CFG: Config = EasyDict(
         "device": "cpu",
         "gpus": "",
         "sp": True,
-        "training": False,
+        "is_training": False,
         "num_workers": 0,
     }
 )

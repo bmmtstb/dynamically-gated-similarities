@@ -13,34 +13,39 @@ from dgs.utils.files import is_file, to_abspath
 from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage, Validator
 
 VALIDATIONS: dict[str, Validator] = {
+    "optional": (lambda _x, _d: True),
+    # types
     "None": (lambda x, _: x is None),
     "not None": (lambda x, _: x is not None),
-    "eq": (lambda x, d: x == d),
-    "neq": (lambda x, d: x != d),
-    "gt": (lambda x, d: isinstance(d, int | float) and x > d),
-    "gte": (lambda x, d: isinstance(d, int | float) and x >= d),
-    "lt": (lambda x, d: isinstance(d, int | float) and x < d),
-    "lte": (lambda x, d: isinstance(d, int | float) and x <= d),
-    "in": (lambda x, d: hasattr(d, "__contains__") and x in d),
-    "not in": (lambda x, d: hasattr(x, "__contains__") and x not in d),
-    "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),
-    "not contains": (lambda x, d: hasattr(x, "__contains__") and d not in x),
     "str": (lambda x, _: isinstance(x, str)),
     "int": (lambda x, _: isinstance(x, int)),
     "float": (lambda x, _: isinstance(x, float)),
     "number": (lambda x, _: isinstance(x, int | float)),
+    "callable": (lambda x, _: callable(x)),
     "instance": isinstance,  # alias
     "isinstance": isinstance,
+    # number
+    "gt": (lambda x, d: isinstance(d, int | float) and x > d),
+    "gte": (lambda x, d: isinstance(d, int | float) and x >= d),
+    "lt": (lambda x, d: isinstance(d, int | float) and x < d),
+    "lte": (lambda x, d: isinstance(d, int | float) and x <= d),
     "between": (lambda x, d: isinstance(x, int | float) and isinstance(d, tuple) and len(d) == 2 and d[0] < x < d[1]),
     "within": (lambda x, d: isinstance(x, int | float) and isinstance(d, tuple) and len(d) == 2 and d[0] <= x <= d[1]),
     "outside": (
         lambda x, d: isinstance(x, int | float) and isinstance(d, tuple) and len(d) == 2 and x < d[0] or x > d[1]
     ),
+    # lists and other iterables
     "len": (lambda x, d: hasattr(x, "__len__") and len(x) == d),
     "shorter": (lambda x, d: hasattr(x, "__len__") and len(x) <= d),
     "longer": (lambda x, d: hasattr(x, "__len__") and len(x) >= d),
+    "in": (lambda x, d: hasattr(d, "__contains__") and x in d),
+    "not in": (lambda x, d: hasattr(x, "__contains__") and x not in d),
+    "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),
+    "not contains": (lambda x, d: hasattr(x, "__contains__") and d not in x),
+    # string
     "startswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.startswith(d)),
     "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
+    # file and folder
     "file exists": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
     "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
     "file exists in folder": (
@@ -51,12 +56,13 @@ VALIDATIONS: dict[str, Validator] = {
     "folder exists in folder": (
         lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isdir(os.path.join(f, x))
     ),
-    # additional logical operators for nested validations
+    # logical operators, including nested validations
+    "eq": (lambda x, d: x == d),
+    "neq": (lambda x, d: x != d),
     "not": (lambda x, d: not VALIDATIONS[d[0]](x, d[1])),
     "and": (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
     "or": (lambda x, d: any(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
     "xor": (lambda x, d: bool(VALIDATIONS[d[0][0]](x, d[0][1])) != bool(VALIDATIONS[d[1][0]](x, d[1][1]))),
-    "optional": (lambda _x, _d: True),
 }
 """A list of default validations to check values using :meth:`validate_value`."""
 

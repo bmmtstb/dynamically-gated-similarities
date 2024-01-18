@@ -22,11 +22,11 @@ module_validations: Validations = {
     "gpus": [lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
     "num_workers": ["int", ("gte", 0)],
     "sp": [("instance", bool)],
-    "training": [("instance", bool)],
+    "is_training": [("instance", bool)],
 }
 
 
-def enable_keyboard_interrupt(func: callable) -> callable:  # noqa
+def enable_keyboard_interrupt(func: callable) -> callable:  # pragma: no cover
     """Call module.terminate() on Keyboard Interruption (e.g., ctrl+c), which makes sure that all threads are stopped.
 
     Args:
@@ -108,7 +108,7 @@ class BaseModule(ABC):
         Whether to use a single process (sp) or use multiprocessing.
         If sp is false, 'gpus' has to be defined.
 
-    training: (bool, optional, default=False)
+    is_training: (bool, optional, default=False)
         Whether the torch modules should train or evaluate.
 
     Attributes:
@@ -237,7 +237,7 @@ class BaseModule(ABC):
                 )
 
     @abstractmethod
-    def __call__(self, *args, **kwargs) -> any:  # noqa
+    def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         raise NotImplementedError
 
     def print(self, priority: str) -> bool:
