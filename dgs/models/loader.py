@@ -8,12 +8,13 @@ from dgs.models.dataset import get_dataset
 from dgs.models.embedding_generator import get_embedding_generator
 from dgs.models.module import BaseModule
 from dgs.models.pose_warping import get_pose_warping
-from dgs.models.similarity import get_similarity_module
+from dgs.models.similarity import get_combined_similarity_module, get_similarity_module
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
 
 module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be removed?
     "backbone": ["backbone"],
+    "combined_similarity": ["combined_similarity"],
     "dataset": ["dataset"],
     "visual_embedding_generator": ["visual_embedding_generator"],
     "visual_similarity": ["visual_similarity"],
@@ -51,6 +52,8 @@ def module_loader(config: Config, module: str) -> M:
     # Module import and initialization
     if module == "backbone":
         m = get_backbone(module_name)
+    elif module == "combined_similarity":
+        m = get_combined_similarity_module(module_name)
     elif module in ["visual_embedding_generator", "pose_embedding_generator"]:
         m = get_embedding_generator(module_name)
     elif module in ["visual_similarity", "pose_similarity"]:

@@ -88,3 +88,11 @@ cfg.pose_similarity.module_name = "euclidean"
 cfg.pose_warping_module = EasyDict()
 cfg.pose_warping_module.module_name = "kalman"
 cfg.pose_warping_module.weights = ""
+
+
+# ######################## #
+# Combine the Similarities #
+# ######################## #
+cfg.combined_similarity = EasyDict()
+cfg.combined_similarity.module_name = "static_alpha"
+cfg.combined_similarity.alpha = [0.6, 0.4]
