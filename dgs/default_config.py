@@ -13,7 +13,6 @@ cfg = EasyDict()
 # ####### #
 
 # cfg.name = "DEFAULT"  # shouldn't be set, to force user to give it a name
-cfg.batch_size = 32
 cfg.print_prio = "normal"
 cfg.working_memory_size = 30
 
@@ -27,12 +26,19 @@ cfg.is_training = False
 # ######## #
 # Training #
 # ######## #
-cfg.training = EasyDict()
-cfg.training.batch_size = 32
-cfg.training.epochs = 1
-cfg.training.loss = "dummy"
-cfg.training.metric = "dummy"
+cfg.train = EasyDict()
+cfg.train.batch_size = 32
+cfg.train.epochs = 1
+cfg.train.loss = "NLLLoss"
+cfg.train.metric = "dummy"
+cfg.train.optimizer = "Adam"
 
+# ####### #
+# Testing #
+# ####### #
+cfg.test = EasyDict()
+cfg.test.batch_size = 32
+cfg.test.metric = "dummy"
 
 # ####### #
 # Dataset #

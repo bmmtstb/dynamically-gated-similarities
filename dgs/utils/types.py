@@ -5,6 +5,8 @@ from typing import Callable, Union
 
 import torch
 from easydict import EasyDict
+from torch import nn
+from torch.types import Device as TorchDevice
 from torchvision.tv_tensors import Image as tv_Image, Mask as tv_Mask, Video as tv_Video
 
 # Configuration
@@ -32,8 +34,14 @@ PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 
 
 # Torch
-Device = Union[torch.device, str]
+Device = Union[TorchDevice, str]
 """Torch device, either descriptive string (e.g. "cpu" or "cuda:0") or torch.device object."""
+
+Metric = nn.Module
+"""A module or function that computes a metric."""
+
+Loss = nn.Module
+"""A module or function that computes a loss."""
 
 # Images
 TVImage = tv_Image

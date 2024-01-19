@@ -2,7 +2,8 @@
 Utilities for validating recurring data types.
 """
 import os
-from typing import Iterable, Union
+from collections.abc import Iterable, Sized
+from typing import Union
 
 import torch
 from torchvision import tv_tensors
@@ -24,6 +25,8 @@ VALIDATIONS: dict[str, Validator] = {
     "callable": (lambda x, _: callable(x)),
     "instance": isinstance,  # alias
     "isinstance": isinstance,
+    "iterable": (lambda x, _: isinstance(x, Iterable)),
+    "sized": (lambda x, _: isinstance(x, Sized)),
     # number
     "gt": (lambda x, d: isinstance(d, int | float) and x > d),
     "gte": (lambda x, d: isinstance(d, int | float) and x >= d),

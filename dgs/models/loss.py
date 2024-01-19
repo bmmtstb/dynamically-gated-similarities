@@ -1,8 +1,22 @@
+"""
+Functions to load and manage torch loss functions.
+"""
 from typing import Type, Union
 
 from torch import nn
 
-LOSS_FUNCTIONS: dict[str, Type[nn.Module]] = {
+from dgs.utils.types import Loss
+
+try:
+    # If torchreid is installed using `./dependencies/torchreid`
+    # noinspection PyUnresolvedReferences LongLine
+    from torchreid.losses import CrossEntropyLoss, TripletLoss
+except ModuleNotFoundError:
+    # if torchreid is installed using `pip install torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.losses import CrossEntropyLoss, TripletLoss
+
+LOSS_FUNCTIONS: dict[str, Type[Loss]] = {
     "L1Loss": nn.L1Loss,
     "NLLLoss": nn.NLLLoss,
     # "NLLLoss2d": nn.NLLLoss2d, deprecated
@@ -25,10 +39,12 @@ LOSS_FUNCTIONS: dict[str, Type[nn.Module]] = {
     "TripletMarginLoss": nn.TripletMarginLoss,
     "TripletMarginWithDistanceLoss": nn.TripletMarginWithDistanceLoss,
     "CTCLoss": nn.CTCLoss,
+    "TorchreidTripletLoss": TripletLoss,
+    "TorchreidCrossEntropyLoss": CrossEntropyLoss,
 }
 
 
-def register_loss_function(loss_name: str, loss_function: Type[nn.Module]) -> None:
+def register_loss_function(loss_name: str, loss_function: Type[Loss]) -> None:
     """Register a new loss function.
 
     Args:
@@ -43,27 +59,25 @@ def register_loss_function(loss_name: str, loss_function: Type[nn.Module]) -> No
 
         import torch
         from torch import nn
-        class CustomNNLLoss(nn.Module):
+        class CustomNNLLoss(Loss):
             def __init__(...):
                 ...
             def forward(self, input: torch.Tensor, target: torch.Tensor):
                 return ...
         register_loss_function("CustomNNLLoss", CustomNNLLoss)
     """
-    global LOSS_FUNCTIONS
-
     if loss_name in LOSS_FUNCTIONS:
         raise ValueError(
             f"The given name '{loss_name}' already exists, "
             f"please choose another name excluding {LOSS_FUNCTIONS.keys()}."
         )
-    if not (callable(loss_function) and isinstance(loss_function, type) and issubclass(loss_function, nn.Module)):
-        raise ValueError(f"The given loss function is no callable or no subclass of nn.Module. Got: {loss_function}")
+    if not (callable(loss_function) and isinstance(loss_function, type) and issubclass(loss_function, Loss)):
+        raise ValueError(f"The given loss function is no callable or no subclass of Loss. Got: {loss_function}")
     LOSS_FUNCTIONS[loss_name] = loss_function
 
 
-def get_loss_from_name(name: str) -> Type[nn.Module]:
-    """Given a name of a loss function, that is in ..., return an instance of it.
+def get_loss_from_name(name: str) -> Type[Loss]:
+    """Given a name of a loss function, that is in `LOSS_FUNCTIONS`, return an instance of it.
 
     Params:
         name: The name of the loss function.
@@ -79,21 +93,21 @@ def get_loss_from_name(name: str) -> Type[nn.Module]:
     return LOSS_FUNCTIONS[name]
 
 
-def get_loss_function(instance: Union[str, callable]) -> Type[nn.Module]:
+def get_loss_function(instance: Union[str, callable]) -> Type[Loss]:
     """
 
     Args:
         instance: Either the name of the loss function, which has to be in `LOSS_FUNCTIONS`,
-            or a subclass of `nn.Module`.
+            or a subclass of `Loss`.
 
     Raises:
-        ValueError: If the loss function has the wrong type.
+        ValueError: If the instance has the wrong type.
 
     Returns:
         The class of the given loss function.
     """
     if isinstance(instance, str):
         return get_loss_from_name(instance)
-    if isinstance(instance, type) and issubclass(instance, nn.Module):
+    if isinstance(instance, type) and issubclass(instance, Loss):
         return instance
-    raise ValueError(f"Loss function '{instance}' is neither string nor subclass of 'nn.Module'.")
+    raise ValueError(f"Loss function '{instance}' is neither string nor subclass of 'Loss'.")

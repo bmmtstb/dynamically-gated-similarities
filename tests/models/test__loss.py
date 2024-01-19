@@ -6,7 +6,7 @@ from torch import nn
 from dgs.models.loss import get_loss_from_name, get_loss_function, LOSS_FUNCTIONS, register_loss_function
 
 
-class Test(unittest.TestCase):
+class TestLoss(unittest.TestCase):
     def test_get_loss_from_name(self):
         for name, loss_class in LOSS_FUNCTIONS.items():
             with self.subTest(msg=f"name: {name}, loss_class: {loss_class}"):

@@ -16,11 +16,10 @@ from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
     "name": ["str", ("longer", 2)],
-    "batch_size": ["int", ("gte", 1)],
     "print_prio": [("in", PRINT_PRIORITY)],
     "device": ["str", ("or", (("in", ["cuda", "cpu"]), ("instance", torch.device)))],
-    "gpus": [lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
-    "num_workers": ["int", ("gte", 0)],
+    "gpus": ["optional", lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
+    "num_workers": ["optional", "int", ("gte", 0)],
     "sp": [("instance", bool)],
     "is_training": [("instance", bool)],
 }
@@ -89,9 +88,6 @@ class BaseModule(ABC):
     Configuration
     -------------
 
-    batch_size: (int, optional, default: 32)
-        The batch size of the tracker, also used in all other modules, if not specified otherwise.
-
     device: (Device, optional, default="cuda")
         The device to run this module and tracker on.
 
@@ -137,6 +133,9 @@ class BaseModule(ABC):
             self.config["gpus"] = (
                 [int(i) for i in self.config["gpus"].split(",")] if torch.cuda.device_count() >= 1 else [-1]
             )
+        # set default value of num_workers
+        if not self.config["num_workers"]:
+            self.config["num_workers"] = 0
 
         # validate config when calling BaseModule class and flag is True
         if validate_base:
@@ -270,7 +269,12 @@ class BaseModule(ABC):
         """Shorthand for getting the device configuration."""
         return torch.device(self.config["device"])
 
-    def configure_torch_model(self, module: Module, train: bool = None) -> Module:
+    @property
+    def name(self) -> str:
+        """Shorthand for getting the name of the module."""
+        return self.config["name"]
+
+    def configure_torch_module(self, module: Module, train: bool = None) -> Module:
         """Set compute mode and send model to the device or multiple parallel devices if applicable.
 
         Args:
@@ -280,14 +284,14 @@ class BaseModule(ABC):
         Returns:
             The module on the specified device or in parallel.
         """
-        train: bool = self.config["training"] if train is None else train
+        train: bool = self.config["is_training"] if train is None else train
         # set torch mode
         if train:
             module.train()
         else:
             module.eval()
         # send model to device(s)
-        if (not self.config["sp"] and len(self.config["gpus"]) > 1) or len(self.config["gpus"]) > 1:
+        if (not self.config["sp"] and len(self.config["gpus"]) > 1) or len(self.config["gpus"]) > 1:  # pragma: no cover
             raise NotImplementedError("Parallel does not work yet.")
             # return DistributedDataParallel(module, device_ids=self.config.gpus).to(self.device)
         module.to(device=self.device)

@@ -5,8 +5,6 @@ device: "cuda"
 print_prio: "normal"
 training: off
 
-batch_size: 8
-
 # Modules
 
 dataset:

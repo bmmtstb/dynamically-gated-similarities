@@ -1,18 +1,20 @@
 import unittest
 from unittest.mock import patch
 
+import torch
 from easydict import EasyDict
+from torch import nn
 
 from dgs.models.module import BaseModule, module_validations as base_module_validation
-from dgs.utils.config import insert_into_config
+from dgs.utils.config import fill_in_defaults, insert_into_config
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.types import Config, NodePath
+from dgs.utils.types import Config, Device, NodePath
+from helper import test_multiple_devices
 
 TEST_CFG: Config = EasyDict(
     {
         "name": "TestModel",
         "print_prio": "debug",
-        "batch_size": 1,
         "device": "cpu",
         "gpus": "",
         "sp": True,
@@ -140,6 +142,20 @@ class TestBaseModule(unittest.TestCase):
                 with self.assertRaises(ValueError) as context:
                     BaseModule(config=_def_repl("print_prio", module_prio), path=[]).print(prio)
                 self.assertTrue(err_str in str(context.exception))
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    @test_multiple_devices
+    def test_configure_torch_model(self, device: Device):
+        for module, train in [
+            (nn.Linear(10, 2), True),
+            (nn.Linear(10, 2), False),
+        ]:
+            with self.subTest(msg="module: {}, train: {}".format(module, train)):
+                m = BaseModule(config=fill_in_defaults({"is_training": train, "device": device}), path=[])
+                self.assertEqual(module.bias.device.type, torch.device("cpu").type)
+                m.configure_torch_module(module, train)
+                self.assertEqual(module.training, train)
+                self.assertEqual(module.bias.device.type, device.type)
 
 
 if __name__ == "__main__":
