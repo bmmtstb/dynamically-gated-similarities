@@ -46,7 +46,7 @@ def torch_show_image(
         plt.show()
 
 
-def torch_to_matplotlib(img: TVImage) -> np.ndarray:  # pragma: no cover
+def torch_to_matplotlib(img: Union[TVImage, torch.Tensor]) -> np.ndarray:
     """Convert a given single or batched torch image Tensor to a numpy.ndarray on the cpu.
     The dimensions are switched from ``[B x C x H x W]`` -> ``[B x H x W x C]``
 
