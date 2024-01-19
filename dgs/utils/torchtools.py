@@ -8,10 +8,13 @@ import shutil
 import warnings
 from collections import OrderedDict
 from functools import partial
+from typing import Union
 
 import torch
 from torch import nn
+from torch.nn import Module
 
+from dgs.models.module import BaseModule
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.types import FilePath
 
@@ -245,3 +248,44 @@ def load_pretrained_weights(model: nn.Module, weight_path: FilePath) -> None:
         print(f"Successfully loaded pretrained weights from '{weight_path}'")
         if len(discarded_layers) > 0:
             print(f"** The following layers are discarded due to unmatched keys or layer size: {discarded_layers}")
+
+
+def configure_torch_module(
+    orig_cls: Union[BaseModule, Module], name: str | None = None
+) -> BaseModule:  # pragma: no cover
+    """Decorator to decorate a class, which has to be a child of torch.nn.Module and the BaseModule!
+    The decorator will then call BaseModule.configure_torch_model on themselves after initializing the original class.
+
+    If ``name`` is `None` the whole class will be used as `torch.nn.Module` which is going to be configured.
+    Otherwise, the classes `name` attribute will be used as `torch.nn.Module` for configuration.
+
+    Args:
+        orig_cls: The decorated class.
+        name: The name of `orig_cls`'s attribute / property which contains the `nn.Module` that should be configured.
+
+    Raises:
+        ValueError: If the class is not a child of both required parent classes.
+            Or the parameter `name` is set and does not exist in the class.
+
+    Returns:
+        The decorated class after the configuration is applied.
+    """
+    orig_init = orig_cls.__init__
+
+    def class_wrapper(self: Union[BaseModule, Module], *args, **kwargs):
+        if not isinstance(self, BaseModule) or not isinstance(self, Module):
+            raise ValueError(f"Given class or function {self} is not a child of BaseModule and torch.nn.Module")
+        # first initialize class
+        orig_init(self, *args, **kwargs)
+        # then call configure_torch_model()
+        # if no name is provided, use the class as torch Module, otherwise on the attribute `name`
+        if name is not None:
+            if name not in self:
+                raise ValueError(f"Class {self} does not contain property of name {name}")
+            self.configure_torch_model(module=self[name])
+        else:
+            self.configure_torch_module(module=self)
+
+    # override original init method
+    orig_cls.__init__ = class_wrapper
+    return orig_cls

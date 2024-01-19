@@ -5,10 +5,11 @@ Base Tracker API structure of tracking via dynamically gated similarities
 from dgs.models.dataset import get_data_loader
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
+from dgs.models.engine import EngineModule
 from dgs.models.loader import module_loader
 from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.similarity.combined import DynamicallyGatedSimilarities
 from dgs.models.similarity.similarity import SimilarityModule
-from dgs.models.states import DataSample
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
 
@@ -57,27 +58,19 @@ class DGSTracker:
 
         # self.m_alpha = ...
 
-        self.dataset: BaseDataset = module_loader(self.cfg, "dataset")
+        # datasets and dataloaders
+        test_dataset: BaseDataset = module_loader(self.cfg, "dataset")
+        test_dl = get_data_loader(test_dataset, self.cfg["batch_size"])
+
+        self.engine: EngineModule = EngineModule(
+            self.cfg, path=["train", "test"], test_loader=test_dl, get_data=..., get_target=...
+        )
 
     @enable_keyboard_interrupt
     def run(self) -> None:
         """Run Tracker."""
-        assert hasattr(self, "dataset")
-        batch: DataSample
-
-        # dataloader
-        data_loader = get_data_loader(self.cfg, self.dataset)
-
-        # run for every batch in the dataloader
-        for batch_idx, batch in enumerate(data_loader):
-            print(batch_idx)
-            vis_emb = self.m_vis_reid(batch.image)
-            vis_sim = self.m_vis_siml(vis_emb, vis_emb)
-
-            pose_emb = self.m_pose_reid(batch.keypoints)
-            pose_sim = self.m_pose_siml(pose_emb, pose_emb)
-
-            print(vis_sim, pose_sim)
+        assert hasattr(self, "engine")
+        self.engine.run()
 
     @enable_keyboard_interrupt
     def update(self, batch) -> None:

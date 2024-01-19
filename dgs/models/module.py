@@ -48,30 +48,6 @@ def enable_keyboard_interrupt(func: callable) -> callable:  # pragma: no cover
     return module_wrapper
 
 
-def configure_torch_module(orig_cls):
-    """Decorator to decorate classes, which have to be a torch.nn.Module,
-    to call BaseModule.configure_torch_model on themselves.
-
-    :param orig_cls: The decorated class.
-    :return: The decorated class after the configuration is applied.
-    """
-    orig_init = orig_cls.__init__
-
-    def class_wrapper(self, *args, **kwargs):
-        if not isinstance(self, BaseModule) or not isinstance(self, Module):
-            raise NotImplementedError(
-                f"Given class or function {self} is not a child of BaseModule and torch.nn.Module"
-            )
-        # first initialize class
-        orig_init(self, *args, **kwargs)
-        # then call configure_torch_model()
-        self.configure_torch_model(module=self)
-
-    # override original init method
-    orig_cls.__init__ = class_wrapper
-    return orig_cls
-
-
 class BaseModule(ABC):
     r"""Base class for all custom modules.
 

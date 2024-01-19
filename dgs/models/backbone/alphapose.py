@@ -92,7 +92,7 @@ class AlphaPoseFullBackbone(BackboneModule):
             print(f"AlphaPose - Loading pose model from checkpoint {self.params['checkpoint']}")
 
         pose_model.load_state_dict(torch.load(self.params["checkpoint"], map_location=self.device))
-        self.pose_model = self.configure_torch_model(pose_model, train=False)
+        self.pose_model = self.configure_torch_module(pose_model, train=False)
 
         # set up dataset
         self.pose_data = builder.retrieve_dataset(self.ap_cfg_file.DATASET.TRAIN)

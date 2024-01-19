@@ -7,7 +7,7 @@ from torchvision import tv_tensors
 from torchvision.transforms.v2.functional import convert_bounding_box_format
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
-from dgs.models.module import configure_torch_module
+from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
 lpbe_validations: Validations = {
@@ -231,7 +231,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             output_size=self.embedding_size,
             hidden_layers=self.params.get("hidden_layers"),
         )
-        return self.configure_torch_model(  # send to the target device
+        return self.configure_torch_module(  # send to the target device
             nn.Sequential(
                 nn.Flatten(),  # keep batch dim and one value dim, default start_dim=-1, end_dim=1
                 *[
