@@ -6,16 +6,24 @@ Similarity functions compute a similarity score "likeness" between two equally s
 from typing import Callable
 
 import torch
+from torch import nn
 from torch.nn import CosineSimilarity, PairwiseDistance
 
 from dgs.models.module import BaseModule
 from dgs.utils.types import Config, NodePath
 
 
-class SimilarityModule(BaseModule):
-    """Abstract class for similarity functions"""
+class SimilarityModule(BaseModule, nn.Module):
+    """Abstract class for similarity functions.
+
+    TODO sizes / shapes? input and output?
+    """
 
     func: Callable[..., torch.Tensor]
+
+    def __init__(self, config: Config, path: NodePath):
+        BaseModule.__init__(self, config, path)
+        nn.Module.__init__(self)
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         """see self.forward()"""

@@ -2,44 +2,38 @@ import unittest
 
 import torch
 
-from dgs.models.similarity.combined import DynamicallyGatedSimilarities
+from dgs.models.similarity import (
+    CosineSimilarityModule,
+    DotProductModule,
+    EuclideanDistanceModule,
+    PairwiseDistanceModule,
+    PNormDistanceModule,
+    SimilarityModule,
+)
+from dgs.utils.config import fill_in_defaults
 
 
-class TestCombined(unittest.TestCase):
-    def test_DGS(self):
-        for a_shape, s_shape in [
-            ((), (7, 20)),
-            ((1,), (7, 20)),
-            ((1, 1), (7, 20)),
-            ((1, 1, 1), (7, 20)),
-            ((1, 7, 1), (7, 20)),
-            ((7,), (7, 20)),
-            ((7, 1), (7, 20)),
+class TestSimilarity(unittest.TestCase):
+    def test_similarity(self):
+        # fixme why are the shapes so chaotic?
+        for module, kwargs, out_shape in [
+            (CosineSimilarityModule, {}, (7, 2)),
+            (DotProductModule, {}, (7, 17, 7, 17)),
+            (EuclideanDistanceModule, {}, (7, 17, 17)),
+            (PairwiseDistanceModule, {}, (7, 17)),
+            (PNormDistanceModule, {"kwargs": {"p": 3}}, (7, 17, 17)),
         ]:
-            with self.subTest(msg=f"a_shape: {a_shape}, s_shape: {s_shape}"):
-                self.assertTrue(
-                    torch.allclose(
-                        DynamicallyGatedSimilarities.forward(
-                            torch.ones(a_shape) * 0.2, torch.ones(s_shape).float(), torch.ones(s_shape).float()
-                        ),
-                        torch.ones(s_shape),
-                    )
-                )
+            with self.subTest(msg="module: {}, kwargs: {}".format(module, kwargs)):
+                path = ["pose_similarity"]
+                cfg = fill_in_defaults({"pose_similarity": kwargs})
 
-    def test_forward_exceptions(self):
-        for a_shape, s1_shape, s2_shape, exception, err_str in [
-            ((1,), (7, 21), (7, 20), ValueError, "s1 and s2 should have the same shapes, but are"),
-            ((1,), (7, 20, 1), (7, 20), ValueError, "s1 and s2 should have the same shapes, but are"),
-            ((1, 7), (7, 20), (7, 20), ValueError, "If alpha is two dimensional, the second dimension has to be 1"),
-            ((1, 2, 1), (7, 20), (7, 20), ValueError, "alpha has the wrong shape"),
-            ((8,), (7, 20), (7, 20), ValueError, "If the length of the first dimension of alpha is not 1, "),
-            ((2, 3, 4), (7, 20), (7, 20), ValueError, "alpha has the wrong shape"),
-        ]:
-            with self.subTest(msg=f"a_shape: {a_shape}, s1_shape: {s2_shape}, s1_shape: {s2_shape}"):
-                with self.assertRaises(exception):
-                    DynamicallyGatedSimilarities.forward(
-                        torch.ones(a_shape) * 0.2, torch.ones(s1_shape).float(), torch.ones(s2_shape).float()
-                    )
+                m: SimilarityModule = module(config=cfg, path=path)
+
+                res = m.forward(torch.ones((7, 17, 2)), torch.ones((7, 17, 2)))
+                self.assertEqual(res.shape, torch.Size(out_shape))
+
+    def test_oks(self):
+        pass
 
 
 if __name__ == "__main__":

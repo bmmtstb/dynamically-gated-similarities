@@ -18,7 +18,7 @@ from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.states import DataSample
 from dgs.utils.torchtools import save_checkpoint
-from dgs.utils.types import Config, FilePath, NodePath, Validations
+from dgs.utils.types import Config, FilePath, Validations
 
 module_validations: Validations = {
     "batch_size": ["int", ("gte", 1)],
@@ -35,14 +35,12 @@ class EngineModule(BaseModule):
 
     Most of the settings are defined within the configuration file in the `training` section.
 
-    Methods:
-        train: Train the given `nn.Module`
-        test: Test the given `nn.Module`
-        run: First train the given `nn.Module`, then test it.
-
     Notes:
         The trained module is saved every epoch.
     """
+
+    # The engine is the heart of most algorithms and therefore contains a los of stuff.
+    # pylint: disable = too-many-instance-attributes, too-many-arguments
 
     loss: nn.Module
     metric: nn.Module
@@ -58,13 +56,12 @@ class EngineModule(BaseModule):
     def __init__(
         self,
         config: Config,
-        path: NodePath,
         test_loader: TorchDataLoader,
         get_data: Callable[[DataSample], Union[torch.Tensor, tuple[torch.Tensor, ...]]],
         get_target: Callable[[DataSample], Union[torch.Tensor, tuple[torch.Tensor, ...]]],
         train_loader: TorchDataLoader = None,
     ):
-        super().__init__(config, path)
+        super().__init__(config, [])
         self.validate_params(module_validations)
 
         self.test_dl = test_loader
@@ -109,10 +106,10 @@ class EngineModule(BaseModule):
         pred: torch.Tensor = torch.cat(pred)
         target: torch.Tensor = torch.cat(target)
 
-        rank1, mAP = (1, 1)  # todo create evaluation
+        rank1, m_ap = (1, 1)  # todo create evaluation
         # at the end use the writer to save results
         self.writer.add_scalar(f"Test/{self.name}/rank1", rank1, self.curr_epoch)
-        self.writer.add_scalar(f"Test/{self.name}/mAP", mAP, self.curr_epoch)
+        self.writer.add_scalar(f"Test/{self.name}/mAP", m_ap, self.curr_epoch)
 
         return rank1
 

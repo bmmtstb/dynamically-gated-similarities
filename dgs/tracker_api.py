@@ -62,9 +62,7 @@ class DGSTracker:
         test_dataset: BaseDataset = module_loader(self.cfg, "dataset")
         test_dl = get_data_loader(test_dataset, self.cfg["batch_size"])
 
-        self.engine: EngineModule = EngineModule(
-            self.cfg, path=["train", "test"], test_loader=test_dl, get_data=..., get_target=...
-        )
+        self.engine: EngineModule = EngineModule(self.cfg, test_loader=test_dl, get_data=..., get_target=...)
 
     @enable_keyboard_interrupt
     def run(self) -> None:

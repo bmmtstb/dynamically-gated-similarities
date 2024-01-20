@@ -42,19 +42,17 @@ class DynamicallyGatedSimilarities(CombineSimilarityModule):
     It is possible that :math:`S_1` and :math:`S_2` have different shapes in at least one dimension.
     """
 
-    @staticmethod
-    def forward(alpha: torch.FloatTensor, s1: torch.FloatTensor, s2: torch.FloatTensor) -> torch.FloatTensor:
+    def forward(self, *tensors, alpha: torch.FloatTensor = torch.tensor([0.5, 0.5]), **_kwargs) -> torch.FloatTensor:
         """The forward call of this module combines two weight matrices given a third importance weight :math:`\alpha`.
         :math:`\alpha` describes how important s1 is, while :math:`(1- \alpha)` does the same for s2.
 
         All tensors should be on the same device and ``s1`` and ``s2`` should have the same shape.
 
         Args:
-            alpha (torch.FloatTensor):
-                Weight :math:`\alpha`. Should be a FloatTensor in range [0,1].
+            tensors (tuple[torch.FloatTensor, ...]): Two weight matrices as tuple of FloatTensors.
+                Both should have values in range [0,1] and be of the same shape ``[N x T]``.
+            alpha: Weight :math:`\alpha`. Should be a FloatTensor in range [0,1].
                 The shape of :math:`\alpha` can either be ``[]``, ``[1 (x 1)]``, or ``[N x 1]``.
-            s1 (torch.FloatTensor): A weight matrix as FloatTensor with values in range [0,1] of shape ``[N x T]``.
-            s2 (torch.FloatTensor): A weight matrix as FloatTensor with values in range [0,1] of shape ``[N x T]``.
 
         Returns:
             torch.FloatTensor: The weighted similarity matrix.
@@ -62,6 +60,11 @@ class DynamicallyGatedSimilarities(CombineSimilarityModule):
         Raises:
             ValueError: If alpha or the matrices have invalid shapes.
         """
+        if len(tensors) != 2:
+            raise ValueError(f"There should be exactly two matrices in the tensors argument, got {len(tensors)}")
+        if any(not isinstance(t, torch.Tensor) for t in tensors):
+            raise TypeError("All matrices should be torch (float) tensors.")
+        s1, s2 = tensors
         if (a_max := torch.max(alpha)) > 1.0 or torch.min(alpha) < 0.0:
             raise ValueError(f"alpha should lie in the range [0,1], but got [{torch.min(alpha)}, {a_max}]")
 
@@ -124,7 +127,8 @@ class StaticAlphaWeightingModule(CombineSimilarityModule):
             raise TypeError("All the values in args should be tensors.")
         if len(tensors) != len(self.alpha):
             raise ValueError(
-                f"The length of the similarity matrices {len(tensors)} should equal the length of alpha {len(self.alpha)}"
+                f"The length of the similarity matrices {len(tensors)} "
+                f"should equal the length of alpha {len(self.alpha)}"
             )
         if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
             raise ValueError("The shapes of every tensor should match.")

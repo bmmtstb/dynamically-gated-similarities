@@ -1,6 +1,8 @@
 """
 Different pose based embedding generators.
 """
+from typing import Union
+
 import torch
 from torch import nn
 from torchvision import tv_tensors
@@ -27,15 +29,17 @@ lpbe_validations: Validations = {
 }
 
 
-def set_up_hidden_layer_sizes(input_size: int, output_size: int, hidden_layers: list[int] | None = None) -> list[int]:
-    """Given input and output size of an FC-NN, create a list of the sizes containing each hidden layer in the network.
+def set_up_hidden_layer_sizes(
+    input_size: int, output_size: int, hidden_layers: Union[list[int], None] = None
+) -> list[int]:
+    """Given the input and output size of an FC-NN,
+    create a list of the sizes containing each hidden layer in the network.
     There might be zero hidden layers.
 
     Params:
         input_size: The size of the input to the FC-Layers.
         output_size: Output-size of the FC-Layers.
-        hidden_layers: A list containing the dimensions of each hidden layer in this network.
-            Default None means no hidden layers.
+        hidden_layers: The dimensionality of each hidden layer in this network. Default None means no hidden layers.
 
     Returns:
         The sizes of the hidden layers including input and output size.
@@ -156,7 +160,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             This modules' prediction,
             describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
         """
-        if len(data) < 2:
+        if len(data) != 2:
             raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
         # extract key points and bboxes from data
         kp, bboxes, *_args = data

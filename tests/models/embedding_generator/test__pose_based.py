@@ -47,6 +47,55 @@ class TestPoseBased(unittest.TestCase):
                 self.assertEqual(res.device.type, device.type)
                 self.assertEqual(res.shape, out_shape)
 
+    def test_linear_PBEG_flattened(self):
+        batch_size = 7
+        params = {
+            "hidden_layers": [],
+            "joint_shape": (21, 2),
+            "nof_kernels": 10,
+            "embedding_size": 5,
+            "bbox_format": "xyxy",
+        }
+        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size})
+        m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
+        kp = torch.rand((batch_size, *params["joint_shape"])).reshape((batch_size, -1))
+        bbox = torch.rand((batch_size, 4)).reshape((batch_size, -1))
+        res = m.forward(torch.hstack([kp, bbox]).reshape((batch_size, -1)))
+        self.assertEqual(res.shape, (batch_size, 5))
+
+    def test_linear_PBEG_raises(self):
+        batch_size = 7
+        params = {
+            "hidden_layers": [],
+            "joint_shape": (21, 2),
+            "nof_kernels": 10,
+            "embedding_size": 5,
+            "bbox_format": "xyxy",
+        }
+        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size})
+        m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
+        with self.assertRaises(ValueError) as e:
+            m.forward()
+        self.assertTrue("Data should contain key points and bounding boxes, but has length" in str(e.exception))
+
+    def test_KPCPBEG_raises(self):
+        batch_size = 7
+        params = {
+            "hidden_layers": [],
+            "joint_shape": (21, 2),
+            "nof_kernels": 10,
+            "embedding_size": 4,
+            "bbox_format": "xyxy",
+        }
+        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size})
+        m = KeyPointConvolutionPBEG(config=cfg, path=["pose_embedding_generator"])
+        kp = torch.rand((batch_size, *params["joint_shape"]))
+        bbox = tv_tensors.BoundingBoxes(torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100))
+
+        with self.assertRaises(ValueError) as e:
+            m.forward(kp, bbox, "dummy")
+        self.assertTrue("Data should contain key points and bounding boxes, but has length" in str(e.exception))
+
     @test_multiple_devices
     def test_KPCPBEG_out_shape(self, device: Device):
         for batch_size, params, out_shape in [
