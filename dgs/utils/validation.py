@@ -130,14 +130,14 @@ def validate_dimensions(tensor: torch.Tensor, dims: int) -> torch.Tensor:
                 f"But `tensor` is {type(tensor)}"
             ) from e
 
-    if len(tensor.shape) > dims:
+    if tensor.ndim > dims:
         tensor.squeeze_()
-        if len(tensor.shape) > dims:
+        if tensor.ndim > dims:
             raise ValueError(
                 f"The length of tensor.shape should be {dims} but shape is {tensor.shape}. "
                 f"Unsqueezing did not work."
             )
-    while len(tensor.shape) < dims:
+    while tensor.ndim < dims:
         tensor.unsqueeze_(0)
 
     return tensor
@@ -186,7 +186,7 @@ def validate_heatmaps(
     if not isinstance(heatmaps, (Heatmap, torch.Tensor)):
         raise TypeError(f"heatmaps should be a Heatmap or torch tensor but are {type(heatmaps)}.")
 
-    if nof_joints is not None and (len(heatmaps.shape) < 3 or heatmaps.shape[-3] != nof_joints):
+    if nof_joints is not None and (heatmaps.ndim < 3 or heatmaps.shape[-3] != nof_joints):
         raise ValueError(f"The number of joints should be {nof_joints} but is {heatmaps.shape[-2]}.")
 
     if dims is not None:
@@ -215,9 +215,9 @@ def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
 
     ids.squeeze_()
 
-    if len(ids.shape) == 0:
+    if ids.ndim == 0:
         ids.unsqueeze_(-1)
-    elif len(ids.shape) != 1:
+    elif ids.ndim != 1:
         raise ValueError(f"IDs should have only one dimension, but shape is {ids.shape}")
 
     return ids.to(dtype=torch.int32)
@@ -247,7 +247,7 @@ def validate_images(images: Union[Image, torch.Tensor], dims: Union[int, None] =
     if dims is not None:
         images = validate_dimensions(images, dims)
 
-    if len(images.shape) < 3:
+    if images.ndim < 3:
         raise ValueError(f"Image should have at least 3 dimensions. Shape: {images.shape}.")
 
     if images.shape[-3] not in [1, 3, 4]:

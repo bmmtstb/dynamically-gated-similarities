@@ -32,7 +32,7 @@ def torch_show_image(
             Set show as false to print multiple images at once, or to modify the plt object.
             Default: True
     """
-    if isinstance(imgs, torch.Tensor) and len(imgs.shape) == 4:
+    if isinstance(imgs, torch.Tensor) and imgs.ndim == 4:
         imgs = [make_grid(imgs, nrow=kwargs.get("nrow", 8))]
     elif not isinstance(imgs, list):
         imgs = [imgs]
@@ -62,7 +62,7 @@ def torch_to_matplotlib(img: Union[TVImage, torch.Tensor]) -> np.ndarray:
     """
     img = img.squeeze()
     # transform to numpy then switch dimensions
-    if len(img.shape) == 3:
+    if img.ndim == 3:
         return torch_to_numpy(img).transpose([1, 2, 0])
     return torch_to_numpy(img).transpose([0, 2, 3, 1])
 

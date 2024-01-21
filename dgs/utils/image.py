@@ -247,7 +247,7 @@ class CustomTransformValidator:
         """Validate the key points."""
         if not isinstance(kp, torch.Tensor):
             raise TypeError(f"key points should be a torch Tensor object but is {type(kp)}")
-        if len(kp.shape) != 3:
+        if kp.ndim != 3:
             raise ValueError(f"key points should have three dimensions, but shape is: {kp.shape}")
 
     @staticmethod
@@ -583,7 +583,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
         if bboxes.shape[0] != coordinates.shape[0]:
             raise ValueError("Expected bounding boxes and key points to have the same number of dimensions.")
-        if len(image.shape) == 4 and image.shape[-4] > 1 and image.shape[-4] != bboxes.shape[0]:
+        if image.ndim == 4 and image.shape[-4] > 1 and image.shape[-4] != bboxes.shape[0]:
             raise ValueError(
                 "If you provide multiple images, it is expected that they have the same length as the bounding boxes."
             )
@@ -593,7 +593,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
         for i, (corners, coords) in enumerate(zip(bboxes_corners, coordinates)):
             # get current image
-            if len(image.shape) == 4 and image.shape[-4] > 1:
+            if image.ndim == 4 and image.shape[-4] > 1:
                 image_i = tv_tensors.wrap(image[i].unsqueeze(0), like=image)
             else:
                 image_i = image

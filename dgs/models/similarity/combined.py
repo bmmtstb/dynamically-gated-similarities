@@ -68,20 +68,20 @@ class DynamicallyGatedSimilarities(CombineSimilarityModule):
         if (a_max := torch.max(alpha)) > 1.0 or torch.min(alpha) < 0.0:
             raise ValueError(f"alpha should lie in the range [0,1], but got [{torch.min(alpha)}, {a_max}]")
 
-        if len(alpha.shape) > 2:
+        if alpha.ndim > 2:
             alpha.squeeze_()
-            if len(alpha.shape) >= 2:
+            if alpha.ndim >= 2:
                 raise ValueError(f"alpha has the wrong shape {alpha.shape}.")
 
-        if len(alpha.shape) == 1 and alpha.shape[0] != 1:
+        if alpha.ndim == 1 and alpha.shape[0] != 1:
             # [N] -> [N x 1]
             alpha.unsqueeze_(-1)
-        elif len(alpha.shape) == 2 and alpha.shape[1] != 1:
+        elif alpha.ndim == 2 and alpha.shape[1] != 1:
             raise ValueError(f"If alpha is two dimensional, the second dimension has to be 1 but got {alpha.shape}.")
 
         if s1.shape != s2.shape:
             raise ValueError(f"s1 and s2 should have the same shapes, but are: {s1.shape} {s2.shape}.")
-        if len(alpha.shape) > 0 and alpha.shape[0] != 1 and alpha.shape[0] != s1.shape[0]:
+        if alpha.ndim > 0 and alpha.shape[0] != 1 and alpha.shape[0] != s1.shape[0]:
             raise ValueError(
                 f"If the length of the first dimension of alpha is not 1, "
                 f"the first dimension has to equal the first dimension of s1 and s2 but got {alpha.shape}."
