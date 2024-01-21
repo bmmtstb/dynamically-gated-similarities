@@ -1,12 +1,16 @@
 """
 TODO
 """
-import posetrack21.api as pt21_eval_api
+import warnings
 
+import posetrack21.api as pt21_eval_api
 from dgs.utils.files import to_abspath
 
+EVAL_TYPE = "tracking"
+
 if __name__ == "__main__":
-    EVAL_TYPE = "tracking"
+    warnings.warn("Not implemented", DeprecationWarning)
+
     evaluator = pt21_eval_api.get_api(
         trackers_folder=to_abspath("./data/PoseTrack21/...predictions..."),
         gt_folder=to_abspath("./data/PoseTrack21/posetrack_data/annotations/val/"),
