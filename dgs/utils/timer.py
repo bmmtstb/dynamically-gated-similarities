@@ -53,8 +53,8 @@ class DifferenceTimer(UserList):
         if hms:
             return (
                 f"{str(prepend)}: "
-                f"{str(name)} time average: {self.avg_hms()} [s], "
-                f"{str(name)} time total: {self.sum_hms()} [s]"
+                f"{str(name)} time average: {self.avg_hms()} [H:MM:SS], "
+                f"{str(name)} time total: {self.sum_hms()} [H:MM:SS]"
             )
         return (
             f"{str(prepend)}: "

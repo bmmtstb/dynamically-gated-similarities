@@ -18,6 +18,7 @@ VALIDATIONS: dict[str, Validator] = {
     # types
     "None": (lambda x, _: x is None),
     "not None": (lambda x, _: x is not None),
+    "bool": (lambda x, _: isinstance(x, bool)),
     "str": (lambda x, _: isinstance(x, str)),
     "int": (lambda x, _: isinstance(x, int)),
     "float": (lambda x, _: isinstance(x, float)),

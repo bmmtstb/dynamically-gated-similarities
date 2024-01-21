@@ -20,7 +20,11 @@ from dgs.utils.types import FilePath
 
 
 def save_checkpoint(
-    state: dict[str, any], save_dir: FilePath, is_best: bool = False, remove_module_from_keys: bool = False
+    state: dict[str, any],
+    save_dir: FilePath,
+    is_best: bool = False,
+    remove_module_from_keys: bool = False,
+    verbose: bool = True,
 ) -> None:
     r"""Save a given checkpoint.
 
@@ -31,6 +35,7 @@ def save_checkpoint(
             ``model-best.pth.tar``. Default is False.
         remove_module_from_keys (bool, optional): whether to remove "module."
             from layer names. Default is False.
+        verbose (bool, optional): whether to print a confirmation when the checkpoint has been created. Default is True.
 
     Examples:
         >>> state = {
@@ -55,9 +60,12 @@ def save_checkpoint(
     epoch = state["epoch"]
     fpath = os.path.join(save_dir, "model.pth.tar-" + str(epoch))
     torch.save(state, fpath)
-    print(f"Checkpoint saved to '{fpath}'")
+    if verbose:
+        print(f"Checkpoint saved to '{fpath}'")
     if is_best:
         shutil.copy(fpath, os.path.join(os.path.dirname(fpath), "model-best.pth.tar"))
+        if verbose:
+            print("Saved best model as model-best.pth.tar")
 
 
 def load_checkpoint(fpath) -> dict:
