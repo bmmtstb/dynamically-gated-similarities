@@ -22,13 +22,13 @@ from torchvision import tv_tensors
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
-from dgs.models.dataset.pose_dataset import PoseDataset
+from dgs.models.dataset.pose_dataset import TorchreidPoseDataset
 from dgs.models.states import DataSample
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
-from torchreid.data import ImageDataset
+from torchreid.data import ImageDataset as TorchreidImageDataset
 
 # Do not allow import of 'PoseTrack21' base dataset
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
@@ -413,7 +413,7 @@ class PoseTrack21JSON(BaseDataset):
         )
 
 
-class PoseTrack21Torchreid(ImageDataset, PoseDataset):
+class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
     r"""Load PoseTrack21 as torchreid dataset.
     Depending on the argument ``instance`` this Dataset either contains image crops or key point crops.
 
@@ -436,7 +436,7 @@ class PoseTrack21Torchreid(ImageDataset, PoseDataset):
 
     Args:
         root (str): Root directory of all the datasets. Default "./data/".
-        instance (str): Whether this module works as an ImageDataset or a PoseDataset.
+        instance (str): Whether this module works as a TorchreidImageDataset or a custom TorchreidPoseDataset.
             Has to be one of: ["images", "key_points"]. Default "all".
 
     Notes:
@@ -485,9 +485,9 @@ class PoseTrack21Torchreid(ImageDataset, PoseDataset):
 
     def __getitem__(self, index: int) -> dict[str, any]:
         if self.instance == "images":
-            return ImageDataset.__getitem__(self, index)
+            return TorchreidImageDataset.__getitem__(self, index)
         if self.instance == "key_points":
-            return PoseDataset.__getitem__(self, index)
+            return TorchreidPoseDataset.__getitem__(self, index)
         raise NotImplementedError(f"instance {self.instance} is not valid.")
 
     def process_dir(

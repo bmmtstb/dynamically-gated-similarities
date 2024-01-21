@@ -16,7 +16,7 @@ from typing import Union
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from dgs.models.dataset.pose_dataset import PoseDataManager
+from dgs.models.dataset.pose_dataset import TorchreidPoseDataManager
 from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
 from torchreid.engine import ImageSoftmaxEngine
 from torchreid.models import build_model
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     print(f"Cuda available: {torch.cuda.is_available()}")
 
-    data_manager = PoseDataManager(
+    data_manager = TorchreidPoseDataManager(
         root="./data/",
         sources=[PoseTrack21Torchreid],
         batch_size_train=BATCH_TRAIN,

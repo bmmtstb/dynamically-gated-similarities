@@ -1,7 +1,7 @@
 """
 Default Datasets for pose-based data.
 
-PoseDataset and PoseDataManager are custom models for torchreid.
+TorchreidPoseDataset and TorchreidPoseDataManager are custom models for torchreid.
 """
 from typing import Callable, Type, Union
 
@@ -16,7 +16,7 @@ from torchreid.data.datamanager import DataManager
 from torchreid.data.sampler import build_train_sampler
 
 
-class PoseDataset(Dataset):
+class TorchreidPoseDataset(Dataset):
     """Custom torchreid Dataset for pose-based data."""
 
     def __getitem__(self, index: int) -> dict[str, any]:
@@ -44,7 +44,7 @@ class PoseDataset(Dataset):
         print(" ----------------------------------------")
 
 
-class PoseDataManager(DataManager):
+class TorchreidPoseDataManager(DataManager):
     """Custom torchreid DataManager for pose-based data.
 
     Args:
@@ -56,7 +56,7 @@ class PoseDataManager(DataManager):
         combineall (bool):
             Combine train, query and gallery in a dataset for training.
             Default is False.
-        targets (Type[PoseDataset] | list[Type[PoseDataset]]):
+        targets (Type[TorchreidPoseDataset] | list[Type[TorchreidPoseDataset]]):
             The types of target dataset(s).
             If not given, it equals to ``sources``.
         transforms (list[str | Callable]):
@@ -124,7 +124,9 @@ class PoseDataManager(DataManager):
     params: dict[str, any]
     """The parameters of this module."""
 
-    def __init__(self, root: FilePath, sources: Type[PoseDataset] | list[Type[PoseDataset]], **kwargs) -> None:
+    def __init__(
+        self, root: FilePath, sources: Type[TorchreidPoseDataset] | list[Type[TorchreidPoseDataset]], **kwargs
+    ) -> None:
         # set default kwargs
         self.params = self.default_kwargs.copy()
         self.params.update(kwargs)
@@ -150,7 +152,7 @@ class PoseDataManager(DataManager):
         print("=> Loading train (source) dataset")
         # sum(list[Dataset]) is implemented via torchreid Dataset
         # noinspection PyTypeChecker
-        train_set: Union[PoseDataset, TorchDataset] = sum(
+        train_set: Union[TorchreidPoseDataset, TorchDataset] = sum(
             instance(root=self.root, mode="train", transform=self.transform_tr, instance="key_points", **self.params)
             for instance in self.sources
         )
@@ -180,7 +182,7 @@ class PoseDataManager(DataManager):
 
         for dataset in self.targets:
             # test_loader for query
-            query_set: Union[PoseDataset, TorchDataset] = dataset(
+            query_set: Union[TorchreidPoseDataset, TorchDataset] = dataset(
                 root=self.root, mode="query", transform=self.transform_te, **self.params
             )
             # build query loader
