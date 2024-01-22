@@ -190,7 +190,7 @@ class EngineModule(BaseModule):
             print("Computing CMC and mAP")
 
         cmc, m_ap = ([], distance_matrix)  # fixme evaluate rank!
-        if not len(cmc):
+        if not cmc:
             raise NotImplementedError
 
         print(f"#### Results - Epoch {self.curr_epoch} ####")
