@@ -69,6 +69,7 @@ autodoc_mock_imports = [
     "posetrack21",
     "pytorch",
     "torch",
+    "torcheval",
     "torchvision",
     "torchreid",
     # "tqdm",

@@ -17,6 +17,7 @@ pyyaml
 scipy
 tensorboard
 terminaltables
+torcheval
 torchreid==0.2.5
 tqdm
 visdom
