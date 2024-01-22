@@ -27,17 +27,16 @@ cfg.is_training = False
 # Training #
 # ######## #
 cfg.train = EasyDict()
-cfg.train.batch_size = 32
 cfg.train.epochs = 1
 cfg.train.loss = "NLLLoss"
 cfg.train.metric = "dummy"
 cfg.train.optimizer = "Adam"
+cfg.train.log_dir = "./results/"
 
 # ####### #
 # Testing #
 # ####### #
 cfg.test = EasyDict()
-cfg.test.batch_size = 32
 cfg.test.metric = "dummy"
 
 # ####### #

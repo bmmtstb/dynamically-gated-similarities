@@ -1,9 +1,19 @@
 import unittest
 from unittest.mock import patch
 
+import torch
 from torch import nn
 
-from dgs.models.metric import get_metric, get_metric_from_name, METRICS, register_metric
+from dgs.models.metric import (
+    _validate_metric_inputs,
+    CosineDistanceMetric,
+    CosineSimilarityMetric,
+    EuclideanSquareMetric,
+    get_metric,
+    get_metric_from_name,
+    METRICS,
+    register_metric,
+)
 
 
 class TestMetrics(unittest.TestCase):
@@ -22,7 +32,8 @@ class TestMetrics(unittest.TestCase):
 
     def test_get_metric(self):
         for instance, result in [
-            ("PairwiseDistance", nn.PairwiseDistance),
+            ("CosineSimilarity", CosineSimilarityMetric),
+            ("TorchPairwiseDistance", nn.PairwiseDistance),
             (nn.PairwiseDistance, nn.PairwiseDistance),
         ]:
             with self.subTest(msg=f"instance: {instance}, result: {result}"):
@@ -56,6 +67,62 @@ class TestMetrics(unittest.TestCase):
                         self.assertTrue("dummy" in METRICS)
         self.assertTrue("dummy" not in METRICS)
         self.assertTrue("new_dummy" not in METRICS)
+
+    def test_metrics_wrong_input_shape(self):
+        for i1, i2, err in [
+            (torch.ones((1, 2)), torch.ones((1, 1)), ValueError),
+            (torch.ones((1, 1, 2)), torch.ones((1, 2)), ValueError),
+            (torch.ones((1, 2)), torch.ones((1, 1, 2)), ValueError),
+            (torch.ones(2), torch.ones(2), ValueError),
+        ]:
+            with self.subTest(msg="i1: {}, i2: {}, err: {}".format(i1, i2, err)):
+                with self.assertRaises(err):
+                    _validate_metric_inputs(i1, i2)
+
+    def test_euclid_sqr_dist(self):
+        for a, b, E in [
+            (2, 2, 7),
+            (2, 4, 8),
+            (5, 3, 6),
+        ]:
+            with self.subTest(msg="a: {}, b: {}, E: {}".format(a, b, E)):
+                f = EuclideanSquareMetric()
+                dist = f(torch.ones((a, E)), torch.zeros(b, E))
+                dist_inv = f(torch.zeros((b, E)), torch.ones(a, E))
+                self.assertEqual(dist.shape, (a, b))
+                self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * E))
+                self.assertTrue(torch.allclose(dist, dist_inv.T))
+
+    @torch.no_grad()
+    def test_cosine_distance(self):
+        for t1, t2, res in [
+            (torch.ones((2, 4)), torch.ones((3, 4)), torch.zeros((2, 3))),
+            (torch.zeros((2, 4)), torch.ones((3, 4)), torch.ones((2, 3))),
+            (torch.ones((2, 4)), torch.zeros((3, 4)), torch.ones((2, 3))),
+        ]:
+            with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
+                f = CosineDistanceMetric()
+                dist = f(t1.clone(), t2.clone())
+                dist_inv = f(t2.clone(), t1.clone())
+                self.assertEqual(dist.shape, res.shape)
+                self.assertTrue(torch.allclose(dist, res))
+                self.assertTrue(torch.allclose(dist, dist_inv.T))
+
+    def test_cosine_similarity(self):
+        for t1, t2, res in [
+            (torch.ones((2, 4)), torch.ones((3, 4)), torch.ones((2, 3))),
+            (torch.zeros((2, 4)), torch.ones((3, 4)), torch.zeros((2, 3))),
+            (torch.ones((2, 4)), torch.zeros((3, 4)), torch.zeros((2, 3))),
+            (torch.ones((2, 4)), -1 * torch.ones((3, 4)), -1 * torch.ones((2, 3))),
+            (-1 * torch.ones((2, 4)), torch.ones((3, 4)), -1 * torch.ones((2, 3))),
+        ]:
+            with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
+                f = CosineSimilarityMetric()
+                dist = f(t1.clone(), t2.clone())
+                dist_inv = f(t2.clone(), t1.clone())
+                self.assertEqual(dist.shape, res.shape)
+                self.assertTrue(torch.allclose(dist, res))
+                self.assertTrue(torch.allclose(dist, dist_inv.T))
 
 
 if __name__ == "__main__":

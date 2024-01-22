@@ -34,25 +34,27 @@ from torchreid.engine.image.softmax import ImageSoftmaxEngine
 from torchreid.models import build_model
 from torchreid.optim import build_lr_scheduler, build_optimizer
 
-if __name__ == "__main__":
-    LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('YYYYMMDD')}/"
-    MODEL_NAME = "osnet_x1_0"
-    BATCH_TRAIN = 32
-    HEIGHT = 256
-    WIDTH = 256
-    TRANSFORMS: Union[str, list[str]] = "random_flip"
-    MARKET1501_500K: bool = False
-    USE_GPU: bool = True
-    DIST_METRIC: str = "cosine"  # "cosine" or "euclidean"
-    EPOCHS: int = 1
-    LOSS: str = "softmax"  # "softmax" or "triplet"
-    PRE_TRAINED: bool = False
+LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('YYYYMMDD')}/"
+MODEL_NAME = "osnet_x1_0"
+BATCH_TRAIN = 32
+HEIGHT = 256
+WIDTH = 256
+TRANSFORMS: Union[str, list[str]] = "random_flip"
+MARKET1501_500K: bool = False
+USE_GPU: bool = True
+DIST_METRIC: str = "cosine"  # "cosine" or "euclidean"
+EPOCHS: int = 1
+LOSS: str = "softmax"  # "softmax" or "triplet"
+PRE_TRAINED: bool = False
+TEST_ONLY: bool = True
 
+if __name__ == "__main__":
     # noinspection PyTypeChecker
     register_image_dataset("PoseTrack21", PoseTrack21Torchreid)
 
     print(f"Cuda available: {torch.cuda.is_available()}")
 
+    # with HidePrint():  # this will hide the data summary and transforms set-up
     data_manager = ImageDataManager(
         root="./data/",
         # sources=["market1501", "dukemtmcreid", "viper", "grid", "ilids", "PoseTrack21"],
@@ -80,9 +82,13 @@ if __name__ == "__main__":
     # set a custom writer in engine
     engine.writer = writer
 
-    print("Run Engine and save model after every epoch")
-    engine.run(
-        save_dir=LOG_DIR,
-        dist_metric=DIST_METRIC,
-        max_epoch=EPOCHS,
-    )
+    if TEST_ONLY:
+        print("Test visual torchreid")
+        engine.test(dist_metric=DIST_METRIC, save_dir=LOG_DIR)
+    else:
+        print("Run Engine and save model after every epoch")
+        engine.run(
+            save_dir=LOG_DIR,
+            dist_metric=DIST_METRIC,
+            max_epoch=EPOCHS,
+        )
