@@ -5,6 +5,7 @@ black
 Cython
 coverage[toml]
 easydict
+filterpy
 gdown
 imagesize
 matplotlib
@@ -22,8 +23,9 @@ torchreid==0.2.5
 tqdm
 visdom
 
-# -r ../dependencies/torchreid/requirements.txt
-# -e ./dependencies/torchreid
+# other git dependencies
+
+# git+https://github.com/strongio/torch-kalman.git#egg=torch_kalman
 
 # local dependencies
 

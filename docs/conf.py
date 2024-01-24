@@ -61,6 +61,7 @@ rst_prolog = """
 autodoc_mock_imports = [
     "alphapose",
     "detector",
+    "filterpy",
     "halpecocotools",
     "opencv-python",
     # "matplotlib",

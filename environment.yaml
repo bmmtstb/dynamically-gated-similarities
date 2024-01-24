@@ -51,3 +51,5 @@ dependencies:
             - -e ./dependencies/AlphaPose_Fork
             # install PoseTrack21 evaluation toolkit
             - -e ./dependencies/PoseTrack21/eval/posetrack21/
+            # numpy only Kalman Filter -> filterpy
+            - filterpy
