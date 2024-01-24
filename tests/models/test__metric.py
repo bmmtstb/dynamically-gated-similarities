@@ -1,3 +1,4 @@
+import math
 import unittest
 import warnings
 from unittest.mock import patch
@@ -10,6 +11,7 @@ from dgs.models.metric import (
     compute_cmc,
     CosineDistanceMetric,
     CosineSimilarityMetric,
+    EuclideanDistanceMetric,
     EuclideanSquareMetric,
     get_metric,
     get_metric_from_name,
@@ -88,7 +90,7 @@ class TestMetrics(unittest.TestCase):
                 with warnings.catch_warnings():  # will warn with rank 6, ignore it.
                     warnings.filterwarnings(
                         "ignore",
-                        message="Number of gallery samples*is smaller than the max rank*Setting rank.",
+                        message="Number of gallery samples.*is smaller than the max rank.*Setting rank.",
                         category=UserWarning,
                     )
                     self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), results)
@@ -116,6 +118,20 @@ class TestMetrics(unittest.TestCase):
                 dist_inv = f(torch.zeros((b, E)), torch.ones(a, E))
                 self.assertEqual(dist.shape, (a, b))
                 self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * E))
+                self.assertTrue(torch.allclose(dist, dist_inv.T))
+
+    def test_euclid_dist(self):
+        for a, b, E in [
+            (2, 2, 7),
+            (2, 4, 8),
+            (5, 3, 6),
+        ]:
+            with self.subTest(msg="a: {}, b: {}, E: {}".format(a, b, E)):
+                f = EuclideanDistanceMetric()
+                dist = f(torch.ones((a, E)), torch.zeros(b, E))
+                dist_inv = f(torch.zeros((b, E)), torch.ones(a, E))
+                self.assertEqual(dist.shape, (a, b))
+                self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * math.sqrt(E)))
                 self.assertTrue(torch.allclose(dist, dist_inv.T))
 
     @torch.no_grad()

@@ -99,6 +99,26 @@ class EuclideanSquareMetric(Metric):
         return torch.sub(input1, input2).square().sum(dim=-1)
 
 
+class EuclideanDistanceMetric(Metric):
+    """Class to compute the Euclidean distance between two matrices."""
+
+    @staticmethod
+    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        """Compute squared Euclidean distance between two matrices with a matching second dimension.
+
+        Args:
+            input1: tensor of shape ``[a x E]``
+            input2: tensor of shape ``[b x E]``
+
+        Returns:
+            tensor of shape ``[a x b]`` containing the distances.
+        """
+        _validate_metric_inputs(input1, input2)
+        input1, input2 = _expand_metric_inputs(input1, input2)
+
+        return torch.sub(input1, input2).square().sum(dim=-1).sqrt()
+
+
 class CosineSimilarityMetric(Metric):
     r"""Class to compute the cosine similarity between two matrices.
 
@@ -165,9 +185,14 @@ class CosineDistanceMetric(Metric):
 
 
 METRICS: dict[str, Type[Metric]] = {
-    "CosineSimilarity": CosineSimilarityMetric,
-    "CosineDistance": CosineDistanceMetric,
-    "EuclideanSquare": EuclideanSquareMetric,
+    "CosineSimilarity": CosineSimilarityMetric,  # shorthand name
+    "CosineSimilarityMetric": CosineSimilarityMetric,
+    "CosineDistance": CosineDistanceMetric,  # shorthand name
+    "CosineDistanceMetric": CosineDistanceMetric,
+    "EuclideanSquare": EuclideanSquareMetric,  # shorthand name
+    "EuclideanSquareMetric": EuclideanSquareMetric,
+    "EuclideanDistance": EuclideanDistanceMetric,  # shorthand name
+    "EuclideanDistanceMetric": EuclideanDistanceMetric,
     "TorchPairwiseDistance": nn.PairwiseDistance,
     "TorchCosineSimilarity": nn.CosineSimilarity,
 }
