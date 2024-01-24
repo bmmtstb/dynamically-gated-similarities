@@ -22,24 +22,26 @@ from torchreid.engine import ImageSoftmaxEngine
 from torchreid.models import build_model
 from torchreid.optim import build_lr_scheduler, build_optimizer
 
-if __name__ == "__main__":
-    LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('%Y%m%d')}/"
-    MODEL_NAME = "osnet_x1_0"
-    BATCH_TRAIN = 32
-    TRANSFORMS: Union[str, list[str]] = ["random_horizontal_flip", "random_move"]
-    USE_GPU: bool = True
-    DIST_METRIC: str = "cosine"  # "cosine" or "euclidean"
-    EPOCHS: int = 1
-    LOSS: str = "softmax"  # "softmax" or "triplet"
-    PRE_TRAINED: bool = False
-    TEST_ONLY: bool = True
+LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('%Y%m%d')}/"
+MODEL_NAME = "osnet_x1_0"
+BATCH_TRAIN = 32
+BATCH_TEST = 128
+TRANSFORMS: Union[str, list[str]] = ["random_horizontal_flip", "random_move"]
+USE_GPU: bool = True
+DIST_METRIC: str = "cosine"  # "cosine" or "euclidean"
+EPOCHS: int = 1
+LOSS: str = "softmax"  # "softmax" or "triplet"
+PRE_TRAINED: bool = False
+TEST_ONLY: bool = True
 
+if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}")
 
     data_manager = TorchreidPoseDataManager(
         root="./data/",
         sources=[PoseTrack21Torchreid],
         batch_size_train=BATCH_TRAIN,
+        batch_size_test=BATCH_TEST,
         use_gpu=USE_GPU,
         workers=0,
     )
