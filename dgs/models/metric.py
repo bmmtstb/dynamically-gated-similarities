@@ -1,12 +1,62 @@
 """
 Methods for handling the computation of distances and other metrics.
 """
+import warnings
 from typing import Type, Union
 
 import torch
 from torch import nn
 
 from dgs.utils.types import Metric
+
+
+def compute_cmc(
+    distmat: torch.Tensor, labels: torch.IntTensor, predictions: torch.IntTensor, ranks: list[int]
+) -> list[float]:
+    """
+    Single-gallery-shot means that each gallery identity has only one instance in the query.
+
+    Notes:
+        Goal of person ReID:
+        For each image in the query, find similar persons within the gallery set.
+
+    Notes:
+        Does not remove invalid data.
+        E.g., in market1501 iff gallery samples have the same pid and camid as the query.
+
+    Args:
+        distmat: FloatTensor of shape ``[n_query x n_gallery]`` containing the distances between every item from
+            gallery and query.
+        labels: IntTensor of shape ``[n_query (x 1)]`` containing the ground truth IDs.
+        predictions: IntTensor of shape ``[n_gallery (x 1)]``, containing this models' ID predictions.
+        ranks: List of integers containing the k values used for the evaluation
+
+
+    Returns:
+        A list containing the float cmc accuracies for each of the k.
+    """
+
+    n_query, n_gallery = distmat.shape
+
+    cmcs = []
+
+    # sort by distance, lowest to highest
+    indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
+    # with predictions[indices] := sorted predictions
+    matches = predictions[indices] == labels.unsqueeze(-1)  # BoolTensor [n_query x n_gallery]
+
+    for rank in ranks:
+        if rank >= n_gallery:
+            warnings.warn(
+                f"Number of gallery samples {n_gallery} is smaller than the max rank {ranks}. Setting rank.",
+                UserWarning,
+            )
+            rank = n_gallery
+
+        cmc = torch.any(matches[:, :rank], dim=1).sum()
+
+        cmcs.append(cmc / float(n_query))
+    return cmcs
 
 
 def _validate_metric_inputs(input1: torch.Tensor, input2: torch.Tensor) -> None:

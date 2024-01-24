@@ -1,4 +1,5 @@
 import unittest
+import warnings
 from unittest.mock import patch
 
 import torch
@@ -6,6 +7,7 @@ from torch import nn
 
 from dgs.models.metric import (
     _validate_metric_inputs,
+    compute_cmc,
     CosineDistanceMetric,
     CosineSimilarityMetric,
     EuclideanSquareMetric,
@@ -67,6 +69,29 @@ class TestMetrics(unittest.TestCase):
                         self.assertTrue("dummy" in METRICS)
         self.assertTrue("dummy" not in METRICS)
         self.assertTrue("new_dummy" not in METRICS)
+
+    def test_compute_cmc(self):
+        for distmat, labels, predictions, ranks, results in [
+            (
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([1, 4]).int(),
+                torch.tensor([2, 3, 4, 0, 1]).int(),
+                [1, 2, 3, 4, 5, 6],
+                [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
+            ),
+        ]:
+            with self.subTest(
+                msg="ranks: {}, results: {}, distmat: {}, labels: {}, predictions: {}".format(
+                    ranks, results, distmat, labels, predictions
+                )
+            ):
+                with warnings.catch_warnings():  # will warn with rank 6, ignore it.
+                    warnings.filterwarnings(
+                        "ignore",
+                        message="Number of gallery samples*is smaller than the max rank*Setting rank.",
+                        category=UserWarning,
+                    )
+                    self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), results)
 
     def test_metrics_wrong_input_shape(self):
         for i1, i2, err in [
