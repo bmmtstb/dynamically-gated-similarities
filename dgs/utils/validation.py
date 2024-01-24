@@ -46,6 +46,8 @@ VALIDATIONS: dict[str, Validator] = {
     "not in": (lambda x, d: hasattr(x, "__contains__") and x not in d),
     "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),
     "not contains": (lambda x, d: hasattr(x, "__contains__") and d not in x),
+    "all type": (lambda x, d: hasattr(x, "__len__") and isinstance(d, type) and all(isinstance(xi, d) for xi in x)),
+    "all in": (lambda x, d: hasattr(x, "__len__") and hasattr(d, "__contains__") and all(xi in d for xi in x)),
     # string
     "startswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.startswith(d)),
     "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
