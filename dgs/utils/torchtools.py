@@ -23,7 +23,6 @@ def save_checkpoint(
     state: dict[str, any],
     save_dir: FilePath,
     is_best: bool = False,
-    remove_module_from_keys: bool = False,
     verbose: bool = True,
 ) -> None:
     r"""Save a given checkpoint.
@@ -33,8 +32,6 @@ def save_checkpoint(
         save_dir: directory to save checkpoint.
         is_best (bool, optional): if True, this checkpoint will be copied and named
             ``model-best.pth.tar``. Default is False.
-        remove_module_from_keys (bool, optional): whether to remove "module."
-            from layer names. Default is False.
         verbose (bool, optional): whether to print a confirmation when the checkpoint has been created. Default is True.
 
     Examples:
@@ -47,15 +44,6 @@ def save_checkpoint(
         >>> save_checkpoint(state, 'log/my_model')
     """
     mkdir_if_missing(save_dir)
-    if remove_module_from_keys:
-        # remove 'module.' in state_dict's keys
-        state_dict = state["state_dict"]
-        new_state_dict = OrderedDict()
-        for k, v in state_dict.items():
-            if k.startswith("module."):
-                k = k[7:]
-            new_state_dict[k] = v
-        state["state_dict"] = new_state_dict
     # save
     epoch = state["epoch"]
     fpath = os.path.join(save_dir, "model.pth.tar-" + str(epoch))
