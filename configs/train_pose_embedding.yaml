@@ -1,0 +1,49 @@
+name: "Train Pose-Embeddings"
+description: "Train the embeddings for a pose-based embedding generator 
+    using the embedding generators of the dgs module."
+
+device: "cuda"
+print_prio: "normal"
+is_training: on
+
+train:
+    batch_size: 32
+    epochs: 1
+    loss: "TorchreidCrossEntropyLoss"
+    loss_kwargs:
+        num_classes: 5474
+    optimizer: "Adam"
+
+test:
+    batch_size: 128
+    metric: "CosineDistance"
+
+# #### #
+# DATA #
+# #### #
+
+dataset_train:
+    module_name: "PoseTrack21"
+    dataset_path: "./data/PoseTrack21/"
+    json_path: "./posetrack_data/train/000001_bonn_train.json"
+
+dataset_test:
+    module_name: "PoseTrack21"
+    dataset_path: "./data/PoseTrack21/"
+    json_path: "./posetrack_data/train/000001_bonn_train.json"
+
+# ####### #
+# MODULES #
+# ####### #
+
+pose_embedding_generator:
+    module_name: "LinearPBEG"  # see `dgs.models.embedding_generator`
+    embedding_size: 16
+    hidden_layers: []
+    joint_shape: (17, 2)  # (J, kp_dim)
+    bbox_format: "XYWH"
+    bias: True
+#    only applicable for module "KeyPointConvolutionPBEG"
+#    hidden_layers_kp: None
+#    nof_kernels: 5
+

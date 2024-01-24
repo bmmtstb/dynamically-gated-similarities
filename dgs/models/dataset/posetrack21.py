@@ -33,7 +33,7 @@ from torchreid.data import ImageDataset as TorchreidImageDataset
 # Do not allow import of 'PoseTrack21' base dataset
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
 
-pt21_json_validations: Validations = {"path": [None]}
+pt21_json_validations: Validations = {"json_path": []}
 
 
 def validate_pt21_json(json: dict) -> None:
@@ -209,7 +209,7 @@ def extract_all_bboxes(
             )
 
 
-def get_pose_track_21(config: Config, path: NodePath) -> TorchDataset:
+def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, TorchDataset]:
     """Load PoseTrack JSON files.
 
     The path parameter can be one of the following:
@@ -301,12 +301,31 @@ class PoseTrack21(BaseDataset):
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
+    def __getitems__(self, indices: list[int]) -> DataSample:
+        raise NotImplementedError
+
     def arbitrary_to_ds(self, a) -> DataSample:
         raise NotImplementedError
 
 
 class PoseTrack21JSON(BaseDataset):
-    """Load a single precomputed json file."""
+    """Load a single precomputed json file from the |PT21| dataset.
+
+    Params
+    ------
+
+    json_path (FilePath):
+        The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
+
+
+    Important Inherited Params
+    --------------------------
+
+    dataset_path (FilePath):
+        Path to the directory of the dataset.
+        The value has to either be a local project path, or a valid absolute path.
+
+    """
 
     def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
         super().__init__(config=config, path=path)
@@ -315,10 +334,13 @@ class PoseTrack21JSON(BaseDataset):
 
         # validate and get the path to the json
         if json_path is None:
-            json_path: FilePath = self.get_path_in_dataset(self.params["path"])
+            json_path: FilePath = self.get_path_in_dataset(self.params["json_path"])
         else:
             if self.print("debug"):
-                print(f"Used given json_path '{json_path}' instead of self.params['path'] '{self.params['path']}'")
+                print(
+                    f"Used given json_path '{json_path}' "
+                    f"instead of self.params['json_path'] '{self.params['json_path']}'"
+                )
 
         # validate and get json data
         json: dict[str, list[dict[str, any]]] = read_json(json_path)
@@ -331,7 +353,6 @@ class PoseTrack21JSON(BaseDataset):
         }
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
-
         self.img_shape: ImgShape = imagesize.get(list(self.map_img_id_path.values())[0])[::-1]
 
         if any(imagesize.get(path)[::-1] != self.img_shape for img_id, path in self.map_img_id_path.items()):

@@ -150,15 +150,22 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             nn.Softmax(dim=-1),
         )
 
-    def forward(self, *data, **kwargs) -> torch.Tensor:
+        self.classifier = nn.Sequential(
+            nn.Linear(self.embedding_size, self.nof_classes),
+            nn.Softmax(dim=-1),
+        )
+
+    def forward(self, *data, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the custom key point convolution model.
 
         Params:
             data: Tuple of size two containing the key-points and the corresponding bounding boxes.
 
         Returns:
-            This modules' prediction,
-            describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
+            This modules' prediction.
+            ``embeddings`` is describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
+            ``ids`` is the probability to predict a class.
+            The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
         if len(data) != 2:
             raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
@@ -176,7 +183,11 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
 
         # Concatenate ``[B x (J)]`` and ``[B x 4]``, and input them into the second fc layers.
         # The activation function is called in this Sequential.
-        return self.fc2(torch.cat([x, bboxes], dim=-1))
+        embeddings = self.fc2(torch.cat([x, bboxes], dim=-1))
+
+        ids = self.classifier(embeddings)
+
+        return embeddings, ids
 
 
 @configure_torch_module
@@ -220,9 +231,15 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         EmbeddingGeneratorModule.__init__(self, config, path)
 
         self.validate_params(lpbe_validations)
+
         self.J, self.j_dim = self.params.get("joint_shape")
         # get bias from parameters or use default: True
         self.bias: bool = self.params.get("bias", True)
+
+        self.classifier = nn.Sequential(
+            nn.Linear(self.embedding_size, self.nof_classes),
+            nn.Softmax(dim=-1),
+        )
 
         self.model = self._init_flattened_model()
 
@@ -246,20 +263,22 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
                     )
                     for i in range(len(hidden_layers) - 1)
                 ],
-                nn.Softmax(dim=-1),
             )
         )
 
-    def forward(self, *data, **kwargs) -> torch.Tensor:
+    def forward(self, *data, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the linear pose-based embedding generator.
 
         Params:
-            data: An already flattened tensor of shape ``[B x self.J * self.j_dim + 4]``.
-                Containing the values of the key-point coordinates and the bounding box.
+            data: Either an already flattened tensor, containing the values of the key-point coordinates and the
+                bounding box as a single tensor of shape ``[B x self.J * self.j_dim + 4]``, or
+                the key-point coordinates and bounding boxes as tensors of shapes ``[B x self.J]`` and ``[B x 4]``.
 
         Returns:
-            This modules' prediction,
-            describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
+            This modules' prediction.
+            ``embeddings`` is describing the key-points and bounding boxes as a tensor of shape ``[B x E]``.
+            ``ids`` is the probability to predict a class.
+            The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
         if len(data) == 1:
             # expect that input is already flattened
@@ -276,4 +295,9 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             data = torch.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
         else:
             raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
-        return self.model(data, *args, **kwargs)
+
+        embeddings = self.model(data, *args, **kwargs)
+
+        ids = self.classifier(embeddings)
+
+        return embeddings, ids

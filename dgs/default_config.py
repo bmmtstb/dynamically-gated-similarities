@@ -32,6 +32,7 @@ cfg.train.loss = "NLLLoss"
 cfg.train.metric = "dummy"
 cfg.train.optimizer = "Adam"
 cfg.train.log_dir = "./results/"
+cfg.train.evaluations = ["embeddings"]  # fixme
 
 # ####### #
 # Testing #
@@ -49,16 +50,13 @@ cfg.dataset.dataset_path = "./data/PoseTrack21/"  # overall dataset path
 cfg.dataset.path = "./posetrack_data_fast/val/"
 # cfg.dataset.path = "./posetrack_data_fast/val/000342_mpii_test.json"
 
-cfg.dataset.crop_mode = "zero-pad"
-cfg.dataset.crop_size = (256, 256)  #
-
 # ################ #
 # Visual Embedding #
 # ################ #
 cfg.visual_embedding_generator = EasyDict()
 cfg.visual_embedding_generator.module_name = "torchreid"  # module name
 cfg.visual_embedding_generator.model_name = "osnet_ain_x1_0"  # torchreid model name (if applicable)
-cfg.visual_embedding_generator.embedding_size = 128
+cfg.visual_embedding_generator.embedding_size = 512
 cfg.visual_embedding_generator.weights = (
     "./weights/osnet_ain_x1_0_msmt17_256x128_amsgrad_ep50_lr0.0015_coslr_b64_fb10_softmax_labsmth_flip_jitter.pth"
 )

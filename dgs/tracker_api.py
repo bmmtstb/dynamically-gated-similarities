@@ -2,10 +2,7 @@
 Base Tracker API structure of tracking via dynamically gated similarities
 """
 
-from dgs.models.dataset import get_data_loader
-from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
-from dgs.models.engine import EngineModule
 from dgs.models.loader import module_loader
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.similarity.combined import CombineSimilarityModule
@@ -59,16 +56,15 @@ class DGSTracker:
         self.m_alpha: CombineSimilarityModule = module_loader(self.cfg, "combined_similarity")
 
         # datasets and dataloaders
-        test_dataset: BaseDataset = module_loader(self.cfg, "dataset")
-        test_dl = get_data_loader(test_dataset, self.cfg["batch_size"])
+        # test_dataset: BaseDataset = module_loader(self.cfg, "dataset")
+        # test_dl = get_data_loader(test_dataset, self.cfg["batch_size"])
 
-        self.engine: EngineModule = EngineModule(self.cfg, test_loader=test_dl, get_data=..., get_target=...)
+        # self.engine: EngineModule =
 
     @enable_keyboard_interrupt
     def run(self) -> None:
         """Run Tracker."""
-        assert hasattr(self, "engine")
-        self.engine.run()
+        raise NotImplementedError
 
     @enable_keyboard_interrupt
     def update(self, batch) -> None:
@@ -79,7 +75,6 @@ class DGSTracker:
         Args:
             batch: A single batch of data
         """
-
         raise NotImplementedError
 
     @enable_keyboard_interrupt

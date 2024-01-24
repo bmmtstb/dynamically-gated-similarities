@@ -14,13 +14,15 @@ from .embedding_generator import EmbeddingGeneratorModule
 from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from .torchreid import TorchreidModel
 
+EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
+    "torchreid": TorchreidModel,
+    "LinearPBEG": LinearPBEG,
+    "KeyPointConvolutionPBEG": KeyPointConvolutionPBEG,
+}
+
 
 def get_embedding_generator(name: str) -> Type[EmbeddingGeneratorModule]:
-    """Given the name of one dataset, return an instance."""
-    if name == "torchreid":
-        return TorchreidModel
-    if name == "LinearPBEG":
-        return LinearPBEG
-    if name == "KeyPointConvolutionPBEG":
-        return KeyPointConvolutionPBEG
-    raise InvalidParameterException(f"Unknown embedding generator with name: {name}.")
+    """Given the name of one dataset, return the type."""
+    if name not in EMBEDDING_GENERATORS:
+        raise InvalidParameterException(f"Unknown embedding generator with name: {name}.")
+    return EMBEDDING_GENERATORS[name]

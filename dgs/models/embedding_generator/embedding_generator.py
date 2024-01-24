@@ -71,26 +71,33 @@ class EmbeddingGeneratorModule(BaseModule):
     Params
     ------
 
-    embedding_size: (int)
+    embedding_size (int):
         The size of the embedding.
-        It does not necessarily have to match other embedding sizes.
+        This size does not necessarily have to match other embedding sizes.
+    nof_classes (int):
+        The number of classes in the dataset.
+        Used during training to predict the id.
     """
 
     embedding_size: int
     """The size of the embedding. It Does not necessarily have to match the size of other (different) embeddings."""
+
+    nof_classes: int
+    """The number of classes in the dataset / embedding."""
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
         self.validate_params(embedding_validations)
 
         self.embedding_size = self.params["embedding_size"]
+        self.nof_classes = self.params["nof_classes"]
 
-    def __call__(self, *args, **kwargs) -> torch.Tensor:  # pragma: no cover
+    def __call__(self, *args, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:  # pragma: no cover
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> torch.Tensor:
+    def forward(self, *args, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Predict next outputs using this Re-ID model.
 

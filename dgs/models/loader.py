@@ -3,9 +3,10 @@ Given config, load modules
 """
 from typing import Type, TypeVar
 
-from dgs.models.backbone import get_backbone
 from dgs.models.dataset import get_dataset
+from dgs.models.dataset.posetrack21 import get_pose_track_21
 from dgs.models.embedding_generator import get_embedding_generator
+from dgs.models.engine import get_engine
 from dgs.models.module import BaseModule
 from dgs.models.pose_warping import get_pose_warping
 from dgs.models.similarity import get_combined_similarity_module, get_similarity_module
@@ -13,14 +14,16 @@ from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
 
 module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be removed?
-    "backbone": ["backbone"],
     "combined_similarity": ["combined_similarity"],
     "dataset": ["dataset"],
+    "test_dataset": ["dataset_test"],
+    "train_dataset": ["dataset_train"],
     "visual_embedding_generator": ["visual_embedding_generator"],
     "visual_similarity": ["visual_similarity"],
     "pose_embedding_generator": ["pose_embedding_generator"],
     "pose_similarity": ["pose_similarity"],
     "pose_warping_module": ["pose_warping_module"],
+    "engine": [],
 }
 
 M = TypeVar("M", bound=BaseModule)
@@ -50,8 +53,8 @@ def module_loader(config: Config, module: str) -> M:
     m: Type[M]
 
     # Module import and initialization
-    if module == "backbone":
-        m = get_backbone(module_name)
+    if module == "engine":
+        m = get_engine(module_name)
     elif module == "combined_similarity":
         m = get_combined_similarity_module(module_name)
     elif module in ["visual_embedding_generator", "pose_embedding_generator"]:
@@ -61,6 +64,9 @@ def module_loader(config: Config, module: str) -> M:
     elif module == "pose_warping_module":
         m = get_pose_warping(module_name)
     elif module == "dataset":
+        # concatenated PT21 dataset is loaded via function
+        if module_name == "PoseTrack21":
+            return get_pose_track_21(config, path)
         m = get_dataset(module_name)
     else:
         raise NotImplementedError(f"Something went wrong while loading the module '{module}'")

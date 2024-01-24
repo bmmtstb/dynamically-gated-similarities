@@ -35,7 +35,7 @@ from torchvision import tv_tensors
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.states import DataSample
 from dgs.utils.files import read_json
-from dgs.utils.types import Config, NodePath, Validations
+from dgs.utils.types import Config, ImgShape, NodePath, Validations
 
 ap_load_validations: Validations = {"path": ["str", "file exists in project", ("endswith", ".json")]}
 
@@ -55,11 +55,17 @@ class AlphaPoseLoader(BaseDataset):
         else:
             raise NotImplementedError(f"JSON file {self.params['path']} does not contain known instances.")
 
+        canvas_sizes: set[ImgShape] = set()
+
         for detection in json:
             path = self.get_path_in_dataset(detection["image_id"])
             detection["full_img_path"] = tuple([path])
             # imagesize.get() output = (w,h) and our own format = (h, w)
-            detection["canvas_size"] = imagesize.get(path)[::-1]
+            canvas_sizes.add(imagesize.get(path)[::-1])
+
+        if len(canvas_sizes) > 1:
+            raise ValueError(f"Expected all images to have the same shape, but found {canvas_sizes}")
+        self.canvas_size: ImgShape = canvas_sizes.pop()
 
     def arbitrary_to_ds(self, a) -> DataSample:
         """Here `a` is one dict of the AP-JSON containing image_id, category_id, keypoints, score, box, and idx."""
@@ -71,7 +77,7 @@ class AlphaPoseLoader(BaseDataset):
 
         return DataSample(
             filepath=a["full_img_path"],
-            bbox=tv_tensors.BoundingBoxes(a["bboxes"], format="XYWH", canvas_size=a["canvas_size"]),
+            bbox=tv_tensors.BoundingBoxes(a["bboxes"], format="XYWH", canvas_size=self.canvas_size),
             keypoints=keypoints,
             person_id=a["idx"],
             # additional values which are not required
@@ -79,3 +85,28 @@ class AlphaPoseLoader(BaseDataset):
             joint_weight=visibility,
             person_score=a["score"],  # fixme divide by 6 for COCO, by 1 for MPII...?
         )
+
+    def __getitems__(self, indices: list[int]) -> DataSample:
+        def stack_key(key: str) -> torch.Tensor:
+            return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
+
+        keypoints, visibility = (
+            torch.tensor(
+                torch.stack([torch.tensor(self.data[i]["keypoints"]).reshape((-1, 3)) for i in indices]),
+            )
+            .to(device=self.device, dtype=torch.float32)
+            .split([2, 1], dim=-1)
+        )
+        ds = DataSample(
+            validate=False,
+            filepath=tuple(self.data[i]["full_img_path"] for i in indices),
+            bbox=tv_tensors.BoundingBoxes(stack_key("bboxes"), format="XYWH", canvas_size=self.canvas_size),
+            keypoints=keypoints,
+            person_id=stack_key("idx").int(),
+            # additional values which are not required
+            joint_weight=visibility,
+            image_id=stack_key("image_id").int(),
+        )
+        # make sure to get image crop for batch
+        self.get_image_crop(ds)
+        return ds

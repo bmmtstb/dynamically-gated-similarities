@@ -16,6 +16,7 @@ class TestPoseBased(unittest.TestCase):
             (
                 32,
                 {
+                    "nof_classes": 7,
                     "hidden_layers": [],
                     "joint_shape": (21, 2),
                     "nof_kernels": 10,
@@ -27,6 +28,7 @@ class TestPoseBased(unittest.TestCase):
             (
                 8,
                 {
+                    "nof_classes": 12,
                     "hidden_layers": [15],
                     "joint_shape": (17, 2),
                     "bias": False,
@@ -43,13 +45,17 @@ class TestPoseBased(unittest.TestCase):
                 bbox = tv_tensors.BoundingBoxes(torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100)).to(
                     device=device
                 )
-                res = m.forward(kp, bbox)
-                self.assertEqual(res.device.type, device.type)
-                self.assertEqual(res.shape, out_shape)
+                emb, ids = m.forward(kp, bbox)
+                self.assertEqual(emb.device.type, device.type)
+                self.assertEqual(ids.device.type, device.type)
+
+                self.assertEqual(emb.shape, (batch_size, params["embedding_size"]))
+                self.assertEqual(ids.shape, (batch_size, params["nof_classes"]))
 
     def test_linear_PBEG_flattened(self):
         batch_size = 7
         params = {
+            "nof_classes": 3,
             "hidden_layers": [],
             "joint_shape": (21, 2),
             "nof_kernels": 10,
@@ -60,12 +66,15 @@ class TestPoseBased(unittest.TestCase):
         m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
         kp = torch.rand((batch_size, *params["joint_shape"])).reshape((batch_size, -1))
         bbox = torch.rand((batch_size, 4)).reshape((batch_size, -1))
-        res = m.forward(torch.hstack([kp, bbox]).reshape((batch_size, -1)))
-        self.assertEqual(res.shape, (batch_size, 5))
+        emb, ids = m.forward(torch.hstack([kp, bbox]).reshape((batch_size, -1)))
+
+        self.assertEqual(emb.shape, (batch_size, params["embedding_size"]))
+        self.assertEqual(ids.shape, (batch_size, params["nof_classes"]))
 
     def test_linear_PBEG_raises(self):
         batch_size = 7
         params = {
+            "nof_classes": 3,
             "hidden_layers": [],
             "joint_shape": (21, 2),
             "nof_kernels": 10,
@@ -81,6 +90,7 @@ class TestPoseBased(unittest.TestCase):
     def test_KPCPBEG_raises(self):
         batch_size = 7
         params = {
+            "nof_classes": 3,
             "hidden_layers": [],
             "joint_shape": (21, 2),
             "nof_kernels": 10,
@@ -98,10 +108,11 @@ class TestPoseBased(unittest.TestCase):
 
     @test_multiple_devices
     def test_KPCPBEG_out_shape(self, device: Device):
-        for batch_size, params, out_shape in [
+        for batch_size, params in [
             (
                 32,
                 {
+                    "nof_classes": 3,
                     "hidden_layers_kp": [],
                     "hidden_layers_all": [],
                     "joint_shape": (21, 2),
@@ -109,11 +120,11 @@ class TestPoseBased(unittest.TestCase):
                     "embedding_size": 4,
                     "bbox_format": "xyxy",
                 },
-                (32, 4),
             ),
             (
                 8,
                 {
+                    "nof_classes": 200,
                     "hidden_layers_kp": [],
                     "hidden_layers_all": [15, 12, 11],
                     "joint_shape": (17, 2),
@@ -121,11 +132,11 @@ class TestPoseBased(unittest.TestCase):
                     "embedding_size": 13,
                     "bbox_format": tv_tensors.BoundingBoxFormat.XYWH,
                 },
-                (8, 13),
             ),
             (
                 32,
                 {
+                    "nof_classes": 17,
                     "hidden_layers_kp": [15],
                     "hidden_layers_all": [],
                     "joint_shape": (21, 2),
@@ -134,11 +145,11 @@ class TestPoseBased(unittest.TestCase):
                     "embedding_size": 8,
                     "bbox_format": "xyxy",
                 },
-                (32, 8),
             ),
             (
                 32,
                 {
+                    "nof_classes": 17,
                     "hidden_layers_kp": [15, 11],
                     "hidden_layers_all": [15, 11],
                     "joint_shape": (21, 2),
@@ -146,7 +157,6 @@ class TestPoseBased(unittest.TestCase):
                     "embedding_size": 4,
                     "bbox_format": "xyxy",
                 },
-                (32, 4),
             ),
         ]:
             with self.subTest(msg=f"params: {params}"):
@@ -156,9 +166,12 @@ class TestPoseBased(unittest.TestCase):
                 bbox = tv_tensors.BoundingBoxes(torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100)).to(
                     device=device
                 )
-                res = m.forward(kp, bbox)
-                self.assertEqual(res.device.type, device.type)
-                self.assertEqual(res.shape, out_shape)
+                emb, ids = m.forward(kp, bbox)
+                self.assertEqual(emb.device.type, device.type)
+                self.assertEqual(ids.device.type, device.type)
+
+                self.assertEqual(emb.shape, (batch_size, params["embedding_size"]))
+                self.assertEqual(ids.shape, (batch_size, params["nof_classes"]))
 
 
 if __name__ == "__main__":

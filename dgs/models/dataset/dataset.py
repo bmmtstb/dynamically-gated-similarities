@@ -18,9 +18,9 @@ from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {
-    "crop_mode": ["str", ("in", CustomToAspect.modes)],
-    "crop_size": [("instance", tuple), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
-    "dataset_path": ["str", "folder exists in project"],
+    "crop_mode": ["optional", "str", ("in", CustomToAspect.modes)],
+    "crop_size": ["optional", ("instance", tuple), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
+    "dataset_path": ["str", ("or", (("folder exists in project",), ("folder exists",)))],
 }
 
 
@@ -124,6 +124,20 @@ class BaseDataset(BaseModule, TorchDataset):
 
     The other option is to have batches with slightly different sizes.
     The DataLoader loads a fixed batch of images, the Dataset computes the resulting detections and returns those.
+
+    Params
+    ------
+    dataset_path (FilePath):
+        Path to the directory of the dataset.
+        The value has to either be a local project path, or a valid absolute path.
+
+    crop_mode (str, optional):
+        The mode for image cropping used when calling :func:``self.get_image_crop``.
+        Value has to be in CustomToAspect.modes.
+        Default "zero-pad".
+    crop_size (tuple[int, int], optional):
+        The size, the resized image should have.
+        Default (256, 256).
     """
 
     data: list
@@ -153,9 +167,14 @@ class BaseDataset(BaseModule, TorchDataset):
             The pre-computed backbone outputs.
         """
         sample: DataSample = self.arbitrary_to_ds(self.data[idx]).to(self.device)
-        if "image_crop" not in sample or "local_coordinates" not in sample:
+        if "image_crop" not in sample:
             self.get_image_crop(sample)
         return sample
+
+    @abstractmethod
+    def __getitems__(self, indices: list[int]) -> DataSample:
+        """Given a list of indices, return a single DataSample object containing them all."""
+        raise NotImplementedError
 
     @abstractmethod
     def arbitrary_to_ds(self, a) -> DataSample:
@@ -175,8 +194,8 @@ class BaseDataset(BaseModule, TorchDataset):
             "image": ds.image,
             "box": ds.bbox,
             "keypoints": ds.keypoints,
-            "output_size": self.params["crop_size"],
-            "mode": self.params["crop_mode"],
+            "output_size": self.params.get("crop_size", (256, 256)),
+            "mode": self.params.get("crop_mode", "zero-pad"),
         }
         new_sample = self.transform_crop_resize()(structured_input)
         ds.image_crop = new_sample["image"]

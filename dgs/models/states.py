@@ -7,7 +7,7 @@ from typing import Union
 import torch
 from torchvision import tv_tensors
 
-from dgs.utils.types import Config, Device, FilePaths, Heatmap, Image, PoseStateTuple, TVImage
+from dgs.utils.types import Config, DataGetter, Device, FilePaths, Heatmap, Image, PoseStateTuple, TVImage
 from dgs.utils.validation import (
     validate_bboxes,
     validate_filepath,
@@ -468,3 +468,13 @@ class DataSample(UserDict):
     @device.setter
     def device(self, value):
         self.data["device"] = torch.device(value)
+
+
+def get_ds_data_getter(attributes: list[str]) -> DataGetter:
+    """Given a list of attribute names, return a function, that gets those attributes from a given DataSample."""
+
+    def getter(ds: DataSample) -> Union[torch.Tensor, tuple[torch.Tensor, ...]]:
+        """The getter function."""
+        return tuple(ds[str(attrib)] for attrib in attributes)
+
+    return getter

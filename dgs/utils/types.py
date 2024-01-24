@@ -32,6 +32,9 @@ Validations = dict[str, list[Union[str, tuple[str, any], Validator, None]]]
 PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 """Current PoseState as tuple like (pose, jcs, bbox)"""
 
+# Data Handling
+DataGetter = Callable[["DataSample"], tuple[Union[torch.Tensor, any], ...]]
+"""Function to extract specific data from a DataSample."""
 
 # Torch
 Device = Union[TorchDevice, str]

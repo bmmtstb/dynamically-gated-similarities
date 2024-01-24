@@ -52,6 +52,7 @@ class TorchreidModel(EmbeddingGeneratorModule):
             num_classes=self.embedding_size,
             pretrained=self.is_pretrained,
             use_gpu=self.device.type == "cuda",
+            loss="triplet",  # has to be triplet for torchreid models to return embeddings and ids
         )
         if not self.is_pretrained:
             # custom model params
@@ -60,16 +61,28 @@ class TorchreidModel(EmbeddingGeneratorModule):
         # send model to the device
         return self.configure_torch_module(m)
 
-    def forward(self, *data: torch.Tensor, **kwargs) -> torch.Tensor:
+    def forward(self, *data, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward call of the torchreid model.
 
         Notes:
             Torchreid expects images to have float values.
 
         Args:
-            data: The object to compute the embedding from.
+            data: The image crop to compute the embedding from.
 
         Returns:
             Output of this models' forward call.
         """
-        return self.model(to_dtype(*data, dtype=torch.float32), **kwargs)
+        r = self.model(to_dtype(*data, dtype=torch.float32), **kwargs)
+
+        if len(r) == 2:
+            ids, embeddings = r
+            return embeddings, ids
+        if isinstance(r, torch.Tensor):
+            # During model building, triplet loss was forced for torchreid models.
+            # Therefore, only one return value means that only the embeddings are returned
+            embeddings = r
+            if hasattr(self.model, "classifier"):
+                return embeddings, self.model.classifier(embeddings)
+            raise NotImplementedError("Only the embeddings are returned and there is no classifier in torchreid model.")
+        raise NotImplementedError("Unknown torchreid model output.")

@@ -12,7 +12,7 @@ from dgs.utils.types import Metric
 
 def compute_cmc(
     distmat: torch.Tensor, labels: torch.IntTensor, predictions: torch.IntTensor, ranks: list[int]
-) -> list[float]:
+) -> dict[int, float]:
     """
     Single-gallery-shot means that each gallery identity has only one instance in the query.
 
@@ -38,7 +38,7 @@ def compute_cmc(
 
     n_query, n_gallery = distmat.shape
 
-    cmcs = []
+    cmcs: dict[int, float] = {}
 
     # sort by distance, lowest to highest
     indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
@@ -46,6 +46,7 @@ def compute_cmc(
     matches = predictions[indices] == labels.unsqueeze(-1)  # BoolTensor [n_query x n_gallery]
 
     for rank in ranks:
+        orig_rank = rank
         if rank >= n_gallery:
             warnings.warn(
                 f"Number of gallery samples {n_gallery} is smaller than the max rank {ranks}. Setting rank.",
@@ -55,7 +56,7 @@ def compute_cmc(
 
         cmc = torch.any(matches[:, :rank], dim=1).sum()
 
-        cmcs.append(cmc / float(n_query))
+        cmcs[orig_rank] = float(cmc) / float(n_query)
     return cmcs
 
 

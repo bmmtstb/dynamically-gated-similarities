@@ -4,8 +4,10 @@ Class and functions used during training and testing of different modules.
 import math
 import os
 import time
+import warnings
+from abc import abstractmethod
+from collections.abc import Iterable
 from datetime import date
-from typing import Callable, Union
 
 import torch
 from torch import nn, optim
@@ -20,22 +22,22 @@ from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.states import DataSample
 from dgs.utils.config import get_sub_config
 from dgs.utils.timer import DifferenceTimer
-from dgs.utils.torchtools import save_checkpoint
+from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
 
 train_validations: Validations = {
-    "epochs": ["int", ("gte", 1)],
     "loss": [("or", (("callable", ...), ("in", LOSS_FUNCTIONS)))],
-    "metric": [("or", (("callable", ...), ("in", METRICS)))],
     "optimizer": [("or", (("callable", ...), ("in", OPTIMIZERS)))],
-    "log_dir": [("or", (("folder exists in project", ...), ("folder exists", ...)))],
-    "ranks": ["optional", "iterable"],
+    # optional
+    "epochs": ["optional", "int", ("gte", 1)],
+    "log_dir": ["optional", ("or", (("folder exists in project", ...), ("folder exists", ...)))],
 }
 
 test_validations: Validations = {
     "metric": [("or", (("callable", ...), ("in", METRICS)))],
+    # optional
     "test_normalize": ["optional", "bool"],
-    "ranks": ["optional", "iterable"],
+    "ranks": ["optional", "iterable", ("all type", int)],
 }
 
 
@@ -62,11 +64,19 @@ class EngineModule(BaseModule):
     optimizer ():
         ...
 
-
     Optional Test Params
     --------------------
 
-    ...
+    test_normalize (bool, optional):
+        Whether to normalize the prediction and target during testing.
+        Default False.
+    ranks (list[int], optional):
+        The cmc ranks to use for evaluation.
+        This value is used during training and testing.
+        Default [1, 5, 10, 20]
+    metric_kwargs (dict, optional):
+        Additional kwargs for the metric.
+        Default {}.
 
     Optional Train Params
     ---------------------
@@ -77,12 +87,15 @@ class EngineModule(BaseModule):
     log_dir (FilePath, optional):
         Path to directory where all the files of this run are saved.
         Default "./results/"
-    ranks (list[int], optional):
-        Which ranks to compute during the evaluation.
-        Default [1, 5, 10, 20]
-    test_normalize (bool, optional):
-        Whether to normalize the prediction and targets before the evaluation.
-        Default False.
+    optimizer_kwargs (dict, optional):
+        Additional kwargs for the optimizer.
+        Default {}.
+    loss_kwargs (dict, optional):
+        Additional kwargs for the loss.
+        Default {}.
+    writer_kwargs (dict, optional):
+        Additional kwargs for the torch writer.
+        Default {}.
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
@@ -93,24 +106,21 @@ class EngineModule(BaseModule):
     optimizer: optim.Optimizer
     model: nn.Module
     writer: SummaryWriter
+
     test_dl: TorchDataLoader
+    """The torch DataLoader containing the test data."""
+
     train_dl: TorchDataLoader
+    """The torch DataLoader containing the training data."""
 
     lr_sched: list[optim.lr_scheduler.LRScheduler]
     """The learning-rate sheduler(s) can be changed by setting ``engine.lr_scheduler = [..., ...]``."""
 
-    get_data: Callable[[DataSample], Union[torch.Tensor, tuple[torch.Tensor, ...]]]
-    """Function to retrieve the data used in the model's prediction from the train- and test- DataLoaders."""
-
-    get_target: Callable[[DataSample], Union[torch.Tensor, tuple[torch.Tensor, ...]]]
-    """Function to retrieve the evaluation targets from the train- and test- DataLoaders."""
-
     def __init__(
         self,
         config: Config,
+        model: nn.Module,
         test_loader: TorchDataLoader,
-        get_data: Callable[[DataSample], Union[torch.Tensor, tuple[torch.Tensor, ...]]],
-        get_target: Callable[[DataSample], Union[torch.Tensor, tuple[torch.Tensor, ...]]],
         train_loader: TorchDataLoader = None,
         test_only: bool = False,
     ):
@@ -124,17 +134,17 @@ class EngineModule(BaseModule):
 
         self.test_dl = test_loader
         self.train_dl = train_loader
-        self.get_data = get_data
-        self.get_target = get_target
 
         self.epochs: int = self.params_train.get("epochs", 1)
         self.curr_epoch: int = 0
+        self.start_epoch: int = self.params_train.get("start_epoch", 0)
         self.log_dir: FilePath = self.params_train.get("log_dir", "./results/")
 
+        self.model = model
         self.loss = get_loss_function(self.params["loss"])(**self.params.get("loss_kwargs", {}))
-        self.metric = get_metric(self.params["metric"])(**self.params.get("metric_kwargs", {}))
+        self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
         # the optimizer needs some model params to be set up
-        self.optimizer = get_optimizer(self.params["optimizer"])(**self.params.get("optim_kwargs", {}))
+        self.optimizer = get_optimizer(self.params["optimizer"])(**self.params.get("optimizer_kwargs", {}))
         # the learning-rate scheduler needs the optimizer
         self.lr_sched = [optim.lr_scheduler.ConstantLR(optimizer=self.optimizer)]
         self.writer = SummaryWriter(log_dir=self.log_dir, **self.params.get("writer_kwargs", {}))
@@ -142,6 +152,16 @@ class EngineModule(BaseModule):
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
         return self.run(*args, **kwargs)
+
+    @abstractmethod
+    def get_data(self, ds: DataSample) -> any:
+        """Function to retrieve the data used in the model's prediction from the train- and test- DataLoaders."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_target(self, ds: DataSample) -> any:
+        """Function to retrieve the evaluation targets from the train- and test- DataLoaders."""
+        raise NotImplementedError
 
     @enable_keyboard_interrupt
     def run(self) -> None:
@@ -153,60 +173,16 @@ class EngineModule(BaseModule):
         self.train()
         self.test()
 
+    @torch.no_grad()
+    @abstractmethod
     @enable_keyboard_interrupt
-    def test(self) -> any:
-        """Test model on target dataset(s). Compute Rank-1."""
-        self.model.eval()  # set model to test / evaluation mode
-        if self.print("normal"):
-            print(f"#### Start Evaluating {self.name} ####")
-            print("Loading and extracting data, this might take a while...")
+    def test(self) -> dict[str, any]:
+        """Run tests, defined in Sub-Engine.
 
-        preds: list[torch.Tensor] = []
-        targets: list[torch.Tensor] = []
-        for batch_data in tqdm(self.test_dl, desc="Extract test data", leave=False, position=1):
-            # extract data and use the current model to get a prediction
-            preds.append(self.model(self.get_data(batch_data)).to(self.device))
-            # extract target data
-            targets.append(self.get_target(batch_data).to(self.device))
-
-        pred: torch.Tensor = torch.cat(preds)
-        target: torch.Tensor = torch.cat(targets)
-        del preds, targets
-
-        if self.print("debug"):
-            print(f"prediction shape: {pred.shape}, target: {target.shape}")
-
-        if self.params["test_normalize"]:
-            if self.print("debug"):
-                print("Normalizing test data")
-            pred: torch.Tensor = nn.functional.normalize(pred)
-            target: torch.Tensor = nn.functional.normalize(target)
-
-        if self.print("debug"):
-            print("Computing distance matrix")
-        distance_matrix = self.metric(pred, target)
-
-        if self.print("debug"):
-            print("Computing CMC and mAP")
-
-        cmc, m_ap = ([], distance_matrix)  # fixme evaluate rank!
-        if not cmc:
-            raise NotImplementedError
-
-        print(f"#### Results - Epoch {self.curr_epoch} ####")
-        print(f"mAP: {m_ap:.1%}")
-        print("CMC curve:")
-        for r in self.params.get("ranks", [1, 5, 10, 20]):
-            print(f"Rank-{r:<3}: {cmc[r - 1]:.1%}")
-
-        # at the end use the writer to save results
-        self.writer.add_scalar(f"Test/{self.name}/rank1", cmc[0], self.curr_epoch)
-        self.writer.add_scalar(f"Test/{self.name}/mAP", m_ap, self.curr_epoch)
-
-        if self.print("normal"):
-            print("#### Evaluation complete ####")
-
-        return cmc[0]
+        Returns:
+            dict[str, any]: A dictionary containing all the computed metrics.
+        """
+        raise NotImplementedError
 
     @enable_keyboard_interrupt
     def train(self) -> None:
@@ -216,9 +192,11 @@ class EngineModule(BaseModule):
         """
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")
-        self.model.train()  # set model to train mode
+
         if self.print("normal"):
             print("#### Start Training ####")
+        # set model to train mode
+        self.model.train()
 
         # initialize variables
         losses: list[float] = []
@@ -228,7 +206,7 @@ class EngineModule(BaseModule):
         num_batches: int = math.ceil(len(self.train_dl) / self.train_dl.batch_size)
         data: DataSample
 
-        for self.curr_epoch in tqdm(range(self.epochs), desc="Epoch", position=0):
+        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs), desc="Epoch", position=0):
             epoch_loss = 0
             loss = None  # init for tqdm text
             time_epoch_start = time.time()
@@ -238,7 +216,7 @@ class EngineModule(BaseModule):
             for batch_idx, data in tqdm(
                 enumerate(self.train_dl),
                 desc=f"Per Batch - "
-                f"last loss: {loss.item() if loss else ''} - "
+                f"last loss: {str(loss.item()) if loss and hasattr(loss, 'item') else ''} - "
                 f"lr: {self.optimizer.param_groups[-1]['lr']}",
                 position=1,
                 leave=False,
@@ -246,9 +224,8 @@ class EngineModule(BaseModule):
                 data_times.add(time_batch_start)
 
                 # OPTIMIZE MODEL
+                loss = self._get_train_loss(data)
                 self.optimizer.zero_grad()
-                output = self.model(self.get_data(data))
-                loss = self.loss(output, self.get_target(data))
                 loss.backward()
                 self.optimizer.step()
                 # OPTIMIZE END
@@ -269,12 +246,13 @@ class EngineModule(BaseModule):
             # END OF EPOCH #
             # ############ #
             epoch_times.add(time_epoch_start)
+            losses.append(epoch_loss)
             # handle updating the learning rate scheduler(s)
             for sched in self.lr_sched:
                 sched.step()
-            # save loss and learned model data / weights
-            losses.append(epoch_loss)
-            self.save_model(self.curr_epoch, self.test())  # does also call self.test() !!
+            # evaluate current model
+            metrics = self.test()
+            self.save_model(epoch=self.curr_epoch, metrics=metrics)
             if self.print("debug"):
                 print(f"Training: epoch {self.curr_epoch} loss: {epoch_loss}")
                 print(f"Training: epoch {self.curr_epoch} time: {round(epoch_times[-1])} [s]")
@@ -291,30 +269,88 @@ class EngineModule(BaseModule):
 
         self.writer.close()
 
-    def save_model(self, epoch: int, rank1) -> None:
+    def save_model(self, epoch: int, metrics: dict[str, any]) -> None:  # pragma: no cover
         """Save the current model and other weights into a '.pth' file.
 
         Args:
             epoch: The epoch this model is saved.
-            rank1: Rank-1 accuracy is a performance metric used in deep learning to evaluate the model's accuracy.
-                It measures whether the top prediction matches the ground truth label for a given sample.
+            metrics: A dict containing the computed metrics for this module.
         """
+        curr_lr = self.optimizer.param_groups[-1]["lr"]
 
-        for sched in self.lr_sched:
-            save_checkpoint(
-                state={
-                    "state_dict": self.model.state_dict(),
-                    "epoch": epoch,
-                    "rank1": rank1,
-                    "optimizer": self.optimizer.state_dict(),
-                    "lr_scheduler": sched.state_dict(),
-                },
-                save_dir=os.path.join(
-                    self.log_dir, f"./checkpoints/{self.name}_{str(sched.get_lr())}_{date.today().strftime('%Y%m%d')}/"
-                ),
-                verbose=self.print("normal"),
-            )
+        save_checkpoint(
+            state={
+                "model": self.model.state_dict(),
+                "epoch": epoch,
+                "metrics": metrics,
+                "optimizer": self.optimizer.state_dict(),
+                "lr_scheduler": {sched.state_dict() for sched in self.lr_sched},
+            },
+            save_dir=os.path.join(
+                self.log_dir, f"./checkpoints/{self.name}_{str(curr_lr)}_{date.today().strftime('%Y%m%d')}/"
+            ),
+            verbose=self.print("normal"),
+        )
 
-    def terminate(self) -> None:
+    def load_model(self, path: FilePath) -> None:  # pragma: no cover
+        """Load the model from a file. Set the start epoch to the epoch specified in the loaded model."""
+        self.start_epoch = resume_from_checkpoint(
+            fpath=path, model=self.model, optimizer=self.optimizer, scheduler=self.lr_sched
+        )
+
+    def terminate(self) -> None:  # pragma: no cover
         """Handle forceful termination, e.g., ctrl+c"""
         self.writer.close()
+
+    def _normalize_test(self, pred: torch.Tensor, target: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """If ``params_test.test_normalize`` is True, return the normalized prediction and target."""
+        if self.params_test.get("test_normalize", False):
+            if self.print("debug"):
+                print("Normalizing test data")
+            pred: torch.Tensor = nn.functional.normalize(pred)
+            target: torch.Tensor = nn.functional.normalize(target)
+        return pred, target
+
+    @abstractmethod
+    def _get_train_loss(self, data: DataSample) -> torch.Tensor:  # pragma: no cover
+        """Compute the loss during training given the data.
+
+        Different models can have different outputs and a different number of targets.
+        This function should get overwritten by subclasses to ensure correct behavior.
+        A default implementation that only has one output and one target can be found here.
+        """
+        output = self.model(*self.get_data(data))
+        target = self.get_target(data)
+        loss = self.loss(output, target)
+        return loss
+
+    def write_results(self, results: dict[str, any], prepend: str, index: int) -> None:
+        """Given a dictionary of results, use the writer to save the values."""
+        for key, value in results.items():
+            if isinstance(value, (int, float, str)):
+                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value, index)
+            elif isinstance(value, dict):
+                for sub_key, sub_value in value:
+                    self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{sub_key}", sub_value, index)
+            elif isinstance(value, Iterable):
+                for i, sub_value in enumerate(value):
+                    self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{i}", sub_value, index)
+            else:
+                warnings.warn(f"Unknown result for writer: {value} {key}")
+        if self.print("debug"):
+            print("results have been written to writer")
+
+    def print_results(self, results: dict[str, any]) -> None:
+        """Given a dictionary of results, print them to the console if allowed."""
+        if self.print("normal"):
+            print(f"#### Results - Epoch {self.curr_epoch} ####")
+
+            for key, value in results.items():
+                if key.lower() in ["mean_avg_precision", "map", "m_ap"]:
+                    print(f"Mean average precision (mAP): {value:.1%}")
+                elif key.lower() == "cmc":
+                    print("CMC curve:")
+                    for r, cmc_i in value.items():
+                        print(f"Rank-{r}: {cmc_i:.1%}")
+                else:
+                    warnings.warn(f"Unknown result for printing: {key} {value}")

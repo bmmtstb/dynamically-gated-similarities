@@ -93,7 +93,8 @@ class TestMetrics(unittest.TestCase):
                         message="Number of gallery samples.*is smaller than the max rank.*Setting rank.",
                         category=UserWarning,
                     )
-                    self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), results)
+                    result_dict = {rank: float(result) for rank, result in zip(ranks, results)}
+                    self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), result_dict)
 
     def test_metrics_wrong_input_shape(self):
         for i1, i2, err in [
