@@ -1,10 +1,12 @@
 import os
 import unittest
 from copy import deepcopy
+from unittest.mock import patch
 
 from easydict import EasyDict
 
 from dgs.default_config import cfg as default_config
+from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults, get_sub_config, insert_into_config, load_config
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 
@@ -200,17 +202,25 @@ class TestLoadConfig(unittest.TestCase):
         self.assertTrue(cfg["dataset"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
         self.assertListEqual(cfg["dataset"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
 
+    @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_configs_dir(self):
-        abs_path = "./configs/"
-        paths = [
-            os.path.normpath(os.path.join(abs_path, child_path))
-            for child_path in os.listdir(abs_path)
-            if child_path.endswith(".yaml") or child_path.endswith(".yml")
-        ]
-        for path in paths:
-            cfg = load_config(path)
-            self.assertIsInstance(cfg, EasyDict)
-            self.assertIn("name", cfg)
+        for is_easydict in [True, False]:
+            abs_path = "./configs/"
+            paths = [
+                os.path.normpath(os.path.join(abs_path, child_path))
+                for child_path in os.listdir(abs_path)
+                if child_path.endswith(".yaml") or child_path.endswith(".yml")
+            ]
+            for path in paths:
+                with self.subTest(msg=f"path: {path}"):
+                    cfg = load_config(path, easydict=is_easydict)
+                    self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
+                    self.assertIn("name", cfg)
+                    name = cfg["name"]
+                    cfg_w_def = fill_in_defaults(cfg)
+                    b = BaseModule(cfg_w_def, [])
+                    self.assertIsInstance(b, BaseModule)
+                    self.assertEqual(b.name, name)
 
     def test_load_config_exception(self):
         for fp in [
