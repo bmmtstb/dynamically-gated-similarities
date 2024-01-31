@@ -39,7 +39,7 @@ def enable_keyboard_interrupt(func: callable) -> callable:  # pragma: no cover
     def module_wrapper(cls, *args, **kwargs):
         try:
             func(cls, *args, **kwargs)
-        except KeyboardInterrupt as e:
+        except (KeyboardInterrupt, InterruptedError) as e:
             if callable(getattr(cls, "terminate", None)):
                 cls.terminate()
             else:
@@ -203,7 +203,7 @@ class BaseModule(ABC):
                         continue
                     raise InvalidParameterException(
                         f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
-                        f"Value is {value} and is expected to have validation {validation_name}."
+                        f"Value is {value} and is expected to have validation(s) {list_of_validations}."
                     )
                 # no other case was true
                 raise ValidationException(
@@ -215,7 +215,18 @@ class BaseModule(ABC):
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         raise NotImplementedError
 
-    def print(self, priority: str) -> bool:
+    def print(self, priority: str, message: str) -> None:
+        """Print a message if priority is high enough.
+
+        Args:
+            priority (str): Value has to be in PRINT_PRIO.
+                See :func:`self.can_print()` for more details.
+            message (str): The message to print.
+        """
+        if self.can_print(priority):
+            print(message)
+
+    def can_print(self, priority: str) -> bool:
         """Check whether the Module is allowed to print something with the given priority.
 
         Args:
