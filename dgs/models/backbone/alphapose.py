@@ -88,8 +88,7 @@ class AlphaPoseFullBackbone(BackboneModule):
         # set up pose model
         pose_model = builder.build_sppe(self.ap_cfg_file.MODEL, preset_cfg=self.ap_cfg_file.DATA_PRESET)
 
-        if self.print("debug"):
-            print(f"AlphaPose - Loading pose model from checkpoint {self.params['checkpoint']}")
+        self.print("debug", f"AlphaPose - Loading pose model from checkpoint {self.params['checkpoint']}")
 
         pose_model.load_state_dict(torch.load(self.params["checkpoint"], map_location=self.device))
         self.pose_model = self.configure_torch_module(pose_model, train=False)
@@ -98,8 +97,7 @@ class AlphaPoseFullBackbone(BackboneModule):
         self.pose_data = builder.retrieve_dataset(self.ap_cfg_file.DATASET.TRAIN)
 
         if self.params["mode"] == "webcam":
-            if self.print("normal"):
-                print("Starting webcam demo, press Ctrl + C to terminate...")
+            self.print("normal", "Starting webcam demo, press Ctrl + C to terminate...")
             sys.stdout.flush()
             self.img_names_desc = tqdm(webcam_loop())
         else:
@@ -241,8 +239,7 @@ class AlphaPoseFullBackbone(BackboneModule):
                     f"mode: {self.params['mode']}, data: {self.params['data']}"
                 )
             if len(filenames) == 1:
-                if self.print("normal"):
-                    warnings.warn("Tracking on a single image does not make sense... But this will keep going.")
+                warnings.warn("Tracking on a single image does not make sense... But this will keep going.")
 
             filenames = natsorted(filenames)
             return DetectionLoader(
@@ -299,15 +296,14 @@ class AlphaPoseFullBackbone(BackboneModule):
         raise NotImplementedError
 
     def terminate(self) -> None:
-        print("Stopping AlphaPose models")
+        self.print("alL", "Stopping AlphaPose models")
         # Thread won't be killed when press Ctrl+C
         if self.config["sp"]:
             self.det_loader.terminate()
             while self.writer.running():
                 time.sleep(0.5)
-                print(
-                    f"==> Rendering remaining {self.writer.count()} images in the queue...",
-                    end="\r",
+                self.print("all",
+                    f"==> Rendering remaining {self.writer.count()} images in the queue...\r",
                 )
             self.writer.stop()
         else:

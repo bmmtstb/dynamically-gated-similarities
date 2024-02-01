@@ -108,5 +108,5 @@ class AlphaPoseLoader(BaseDataset):
             image_id=stack_key("image_id").int(),
         )
         # make sure to get image crop for batch
-        self.get_image_crop(ds)
+        self.get_image_crops(ds)
         return ds
