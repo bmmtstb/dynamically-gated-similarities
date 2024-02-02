@@ -214,8 +214,7 @@ class EngineModule(BaseModule):
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")
 
-        if self.can_print("normal"):
-            print("#### Start Training ####")
+        self.print("normal", "\n#### Start Training ####\n")
 
         # set model to train mode
         self.model.train()
@@ -240,7 +239,7 @@ class EngineModule(BaseModule):
                 desc=f"Per Batch - "
                 f"last loss: {str(loss.item()) if loss and hasattr(loss, 'item') else ''} - "
                 f"lr: {self.optimizer.param_groups[-1]['lr']:.8}",
-                position=0,
+                position=1,
                 leave=False,
             ):
                 data_times.add(time_batch_start)
@@ -276,19 +275,17 @@ class EngineModule(BaseModule):
             # evaluate current model
             metrics = self.test()
             self.save_model(epoch=self.curr_epoch, metrics=metrics)
-            if self.can_print("debug"):
-                print(f"Training: epoch {self.curr_epoch} loss: {epoch_loss}")
-                print(f"Training: epoch {self.curr_epoch} time: {round(epoch_times[-1])} [s]")
+            self.print("normal", f"Training: epoch {self.curr_epoch} loss: {epoch_loss}")
+            self.print("normal", f"Training: epoch {self.curr_epoch} time: {round(epoch_times[-1])} [s]")
 
         # ############### #
         # END OF TRAINING #
         # ############### #
 
-        if self.can_print("normal"):
-            print(data_times.print(name="data", prepend="Training"))
-            print(batch_times.print(name="batch", prepend="Training"))
-            print(epoch_times.print(name="epoch", prepend="Training", hms=True))
-            print("#### Training complete ####")
+        self.print("normal", data_times.print(name="data", prepend="Training"))
+        self.print("normal", batch_times.print(name="batch", prepend="Training"))
+        self.print("normal", epoch_times.print(name="epoch", prepend="Training", hms=True))
+        self.print("normal", "\n#### Training complete ####\n")
 
         self.writer.close()
 
@@ -364,8 +361,7 @@ class EngineModule(BaseModule):
                     self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{i}", sub_value, index)
             else:
                 warnings.warn(f"Unknown result for writer: {value} {key}")
-        if self.can_print("debug"):
-            print("results have been written to writer")
+        self.print("debug", "results have been written to writer")
         self.writer.flush()
 
     def print_results(self, results: dict[str, any]) -> None:

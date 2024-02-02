@@ -14,7 +14,7 @@ from dgs.utils.types import Metric
 
 @torch.no_grad()
 def compute_cmc(
-    distmat: torch.Tensor, labels: torch.LongTensor, predictions: torch.LongTensor, ranks: list[int]
+    distmat: torch.Tensor, query_pids: torch.LongTensor, gallery_pids: torch.LongTensor, ranks: list[int]
 ) -> dict[int, float]:
     """
     Single-gallery-shot means that each gallery identity has only one instance in the query.
@@ -30,9 +30,9 @@ def compute_cmc(
     Args:
         distmat: FloatTensor of shape ``[n_query x n_gallery]`` containing the distances between every item from
             gallery and query.
-        labels: LongTensor of shape ``[n_query (x 1)]`` containing the ground truth IDs.
-        predictions: LongTensor of shape ``[n_gallery (x 1)]``, containing this models' ID predictions.
-        ranks: List of integers containing the k values used for the evaluation
+        query_pids: LongTensor of shape ``[n_query (x 1)]`` containing the query IDs.
+        gallery_pids: LongTensor of shape ``[n_gallery (x 1)]``, containing the gallery IDs.
+        ranks: List of integers containing the k values used for the evaluation.
 
 
     Returns:
@@ -43,16 +43,13 @@ def compute_cmc(
 
     cmcs: dict[int, float] = {}
 
-    labels = labels.long()
-    predictions = predictions.long()
-
-    if labels.ndim == 1:
-        labels = labels.unsqueeze(-1)
+    query_pids = query_pids.squeeze().unsqueeze(-1).long()
+    gallery_pids = gallery_pids.squeeze().long()
 
     # sort by distance, lowest to highest
     indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
     # with predictions[indices] := sorted predictions
-    matches = predictions[indices] == labels  # BoolTensor [n_query x n_gallery]
+    matches: torch.BoolTensor = torch.eq(gallery_pids[indices], query_pids).bool()  # BoolTensor [n_query x n_gallery]
 
     for rank in ranks:
         orig_rank = rank

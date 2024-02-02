@@ -22,8 +22,8 @@ test:
 dataset_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-#    json_path: "./posetrack_data/train/"
-    json_path: "./posetrack_data/train/000001_bonn_train.json"
+    json_path: "./posetrack_data/train/"
+#    json_path: "./posetrack_data/train/000001_bonn_train.json"
     crops_folder: "./crops/train/"
     requires_grad: true
 
@@ -31,6 +31,7 @@ dataset_test:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_data/val/"
+#    json_path: "./posetrack_data/val/000342_mpii_test.json"
     force_img_reshape: true
     crops_folder: "./crops/val/"
     requires_grad: false

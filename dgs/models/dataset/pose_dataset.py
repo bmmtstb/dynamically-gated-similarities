@@ -12,9 +12,27 @@ from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchData
 
 from dgs.utils.types import FilePath
 from dgs.utils.utils import HidePrint
-from torchreid.data import Dataset
-from torchreid.data.datamanager import DataManager
-from torchreid.data.sampler import build_train_sampler
+
+try:
+    # If torchreid is installed using `./dependencies/torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.data import Dataset
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.data.datamanager import DataManager
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.data.sampler import build_train_sampler
+except ModuleNotFoundError:
+    # if torchreid is installed using `pip install torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.data import Dataset
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.data.datamanager import DataManager
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.data.sampler import build_train_sampler
 
 
 class TorchreidPoseDataset(Dataset):

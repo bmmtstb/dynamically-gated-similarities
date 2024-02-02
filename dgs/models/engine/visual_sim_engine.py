@@ -99,7 +99,7 @@ class VisualSimilarityEngine(EngineModule):
             warnings.warn("Neither model.eval() nor model.set_model_mode() are present.")
         self.model.eval()  # set model to test / evaluation mode
 
-        self.print("normal", f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
+        self.print("normal", f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
         self.print("normal", "Loading and extracting data, this might take a while...")
 
         t_embeds: list[torch.Tensor] = []
@@ -124,7 +124,7 @@ class VisualSimilarityEngine(EngineModule):
                 target=targ_ids,  # 1D LongTensor of ground truth labels with shape [n_gallery].
             ).item(),
         }
-        self.print("debug", f"mAP - Gallery: {results['mean_avg_precision_gallery']}")
+        self.print("debug", f"mAP - Gallery: {results['mean_avg_precision_gallery']:.2}")
         del t_embed, t_embeds, t_id, t_ids, t_pred_id, t_pred_ids
 
         # extract the data for query and gallery dataloader
@@ -151,7 +151,7 @@ class VisualSimilarityEngine(EngineModule):
             input=pred_id_probs,  # class predictions - probabilities with shape [n_query x num_classes]
             target=torch.cat(p_targ_ids).long(),  # 1D LongTensor of ground truth labels with shape [n_query].
         ).item()
-        self.print("debug", f"mAP - Query: {results['mean_avg_precision_query']}")
+        self.print("debug", f"mAP - Query: {results['mean_avg_precision_query']:.2}")
         del p_embed, p_embeds, p_id, p_ids
 
         pred_embed, targ_embed = self._normalize_test(pred_embed, targ_embed)
@@ -166,8 +166,8 @@ class VisualSimilarityEngine(EngineModule):
 
         results["cmc"] = compute_cmc(
             distmat=distance_matrix,
-            labels=targ_ids,
-            predictions=pred_ids,
+            query_pids=pred_ids,
+            gallery_pids=targ_ids,
             ranks=self.params_test.get("ranks", [1, 5, 10, 20]),
         )
 
@@ -175,6 +175,6 @@ class VisualSimilarityEngine(EngineModule):
         self.write_results(results, prepend="Test", index=self.curr_epoch)
 
         self.print("normal", f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
-        self.print("normal", f"#### Evaluation of {self.name} complete ####")
+        self.print("normal", f"\n#### Evaluation of {self.name} complete ####\n")
 
         return results
