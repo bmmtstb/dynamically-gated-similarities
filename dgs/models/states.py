@@ -240,7 +240,7 @@ class DataSample(UserDict):
         The key points for this bounding box as torch tensor in global coordinates.
 
     person_id (optional)
-        (torch.IntTensor), shape ``[B]``
+        (torch.LongTensor), shape ``[B]``
 
         The person id, only required for training and validation
 
@@ -279,7 +279,7 @@ class DataSample(UserDict):
 
     def __init__(
         self,
-        filepath: tuple[str, ...],
+        filepath: FilePaths,
         bbox: tv_tensors.BoundingBoxes,
         keypoints: torch.Tensor,
         validate: bool = True,
@@ -320,12 +320,14 @@ class DataSample(UserDict):
         return f"{self.data['filepath']} {self.data['bbox']}"
 
     @property
-    def person_id(self) -> torch.IntTensor:
+    def person_id(self) -> torch.LongTensor:
         return self.data["person_id"]
 
     @person_id.setter
-    def person_id(self, value: Union[int, torch.IntTensor]) -> None:
-        self.data["person_id"] = (torch.tensor(value).int() if isinstance(value, int) else value).to(device=self.device)
+    def person_id(self, value: Union[int, torch.LongTensor]) -> None:
+        self.data["person_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
+            device=self.device
+        )
 
     @property
     def filepath(self) -> FilePaths:
@@ -401,6 +403,14 @@ class DataSample(UserDict):
     @image_crop.setter
     def image_crop(self, value: Image) -> None:
         self.data["image_crop"]: TVImage = (validate_images(value) if self._validate else value).to(device=self.device)
+
+    @property
+    def crop_path(self):
+        return self.data["crop_path"]
+
+    @crop_path.setter
+    def crop_path(self, value: FilePaths):
+        self.data["crop_path"]: FilePaths = validate_filepath(value) if self._validate else value
 
     @property
     def joint_weight(self) -> torch.Tensor:

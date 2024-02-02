@@ -1,6 +1,7 @@
 """
 Given config, load modules
 """
+
 from typing import Type, TypeVar
 
 from dgs.models.dataset import get_dataset
@@ -12,19 +13,6 @@ from dgs.models.pose_warping import get_pose_warping
 from dgs.models.similarity import get_combined_similarity_module, get_similarity_module
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
-
-module_paths: dict[str, NodePath] = {  # fixme: kind of useless, can this be removed?
-    "combined_similarity": ["combined_similarity"],
-    "dataset": ["dataset"],
-    "test_dataset": ["dataset_test"],
-    "train_dataset": ["dataset_train"],
-    "visual_embedding_generator": ["visual_embedding_generator"],
-    "visual_similarity": ["visual_similarity"],
-    "pose_embedding_generator": ["pose_embedding_generator"],
-    "pose_similarity": ["pose_similarity"],
-    "pose_warping_module": ["pose_warping_module"],
-    "engine": [],
-}
 
 M = TypeVar("M", bound=BaseModule)
 
@@ -42,29 +30,25 @@ def module_loader(config: Config, module: str) -> M:
     """
     # This model will have one branch for every module
     # pylint: disable=too-many-branches
-
-    # model config validation
-    if module not in module_paths:
-        raise KeyError(f"Module '{module}' has no path associated within module_paths.")
-
-    path: NodePath = module_paths[module]
-    module_name: str = get_sub_config(config, path).module_name
+    path: NodePath = [module]
+    module_name: str = get_sub_config(config, path)["module_name"]
 
     m: Type[M]
 
     # Module import and initialization
     if module == "engine":
         m = get_engine(module_name)
-    elif module == "combined_similarity":
+        path = []
+    elif module == "weighted_similarity":
         m = get_combined_similarity_module(module_name)
-    elif module in ["visual_embedding_generator", "pose_embedding_generator"]:
+    elif module.startswith("embedding_generator_"):
         m = get_embedding_generator(module_name)
-    elif module in ["visual_similarity", "pose_similarity"]:
+    elif module.startswith("similarity_"):
         m = get_similarity_module(module_name)
     elif module == "pose_warping_module":
         m = get_pose_warping(module_name)
-    elif module == "dataset":
-        # concatenated PT21 dataset is loaded via function
+    elif module.startswith("dataset_"):
+        # special case: the concatenated PT21 dataset is loaded via function not class
         if module_name == "PoseTrack21":
             return get_pose_track_21(config, path)
         m = get_dataset(module_name)

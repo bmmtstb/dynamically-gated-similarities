@@ -12,7 +12,7 @@ from helper import test_multiple_devices
 
 class TestDGS(unittest.TestCase):
     def test_dgs_init(self):
-        _ = DynamicallyGatedSimilarities(config=default_cfg, path=["combined_similarity"])
+        _ = DynamicallyGatedSimilarities(config=default_cfg, path=["weighted_similarity"])
 
     @test_multiple_devices
     def test_dgs_forward(self, device: Device):
@@ -29,7 +29,7 @@ class TestDGS(unittest.TestCase):
                 msg="alpha: {}, s1: {}, s2: {}, result: {}, device: {}".format(alpha, s1, s2, result, device)
             ):
                 dgs = DynamicallyGatedSimilarities(
-                    config=fill_in_defaults({"device": device}), path=["combined_similarity"]
+                    config=fill_in_defaults({"device": device}), path=["weighted_similarity"]
                 )
                 # send matrices to the respective device
                 self.assertTrue(
@@ -80,7 +80,7 @@ class TestDGS(unittest.TestCase):
                     alpha.shape, sn[0].shape, sn[0].shape, exception_type, msg
                 )
             ):
-                dgs = DynamicallyGatedSimilarities(config=default_cfg, path=["combined_similarity"])
+                dgs = DynamicallyGatedSimilarities(config=default_cfg, path=["weighted_similarity"])
                 with self.assertRaises(exception_type) as e:
                     dgs.forward(*sn, alpha=alpha)
                 self.assertTrue(msg in str(e.exception), msg=e.exception)
@@ -91,14 +91,14 @@ class TestConstantAlpha(unittest.TestCase):
         for alpha in [[1], [0.5, 0.5], [1 / 10 for _ in range(10)]]:
             with self.subTest(msg="alpha: {}".format(alpha)):
                 _ = StaticAlphaWeightingModule(
-                    config=fill_in_defaults({"combined_similarity": {"alpha": alpha}}), path=["combined_similarity"]
+                    config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}), path=["weighted_similarity"]
                 )
 
     def test_constant_alpha_init_exceptions(self):
         for alpha in [[1], [0.5, 0.5], [1 / 10 for _ in range(10)]]:
             with self.subTest(msg="alpha: {}".format(alpha)):
                 _ = StaticAlphaWeightingModule(
-                    config=fill_in_defaults({"combined_similarity": {"alpha": alpha}}), path=["combined_similarity"]
+                    config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}), path=["weighted_similarity"]
                 )
 
     def test_constant_alpha_forward(self):
@@ -111,7 +111,7 @@ class TestConstantAlpha(unittest.TestCase):
         ]:
             with self.subTest(msg="alpha: {}, sn: {}".format(alpha, sn)):
                 m = StaticAlphaWeightingModule(
-                    config=fill_in_defaults({"combined_similarity": {"alpha": alpha}}), path=["combined_similarity"]
+                    config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}), path=["weighted_similarity"]
                 )
                 self.assertTrue(torch.allclose(m.forward(*sn), result))
 
@@ -131,7 +131,7 @@ class TestConstantAlpha(unittest.TestCase):
             with self.subTest(msg="alpha: {}, sn: {}, exp: {}, err_msg: {}".format(alpha, sn, exception, err_msg)):
                 with self.assertRaises(exception) as e:
                     m = StaticAlphaWeightingModule(
-                        config=fill_in_defaults({"combined_similarity": {"alpha": alpha}}), path=["combined_similarity"]
+                        config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}), path=["weighted_similarity"]
                     )
                     m.forward(*sn)
                 self.assertTrue(err_msg in str(e.exception))

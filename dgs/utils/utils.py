@@ -1,6 +1,7 @@
 """
 General utility functions.
 """
+
 import os.path
 import sys
 from typing import Union
@@ -10,6 +11,7 @@ import torch
 from torchvision import tv_tensors
 from torchvision.io import write_jpeg
 from torchvision.transforms import v2 as tvt
+from torchvision.transforms.functional import convert_image_dtype
 
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.image import CustomCropResize, load_image
@@ -107,7 +109,7 @@ def extract_crops_from_images(
 
     for fp, crop, kp in zip(new_fps, crops, kps):
         mkdir_if_missing(os.path.dirname(fp))
-        write_jpeg(input=crop, filename=fp, quality=kwargs.get("quality", 90))
+        write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))
         if key_points is not None:
             torch.save(kp, str(fp).replace(".jpg", ".pt"))
 

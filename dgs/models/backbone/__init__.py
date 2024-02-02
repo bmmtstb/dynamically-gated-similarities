@@ -1,6 +1,7 @@
 """
 Different modules that can be used as a backbone to generate or retrieve data.
 """
+
 from typing import Type
 
 from dgs.utils.exceptions import InvalidParameterException

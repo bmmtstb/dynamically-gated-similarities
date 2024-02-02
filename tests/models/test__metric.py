@@ -76,8 +76,8 @@ class TestMetrics(unittest.TestCase):
         for distmat, labels, predictions, ranks, results in [
             (
                 torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([1, 4]).int(),
-                torch.tensor([2, 3, 4, 0, 1]).int(),
+                torch.tensor([1, 4]).long(),
+                torch.tensor([2, 3, 4, 0, 1]).long(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
             ),

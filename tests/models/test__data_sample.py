@@ -119,7 +119,7 @@ class TestDataSample(unittest.TestCase):
 
     @test_multiple_devices
     def test_init_with_device(self, device: Device):
-        out_id = torch.tensor(10).int().to(device=device)
+        out_id = torch.tensor(10).long().to(device=device)
         out_image = DUMMY_IMG.to(device=device)
         out_imgcrop = DUMMY_IMG.to(device=device)
         out_kp = DUMMY_KEY_POINTS.to(device=device)

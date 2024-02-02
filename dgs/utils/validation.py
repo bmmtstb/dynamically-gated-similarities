@@ -22,6 +22,10 @@ VALIDATIONS: dict[str, Validator] = {
     "str": (lambda x, _: isinstance(x, str)),
     "int": (lambda x, _: isinstance(x, int)),
     "float": (lambda x, _: isinstance(x, float)),
+    "dict": (lambda x, _: isinstance(x, dict)),
+    "list": (lambda x, _: isinstance(x, list)),
+    "set": (lambda x, _: isinstance(x, set)),
+    "tuple": (lambda x, _: isinstance(x, tuple)),
     "number": (lambda x, _: isinstance(x, int | float)),
     "callable": (lambda x, _: callable(x)),
     "instance": isinstance,  # alias

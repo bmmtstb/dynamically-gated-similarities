@@ -10,6 +10,7 @@ Keep on reading
     Installation Guide <installation>
     Dataset <datasets>
     Weights <weight_link>
+	Explanation of scripts <scripts>
 	Explanation of custom Crop and Resize transforms <full_crop_resize_example/resize_crop_example>
 
 

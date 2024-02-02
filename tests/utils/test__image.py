@@ -85,9 +85,11 @@ def create_structured_data(
     return {
         "image": image.detach().clone(),
         "box": bbox.detach().clone() if bbox is not None else create_bbox(H, W),
-        "keypoints": key_points.detach().clone()
-        if key_points is not None
-        else create_coordinate_diagonal(H, W, is_3d=kwargs.get("is_3d", False)),
+        "keypoints": (
+            key_points.detach().clone()
+            if key_points is not None
+            else create_coordinate_diagonal(H, W, is_3d=kwargs.get("is_3d", False))
+        ),
         "mode": mode,
         "output_size": out_shape,
         **kwargs,

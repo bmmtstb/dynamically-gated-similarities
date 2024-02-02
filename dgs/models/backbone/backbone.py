@@ -17,6 +17,7 @@ Every Model should have capabilities to choose between different operation-modes
 
 Defaults to use AlphaPose as Backbone but should be extendable to use others.
 """
+
 from abc import abstractmethod
 
 from dgs.models.module import BaseModule

@@ -3,6 +3,7 @@ Default Datasets for pose-based data.
 
 TorchreidPoseDataset and TorchreidPoseDataManager are custom models for torchreid.
 """
+
 from typing import Callable, Type, Union
 
 import torch

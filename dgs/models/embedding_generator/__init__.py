@@ -7,6 +7,7 @@ This vector is then used to compare it to other embedding vectors using a simila
 The vector of one specified target should be close to other generated vectors of this target,
 but as far as possible from independent targets.
 """
+
 from typing import Type
 
 from dgs.utils.exceptions import InvalidParameterException
@@ -15,7 +16,8 @@ from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from .torchreid import TorchreidModel
 
 EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
-    "torchreid": TorchreidModel,
+    "TorchReID": TorchreidModel,
+    "TorchreidModel": TorchreidModel,
     "LinearPBEG": LinearPBEG,
     "KeyPointConvolutionPBEG": KeyPointConvolutionPBEG,
 }
@@ -24,5 +26,7 @@ EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
 def get_embedding_generator(name: str) -> Type[EmbeddingGeneratorModule]:
     """Given the name of one dataset, return the type."""
     if name not in EMBEDDING_GENERATORS:
-        raise InvalidParameterException(f"Unknown embedding generator with name: {name}.")
+        raise InvalidParameterException(
+            f"Unknown embedding generator with name: {name}. Allowed names: {EMBEDDING_GENERATORS.keys()}"
+        )
     return EMBEDDING_GENERATORS[name]

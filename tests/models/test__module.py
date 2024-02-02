@@ -127,7 +127,9 @@ class TestBaseModule(unittest.TestCase):
             ("all", "all", True),
         ]:
             with self.subTest(msg=f"Printing prio: {prio}, Module prio {module_prio}"):
-                self.assertEqual(BaseModule(config=_def_repl("print_prio", module_prio), path=[]).print(prio), allowed)
+                self.assertEqual(
+                    BaseModule(config=_def_repl("print_prio", module_prio), path=[]).can_print(prio), allowed
+                )
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_print_errors(self):
@@ -140,7 +142,7 @@ class TestBaseModule(unittest.TestCase):
         ]:
             with self.subTest(msg=f"Printing prio: {prio}, Module prio {module_prio}"):
                 with self.assertRaises(ValueError) as context:
-                    BaseModule(config=_def_repl("print_prio", module_prio), path=[]).print(prio)
+                    BaseModule(config=_def_repl("print_prio", module_prio), path=[]).can_print(prio)
                 self.assertTrue(err_str in str(context.exception))
 
     @patch.multiple(BaseModule, __abstractmethods__=set())

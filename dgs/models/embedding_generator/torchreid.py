@@ -1,6 +1,7 @@
 """
 Visual Re-ID module using the torchreid package.
 """
+
 import warnings
 
 import torch
@@ -32,16 +33,39 @@ with warnings.catch_warnings():
 torchreid_validations: Config = {"model_name": ["str", ("in", torchreid_models.keys())]}
 
 
-class TorchreidModel(EmbeddingGeneratorModule):
+class TorchreidModel(EmbeddingGeneratorModule, nn.Module):
     """Given image crops, generate Re-ID embedding using the torchreid package.
 
     Model can use the default pretrained weights or custom weights.
+
+    Params
+    ------
+
+    model_name (str):
+        The name of the torchreid model used.
+        Has to be one of ``~torchreid.models.__model_factory.keys()``.
+
+    weights (Union[str, FilePath], optional):
+        A path to the model weights or the string 'pretrained' for the default pretrained torchreid model.
+        Default 'pretrained'.
+
+    Important Inherited Params
+    --------------------------
+
+    embedding_size (int):
+        The size of the embedding.
+        This size does not necessarily have to match other embedding sizes.
+    nof_classes (int):
+        The number of classes in the dataset.
+        Used during training to predict the id.
+
     """
 
     def __init__(self, config, path):
-        super().__init__(config=config, path=path)
+        nn.Module.__init__(self)
+        EmbeddingGeneratorModule.__init__(self, config=config, path=path)
 
-        self.model_weights = self.params["weights"]
+        self.model_weights = self.params.get("weights", "pretrained")
         self.is_pretrained = self.model_weights == "pretrained"
         self.model = self._init_model()
 
@@ -49,7 +73,7 @@ class TorchreidModel(EmbeddingGeneratorModule):
         """Initialize torchreid model"""
         m = build_model(
             name=self.params["model_name"],
-            num_classes=self.embedding_size,
+            num_classes=self.nof_classes,
             pretrained=self.is_pretrained,
             use_gpu=self.device.type == "cuda",
             loss="triplet",  # has to be triplet for torchreid models to return embeddings and ids
@@ -83,6 +107,7 @@ class TorchreidModel(EmbeddingGeneratorModule):
             # Therefore, only one return value means that only the embeddings are returned
             embeddings = r
             if hasattr(self.model, "classifier"):
-                return embeddings, self.model.classifier(embeddings)
+                ids = self.model.classifier(embeddings)
+                return embeddings, ids
             raise NotImplementedError("Only the embeddings are returned and there is no classifier in torchreid model.")
         raise NotImplementedError("Unknown torchreid model output.")

@@ -3,6 +3,7 @@ Modules for loading data, including datasets and data loaders.
 The modules are a combination of my custom BaseModule and a regular torch Dataset.
 Additionally, I implemented a Dataset for the |PT21|_ dataset that can be loaded within |torchreid|_.
 """
+
 from typing import Type
 
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset

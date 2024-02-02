@@ -10,6 +10,7 @@ This file contains multiple models with different goals:
 - AlphaPoseFullBackbone: (Does not fully work atm!)
     Full AP backbone, similar to running it from command line, but uses config instead.
 """
+
 import os
 import sys
 import time
@@ -302,7 +303,8 @@ class AlphaPoseFullBackbone(BackboneModule):
             self.det_loader.terminate()
             while self.writer.running():
                 time.sleep(0.5)
-                self.print("all",
+                self.print(
+                    "all",
                     f"==> Rendering remaining {self.writer.count()} images in the queue...\r",
                 )
             self.writer.stop()

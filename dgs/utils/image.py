@@ -41,15 +41,19 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
         To be able to return a single torch tensor while loading multiple images,
         make sure that either the images have the same shape, or ``force_reshape`` is set to ``True``.
 
+    Notes:
+        To be able to compute gradients, the dtype has to be ``torch.float32``.
+        Therefore, the ``dtype`` and ``requires_grad`` kwargs are partially correlated.
+
     Args:
         filepath: Single string or list of absolute or local filepaths to the image.
         force_reshape: Whether to reshape the image(s) to a target shape.
             The mode and size can be specified in the kwargs.
 
     Keyword Args:
-        dtype: The dtype of the image, most likely uint8, byte, or float. Default torch.uint8
+        dtype: The dtype of the image, most likely one of uint8, byte, or float32. Default torch.float32.
         device: Device the image should be on. Default "cpu"
-        requires_grad: Whether image tensor should include gradient. Default False
+        requires_grad: Whether image tensor should include gradient. Default True.
         read_mode: Which ImageReadMode to use while loading the images.
         mode: If ``force_reshape`` is true, defines the resize mode, has to be in the modes of
             :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
@@ -83,9 +87,9 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
 
     # Make sure to extract kwargs for tv_tensors.Image creation before sending kwargs through the custom Compose.
     image_kwargs = {
-        "dtype": kwargs.pop("dtype", torch.uint8),
+        "dtype": kwargs.pop("dtype", torch.float32),
         "device": kwargs.pop("device", "cpu"),
-        "requires_grad": kwargs.pop("requires_grad", None),
+        "requires_grad": kwargs.pop("requires_grad", True),
     }
 
     # load images
@@ -96,7 +100,7 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
         transform = tvt.Compose([CustomToAspect(), CustomResize()])
         new_images: list[TVImage] = []
         mode: str = kwargs.pop("mode", "zero-pad")
-        output_size: ImgShape = kwargs.pop("output_size", (256, 256))
+        output_size: ImgShape = kwargs.pop("output_size", (512, 512))
 
         for img in images:
             data = {

@@ -114,7 +114,7 @@ class TestPoseBased(unittest.TestCase):
                 {
                     "nof_classes": 3,
                     "hidden_layers_kp": [],
-                    "hidden_layers_all": [],
+                    "hidden_layers": [],
                     "joint_shape": (21, 2),
                     "nof_kernels": 10,
                     "embedding_size": 4,
@@ -126,7 +126,7 @@ class TestPoseBased(unittest.TestCase):
                 {
                     "nof_classes": 200,
                     "hidden_layers_kp": [],
-                    "hidden_layers_all": [15, 12, 11],
+                    "hidden_layers": [15, 12, 11],
                     "joint_shape": (17, 2),
                     "bias": False,
                     "embedding_size": 13,
@@ -138,7 +138,7 @@ class TestPoseBased(unittest.TestCase):
                 {
                     "nof_classes": 17,
                     "hidden_layers_kp": [15],
-                    "hidden_layers_all": [],
+                    "hidden_layers": [],
                     "joint_shape": (21, 2),
                     "nof_kernels": 10,
                     "bias": True,
@@ -151,7 +151,7 @@ class TestPoseBased(unittest.TestCase):
                 {
                     "nof_classes": 17,
                     "hidden_layers_kp": [15, 11],
-                    "hidden_layers_all": [15, 11],
+                    "hidden_layers": [15, 11],
                     "joint_shape": (21, 2),
                     "nof_kernels": 10,
                     "embedding_size": 4,

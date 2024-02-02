@@ -48,6 +48,7 @@ With velocity scores, a parameter reduction is obtained with :math:`E_P \lt J \c
 
 :: _torchreid models: https://kaiyangzhou.github.io/deep-person-reid/pkg/models.html#reid-specific-models
 """
+
 from abc import abstractmethod
 
 import torch

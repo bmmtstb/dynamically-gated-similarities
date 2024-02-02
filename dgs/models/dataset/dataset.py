@@ -1,6 +1,7 @@
 """
 Module for handling data loading and preprocessing using torch Datasets.
 """
+
 import os
 from abc import abstractmethod
 from typing import Callable, Type, Union
@@ -18,9 +19,10 @@ from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {
+    "dataset_path": ["str", ("or", (("folder exists in project",), ("folder exists",)))],
     "crop_mode": ["optional", "str", ("in", CustomToAspect.modes)],
     "crop_size": ["optional", ("instance", tuple), ("len", 2), lambda x: x[0] > 0 and x[1] > 0],
-    "dataset_path": ["str", ("or", (("folder exists in project",), ("folder exists",)))],
+    "requires_grad": ["optional", "bool"],
 }
 
 
@@ -51,8 +53,8 @@ def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> 
     """
     bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
     canvas_size = batch[0].canvas_size
-    if any(bb.format != bb_format or bb.canvas_size != canvas_size for bb in batch):
-        raise ValueError("Canvas size and format has to be equal for all bounding boxes in a batch.")
+    # if any(bb.format != bb_format or bb.canvas_size != canvas_size for bb in batch):
+    #     raise ValueError("Canvas size and format has to be equal for all bounding boxes in a batch.")
 
     return tv_tensors.BoundingBoxes(
         torch.cat(batch),
@@ -68,7 +70,7 @@ def collate_tvt_tensors(
     return tv_tensors.wrap(torch.cat(batch), like=batch[0])
 
 
-def collate_data_samples(batch: list[DataSample]) -> DataSample:
+def collate_data_samples(batch: Union[list[DataSample], DataSample]) -> DataSample:
     """Collate function for multiple DataSamples, to flatten / squeeze the shapes and keep the tv_tensors classes.
 
     The default collate function messes up a few of the dimensions and removes custom tv_tensor classes.
@@ -81,6 +83,9 @@ def collate_data_samples(batch: list[DataSample]) -> DataSample:
     Returns:
         One single `DataSample` object, containing a batch of samples or bounding boxes.
     """
+    if isinstance(batch, DataSample):
+        return batch
+
     custom_collate_map: dict[Type, Callable] = default_collate_fn_map.copy()
     custom_collate_map.update(
         {
@@ -130,7 +135,22 @@ class BaseDataset(BaseModule, TorchDataset):
     dataset_path (FilePath):
         Path to the directory of the dataset.
         The value has to either be a local project path, or a valid absolute path.
-
+    force_img_reshape (bool, optional):
+        Whether to accept that images in one folder might have different shapes.
+        Default False.
+    image_mode (str, optional):
+        Only applicable if ``force_img_reshape`` is True.
+        The cropping mode used for loading the full images when calling :func:``self.get_image_crop``.
+        Value has to be in CustomToAspect.modes.
+        Default "zero-pad".
+    image_size (tuple[int, int], optional):
+        Only applicable if ``force_img_reshape`` is True.
+        The size that the original images should have.
+        Default (1024, 1024).
+    crops_folder (FilePath, optional):
+        A path (global, project local, or dataset local), containing the previously cropped images.
+        The structure is dataset dependent, and might not be necessary for some datasets.
+        Default is not set, and the crops are generated live.
     crop_mode (str, optional):
         The mode for image cropping used when calling :func:``self.get_image_crop``.
         Value has to be in CustomToAspect.modes.
@@ -138,17 +158,24 @@ class BaseDataset(BaseModule, TorchDataset):
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
         Default (256, 256).
+    requires_grad (bool, optional):
+        Whether the loaded data should require gradients.
+        Default True.
     """
 
     data: list
     """Arbitrary data, which will be converted using :meth:`self.arbitrary_to_ds()`"""
 
-    def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
-        """Has to override call from BaseModule"""
-        raise NotImplementedError("Dataset can't be called.")
+    rg: bool
+    """Whether the loaded data is required to have gradients or not."""
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
+        self.rg = self.params.get("requires_grad", True)
+
+    def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
+        """Has to override call from BaseModule"""
+        raise NotImplementedError("Dataset can't be called.")
 
     def __len__(self) -> int:
         """Override len() functionality for torch.
@@ -168,7 +195,7 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         sample: DataSample = self.arbitrary_to_ds(self.data[idx]).to(self.device)
         if "image_crop" not in sample:
-            self.get_image_crop(sample)
+            self.get_image_crops(sample)
         return sample
 
     @abstractmethod
@@ -181,14 +208,36 @@ class BaseDataset(BaseModule, TorchDataset):
         """Given a single arbitrary data sample, convert it to a DataSample object."""
         raise NotImplementedError
 
-    def get_image_crop(self, ds: DataSample) -> None:
-        """Add image crop and local key points to given sample. Works for single or batched DataSample obejcts.
-
+    def get_image_crops(self, ds: DataSample) -> None:
+        """Add the image crops and local key points to a given sample.
+        Works for single or batched DataSample objects.
         Modifies the given DataSample in place.
+
+        Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """
+        # check whether precomputed image crops exist
+        if "crops_folder" in self.params:
+            ds.image_crop = load_image(ds.crop_path, requires_grad=self.rg, dtype=torch.float32)
+            ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path])
+            ds.keypoints_local.requires_grad = self.rg
+            return
+
+        # no crop folder path given, compute the crops
+        if self.can_print("debug"):
+            print("computing image crops")
         ds.to(self.device)
 
-        ds.image = load_image(ds.filepath)
+        if self.params.get("force_img_reshape", False):
+            ds.image = load_image(
+                ds.filepath,
+                force_reshape=True,
+                mode=self.params.get("image_mode", "zero-pad"),
+                output_size=self.params.get("image_size", (1024, 1024)),
+                device=ds.device,
+                requires_grad=False,
+            )
+        else:
+            ds.image = load_image(ds.filepath, device=ds.device, requires_grad=False)
 
         structured_input = {
             "image": ds.image,
@@ -198,8 +247,12 @@ class BaseDataset(BaseModule, TorchDataset):
             "mode": self.params.get("crop_mode", "zero-pad"),
         }
         new_sample = self.transform_crop_resize()(structured_input)
+
         ds.image_crop = new_sample["image"]
+        ds.image_crop.requires_grad = self.rg
+
         ds.keypoints_local = new_sample["keypoints"]
+        ds.keypoints_local.requires_grad = self.rg
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:

@@ -1,6 +1,7 @@
 """
 Different pose based embedding generators.
 """
+
 from typing import Union
 
 import torch
@@ -12,19 +13,38 @@ from dgs.models.embedding_generator.embedding_generator import EmbeddingGenerato
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
-lpbe_validations: Validations = {
-    "hidden_layers": [("instance", (list, tuple, None))],
-    "joint_shape": [("isinstance", (list, tuple)), ("len", 2), lambda tup: all(i > 0 for i in tup)],
+pbeg_validations: Validations = {
+    "joint_shape": [("instance", (list, tuple)), ("len", 2), lambda tup: all(i > 0 for i in tup)],
     "bbox_format": [
+        "optional",
         (
             "or",
             (
                 ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
                 ("isinstance", tv_tensors.BoundingBoxFormat),
             ),
-        )
+        ),
     ],
     "bias": ["optional", ("isinstance", bool)],
+    "hidden_layers": ["optional", ("instance", (list, tuple, None))],
+    "hidden_layers_kp": ["optional", ("instance", (list, tuple, None))],
+    "nof_kernels": ["optional", "int", ("gt", 0)],
+}
+
+lpbe_validations: Validations = {
+    "joint_shape": [("instance", (list, tuple)), ("len", 2), lambda tup: all(i > 0 for i in tup)],
+    "bbox_format": [
+        "optional",
+        (
+            "or",
+            (
+                ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
+                ("isinstance", tv_tensors.BoundingBoxFormat),
+            ),
+        ),
+    ],
+    "bias": ["optional", ("isinstance", bool)],
+    "hidden_layers": ["optional", ("instance", (list, tuple, None))],
     "nof_kernels": ["optional", "int", ("gt", 0)],
 }
 
@@ -77,22 +97,28 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
     Params
     ------
 
-    hidden_layers_kp: (Union[list[int], tuple[int, ...], None])
+    joint_shape: (tuple[int, int])
+        Number of joints and number of dimensions of the joints as tuple.
+
+    hidden_layers_kp: (Union[list[int], tuple[int, ...], None], optional)
         Respective size of every hidden layer after the convolution of the key points.
         The value can be None to use only one single convolution layer to cast the inputs before adding the bboxes.
-    hidden_layers: (Union[list[int], tuple[int, ...], None])
+        Default None.
+    hidden_layers: (Union[list[int], tuple[int, ...], None], optional)
         Respective size of every hidden layer after adding the bounding boxes.
         The value can be None to use only one single linear NN-layer
         to cast the convoluted key points and bboxes to the outputs.
-    joint_shape: (tuple[int, int])
-        Number of joints and number of dimensions of the joints as tuple.
-    bias: (bool, optional, default=True)
+        Default None.
+    bias: (bool, optional)
         Whether to use a bias term in the linear layers.
-    nof_kernels: (int, optional, default=5)
+        Default True.
+    nof_kernels: (int, optional)
         Define the number of kernels to use for convolution.
-    bbox_format: (Union[str, tv_tensors.BoundingBoxFormat], optional, default='XYWH')
+        Default 5.
+    bbox_format: (Union[str, tv_tensors.BoundingBoxFormat], optional)
         The format of the bounding box coordinates.
         This will have influence on the results.
+        Default 'XYWH'.
 
     Important Inherited Params
     --------------------------
@@ -106,7 +132,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         nn.Module.__init__(self)
         EmbeddingGeneratorModule.__init__(self, config, path)
 
-        self.validate_params(lpbe_validations)
+        self.validate_params(pbeg_validations)
 
         J, j_dim = self.params.get("joint_shape")
         self.nof_kernels = self.params.get("nof_kernels", 5)
@@ -282,7 +308,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         """
         if len(data) == 1:
             # expect that input is already flattened
-            if self.print("debug"):
+            if self.can_print("debug"):
                 print(
                     "In the forward call of the LinearPBEG module data only contains one single value. "
                     "It is expected that this value is the flattened and concatenated key points and pose tensor."

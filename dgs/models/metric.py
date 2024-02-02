@@ -10,8 +10,9 @@ from torch import nn
 from dgs.utils.types import Metric
 
 
+@torch.no_grad()
 def compute_cmc(
-    distmat: torch.Tensor, labels: torch.IntTensor, predictions: torch.IntTensor, ranks: list[int]
+    distmat: torch.Tensor, labels: torch.LongTensor, predictions: torch.LongTensor, ranks: list[int]
 ) -> dict[int, float]:
     """
     Single-gallery-shot means that each gallery identity has only one instance in the query.
@@ -27,8 +28,8 @@ def compute_cmc(
     Args:
         distmat: FloatTensor of shape ``[n_query x n_gallery]`` containing the distances between every item from
             gallery and query.
-        labels: IntTensor of shape ``[n_query (x 1)]`` containing the ground truth IDs.
-        predictions: IntTensor of shape ``[n_gallery (x 1)]``, containing this models' ID predictions.
+        labels: LongTensor of shape ``[n_query (x 1)]`` containing the ground truth IDs.
+        predictions: LongTensor of shape ``[n_gallery (x 1)]``, containing this models' ID predictions.
         ranks: List of integers containing the k values used for the evaluation
 
 
@@ -40,10 +41,16 @@ def compute_cmc(
 
     cmcs: dict[int, float] = {}
 
+    labels = labels.long()
+    predictions = predictions.long()
+
+    if labels.ndim == 1:
+        labels = labels.unsqueeze(-1)
+
     # sort by distance, lowest to highest
     indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
     # with predictions[indices] := sorted predictions
-    matches = predictions[indices] == labels.unsqueeze(-1)  # BoolTensor [n_query x n_gallery]
+    matches = predictions[indices] == labels  # BoolTensor [n_query x n_gallery]
 
     for rank in ranks:
         orig_rank = rank
@@ -60,6 +67,26 @@ def compute_cmc(
     return cmcs
 
 
+# @torch.compile
+def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: int, eps: float) -> torch.Tensor:
+    """See https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908"""
+    # get normalization value
+    t1_div = torch.linalg.vector_norm(input1, dim=dim, keepdims=True)
+    t2_div = torch.linalg.vector_norm(input2, dim=dim, keepdims=True)
+
+    t1_div = t1_div.clone()
+    t2_div = t2_div.clone()
+    with torch.no_grad():
+        t1_div.clamp_(eps)
+        t2_div.clamp_(eps)
+
+    # normalize, avoiding division by 0
+    t1_norm = input1 / t1_div
+    t2_norm = input2 / t2_div
+
+    return torch.mm(t1_norm, t2_norm.T)
+
+
 def _validate_metric_inputs(input1: torch.Tensor, input2: torch.Tensor) -> None:
     """Metrics should be handed two tensors where the second dimension matches.
 
@@ -71,13 +98,6 @@ def _validate_metric_inputs(input1: torch.Tensor, input2: torch.Tensor) -> None:
             f"Inputs must be two-dimensional and the size of the second dimension must match. "
             f"got: {input1.shape} and {input2.shape}."
         )
-
-
-def _expand_metric_inputs(input1: torch.Tensor, input2: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    """Given two matrices with shapes ``[a x E]`` and ``[b x E]``, expand them both to have shape ``[a x b x E]``"""
-    a, b = input1.shape[0], input2.shape[0]
-    # make sure i1 and i2 have shape [a,b,E] so we can compute every value of a against every of b
-    return input1.unsqueeze_(1).expand(a, b, -1), input2.unsqueeze(0).expand(a, b, -1)
 
 
 class EuclideanSquareMetric(Metric):
@@ -95,9 +115,8 @@ class EuclideanSquareMetric(Metric):
             tensor of shape ``[a x b]`` containing the distances.
         """
         _validate_metric_inputs(input1, input2)
-        input1, input2 = _expand_metric_inputs(input1, input2)
 
-        return torch.sub(input1, input2).square().sum(dim=-1)
+        return torch.cdist(input1, input2, p=2).square()
 
 
 class EuclideanDistanceMetric(Metric):
@@ -115,9 +134,8 @@ class EuclideanDistanceMetric(Metric):
             tensor of shape ``[a x b]`` containing the distances.
         """
         _validate_metric_inputs(input1, input2)
-        input1, input2 = _expand_metric_inputs(input1, input2)
 
-        return torch.sub(input1, input2).square().sum(dim=-1).sqrt()
+        return torch.cdist(input1, input2, p=2)
 
 
 class CosineSimilarityMetric(Metric):
@@ -133,10 +151,13 @@ class CosineSimilarityMetric(Metric):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cos = nn.CosineSimilarity(dim=-1)
+        self.dim = -1
+        self.eps = 1e-5
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
-        """
+        """Due to the sheer size of the |PT21| dataset,
+        :func:`~torch.nn.CosineSimilarity` does not work due to memory issues.
+        See `this issue <https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908>_` for more details.
 
         Args:
             input1: tensor of shape ``[a x E]``
@@ -144,11 +165,13 @@ class CosineSimilarityMetric(Metric):
 
         Returns:
             tensor of shape ``[a x b]`` containing the distances.
+
+        References:
+            https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908
         """
         _validate_metric_inputs(input1, input2)
-        input1, input2 = _expand_metric_inputs(input1, input2)
 
-        return self.cos(input1, input2)
+        return custom_cosine_similarity(input1, input2, self.dim, self.eps)
 
 
 class CosineDistanceMetric(Metric):
@@ -166,7 +189,8 @@ class CosineDistanceMetric(Metric):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cos = nn.CosineSimilarity(dim=-1)
+        self.dim = -1
+        self.eps = 1e-5
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         """
@@ -179,9 +203,8 @@ class CosineDistanceMetric(Metric):
             tensor of shape ``[a x b]`` containing the distances.
         """
         _validate_metric_inputs(input1, input2)
-        input1, input2 = _expand_metric_inputs(input1, input2)
 
-        cs = self.cos(input1, input2)
+        cs = custom_cosine_similarity(input1, input2, self.dim, self.eps)
         return torch.ones_like(cs) - cs
 
 
@@ -223,7 +246,7 @@ def register_metric(metric_name: str, metric: Type[Metric]) -> None:
     """
     if metric_name in METRICS:
         raise ValueError(
-            f"The given name '{metric_name}' already exists, " f"please choose another name excluding {METRICS.keys()}."
+            f"The given metric '{metric_name}' already exists, please choose another name excluding {METRICS.keys()}."
         )
     if not (callable(metric) and isinstance(metric, type) and issubclass(metric, Metric)):
         raise ValueError(f"The given metric function is no callable or no subclass of Metric. Got: {metric}")

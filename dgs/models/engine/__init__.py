@@ -1,14 +1,15 @@
 """
 Modules for running, training and testing multiple other modules.
 """
+
 from typing import Type
 
 from .engine import EngineModule
-from .visual_embedding import VisualEmbeddingEngine
+from .visual_sim_engine import VisualSimilarityEngine
 from ...utils.exceptions import InvalidParameterException
 
 ENGINES: dict[str, Type[EngineModule]] = {
-    "VisualEmbeddingEngine": VisualEmbeddingEngine,
+    "VisualSimilarityEngine": VisualSimilarityEngine,
 }
 
 

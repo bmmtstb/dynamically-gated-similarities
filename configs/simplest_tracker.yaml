@@ -10,10 +10,10 @@ training: off
 dataset:
     module_name: "PoseTrack21"
 
-visual_embedding_generator:
+embedding_generator_visual:
     module_name: "torchreid"
 
-pose_embedding_generator:
+embedding_generator_pose:
     module_name: "LinearPBEG"
 
 pose_warping_module:
