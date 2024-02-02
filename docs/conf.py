@@ -12,6 +12,7 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import os
 import sys
+from importlib.metadata import PackageNotFoundError, version as ilib_version
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -23,10 +24,11 @@ project = "Tracking via Dynamically Gated Similarities"
 copyright = "2023, Martin Steinborn"
 author = "Martin Steinborn"
 
-version_file = "../dgs/__init__.py"
-with open(version_file, "r") as f:
-    exec(compile(f.read(), version_file, "exec"))
-__version__ = locals()["__version__"]
+try:
+    __version__ = ilib_version("dynamically_gated_similarities")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
 # The short X.Y version
 version = __version__[: __version__.find(".", __version__.find(".") + 1)]
 # The full version, including alpha/beta/rc tags

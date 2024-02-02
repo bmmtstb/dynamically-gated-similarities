@@ -1,6 +1,7 @@
 """
 Functions to load and manage torch optimizers.
 """
+
 from typing import Type, Union
 
 from torch import optim

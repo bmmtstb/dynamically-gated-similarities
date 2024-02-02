@@ -1,11 +1,13 @@
 """
 Methods for handling the computation of distances and other metrics.
 """
+
 import warnings
 from typing import Type, Union
 
 import torch
 from torch import nn
+from torch.linalg import vector_norm
 
 from dgs.utils.types import Metric
 
@@ -71,8 +73,8 @@ def compute_cmc(
 def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: int, eps: float) -> torch.Tensor:
     """See https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908"""
     # get normalization value
-    t1_div = torch.linalg.vector_norm(input1, dim=dim, keepdims=True)
-    t2_div = torch.linalg.vector_norm(input2, dim=dim, keepdims=True)
+    t1_div = vector_norm(input1, dim=dim, keepdim=True)  # pylint: disable=not-callable
+    t2_div = vector_norm(input2, dim=dim, keepdim=True)  # pylint: disable=not-callable
 
     t1_div = t1_div.clone()
     t2_div = t2_div.clone()

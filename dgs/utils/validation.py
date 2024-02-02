@@ -1,6 +1,7 @@
 """
 Utilities for validating recurring data types.
 """
+
 import os
 from collections.abc import Iterable, Sized
 from typing import Union
@@ -30,6 +31,7 @@ VALIDATIONS: dict[str, Validator] = {
     "callable": (lambda x, _: callable(x)),
     "instance": isinstance,  # alias
     "isinstance": isinstance,
+    "type": (lambda x, d: isinstance(d, type) and isinstance(x, d)),
     "iterable": (lambda x, _: isinstance(x, Iterable)),
     "sized": (lambda x, _: isinstance(x, Sized)),
     # number

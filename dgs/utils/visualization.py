@@ -6,6 +6,7 @@ For pytorch, torchvision and cv2 image descriptions, see the :ref:`image file de
 Matplotlib uses a different order for the images: `[B x H x W x C]`.
 At least, the channel for matplotlib is RGB too.
 """
+
 from typing import Union
 
 import numpy as np

@@ -1,6 +1,7 @@
 """
 definitions and helpers for pose-state(s)
 """
+
 from collections import UserDict
 from typing import Union
 

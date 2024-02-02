@@ -2,6 +2,7 @@
 Tools for handling recurring torch tasks. Mostly taken from the `torchreid package
 <https://kaiyangzhou.github.io/deep-person-reid/_modules/torchreid/utils/torchtools.html#load_pretrained_weights>`_
 """
+
 import os
 import pickle
 import shutil

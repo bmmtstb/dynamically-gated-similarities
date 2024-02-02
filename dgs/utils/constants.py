@@ -1,6 +1,7 @@
 """
 Predefined constants that will not change and might be used at different places.
 """
+
 import os
 
 import torch

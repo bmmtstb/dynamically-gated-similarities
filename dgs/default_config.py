@@ -3,6 +3,7 @@ Definition of default configuration for dynamically gated similarity tracker.
 
 These values are used, iff the given config does not set own values.
 """
+
 import torch
 from easydict import EasyDict
 
@@ -12,7 +13,7 @@ cfg = EasyDict()
 # General #
 # ####### #
 
-# cfg.name = "DEFAULT"  # shouldn't be set, to force user to give it a name
+cfg.name = "DEFAULT"
 cfg.print_prio = "normal"
 cfg.working_memory_size = 30
 

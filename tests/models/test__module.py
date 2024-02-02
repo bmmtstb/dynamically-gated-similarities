@@ -6,9 +6,9 @@ from easydict import EasyDict
 from torch import nn
 
 from dgs.models.module import BaseModule, module_validations as base_module_validation
-from dgs.utils.config import fill_in_defaults, insert_into_config
+from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.types import Config, Device, NodePath
+from dgs.utils.types import Config, Device
 from helper import test_multiple_devices
 
 TEST_CFG: Config = EasyDict(
@@ -49,9 +49,12 @@ class TestBaseModule(unittest.TestCase):
             _def_repl("print_prio", "none"),
             _def_repl("print_prio", "normal"),
             _def_repl("print_prio", "all"),
+            _def_repl("gpus", None),
             _def_repl("gpus", [0, 1, 2]),
             _def_repl("gpus", "0,1,2,3"),
             _def_repl("gpus", ""),
+            _def_repl("num_workers", None),
+            _def_repl("num_workers", 4),
             _def_repl("sp", True),
             _def_repl("sp", False),
             _def_repl("training", True),
@@ -63,12 +66,12 @@ class TestBaseModule(unittest.TestCase):
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_validate_invalid_config(self):
         for cfg, err_str, msg in [
-            (_def_repl("device", "gpu"), "device is not valid. Value is gpu", "gpu invalid should be cuda"),
-            (_def_repl("device", ""), "device is not valid", "empty device"),
-            (_def_repl("device", None), "device is not valid", "None device"),
-            (_def_repl("print_prio", ""), "print_prio is not valid", "empty print priority"),
-            (_def_repl("print_prio", "None"), "print_prio is not valid", "caps not valid"),
-            (_def_repl("print_prio", None), "print_prio is not valid", "None print priority"),
+            (_def_repl("device", "gpu"), "'device' is not valid. Value is 'gpu'", "gpu invalid should be cuda"),
+            (_def_repl("device", ""), "'device' is not valid", "empty device"),
+            (_def_repl("device", None), "'device' is not valid", "None device"),
+            (_def_repl("print_prio", ""), "'print_prio' is not valid", "empty print priority"),
+            (_def_repl("print_prio", "None"), "'print_prio' is not valid", "caps not valid"),
+            (_def_repl("print_prio", None), "'print_prio' is not valid", "None print priority"),
             (_def_repl("gpus", ["0", "1", "2"]), "Used a custom validation", "gpus as list of str"),
         ]:
             with self.subTest(msg=msg):
@@ -78,7 +81,7 @@ class TestBaseModule(unittest.TestCase):
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_validate_params(self):
-        path: NodePath = ["dummy"]
+        path = "dummy"
         for validations, data, valid in [
             ({"T": ["None"]}, {"T": None}, True),
             ({"T": ["optional"]}, {}, True),
@@ -91,7 +94,7 @@ class TestBaseModule(unittest.TestCase):
             ({"T1": ["optional"], "T2": ["optional"], "T3": ["optional"]}, {"T1": "No Number!", "T2": 2}, True),
         ]:
             with self.subTest(msg=f"validations: {validations}, data: {data}"):
-                m = BaseModule(config=insert_into_config(path, data), path=path)
+                m = BaseModule(config=_def_repl(path, data), path=[path])
                 try:
                     m.validate_params(validations)
                     self.assertTrue(valid)
@@ -99,14 +102,14 @@ class TestBaseModule(unittest.TestCase):
                     self.assertFalse(valid)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
-    def test_validate_params(self):
-        path: NodePath = ["dummy"]
+    def test_validate_params_raises(self):
+        path = "dummy"
         for validations, data, exception in [
             ({"T": []}, {"T": None}, ValidationException),
             ({"T": [None]}, {"T": None}, ValidationException),
         ]:
             with self.subTest(msg=f"validations: {validations}, data: {data}, exception: {exception}"):
-                m = BaseModule(config=insert_into_config(path, data), path=path)
+                m = BaseModule(config=_def_repl(path, data), path=[path])
                 with self.assertRaises(exception):
                     m.validate_params(validations)
 
@@ -153,7 +156,9 @@ class TestBaseModule(unittest.TestCase):
             (nn.Linear(10, 2), False),
         ]:
             with self.subTest(msg="module: {}, train: {}".format(module, train)):
-                m = BaseModule(config=fill_in_defaults({"is_training": train, "device": device}), path=[])
+                m = BaseModule(
+                    config=fill_in_defaults({"name": "TestName", "is_training": train, "device": device}), path=[]
+                )
                 self.assertEqual(module.bias.device.type, torch.device("cpu").type)
                 m.configure_torch_module(module, train)
                 self.assertEqual(module.training, train)

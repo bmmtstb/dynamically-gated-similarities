@@ -121,7 +121,6 @@ class EngineModule(BaseModule):
     lr_sched: list[optim.lr_scheduler.LRScheduler]
     """The learning-rate sheduler(s) can be changed by setting ``engine.lr_scheduler = [..., ...]``."""
 
-    @torch.enable_grad
     def __init__(
         self,
         config: Config,

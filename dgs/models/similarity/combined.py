@@ -1,6 +1,7 @@
 """
 Models that combine the results of two or more similarity matrices.
 """
+
 from abc import abstractmethod
 
 import torch

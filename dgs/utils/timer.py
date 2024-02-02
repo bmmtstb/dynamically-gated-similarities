@@ -1,6 +1,7 @@
 """
 Models, functions and helpers for timing operations.
 """
+
 import time
 from collections import UserList
 from datetime import timedelta

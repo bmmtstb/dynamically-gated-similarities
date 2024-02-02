@@ -34,6 +34,9 @@ class VisualSimilarityEngine(EngineModule):
     val_dl: TorchDataLoader
     """The torch DataLoader containing the validation (query) data."""
 
+    # The heart of the project might get a little larger...
+    # pylint: disable=too-many-arguments,too-many-locals
+
     def __init__(
         self,
         config: Config,

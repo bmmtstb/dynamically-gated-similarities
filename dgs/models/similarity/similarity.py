@@ -3,6 +3,7 @@ Abstraction for different similarity functions.
 
 Similarity functions compute a similarity score "likeness" between two equally sized inputs.
 """
+
 from typing import Callable
 
 import torch

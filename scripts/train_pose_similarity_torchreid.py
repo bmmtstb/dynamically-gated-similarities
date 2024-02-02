@@ -10,6 +10,7 @@ Workflow
 #. create DataManager for pose-based data
 
 """
+
 from datetime import date
 from typing import Union
 

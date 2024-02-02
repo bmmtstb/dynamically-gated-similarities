@@ -3,6 +3,7 @@ Util- and helper-functions for handling configuration files and passing down sub
 
 Contains functions for validating configuration and parameter of modules.
 """
+
 from copy import deepcopy
 from typing import Union
 

@@ -1,6 +1,7 @@
 """
 Modules for computing the similarity between two poses.
 """
+
 import torch
 
 from dgs.models.similarity.similarity import SimilarityModule

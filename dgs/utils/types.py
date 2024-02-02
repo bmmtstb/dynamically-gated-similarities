@@ -1,6 +1,7 @@
 """
 definition of regularly used types
 """
+
 from typing import Callable, Union
 
 import torch

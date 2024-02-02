@@ -2,6 +2,7 @@
 Module to warp a given pose, pose-state -
 or more generally to predict the next pose of a person given previous time steps.
 """
+
 from typing import Type
 
 from dgs.utils.exceptions import InvalidParameterException

@@ -14,6 +14,7 @@ The size / shape of an image is given as tuple (and sometimes list) of ints in t
 RGB Images in cv2 have a shape of ``[h x w x C]`` and the channels are in order GBR.
 Grayscale Images in cv2 have a shape of ``[h x w]``.
 """
+
 from typing import Iterable, Union
 
 import torch

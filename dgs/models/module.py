@@ -1,6 +1,7 @@
 """
 Base model class as lowest building block for dynamic modules
 """
+
 import inspect
 from abc import ABC, abstractmethod
 from functools import wraps
@@ -17,7 +18,7 @@ from dgs.utils.validation import validate_value
 module_validations: Validations = {
     "name": ["str", ("longer", 2)],
     "print_prio": [("in", PRINT_PRIORITY)],
-    "device": ["str", ("or", (("in", ["cuda", "cpu"]), ("instance", torch.device)))],
+    "device": [("or", (("in", ["cuda", "cpu"]), ("type", torch.device)))],
     "gpus": ["optional", lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
     "num_workers": ["optional", "int", ("gte", 0)],
     "sp": [("instance", bool)],
@@ -97,7 +98,7 @@ class BaseModule(ABC):
     """
 
     @enable_keyboard_interrupt
-    def __init__(self, config: Config, path: NodePath, validate_base: bool = False):
+    def __init__(self, config: Config, path: NodePath):
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
         self._path: NodePath = path
@@ -106,16 +107,13 @@ class BaseModule(ABC):
         if not self.config["gpus"]:
             self.config["gpus"] = [-1]
         elif isinstance(self.config["gpus"], str):
-            self.config["gpus"] = (
-                [int(i) for i in self.config["gpus"].split(",")] if torch.cuda.device_count() >= 1 else [-1]
-            )
+            self.config["gpus"] = [int(i) for i in self.config["gpus"].split(",")]
+
         # set default value of num_workers
         if not self.config["num_workers"]:
             self.config["num_workers"] = 0
 
-        # validate config when calling BaseModule class and flag is True
-        if validate_base:
-            self.validate_params(module_validations, "config")
+        self.validate_params(module_validations, "config")
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
         """Given per key validations, validate this module's parameters.
@@ -173,7 +171,9 @@ class BaseModule(ABC):
             if param_name not in getattr(self, attrib_name):
                 if "optional" in list_of_validations:
                     continue  # value is optional and does not exist, skip validation
-                raise InvalidParameterException(f"{param_name} is expected to be in module {self.__class__.__name__}")
+                raise InvalidParameterException(
+                    f"'{param_name}' is expected to be in module '{self.__class__.__name__}'"
+                )
 
             # it is now safe to get the value
             value = getattr(self, attrib_name)[param_name]
@@ -202,13 +202,13 @@ class BaseModule(ABC):
                     if validate_value(value=value, data=data, validation=validation_name):
                         continue
                     raise InvalidParameterException(
-                        f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
-                        f"Value is {value} and is expected to have validation(s) {list_of_validations}."
+                        f"In module '{self.__class__.__name__}', parameter '{param_name}' is not valid. "
+                        f"Value is '{value}' and is expected to have validation(s) '{list_of_validations}'."
                     )
                 # no other case was true
                 raise ValidationException(
-                    f"Validation is expected to be callable or tuple, but is {type(validation)}. "
-                    f"Current module: {self.__class__.__name__}, Parameter: {param_name}"
+                    f"Validation is expected to be callable or tuple, but is '{type(validation)}'. "
+                    f"Current module: '{self.__class__.__name__}', Parameter: '{param_name}'"
                 )
 
     @abstractmethod
