@@ -61,9 +61,9 @@ branch = true
 data_file = ".coverage"
 source = ["dgs"]
 omit = [
-    "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
     "*/utils/torchtools.py",  # copied from torchreid
-    "tracker_api.py",  # will only contain default tracker which cant really be tested without data
+    "tracker_api.py",  # will only contain default tracker which can't really be tested without data
+    "visualization.py",  # printing is hard to test
 ]
 
 [tool.coverage.paths]
@@ -75,7 +75,6 @@ skip_covered = true
 skip_empty = true
 ignore_errors = true
 omit = [# files
-    "*/backbone/*", # fixme either remove backbone entirely or get it fully working...
     "*/utils/torchtools.py",  # copied from torchreid
 ]
 # Regexes for lines to exclude from consideration

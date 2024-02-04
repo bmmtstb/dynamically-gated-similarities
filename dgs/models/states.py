@@ -261,7 +261,8 @@ class DataSample(UserDict):
         The heatmap of this bounding box with a shape of shape ``[B x J x h x w]``.
 
     image (tv_tensor.Image, optional)
-        The original image, resized to the respective shape of the backbone input. Shape ``[B x C x H x W]``
+        The original image, resized to the respective shape of the key point prediction model input.
+        Shape ``[B x C x H x W]``
 
     image_crop (tv_tensor.Image, optional)
         The content of the original image cropped using the bbox. shape ``[B x C x h x w]``
