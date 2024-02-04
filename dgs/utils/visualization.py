@@ -7,6 +7,8 @@ Matplotlib uses a different order for the images: `[B x H x W x C]`.
 At least, the channel for matplotlib is RGB too.
 """
 
+# pylint: skip-file
+
 from typing import Union
 
 import numpy as np

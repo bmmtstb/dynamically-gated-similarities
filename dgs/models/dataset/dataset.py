@@ -159,7 +159,7 @@ class BaseDataset(BaseModule, TorchDataset):
         The size, the resized image should have.
         Default (256, 256).
     requires_grad (bool, optional):
-        Whether the loaded data should require gradients.
+        Whether some of the loaded data should require gradients.
         Default True.
     """
 
@@ -186,12 +186,15 @@ class BaseDataset(BaseModule, TorchDataset):
 
     def __getitem__(self, idx: int) -> DataSample:
         """Retrieve data at index from given dataset.
+        Should load / precompute the images from given filepaths if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds()` to obtain the data.
 
         Args:
             idx: index of the dataset object. Is a reference to the same object as len().
 
         Returns:
-            The pre-computed backbone outputs.
+            The DataSample containing all the data of this index.
         """
         sample: DataSample = self.arbitrary_to_ds(self.data[idx]).to(self.device)
         if "image_crop" not in sample:

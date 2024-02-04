@@ -45,6 +45,8 @@ If you want to train your own models, make sure to check out the _`dataset insta
 AlphaPose Backbone
 ~~~~~~~~~~~~~~~~~~
 
+WIP: Currently inactive!
+
 If you are planning on using the default AlphaPose Backend,
 follow the _`models installation guide <ap install models>` over at AlphaPose.
 And yes, these files have to be inserted into the submodule structure in

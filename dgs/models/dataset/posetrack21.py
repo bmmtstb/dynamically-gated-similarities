@@ -476,7 +476,12 @@ class PoseTrack21JSON(BaseDataset):
             validate=False,  # This is given PT21 data, no need to validate...
             filepath=tuple(self.map_img_id_path[self.data[i]["image_id"]] for i in indices),
             bbox=tv_tensors.BoundingBoxes(
-                stack_key("bbox"), format="XYWH", canvas_size=self.img_shape, device=self.device, requires_grad=self.rg
+                stack_key("bbox").float(),
+                format="XYWH",
+                dtype=torch.float32,
+                canvas_size=self.img_shape,
+                device=self.device,
+                requires_grad=self.rg,
             ),
             keypoints=keypoints,
             person_id=stack_key("person_id").int(),
@@ -504,7 +509,11 @@ class PoseTrack21JSON(BaseDataset):
     def arbitrary_to_ds(self, a: dict) -> DataSample:
         """Convert raw PoseTrack21 annotations to DataSample object."""
         keypoints, visibility = (
-            torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32, requires_grad=self.rg)
+            (
+                torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32, requires_grad=self.rg)
+                if len(a["keypoints"])
+                else torch.zeros((17, 3), device=self.device, dtype=torch.float32, requires_grad=self.rg)
+            )
             .reshape((1, 17, 3))
             .split([2, 1], dim=-1)
         )
@@ -512,7 +521,12 @@ class PoseTrack21JSON(BaseDataset):
             validate=False,  # This is given PT21 data, no need to validate...
             filepath=tuple([self.map_img_id_path[a["image_id"]]]),
             bbox=tv_tensors.BoundingBoxes(
-                a["bbox"], format="XYWH", canvas_size=self.img_shape, device=self.device, requires_grad=self.rg
+                torch.tensor(a["bbox"]).float(),
+                format="XYWH",
+                dtype=torch.float32,
+                canvas_size=self.img_shape,
+                device=self.device,
+                requires_grad=self.rg,
             ),
             keypoints=keypoints,
             person_id=a["person_id"] if "person_id" in a else -1,
@@ -553,7 +567,7 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
     Dataset statistics
     ------------------
 
-        - identities: The training set contains 5474 unique person ids.
+        - identities: The training set contains 5474 unique person ids. The biggest person id is 6878
         - images: 163411 images, divided into: 96215 train, 46751 test (gallery), and 20444 val (query)
 
     Args:

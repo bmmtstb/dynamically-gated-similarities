@@ -46,8 +46,8 @@ def save_checkpoint(
     """
     mkdir_if_missing(save_dir)
     # save
-    epoch = state["epoch"]
-    fpath = os.path.join(save_dir, "model.pth.tar-" + str(epoch))
+    epoch = int(state["epoch"])
+    fpath = os.path.join(save_dir, f"epoch-{epoch:0>3}.pth")
     torch.save(state, fpath)
     if verbose:
         print(f"Checkpoint saved to '{fpath}'")

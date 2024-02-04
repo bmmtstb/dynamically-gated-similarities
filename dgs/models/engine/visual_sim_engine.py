@@ -8,8 +8,8 @@ from datetime import timedelta
 from typing import Type
 
 import torch
+import torch.nn.functional as F
 from torch import nn, optim
-from torch.nn.functional import softmax as torch_f_softmax
 from torch.utils.data import DataLoader as TorchDataLoader
 from torcheval.metrics.functional import multiclass_auprc
 from tqdm import tqdm
@@ -18,7 +18,11 @@ from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import compute_cmc
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.states import DataSample, get_ds_data_getter
-from dgs.utils.types import Config
+from dgs.utils.types import Config, Validations
+
+train_validations: Validations = {
+    "nof_classes": ["int", ("gt", 0)],
+}
 
 
 class VisualSimilarityEngine(EngineModule):
@@ -52,6 +56,11 @@ class VisualSimilarityEngine(EngineModule):
         )
         self.val_dl = val_loader
 
+        if not self.test_only:
+            self.validate_params(train_validations, attrib_name="params_train")
+
+            self.nof_classes: int = self.params_train["nof_classes"]
+
     def get_target(self, ds: DataSample) -> tuple[torch.Tensor, torch.LongTensor]:
         """Get target IDs"""
         imgs, ids = get_ds_data_getter(["image_crop", "person_id"])(ds)
@@ -64,6 +73,16 @@ class VisualSimilarityEngine(EngineModule):
     def _get_train_loss(self, data: DataSample) -> torch.Tensor:
         _, pred_ids = self.model(self.get_data(data))
         _, target_ids = self.get_target(data)
+
+        assert all(
+            tid <= self.nof_classes for tid in target_ids
+        ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
+
+        oh_t_ids = F.one_hot(target_ids, self.nof_classes).float()  # pylint: disable=not-callable
+
+        assert pred_ids.shape == oh_t_ids.shape, f"p: {pred_ids.shape} t: {oh_t_ids.shape}"
+        assert pred_ids.dtype == oh_t_ids.dtype, f"p: {pred_ids.dtype} t: {oh_t_ids.dtype}"
+
         loss = self.loss(pred_ids, target_ids)
         return loss
 
@@ -111,7 +130,7 @@ class VisualSimilarityEngine(EngineModule):
             t_embed, t_pred_id = self.model(t_imgs)
             t_embeds.append(t_embed)
             t_ids.append(t_id)
-            t_pred_ids.append(torch_f_softmax(t_pred_id, dim=1))
+            t_pred_ids.append(F.softmax(t_pred_id, dim=1))
 
         targ_embed: torch.Tensor = torch.cat(t_embeds)  # 2D gt embeddings   [num_classes, E]
         targ_ids: torch.LongTensor = torch.cat(t_ids).long()  # 1D gt person labels [n_gallery]
@@ -124,7 +143,7 @@ class VisualSimilarityEngine(EngineModule):
                 target=targ_ids,  # 1D LongTensor of ground truth labels with shape [n_gallery].
             ).item(),
         }
-        self.print("debug", f"mAP - Gallery: {results['mean_avg_precision_gallery']:.2}")
+        self.print("debug", f"mAP - Gallery: {float(results['mean_avg_precision_gallery']):.2}")
         del t_embed, t_embeds, t_id, t_ids, t_pred_id, t_pred_ids
 
         # extract the data for query and gallery dataloader
@@ -140,7 +159,7 @@ class VisualSimilarityEngine(EngineModule):
             p_targ_ids.append(p_targ_id)
 
         pred_embed: torch.Tensor = torch.cat(p_embeds)  # 2D predict embeddings  [n_query x E]
-        pred_id_probs: torch.Tensor = torch_f_softmax(torch.cat(p_ids), dim=1)  # [n_query x num_classes]
+        pred_id_probs: torch.Tensor = F.softmax(torch.cat(p_ids), dim=1)  # [n_query x num_classes]
         self.print("debug", f"Shapes - predicted id probabilities: {pred_id_probs.shape}")
         # sample 1 id from ``[n_query x num_classes]`` 1D predicted person IDs [n_query]
         pred_ids: torch.LongTensor = torch.multinomial(pred_id_probs, num_samples=1).squeeze_().long()
@@ -151,7 +170,7 @@ class VisualSimilarityEngine(EngineModule):
             input=pred_id_probs,  # class predictions - probabilities with shape [n_query x num_classes]
             target=torch.cat(p_targ_ids).long(),  # 1D LongTensor of ground truth labels with shape [n_query].
         ).item()
-        self.print("debug", f"mAP - Query: {results['mean_avg_precision_query']:.2}")
+        self.print("debug", f"mAP - Query: {float(results['mean_avg_precision_query']):.2}")
         del p_embed, p_embeds, p_id, p_ids
 
         pred_embed, targ_embed = self._normalize_test(pred_embed, targ_embed)

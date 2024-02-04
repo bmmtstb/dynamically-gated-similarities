@@ -7,9 +7,10 @@ print_prio: "debug"
 is_training: on
 
 train:
-    epochs: 1
+    epochs: 5
     loss: "CrossEntropyLoss"
     optimizer: "Adam"
+    nof_classes: 7529
 
 test:
     metric: "CosineDistance"
@@ -23,6 +24,7 @@ dataset_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_data/train/"
+#    json_path: "./posetrack_data/train_first_half/"
 #    json_path: "./posetrack_data/train/000001_bonn_train.json"
     crops_folder: "./crops/train/"
     requires_grad: true
@@ -30,10 +32,10 @@ dataset_train:
 dataset_test:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_data/val/"
+    json_path: "./posetrack_person_search/val.json"
 #    json_path: "./posetrack_data/val/000342_mpii_test.json"
     force_img_reshape: true
-    crops_folder: "./crops/val/"
+    crops_folder: "./crops/gallery/"
     requires_grad: false
 
 dataset_valid:
@@ -52,5 +54,4 @@ embedding_generator_visual:
     module_name: "TorchreidModel"  # see `dgs.models.embedding_generator.__init__`
     model_name: "osnet_ain_x1_0"
     embedding_size: 512
-    nof_classes: 5474
-
+    nof_classes: 7529
