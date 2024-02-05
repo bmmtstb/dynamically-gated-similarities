@@ -32,7 +32,7 @@ Folder Structure
     └───docs
     │   │   documentation via sphinx and autodoc
     └───data
-    │   │   folder containing the datasets, for structure see :ref:`Dataset <dataset_page>`
+    │   │   folder containing the datasets, for structure see :ref:`dataset_page`
     └───dependencies
     │   │   references to git submodules e.g. to my AlphaPose_Fork
     └───dgs
