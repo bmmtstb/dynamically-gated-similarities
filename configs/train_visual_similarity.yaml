@@ -29,17 +29,16 @@ dataset_train:
     crops_folder: "./crops/train/"
     requires_grad: false
 
-dataset_test:
+dataset_valid:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/val.json"
-#    json_path: "./posetrack_data/val/000342_mpii_test.json"
     force_img_reshape: true
     crops_folder: "./crops/gallery/"
     requires_grad: false
 
-dataset_valid:
-    module_name: "PoseTrack21JSON"
+dataset_test:
+    module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/query.json"
     force_img_reshape: true

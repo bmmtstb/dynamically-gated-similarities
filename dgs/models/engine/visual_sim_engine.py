@@ -125,9 +125,9 @@ class VisualSimilarityEngine(EngineModule):
                 embeddings, target_ids
             """
 
+            total_m_ap: torch.DoubleTensor = torch.tensor(0.0, dtype=torch.float64, device=self.device)
             embed_l: list[torch.Tensor] = []
             t_ids_l: list[torch.LongTensor] = []
-            m_ap_l: list[torch.Tensor] = []
 
             for batch in tqdm(dl, desc=f"Extract {desc} data"):  # with N = len(dl)
                 # Extract the (cropped) input image and the target pID.
@@ -140,38 +140,34 @@ class VisualSimilarityEngine(EngineModule):
                 m_ap = multiclass_auprc(
                     input=F.softmax(pred_id_prob, dim=1),  # 2D class probabilities [B, num_classes]
                     target=t_id,  # gt labels    [B]
-                    average=None,  # due to batches, we need to compute the mean later...
-                )
+                ).double()
+
+                total_m_ap += m_ap * t_imgs.size(0)  # map*B, later we will div by N
 
                 # keep the results in lists
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
-                m_ap_l.append(m_ap)
 
             del t_imgs, t_id, embed, pred_id_prob, m_ap
 
             # concatenate the result lists
             p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings             [N, E]
             t_ids: torch.LongTensor = torch.cat(t_ids_l).long()  # 1D gt person labels [N]
-            m_aps: torch.Tensor = torch.cat(m_ap_l)  # 1D mAP for every class          [N]
-
-            assert (
-                len(t_ids) == len(p_embed) == len(m_aps)
-            ), f"t ids: {len(t_ids)}, p embed: {len(p_embed)}, mAPs: {len(m_aps)}"
+            m_ap: float = total_m_ap.div(len(dl.dataset)).item()  # compute total mean by dividing by N
+            assert len(t_ids) == len(p_embed), f"t ids: {len(t_ids)}, p embed: {len(p_embed)}"
 
             self.print(
                 "debug",
                 f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}",
             )
-            del embed_l, t_ids_l, m_ap_l
+            del embed_l, t_ids_l, total_m_ap
 
             # normalize the predicted embeddings if wanted
             p_embed = self._normalize(p_embed)
 
             # concat all the intermediate mAPs and compute the unweighted mean
-            total_m_ap: float = m_aps.mean().item()
-            results[f"mean_avg_precision_{desc.lower()}"] = total_m_ap
-            self.print("debug", f"mAP - {desc}: {total_m_ap:.2}")
+            results[f"mean_avg_precision_{desc.lower()}"] = m_ap
+            self.print("debug", f"mAP - {desc}: {m_ap:.2}")
 
             return p_embed, t_ids
 
