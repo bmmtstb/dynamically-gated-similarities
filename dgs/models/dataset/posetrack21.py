@@ -453,9 +453,9 @@ class PoseTrack21JSON(BaseDataset):
             A single DataSample object containing a batch of data.
         """
 
-        def stack_key(key: str) -> torch.Tensor:
+        def stack_key(key: str, requires_grad: bool = self.rg) -> torch.Tensor:
             return torch.stack(
-                [torch.tensor(self.data[i][key], device=self.device, requires_grad=self.rg) for i in indices]
+                [torch.tensor(self.data[i][key], device=self.device, requires_grad=requires_grad) for i in indices]
             )
 
         keypoints, visibility = (
@@ -478,16 +478,16 @@ class PoseTrack21JSON(BaseDataset):
             bbox=tv_tensors.BoundingBoxes(
                 stack_key("bbox").float(),
                 format="XYWH",
-                dtype=torch.float32,
                 canvas_size=self.img_shape,
+                dtype=torch.float32,
                 device=self.device,
                 requires_grad=self.rg,
             ),
             keypoints=keypoints,
-            person_id=stack_key("person_id").int(),
+            person_id=stack_key("person_id", requires_grad=False).int(),
             # additional values which are not required
             joint_weight=visibility,
-            image_id=stack_key("image_id").int(),
+            image_id=stack_key("image_id", requires_grad=False).int(),
         )
         # add the paths to the image crops if the directory containing the crops is given
         if "crops_folder" in self.params:
@@ -529,10 +529,10 @@ class PoseTrack21JSON(BaseDataset):
                 requires_grad=self.rg,
             ),
             keypoints=keypoints,
-            person_id=a["person_id"] if "person_id" in a else -1,
+            person_id=torch.tensor(a["person_id"] if "person_id" in a else -1, device=self.device, dtype=torch.long),
             # additional values which are not required
             joint_weight=visibility,
-            image_id=a["image_id"],
+            image_id=torch.tensor(a["image_id"], device=self.device, dtype=torch.long),
         )
 
         # add the paths to the image crops if the directory containing the crops is given

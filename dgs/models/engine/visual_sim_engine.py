@@ -31,7 +31,7 @@ class VisualSimilarityEngine(EngineModule):
     For this model:
 
     - ``get_data()`` should return the image crop
-    - ``get_target()`` should return the target images and the target ids
+    - ``get_target()`` should return the target pIDs
 
     """
 
@@ -61,10 +61,9 @@ class VisualSimilarityEngine(EngineModule):
 
             self.nof_classes: int = self.params_train["nof_classes"]
 
-    def get_target(self, ds: DataSample) -> tuple[torch.Tensor, torch.LongTensor]:
-        """Get target IDs"""
-        imgs, ids = get_ds_data_getter(["image_crop", "person_id"])(ds)
-        return imgs, ids.long()
+    def get_target(self, ds: DataSample) -> torch.LongTensor:
+        """Get the target pIDs from the data."""
+        return get_ds_data_getter(["person_id"])(ds)[0].long()
 
     def get_data(self, ds: DataSample) -> torch.Tensor:
         """Get the image crop from the data."""
@@ -72,7 +71,7 @@ class VisualSimilarityEngine(EngineModule):
 
     def _get_train_loss(self, data: DataSample) -> torch.Tensor:
         _, pred_ids = self.model(self.get_data(data))
-        _, target_ids = self.get_target(data)
+        target_ids = self.get_target(data)
 
         assert all(
             tid <= self.nof_classes for tid in target_ids
@@ -112,6 +111,70 @@ class VisualSimilarityEngine(EngineModule):
 
         The `multi-gallery-shot` accuracy is not implemented.
         """
+        results: dict[str, any] = {}
+
+        def obtain_test_data(dl: TorchDataLoader, desc: str) -> tuple[torch.Tensor, torch.LongTensor]:
+            """Given a dataloader,
+            extract the embeddings describing the people, target pIDs, and the pIDs the model predicted.
+
+            Args:
+                dl: The DataLoader to extract the data from.
+                desc: A description for printing and saving the data.
+
+            Returns:
+                embeddings, target_ids
+            """
+
+            embed_l: list[torch.Tensor] = []
+            t_ids_l: list[torch.LongTensor] = []
+            m_ap_l: list[torch.Tensor] = []
+
+            for batch in tqdm(dl, desc=f"Extract {desc} data"):  # with N = len(dl)
+                # Extract the (cropped) input image and the target pID.
+                # Then use the model to compute the predicted embedding and the predicted pID probabilities.
+                t_imgs = self.get_data(batch)
+                t_id = self.get_target(batch)
+                embed, pred_id_prob = self.model(t_imgs)
+
+                # Obtain class probability predictions and mAP from data
+                m_ap = multiclass_auprc(
+                    input=F.softmax(pred_id_prob, dim=1),  # 2D class probabilities [B, num_classes]
+                    target=t_id,  # gt labels    [B]
+                    average=None,  # due to batches, we need to compute the mean later...
+                )
+
+                # keep the results in lists
+                embed_l.append(embed)
+                t_ids_l.append(t_id)
+                m_ap_l.append(m_ap)
+
+            del t_imgs, t_id, embed, pred_id_prob, m_ap
+
+            # concatenate the result lists
+            p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings             [N, E]
+            t_ids: torch.LongTensor = torch.cat(t_ids_l).long()  # 1D gt person labels [N]
+            m_aps: torch.Tensor = torch.cat(m_ap_l)  # 1D mAP for every class          [N]
+
+            assert (
+                len(t_ids) == len(p_embed) == len(m_aps)
+            ), f"t ids: {len(t_ids)}, p embed: {len(p_embed)}, mAPs: {len(m_aps)}"
+
+            self.print(
+                "debug",
+                f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}",
+            )
+            del embed_l, t_ids_l, m_ap_l
+
+            # normalize the predicted embeddings if wanted
+            p_embed = self._normalize(p_embed)
+
+            # concat all the intermediate mAPs and compute the unweighted mean
+            total_m_ap: float = m_aps.mean().item()
+            results[f"mean_avg_precision_{desc.lower()}"] = total_m_ap
+            self.print("debug", f"mAP - {desc}: {total_m_ap:.2}")
+
+            return p_embed, t_ids
+
         start_time: float = time.time()
 
         if not hasattr(self.model, "eval"):
@@ -119,74 +182,20 @@ class VisualSimilarityEngine(EngineModule):
         self.model.eval()  # set model to test / evaluation mode
 
         self.print("normal", f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
-        self.print("normal", "Loading and extracting data, this might take a while...")
+        self.print("normal", "Loading, extracting, and predicting data, this might take a while...")
 
-        t_embeds: list[torch.Tensor] = []
-        t_ids: list[torch.LongTensor] = []
-        t_pred_ids: list[torch.Tensor] = []
-        for batch_gallery in tqdm(self.val_dl, desc="Extract gallery data", leave=False):
-            # extract target data, as image and target_id, then use the model to compute the target embedding
-            t_imgs, t_id = self.get_target(batch_gallery)
-            t_embed, t_pred_id = self.model(t_imgs)
-            t_embeds.append(t_embed)
-            t_ids.append(t_id)
-            t_pred_ids.append(F.softmax(t_pred_id, dim=1))
+        g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
+        q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
 
-        targ_embed: torch.Tensor = torch.cat(t_embeds)  # 2D gt embeddings   [num_classes, E]
-        targ_ids: torch.LongTensor = torch.cat(t_ids).long()  # 1D gt person labels [n_gallery]
-        self.print("debug", f"Shapes - target embedding: {targ_embed.shape}, target IDs: {targ_ids.shape}")
-
-        self.print("debug", "Computing mAP - Gallery")
-        results: dict[str, any] = {
-            "mean_avg_precision_gallery": multiclass_auprc(
-                input=torch.cat(t_pred_ids),  # class predictions - probabilities with shape [n_gallery x num_classes]
-                target=targ_ids,  # 1D LongTensor of ground truth labels with shape [n_gallery].
-            ).item(),
-        }
-        self.print("debug", f"mAP - Gallery: {float(results['mean_avg_precision_gallery']):.2}")
-        del t_embed, t_embeds, t_id, t_ids, t_pred_id, t_pred_ids
-
-        # extract the data for query and gallery dataloader
-        p_embeds: list[torch.Tensor] = []
-        p_ids: list[torch.Tensor] = []
-        p_targ_ids: list[torch.LongTensor] = []
-        for batch_query in tqdm(self.test_dl, desc="Extract query data", leave=False):
-            # extract data and use the current model to get a prediction
-            p_imgs, p_targ_id = self.get_target(batch_query)
-            p_embed, p_id = self.model(p_imgs)
-            p_embeds.append(p_embed)
-            p_ids.append(p_id)
-            p_targ_ids.append(p_targ_id)
-
-        pred_embed: torch.Tensor = torch.cat(p_embeds)  # 2D predict embeddings  [n_query x E]
-        pred_id_probs: torch.Tensor = F.softmax(torch.cat(p_ids), dim=1)  # [n_query x num_classes]
-        self.print("debug", f"Shapes - predicted id probabilities: {pred_id_probs.shape}")
-        # sample 1 id from ``[n_query x num_classes]`` 1D predicted person IDs [n_query]
-        pred_ids: torch.LongTensor = torch.multinomial(pred_id_probs, num_samples=1).squeeze_().long()
-        self.print("debug", f"Shapes - predicted embedding: {pred_embed.shape}, predicted IDs: {pred_ids.shape}")
-
-        self.print("debug", "Computing mAP - Query")
-        results["mean_avg_precision_query"] = multiclass_auprc(
-            input=pred_id_probs,  # class predictions - probabilities with shape [n_query x num_classes]
-            target=torch.cat(p_targ_ids).long(),  # 1D LongTensor of ground truth labels with shape [n_query].
-        ).item()
-        self.print("debug", f"mAP - Query: {float(results['mean_avg_precision_query']):.2}")
-        del p_embed, p_embeds, p_id, p_ids
-
-        pred_embed, targ_embed = self._normalize_test(pred_embed, targ_embed)
-
-        self.print("normal", "Testing predicted Embeddings and IDs")
         self.print("debug", "Computing distance matrix")
-
-        distance_matrix = self.metric(pred_embed, targ_embed)
-
+        distance_matrix = self.metric(q_embed, g_embed)
         self.print("debug", f"Shape of distance matrix: {distance_matrix.shape}")
-        self.print("debug", "Computing CMC")
 
+        self.print("debug", "Computing CMC")
         results["cmc"] = compute_cmc(
             distmat=distance_matrix,
-            query_pids=pred_ids,
-            gallery_pids=targ_ids,
+            query_pids=q_t_ids,
+            gallery_pids=g_t_ids,
             ranks=self.params_test.get("ranks", [1, 5, 10, 20]),
         )
 

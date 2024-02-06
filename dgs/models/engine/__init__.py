@@ -4,9 +4,9 @@ Modules for running, training and testing multiple other modules.
 
 from typing import Type
 
+from dgs.utils.exceptions import InvalidParameterException
 from .engine import EngineModule
 from .visual_sim_engine import VisualSimilarityEngine
-from ...utils.exceptions import InvalidParameterException
 
 ENGINES: dict[str, Type[EngineModule]] = {
     "VisualSimilarityEngine": VisualSimilarityEngine,

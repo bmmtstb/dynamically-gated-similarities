@@ -331,14 +331,13 @@ class EngineModule(BaseModule):
             if hasattr(self, attr):
                 delattr(self, attr)
 
-    def _normalize_test(self, pred: torch.Tensor, target: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """If ``params_test.test_normalize`` is True, return the normalized prediction and target."""
+    def _normalize(self, tensor: torch.Tensor) -> torch.Tensor:
+        """If ``params_test.test_normalize`` is True, we want to obtain the normalized prediction and target."""
         if self.params_test.get("test_normalize", False):
             if self.can_print("debug"):
                 print("Normalizing test data")
-            pred: torch.Tensor = nn.functional.normalize(pred)
-            target: torch.Tensor = nn.functional.normalize(target)
-        return pred, target
+            tensor: torch.Tensor = nn.functional.normalize(tensor)
+        return tensor
 
     @abstractmethod
     def _get_train_loss(self, data: DataSample) -> torch.Tensor:  # pragma: no cover
