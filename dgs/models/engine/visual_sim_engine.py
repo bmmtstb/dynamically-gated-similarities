@@ -183,7 +183,7 @@ class VisualSimilarityEngine(EngineModule):
         g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
         q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
 
-        self.print("debug", "Computing distance matrix")
+        self.print("debug", "Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
         self.print("debug", f"Shape of distance matrix: {distance_matrix.shape}")
 

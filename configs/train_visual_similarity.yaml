@@ -13,7 +13,7 @@ train:
     nof_classes: 7529
 
 test:
-    metric: "CosineDistance"
+    metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
     log_dir: "./results/own_visual_sim/"
 
 # #### #
