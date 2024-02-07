@@ -91,9 +91,8 @@ def get_loss_function(instance: Union[str, callable]) -> Type[Loss]:
 class CrossEntropyLoss(Loss):
     """Compute the Cross Entropy Loss after computing the LogSoftmax on the input data."""
 
-    def __init__(self, num_classes, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.num_classes = num_classes
         self.log_softmax = nn.LogSoftmax(dim=1)
         self.cross_entropy_loss = nn.CrossEntropyLoss(**kwargs)
 

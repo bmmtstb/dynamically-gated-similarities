@@ -66,7 +66,7 @@ class TestLoss(unittest.TestCase):
         self.assertTrue("new_dummy" not in LOSS_FUNCTIONS)
 
     def test_custom_cross_entropy_loss(self):
-        cel = CrossEntropyLoss(num_classes=2)
+        cel = CrossEntropyLoss()
         inputs = torch.tensor([[0, 1], [0.5, 0.5], [1, 0]], dtype=torch.float32)
         targets = torch.tensor([[0, 1], [0, 1], [0, 1]], dtype=torch.float32)
         logits = nn.functional.log_softmax(inputs, dim=1)
