@@ -4,6 +4,7 @@ Functions to load and manage torch loss functions.
 
 from typing import Type, Union
 
+import torch
 from torch import nn
 
 from dgs.utils.types import Loss
@@ -11,38 +12,11 @@ from dgs.utils.types import Loss
 try:
     # If torchreid is installed using `./dependencies/torchreid`
     # noinspection PyUnresolvedReferences LongLine
-    from torchreid.losses import CrossEntropyLoss, TripletLoss
+    from torchreid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
 except ModuleNotFoundError:
     # if torchreid is installed using `pip install torchreid`
     # noinspection PyUnresolvedReferences
-    from torchreid.reid.losses import CrossEntropyLoss, TripletLoss
-
-LOSS_FUNCTIONS: dict[str, Type[Loss]] = {
-    "L1Loss": nn.L1Loss,
-    "NLLLoss": nn.NLLLoss,
-    # "NLLLoss2d": nn.NLLLoss2d, deprecated
-    "PoissonNLLLoss": nn.PoissonNLLLoss,
-    "GaussianNLLLoss": nn.GaussianNLLLoss,
-    "KLDivLoss": nn.KLDivLoss,
-    "MSELoss": nn.MSELoss,
-    "BCELoss": nn.BCELoss,
-    "BCEWithLogitsLoss": nn.BCEWithLogitsLoss,
-    "HingeEmbeddingLoss": nn.HingeEmbeddingLoss,
-    "MultiLabelMarginLoss": nn.MultiLabelMarginLoss,
-    "SmoothL1Loss": nn.SmoothL1Loss,
-    "HuberLoss": nn.HuberLoss,
-    "SoftMarginLoss": nn.SoftMarginLoss,
-    "CrossEntropyLoss": nn.CrossEntropyLoss,
-    "MultiLabelSoftMarginLoss": nn.MultiLabelSoftMarginLoss,
-    "CosineEmbeddingLoss": nn.CosineEmbeddingLoss,
-    "MarginRankingLoss": nn.MarginRankingLoss,
-    "MultiMarginLoss": nn.MultiMarginLoss,
-    "TripletMarginLoss": nn.TripletMarginLoss,
-    "TripletMarginWithDistanceLoss": nn.TripletMarginWithDistanceLoss,
-    "CTCLoss": nn.CTCLoss,
-    "TorchreidTripletLoss": TripletLoss,
-    "TorchreidCrossEntropyLoss": CrossEntropyLoss,
-}
+    from torchreid.reid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
 
 
 def register_loss_function(loss_name: str, loss_function: Type[Loss]) -> None:
@@ -112,3 +86,49 @@ def get_loss_function(instance: Union[str, callable]) -> Type[Loss]:
     if isinstance(instance, type) and issubclass(instance, Loss):
         return instance
     raise ValueError(f"Loss function '{instance}' is neither string nor subclass of 'Loss'.")
+
+
+class CrossEntropyLoss(Loss):
+    """Compute the Cross Entropy Loss after computing the LogSoftmax on the input data."""
+
+    def __init__(self, num_classes, **kwargs):
+        super().__init__()
+        self.num_classes = num_classes
+        self.log_softmax = nn.LogSoftmax(dim=1)
+        self.cross_entropy_loss = nn.CrossEntropyLoss(**kwargs)
+
+    def forward(self, inputs: torch.FloatTensor, targets: torch.FloatTensor) -> torch.FloatTensor:
+        """Given predictions of shape ``[]`` and targets of shape ``[]`` compute and return the CrossEntropyLoss."""
+        logits = self.log_softmax(inputs)
+        return self.cross_entropy_loss(logits, targets)
+
+
+LOSS_FUNCTIONS: dict[str, Type[Loss]] = {
+    # own
+    "CrossEntropyLoss": CrossEntropyLoss,
+    # pytorch
+    "TorchL1Loss": nn.L1Loss,
+    "TorchNLLLoss": nn.NLLLoss,
+    "TorchPoissonNLLLoss": nn.PoissonNLLLoss,
+    "TorchGaussianNLLLoss": nn.GaussianNLLLoss,
+    "TorchKLDivLoss": nn.KLDivLoss,
+    "TorchMSELoss": nn.MSELoss,
+    "TorchBCELoss": nn.BCELoss,
+    "TorchBCEWithLogitsLoss": nn.BCEWithLogitsLoss,
+    "TorchHingeEmbeddingLoss": nn.HingeEmbeddingLoss,
+    "TorchMultiLabelMarginLoss": nn.MultiLabelMarginLoss,
+    "TorchSmoothL1Loss": nn.SmoothL1Loss,
+    "TorchHuberLoss": nn.HuberLoss,
+    "TorchSoftMarginLoss": nn.SoftMarginLoss,
+    "TorchCrossEntropyLoss": nn.CrossEntropyLoss,
+    "TorchMultiLabelSoftMarginLoss": nn.MultiLabelSoftMarginLoss,
+    "TorchCosineEmbeddingLoss": nn.CosineEmbeddingLoss,
+    "TorchMarginRankingLoss": nn.MarginRankingLoss,
+    "TorchMultiMarginLoss": nn.MultiMarginLoss,
+    "TorchTripletMarginLoss": nn.TripletMarginLoss,
+    "TorchTripletMarginWithDistanceLoss": nn.TripletMarginWithDistanceLoss,
+    "TorchCTCLoss": nn.CTCLoss,
+    # TorchReid
+    "TorchreidTripletLoss": TorchreidTL,
+    "TorchreidCrossEntropyLoss": TorchreidCEL,
+}

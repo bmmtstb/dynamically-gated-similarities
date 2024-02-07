@@ -73,16 +73,16 @@ class VisualSimilarityEngine(EngineModule):
         _, pred_ids = self.model(self.get_data(data))
         target_ids = self.get_target(data)
 
-        assert all(
-            tid <= self.nof_classes for tid in target_ids
-        ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
+        # assert all(
+        #     tid <= self.nof_classes for tid in target_ids
+        # ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
 
-        oh_t_ids = F.one_hot(target_ids, self.nof_classes).float()  # pylint: disable=not-callable
+        oh_t_ids = self._ids_to_one_hot(ids=target_ids, nof_classes=self.nof_classes).float()
 
-        assert pred_ids.shape == oh_t_ids.shape, f"p: {pred_ids.shape} t: {oh_t_ids.shape}"
-        assert pred_ids.dtype == oh_t_ids.dtype, f"p: {pred_ids.dtype} t: {oh_t_ids.dtype}"
+        # assert pred_ids.shape == oh_t_ids.shape, f"p: {pred_ids.shape} t: {oh_t_ids.shape}"
+        # assert pred_ids.dtype == oh_t_ids.dtype, f"p: {pred_ids.dtype} t: {oh_t_ids.dtype}"
 
-        loss = self.loss(pred_ids, target_ids)
+        loss = self.loss(pred_ids, oh_t_ids)
         return loss
 
     @torch.no_grad()

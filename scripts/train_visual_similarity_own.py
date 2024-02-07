@@ -14,9 +14,9 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import fill_in_defaults, load_config
 
 CONFIG_FILE = "./configs/train_visual_similarity.yaml"
-TRAIN_BATCH_SIZE = 64
-TEST_BATCH_SIZE = 256
-TEST_ONLY = True
+TRAIN_BATCH_SIZE = 128
+TEST_BATCH_SIZE = 512
+TEST_ONLY = False
 
 
 if __name__ == "__main__":

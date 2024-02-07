@@ -1,9 +1,16 @@
 import unittest
 from unittest.mock import patch
 
+import torch
 from torch import nn
 
-from dgs.models.loss import get_loss_from_name, get_loss_function, LOSS_FUNCTIONS, register_loss_function
+from dgs.models.loss import (
+    CrossEntropyLoss,
+    get_loss_from_name,
+    get_loss_function,
+    LOSS_FUNCTIONS,
+    register_loss_function,
+)
 
 
 class TestLoss(unittest.TestCase):
@@ -22,7 +29,8 @@ class TestLoss(unittest.TestCase):
 
     def test_get_loss_function(self):
         for instance, result in [
-            ("L1Loss", nn.L1Loss),
+            ("TorchL1Loss", nn.L1Loss),
+            ("CrossEntropyLoss", CrossEntropyLoss),
             (nn.MSELoss, nn.MSELoss),
         ]:
             with self.subTest(msg=f"instance: {instance}, result: {result}"):
@@ -47,7 +55,7 @@ class TestLoss(unittest.TestCase):
                 ("new_dummy", nn.MSELoss(), ValueError),
                 ("new_dummy", nn.MSELoss, False),
             ]:
-                with self.subTest(msg="name: {}, func: {}, excpt: {}".format(name, func, exception)):
+                with self.subTest(msg="name: {}, func: {}, except: {}".format(name, func, exception)):
                     if exception is not False:
                         with self.assertRaises(exception):
                             register_loss_function(name, func)
@@ -56,6 +64,13 @@ class TestLoss(unittest.TestCase):
                         self.assertTrue("dummy" in LOSS_FUNCTIONS)
         self.assertTrue("dummy" not in LOSS_FUNCTIONS)
         self.assertTrue("new_dummy" not in LOSS_FUNCTIONS)
+
+    def test_custom_cross_entropy_loss(self):
+        cel = CrossEntropyLoss(num_classes=2)
+        inputs = torch.tensor([[0, 1], [0.5, 0.5], [1, 0]], dtype=torch.float32)
+        targets = torch.tensor([[0, 1], [0, 1], [0, 1]], dtype=torch.float32)
+        logits = nn.functional.log_softmax(inputs, dim=1)
+        self.assertTrue(torch.allclose(cel(logits, targets), nn.functional.cross_entropy(logits, targets)))
 
 
 if __name__ == "__main__":
