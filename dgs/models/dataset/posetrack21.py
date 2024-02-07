@@ -362,7 +362,7 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
         [
             PoseTrack21JSON(config=config, path=path, json_path=p)
             for p in tqdm(
-                paths, desc=f"loading datasets: {ds_path} {ds.params['json_path'] if 'json_path' in ds.params else ''}"
+                paths, desc=f"loading datasets: {ds_path}{ds.params['json_path'] if 'json_path' in ds.params else ''}"
             )
         ]
     )

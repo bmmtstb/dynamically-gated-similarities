@@ -137,7 +137,7 @@ class EngineModule(BaseModule):
         super().__init__(config, [])
 
         # Set up general attributes
-        self.curr_epoch: int = 0
+        self.curr_epoch: int = 1
         self.test_only = test_only
         self.model = model
 
@@ -165,12 +165,13 @@ class EngineModule(BaseModule):
             )
             self.optimizer = get_optimizer(self.params_train["optimizer"])(
                 self.model.parameters(),
-                **self.params_train.get("optimizer_kwargs", {"lr": 0.001}),  # optional optimizer kwargs
+                **self.params_train.get("optimizer_kwargs", {"lr": 1e-4}),  # optional optimizer kwargs
             )
-            # the learning-rate scheduler needs the optimizer, therefore, it will be initialized here.
+            # the learning-rate scheduler needs the optimizer for instantiation
             if lr_scheds is None:
-                lr_scheds = [optim.lr_scheduler.ConstantLR]
-            self.lr_sched = [lr_sched(optimizer=self.optimizer) for lr_sched in lr_scheds]
+                self.lr_sched = [optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, factor=1 / 10, total_iters=10)]
+            else:
+                raise NotImplementedError
 
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
@@ -231,7 +232,7 @@ class EngineModule(BaseModule):
         num_batches: int = math.ceil(len(self.train_dl) / self.train_dl.batch_size)
         data: DataSample
 
-        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs), desc="Epoch", position=1):
+        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
             epoch_loss = 0
             time_epoch_start = time.time()
             time_batch_start = time.time()  # reset timer for retrieving the data
