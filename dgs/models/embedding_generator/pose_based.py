@@ -308,11 +308,10 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         """
         if len(data) == 1:
             # expect that input is already flattened
-            if self.can_print("debug"):
-                print(
-                    "In the forward call of the LinearPBEG module data only contains one single value. "
-                    "It is expected that this value is the flattened and concatenated key points and pose tensor."
-                )
+            self.logger.debug(
+                "In the forward call of the LinearPBEG module data only contains one single value. "
+                "It is expected that this value is the flattened and concatenated key points and pose tensor.",
+            )
             data, *args = data
         elif len(data) > 1:
             kp, bboxes, *args = data

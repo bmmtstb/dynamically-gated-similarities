@@ -14,7 +14,8 @@ cfg = EasyDict()
 # ####### #
 
 cfg.name = "DEFAULT"
-cfg.print_prio = "normal"
+cfg.description = "Default configuration..."
+cfg.print_prio = "INFO"
 cfg.working_memory_size = 30
 
 # torch and device settings

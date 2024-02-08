@@ -14,8 +14,10 @@ from helper import test_multiple_devices
 TEST_CFG: Config = EasyDict(
     {
         "name": "TestModel",
-        "print_prio": "debug",
+        "description": "Test Description",
+        "print_prio": "DEBUG",
         "device": "cpu",
+        "log_dir": "./tests/test_data/",
         "gpus": "",
         "sp": True,
         "is_training": False,
@@ -46,9 +48,9 @@ class TestBaseModule(unittest.TestCase):
             TEST_CFG,
             _def_repl("device", "cpu"),
             _def_repl("device", "cuda"),
-            _def_repl("print_prio", "none"),
-            _def_repl("print_prio", "normal"),
-            _def_repl("print_prio", "all"),
+            _def_repl("print_prio", "INFO"),
+            _def_repl("print_prio", "WARNING"),
+            _def_repl("print_prio", "ERROR"),
             _def_repl("gpus", None),
             _def_repl("gpus", [0, 1, 2]),
             _def_repl("gpus", "0,1,2,3"),
@@ -112,41 +114,6 @@ class TestBaseModule(unittest.TestCase):
                 m = BaseModule(config=_def_repl(path, data), path=[path])
                 with self.assertRaises(exception):
                     m.validate_params(validations)
-
-    @patch.multiple(BaseModule, __abstractmethods__=set())
-    def test_print(self):
-        for prio, module_prio, allowed in [
-            ("normal", "none", False),
-            ("debug", "none", False),
-            ("all", "none", False),
-            ("normal", "normal", True),
-            ("debug", "normal", False),
-            ("all", "normal", False),
-            ("normal", "debug", True),
-            ("debug", "debug", True),
-            ("all", "debug", False),
-            ("normal", "all", True),
-            ("debug", "all", True),
-            ("all", "all", True),
-        ]:
-            with self.subTest(msg=f"Printing prio: {prio}, Module prio {module_prio}"):
-                self.assertEqual(
-                    BaseModule(config=_def_repl("print_prio", module_prio), path=[]).can_print(prio), allowed
-                )
-
-    @patch.multiple(BaseModule, __abstractmethods__=set())
-    def test_print_errors(self):
-        for prio, module_prio, err_str in [
-            ("none", "none", "To print with priority of none doesn't make sense..."),
-            ("none", "normal", "To print with priority of none doesn't make sense..."),
-            ("none", "debug", "To print with priority of none doesn't make sense..."),
-            ("none", "all", "To print with priority of none doesn't make sense..."),
-            ("invalid", "all", "invalid is not in "),
-        ]:
-            with self.subTest(msg=f"Printing prio: {prio}, Module prio {module_prio}"):
-                with self.assertRaises(ValueError) as context:
-                    BaseModule(config=_def_repl("print_prio", module_prio), path=[]).can_print(prio)
-                self.assertTrue(err_str in str(context.exception))
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     @test_multiple_devices

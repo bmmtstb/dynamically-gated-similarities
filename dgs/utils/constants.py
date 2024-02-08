@@ -2,12 +2,20 @@
 Predefined constants that will not change and might be used at different places.
 """
 
+import logging
 import os
 
 import torch
 
-PRINT_PRIORITY: list[str] = ["none", "normal", "debug", "all"]
-"""List of all the available print priorities."""
+PRINT_PRIORITY: dict[str, int] = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+"""Stringified names of all the available print / logging priorities."""
+
 
 PROJECT_ROOT: str = os.path.normpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 """Path to this projects' root directory."""
@@ -38,13 +46,13 @@ OKS_SIGMAS: dict[str, torch.FloatTensor] = {
          0.029, 0.022, 0.035, 0.037, 0.047, 0.026, 0.025, 0.024, 0.035, 0.018, 0.024, 0.022, 0.026, 0.017, 0.021, 0.021,
          0.032, 0.02, 0.019, 0.022, 0.031]
     ).float(),
-    "halpe":           torch.div(
+    "halpe": torch.div(
         torch.tensor(
             [0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89, 0.8,
              0.8, 0.8, 0.89, 0.89, 0.89, 0.89, 0.89, 0.89]
         ).float(), 10
     ),
-    "coco":            torch.div(
+    "coco": torch.div(
         torch.tensor(
             [0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89]
         ).float(), 10

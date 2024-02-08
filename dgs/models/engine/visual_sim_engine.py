@@ -156,10 +156,7 @@ class VisualSimilarityEngine(EngineModule):
             m_ap: float = total_m_ap.div(len(dl.dataset)).item()  # compute total mean by dividing by N
             assert len(t_ids) == len(p_embed), f"t ids: {len(t_ids)}, p embed: {len(p_embed)}"
 
-            self.print(
-                "debug",
-                f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}",
-            )
+            self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
             del embed_l, t_ids_l, total_m_ap
 
             # normalize the predicted embeddings if wanted
@@ -167,27 +164,27 @@ class VisualSimilarityEngine(EngineModule):
 
             # concat all the intermediate mAPs and compute the unweighted mean
             results[f"mean_avg_precision_{desc.lower()}"] = m_ap
-            self.print("debug", f"mAP - {desc}: {m_ap:.2}")
+            self.logger.debug(f"mAP - {desc}: {m_ap:.2}")
 
             return p_embed, t_ids
 
         start_time: float = time.time()
 
         if not hasattr(self.model, "eval"):
-            warnings.warn("Neither model.eval() nor model.set_model_mode() are present.")
+            warnings.warn("`model.eval()` is not callable.")
         self.model.eval()  # set model to test / evaluation mode
 
-        self.print("normal", f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
-        self.print("normal", "Loading, extracting, and predicting data, this might take a while...")
+        self.logger.info(f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
+        self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
         g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
         q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
 
-        self.print("debug", "Use metric to compute the distance matrix.")
+        self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
-        self.print("debug", f"Shape of distance matrix: {distance_matrix.shape}")
+        self.logger.debug(f"Shape of distance matrix: {distance_matrix.shape}")
 
-        self.print("debug", "Computing CMC")
+        self.logger.debug("Computing CMC")
         results["cmc"] = compute_cmc(
             distmat=distance_matrix,
             query_pids=q_t_ids,
@@ -198,7 +195,7 @@ class VisualSimilarityEngine(EngineModule):
         self.print_results(results)
         self.write_results(results, prepend="Test", index=self.curr_epoch)
 
-        self.print("normal", f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
-        self.print("normal", f"\n#### Evaluation of {self.name} complete ####\n")
+        self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
+        self.logger.info(f"\n#### Evaluation of {self.name} complete ####\n")
 
         return results

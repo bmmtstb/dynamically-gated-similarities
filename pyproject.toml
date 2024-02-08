@@ -81,7 +81,7 @@ omit = [# files
 exclude_also = [
     # Don't complain about missing debug-only code:
     "def __repr__", # string representation of objects
-    "(self|BaseModule)\\.(can_)?print\\(", # BaseModule.print() and can_print() is mostly debug printing, shouldn't be tested
+    "self\\.logger", # info logging shouldn't be tested
 
     # Don't complain if tests don't hit defensive assertion code:
     "assert ",

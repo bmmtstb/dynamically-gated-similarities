@@ -3,6 +3,8 @@ Base model class as lowest building block for dynamic modules
 """
 
 import inspect
+import logging
+import os
 from abc import ABC, abstractmethod
 from functools import wraps
 
@@ -16,13 +18,16 @@ from dgs.utils.types import Config, NodePath, Validations
 from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
+    "device": [("or", (("in", ["cuda", "cpu"]), ("type", torch.device)))],
+    "is_training": [("instance", bool)],
     "name": ["str", ("longer", 2)],
     "print_prio": [("in", PRINT_PRIORITY)],
-    "device": [("or", (("in", ["cuda", "cpu"]), ("type", torch.device)))],
-    "gpus": ["optional", lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
-    "num_workers": ["optional", "int", ("gte", 0)],
     "sp": [("instance", bool)],
-    "is_training": [("instance", bool)],
+    # optional
+    "description": ["optional", "str"],
+    "gpus": ["optional", lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
+    "log_dir": ["optional", "str"],
+    "num_workers": ["optional", "int", ("gte", 0)],
 }
 
 
@@ -74,8 +79,9 @@ class BaseModule(ABC):
     num_workers: (int, optional, default=0)
         The number of additional workers, the torch DataLoader should use to load the datasets.
 
-    print_prio: (str, optional, default: "normal")
+    print_prio: (str, optional, default: "INFO")
         How much information should be printed while running.
+        Default "INFO" will print status reports but no debugging information.
 
     sp: (bool, optional, default=True)
         Whether to use a single process (sp) or use multiprocessing.
@@ -83,6 +89,10 @@ class BaseModule(ABC):
 
     is_training: (bool, optional, default=False)
         Whether the torch modules should train or evaluate.
+
+    log_dir (FilePath, optional, default="./results/"):
+        Path to directory where all the files of this run are saved.
+        The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/").
 
     Attributes:
         config: The overall configuration of the whole algorithm.
@@ -114,6 +124,9 @@ class BaseModule(ABC):
             self.config["num_workers"] = 0
 
         self.validate_params(module_validations, "config")
+
+        # set up (file) logger
+        self.logger: logging.Logger = self._init_logger()
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
         """Given per key validations, validate this module's parameters.
@@ -215,41 +228,30 @@ class BaseModule(ABC):
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         raise NotImplementedError
 
-    def print(self, priority: str, message: str) -> None:
-        """Print a message if priority is high enough.
+    def _init_logger(self) -> logging.Logger:
+        """Initialize a basic logger for this module."""
+        logger = logging.getLogger(self.name)
 
-        Args:
-            priority (str): Value has to be in PRINT_PRIO.
-                See :func:`self.can_print()` for more details.
-            message (str): The message to print.
-        """
-        if self.can_print(priority):
-            print(message)
+        # file handler
+        file_handler = logging.FileHandler(
+            os.path.join(self.config.get("log_dir", "./results/"), f"output-{self.name}.txt")
+        )
+        logger.addHandler(file_handler)
+        # stdout / stderr handler
+        stream_handler = logging.StreamHandler()
+        logger.addHandler(stream_handler)
 
-    def can_print(self, priority: str) -> bool:
-        """Check whether the Module is allowed to print something with the given priority.
+        # set level
+        prio = self.config.get("print_prio", "INFO")
+        log_level = PRINT_PRIORITY[prio] if isinstance(prio, str) else prio
+        logger.setLevel(log_level)
 
-        Args:
-            priority: Priority on which this will print.
-                Value has to be in PRINT_PRIO.
-                But this is kind of counterintuitive:
-                - Use 'normal' if you want to print it all the time as long as `cfg.print_prio` is not 'none'
-                - Use 'debug' if you want to print it iff `cfg.print_prio` is either 'debug' or 'all'
-                - Use 'all' if you want to print it iff `cfg.print_prio == 'all'`
+        # set output format
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(formatter)
+        stream_handler.setFormatter(formatter)
 
-        Returns:
-            bool: Whether the module is allowed to print given its priority.
-        """
-        try:
-            index_given: int = PRINT_PRIORITY.index(priority)
-        except ValueError as verr:
-            raise ValueError(f"Priority: {priority} is not in {PRINT_PRIORITY}") from verr
-        if priority == "none":
-            raise ValueError("To print with priority of none doesn't make sense...")
-
-        index_current: int = PRINT_PRIORITY.index(self.config["print_prio"])
-
-        return index_given <= index_current
+        return logger
 
     @property
     def device(self) -> torch.device:

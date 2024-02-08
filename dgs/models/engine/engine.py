@@ -2,12 +2,13 @@
 Class and functions used during training and testing of different modules.
 """
 
+import logging
 import math
 import os
 import time
 import warnings
 from abc import abstractmethod
-from datetime import date, timedelta
+from datetime import date
 from typing import Type
 
 import torch
@@ -75,9 +76,6 @@ class EngineModule(BaseModule):
     Optional Test Params
     --------------------
 
-    log_dir (FilePath, optional):
-        Path to directory where all the files of this run are saved.
-        Default "./results/"
     metric_kwargs (dict, optional):
         Additional kwargs for the metric.
         Default {}.
@@ -116,6 +114,8 @@ class EngineModule(BaseModule):
     model: nn.Module
     writer: SummaryWriter
 
+    curr_epoch: int = 0
+
     test_dl: TorchDataLoader
     """The torch DataLoader containing the test data."""
 
@@ -137,7 +137,6 @@ class EngineModule(BaseModule):
         super().__init__(config, [])
 
         # Set up general attributes
-        self.curr_epoch: int = 1
         self.test_only = test_only
         self.model = model
 
@@ -147,8 +146,14 @@ class EngineModule(BaseModule):
         self.test_dl = test_loader
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
+        # Logging
         self.log_dir: FilePath = self.params_test.get("log_dir", "./results/")
-        self.writer = SummaryWriter(log_dir=self.log_dir, **self.params_test.get("writer_kwargs", {}))
+        self.writer = SummaryWriter(
+            log_dir=os.path.join(self.log_dir, date.today().strftime("%Y%m%d")),
+            comment=self.config.get("description"),
+            **self.params_test.get("writer_kwargs", {}),
+        )
+        self.writer.add_scalar("Test/batch_size", self.train_dl.batch_size)
 
         # Set up train attributes
         self.params_train: Config = {}
@@ -159,7 +164,8 @@ class EngineModule(BaseModule):
                 raise ValueError("test_only is False but train_loader is None.")
             self.train_dl = train_loader
             self.epochs: int = self.params_train.get("epochs", 1)
-            self.start_epoch: int = self.params_train.get("start_epoch", 0)
+            self.start_epoch: int = self.params_train.get("start_epoch", 1)
+            self.curr_epoch = self.start_epoch
             self.loss = get_loss_function(self.params_train["loss"])(
                 **self.params_train.get("loss_kwargs", {})  # optional loss kwargs
             )
@@ -169,9 +175,10 @@ class EngineModule(BaseModule):
             )
             # the learning-rate scheduler needs the optimizer for instantiation
             if lr_scheds is None:
-                self.lr_sched = [optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, factor=1 / 10, total_iters=10)]
+                self.lr_sched = [optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, factor=1, total_iters=10)]
             else:
                 raise NotImplementedError
+            self.writer.add_scalar("Train/batch_size", self.test_dl.batch_size)
 
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
@@ -190,10 +197,9 @@ class EngineModule(BaseModule):
     @enable_keyboard_interrupt
     def run(self) -> None:
         """Run the model. First train, then test!"""
-        if self.can_print("normal"):
-            print(f"#### Starting run {self.name} ####")
-        if self.can_print("normal") and "description" in self.config:
-            print(f"Config Description: {self.config['description']}")
+        self.logger.info(f"#### Starting run {self.name} ####")
+        if "description" in self.config:
+            self.logger.info(f"Config Description: {self.config['description']}")
 
         if not self.test_only:
             self.train()
@@ -219,7 +225,7 @@ class EngineModule(BaseModule):
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")
 
-        self.print("normal", "\n#### Start Training ####\n")
+        self.logger.info("\n#### Start Training ####\n")
 
         # set model to train mode
         self.model.train()
@@ -233,6 +239,8 @@ class EngineModule(BaseModule):
         data: DataSample
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
+            self.logger.info(f"\n#### Training - Epoch {self.curr_epoch} ####\n")
+
             epoch_loss = 0
             time_epoch_start = time.time()
             time_batch_start = time.time()  # reset timer for retrieving the data
@@ -258,8 +266,15 @@ class EngineModule(BaseModule):
                 curr_iter = self.curr_epoch * num_batches + batch_idx
                 self.writer.add_scalar("Train/loss", loss.item(), curr_iter)
                 self.writer.add_scalar("Train/batch_time", batch_times[-1], curr_iter)
+                self.writer.add_scalar("Train/indiv_time", batch_times[-1] / self.train_dl.batch_size, curr_iter)
                 self.writer.add_scalar("Train/data_time", data_times[-1], curr_iter)
-                self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], curr_iter)
+                self.writer.add_hparams(
+                    hparam_dict={
+                        "lr": self.optimizer.param_groups[-1]["lr"],
+                        "batch_size": self.train_dl.batch_size,
+                    },
+                    metric_dict={"HParam/loss": loss.item()},
+                )
                 self.writer.flush()
                 # ############ #
                 # END OF BATCH #
@@ -271,10 +286,8 @@ class EngineModule(BaseModule):
             # ############ #
             epoch_times.add(time_epoch_start)
             losses.append(epoch_loss)
-            self.print("normal", f"Training: epoch {self.curr_epoch} loss: {epoch_loss}")
-            self.print(
-                "normal", f"Training: epoch {self.curr_epoch} time: {timedelta(seconds=round(epoch_times[-1]))} [s]"
-            )
+            self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2}")
+            self.logger.info(epoch_times.print(name="epoch", prepend="Training", hms=True))
 
             # handle updating the learning rate scheduler(s)
             for sched in self.lr_sched:
@@ -287,10 +300,10 @@ class EngineModule(BaseModule):
         # END OF TRAINING #
         # ############### #
 
-        self.print("normal", data_times.print(name="data", prepend="Training"))
-        self.print("normal", batch_times.print(name="batch", prepend="Training"))
-        self.print("normal", epoch_times.print(name="epoch", prepend="Training", hms=True))
-        self.print("normal", "\n#### Training complete ####\n")
+        self.logger.info(data_times.print(name="data", prepend="Training"))
+        self.logger.info(batch_times.print(name="batch", prepend="Training"))
+        self.logger.info(epoch_times.print(name="epoch", prepend="Training", hms=True))
+        self.logger.info("\n#### Training complete ####\n")
 
         self.writer.close()
 
@@ -311,11 +324,8 @@ class EngineModule(BaseModule):
                 "optimizer": self.optimizer.state_dict(),
                 "lr_scheduler": {i: sched.state_dict() for i, sched in enumerate(self.lr_sched)},
             },
-            save_dir=os.path.join(
-                self.log_dir,
-                f"./checkpoints/{self.name.replace(' ', '_')}_{curr_lr:.10}_{date.today().strftime('%Y%m%d')}/",
-            ),
-            verbose=self.can_print("normal"),
+            save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name.replace(' ', '_')}_{curr_lr:.10}/"),
+            verbose=self.logger.isEnabledFor(logging.INFO),
         )
 
     def load_model(self, path: FilePath) -> None:  # pragma: no cover
@@ -323,6 +333,7 @@ class EngineModule(BaseModule):
         self.start_epoch = resume_from_checkpoint(
             fpath=path, model=self.model, optimizer=self.optimizer, scheduler=self.lr_sched
         )
+        self.curr_epoch = self.start_epoch
 
     def terminate(self) -> None:  # pragma: no cover
         """Handle forceful termination, e.g., ctrl+c"""
@@ -336,8 +347,7 @@ class EngineModule(BaseModule):
     def _normalize(self, tensor: torch.Tensor) -> torch.Tensor:
         """If ``params_test.test_normalize`` is True, we want to obtain the normalized prediction and target."""
         if self.params_test.get("test_normalize", False):
-            if self.can_print("debug"):
-                print("Normalizing test data")
+            self.logger.debug("Normalizing test data")
             tensor: torch.Tensor = nn.functional.normalize(tensor)
         return tensor
 
@@ -379,30 +389,33 @@ class EngineModule(BaseModule):
             elif isinstance(value, (list, dict, set)):
                 for i, sub_value in enumerate(value):
                     self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{i}", sub_value, index)
+            elif isinstance(value, str):
+                self.writer.add_text(tag=key, text_string=value, global_step=index)
             else:
                 warnings.warn(f"Unknown result for writer: {value} {key}")
-        self.print("debug", "results have been written to writer")
+        self.logger.debug("results have been written to writer")
         self.writer.flush()
 
     def print_results(self, results: dict[str, any]) -> None:
         """Given a dictionary of results, print them to the console if allowed."""
         show_images = False
-        if self.can_print("normal"):
-            print(f"#### Results - Epoch {self.curr_epoch} ####")
-            for key, value in results.items():
-                if isinstance(value, (int, float)):
-                    print(f"{key}: {value:.2%}")
-                elif key.lower() == "cmc":
-                    print("CMC curve:")
-                    for r, cmc_i in value.items():
-                        print(f"Rank-{r}: {cmc_i:.1%}")
-                elif isinstance(value, tv_tensors.Image):
-                    show_images = True
-                    torch_show_image(value, show=False)
-                elif "embed" in key:
-                    continue
-                else:
-                    warnings.warn(f"Unknown result for printing: {key} {value}")
+        self.logger.info(f"#### Results - Epoch {self.curr_epoch} ####")
+        for key, value in results.items():
+            if isinstance(value, (int, float)):
+                self.logger.info(f"{key}: {value:.2%}")
+            elif key.lower() == "cmc":
+                self.logger.info("CMC curve:")
+                for r, cmc_i in value.items():
+                    self.logger.info(f"Rank-{r}: {cmc_i:.1%}")
+            elif isinstance(value, tv_tensors.Image):
+                show_images = True
+                torch_show_image(value, show=False)
+            elif "embed" in key:
+                continue
+            elif isinstance(value, str):
+                self.logger.info(f"{key} {value}")
+            else:
+                warnings.warn(f"Unknown result for printing: {key} {value}")
         # if there were images drawn, show them
         if show_images:
             plt.show()

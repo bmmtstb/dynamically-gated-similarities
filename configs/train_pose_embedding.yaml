@@ -3,7 +3,7 @@ description: "Train the embeddings for a pose-based embedding generator
     using the embedding generators of the dgs module."
 
 device: "cuda"
-print_prio: "normal"
+print_prio: "INFO"
 is_training: on
 
 train:

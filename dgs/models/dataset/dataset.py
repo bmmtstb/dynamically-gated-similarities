@@ -226,8 +226,7 @@ class BaseDataset(BaseModule, TorchDataset):
             return
 
         # no crop folder path given, compute the crops
-        if self.can_print("debug"):
-            print("computing image crops")
+        self.logger.debug("computing image crops")
         ds.to(self.device)
 
         if self.params.get("force_img_reshape", False):

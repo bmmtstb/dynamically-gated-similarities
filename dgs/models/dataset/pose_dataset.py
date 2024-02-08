@@ -16,26 +16,26 @@ from dgs.utils.utils import HidePrint
 try:
     # If torchreid is installed using `./dependencies/torchreid`
     # noinspection PyUnresolvedReferences
-    from torchreid.data import Dataset
+    from torchreid.data import Dataset as TorchreidDataset
 
     # noinspection PyUnresolvedReferences
-    from torchreid.data.datamanager import DataManager
+    from torchreid.data.datamanager import DataManager as TorchreidDM
 
     # noinspection PyUnresolvedReferences
     from torchreid.data.sampler import build_train_sampler
 except ModuleNotFoundError:
     # if torchreid is installed using `pip install torchreid`
     # noinspection PyUnresolvedReferences
-    from torchreid.reid.data import Dataset
+    from torchreid.reid.data import Dataset as TorchreidDataset
 
     # noinspection PyUnresolvedReferences
-    from torchreid.reid.data.datamanager import DataManager
+    from torchreid.reid.data.datamanager import DataManager as TorchreidDM
 
     # noinspection PyUnresolvedReferences
     from torchreid.reid.data.sampler import build_train_sampler
 
 
-class TorchreidPoseDataset(Dataset):
+class TorchreidPoseDataset(TorchreidDataset):
     """Custom torchreid Dataset for pose-based data."""
 
     def __getitem__(self, index: int) -> dict[str, any]:
@@ -63,7 +63,7 @@ class TorchreidPoseDataset(Dataset):
         print(" ----------------------------------------")
 
 
-class TorchreidPoseDataManager(DataManager):
+class TorchreidPoseDataManager(TorchreidDM):
     """Custom torchreid DataManager for pose-based data.
 
     Args:
@@ -215,7 +215,7 @@ class TorchreidPoseDataManager(DataManager):
             )
 
             # test_loader for gallery
-            gallery_set: Union[Dataset, TorchDataset] = dataset(
+            gallery_set: Union[TorchreidDataset, TorchDataset] = dataset(
                 root=self.root, mode="gallery", transform=self.transform_te, **self.params
             )
             # build gallery loader
