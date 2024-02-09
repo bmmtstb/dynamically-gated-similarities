@@ -35,19 +35,20 @@ from torchreid.engine.image.softmax import ImageSoftmaxEngine
 from torchreid.models import build_model
 from torchreid.optim import build_lr_scheduler, build_optimizer
 
-LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('YYYYMMDD')}/"
-MODEL_NAME = "osnet_x1_0"
-BATCH_TRAIN = 32
+LOG_DIR = f"./results/torchreid/visual/{date.today().strftime('%Y%m%d')}/"
+MODEL_NAME = "osnet_ain_x1_0"
+BATCH_TRAIN = 128
 HEIGHT = 256
 WIDTH = 256
 TRANSFORMS: Union[str, list[str]] = "random_flip"
 MARKET1501_500K: bool = False
 USE_GPU: bool = True
-DIST_METRIC: str = "cosine"  # "cosine" or "euclidean"
-EPOCHS: int = 1
+DIST_METRIC: str = "euclidean"  # "cosine" or "euclidean"
+EPOCHS: int = 5
 LOSS: str = "softmax"  # "softmax" or "triplet"
-PRE_TRAINED: bool = False
-TEST_ONLY: bool = True
+PRE_TRAINED: bool = True
+TEST_ONLY: bool = False
+NUM_CLASSES: int = 7529
 
 if __name__ == "__main__":
     # noinspection PyTypeChecker
@@ -72,7 +73,7 @@ if __name__ == "__main__":
 
     # Specify ReID model with num_classes = max(nof pids) -> in PT21
     m = build_model(
-        name=MODEL_NAME, num_classes=5474, use_gpu=USE_GPU, pretrained=PRE_TRAINED, loss=LOSS
+        name=MODEL_NAME, num_classes=NUM_CLASSES, use_gpu=USE_GPU, pretrained=PRE_TRAINED, loss=LOSS
     ).cuda()  # send model to cuda, because torchreid doesn't do it properly
 
     writer = SummaryWriter(log_dir=LOG_DIR, filename_suffix=f"{MODEL_NAME}")
