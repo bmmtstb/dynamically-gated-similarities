@@ -230,7 +230,15 @@ class BaseModule(ABC):
 
     def _init_logger(self) -> logging.Logger:
         """Initialize a basic logger for this module."""
-        logger = logging.getLogger(self.name)
+        logger = logging.getLogger(self.name.replace(" ", "."))
+
+        if logger.hasHandlers():
+            return logger
+
+        # set level
+        prio = self.config.get("print_prio", "INFO")
+        log_level = PRINT_PRIORITY[prio] if isinstance(prio, str) else prio
+        logger.setLevel(log_level)
 
         # file handler
         file_handler = logging.FileHandler(
@@ -240,11 +248,6 @@ class BaseModule(ABC):
         # stdout / stderr handler
         stream_handler = logging.StreamHandler()
         logger.addHandler(stream_handler)
-
-        # set level
-        prio = self.config.get("print_prio", "INFO")
-        log_level = PRINT_PRIORITY[prio] if isinstance(prio, str) else prio
-        logger.setLevel(log_level)
 
         # set output format
         formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")

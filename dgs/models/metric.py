@@ -49,7 +49,7 @@ def compute_cmc(
     # sort by distance, lowest to highest
     indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
     # with predictions[indices] := sorted predictions
-    matches: torch.BoolTensor = torch.eq(gallery_pids[indices], query_pids).bool()  # BoolTensor [n_query x n_gallery]
+    matches: torch.Tensor = torch.eq(gallery_pids[indices], query_pids).bool()  # BoolTensor [n_query x n_gallery]
 
     for rank in ranks:
         orig_rank = rank
@@ -64,6 +64,35 @@ def compute_cmc(
 
         cmcs[orig_rank] = float(cmc) / float(n_query)
     return cmcs
+
+
+@torch.no_grad()
+def compute_accuracy(
+    prediction: torch.Tensor, target: torch.LongTensor, topk: tuple[int, ...] = (1,)
+) -> dict[int, float]:
+    """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
+
+    Args:
+        prediction: prediction matrix with shape ``[B x num_classes]``.
+        target: ground truth labels with shape ``[B]``.
+        topk: A tuple containing the number of values to check for the top-k accuracies.
+            Default (1,).
+
+    Returns:
+        The accuracies for each of the ``k``-top predictions.
+    """
+    batch_size = target.size(0)
+
+    _, ids = prediction.topk(max(topk))
+
+    correct = ids.eq(target.view(-1, 1))  # [B x max(topk)]
+
+    res: dict[int, float] = {}
+    for k in topk:
+        acc = correct[:, k].float().sum().mul_(100.0 / float(batch_size))
+        res[k] = acc.item()
+
+    return res
 
 
 # @torch.compile

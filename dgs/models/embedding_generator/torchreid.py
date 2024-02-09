@@ -95,7 +95,8 @@ class TorchreidModel(EmbeddingGeneratorModule, nn.Module):
             data: The image crop to compute the embedding from.
 
         Returns:
-            Output of this models' forward call.
+            Output of this models' forward call as the predicted embeddings ``[B x E]`` and
+            the predicted class probabilities ``[B x num_classes]``.
         """
         r = self.model(to_dtype(*data, dtype=torch.float32), **kwargs)
 

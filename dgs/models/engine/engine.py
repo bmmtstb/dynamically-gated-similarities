@@ -147,13 +147,13 @@ class EngineModule(BaseModule):
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Logging
-        self.log_dir: FilePath = self.params_test.get("log_dir", "./results/")
+        self.log_dir: FilePath = self.config.get("log_dir", "./results/")
         self.writer = SummaryWriter(
             log_dir=os.path.join(self.log_dir, date.today().strftime("%Y%m%d")),
             comment=self.config.get("description"),
             **self.params_test.get("writer_kwargs", {}),
         )
-        self.writer.add_scalar("Test/batch_size", self.train_dl.batch_size)
+        self.writer.add_scalar("Test/batch_size", self.test_dl.batch_size)
 
         # Set up train attributes
         self.params_train: Config = {}
@@ -232,10 +232,10 @@ class EngineModule(BaseModule):
 
         # initialize variables
         losses: list[float] = []
-        epoch_times: DifferenceTimer = DifferenceTimer()
-        batch_times: DifferenceTimer = DifferenceTimer()
-        data_times: DifferenceTimer = DifferenceTimer()
-        num_batches: int = math.ceil(len(self.train_dl) / self.train_dl.batch_size)
+        epoch_t: DifferenceTimer = DifferenceTimer()
+        batch_t: DifferenceTimer = DifferenceTimer()
+        data_t: DifferenceTimer = DifferenceTimer()
+        B: int = self.train_dl.batch_size
         data: DataSample
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
@@ -252,29 +252,22 @@ class EngineModule(BaseModule):
                 position=2,
                 total=len(self.train_dl),
             ):
-                data_times.add(time_batch_start)
+                curr_iter = self.curr_epoch * B + batch_idx
+                data_t.add(time_batch_start)
 
                 # OPTIMIZE MODEL
+                loss = self._get_train_loss(data, curr_iter)
                 self.optimizer.zero_grad()
-                loss = self._get_train_loss(data)
                 loss.backward()
                 self.optimizer.step()
                 # OPTIMIZE END
 
-                batch_times.add(time_batch_start)
+                batch_t.add(time_batch_start)
                 epoch_loss += loss.item()
-                curr_iter = self.curr_epoch * num_batches + batch_idx
-                self.writer.add_scalar("Train/loss", loss.item(), curr_iter)
-                self.writer.add_scalar("Train/batch_time", batch_times[-1], curr_iter)
-                self.writer.add_scalar("Train/indiv_time", batch_times[-1] / self.train_dl.batch_size, curr_iter)
-                self.writer.add_scalar("Train/data_time", data_times[-1], curr_iter)
-                self.writer.add_hparams(
-                    hparam_dict={
-                        "lr": self.optimizer.param_groups[-1]["lr"],
-                        "batch_size": self.train_dl.batch_size,
-                    },
-                    metric_dict={"HParam/loss": loss.item()},
-                )
+                self.writer.add_scalar("Train/loss", loss.item(), global_step=curr_iter)
+                self.writer.add_scalar("Train/batch_time", batch_t[-1], global_step=curr_iter)
+                self.writer.add_scalar("Train/indiv_time", batch_t[-1] / B, global_step=curr_iter)
+                self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
                 self.writer.flush()
                 # ############ #
                 # END OF BATCH #
@@ -284,10 +277,10 @@ class EngineModule(BaseModule):
             # ############ #
             # END OF EPOCH #
             # ############ #
-            epoch_times.add(time_epoch_start)
+            epoch_t.add(time_epoch_start)
             losses.append(epoch_loss)
             self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2}")
-            self.logger.info(epoch_times.print(name="epoch", prepend="Training", hms=True))
+            self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
 
             # handle updating the learning rate scheduler(s)
             for sched in self.lr_sched:
@@ -300,9 +293,9 @@ class EngineModule(BaseModule):
         # END OF TRAINING #
         # ############### #
 
-        self.logger.info(data_times.print(name="data", prepend="Training"))
-        self.logger.info(batch_times.print(name="batch", prepend="Training"))
-        self.logger.info(epoch_times.print(name="epoch", prepend="Training", hms=True))
+        self.logger.info(data_t.print(name="data", prepend="Training"))
+        self.logger.info(batch_t.print(name="batch", prepend="Training"))
+        self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
         self.logger.info("\n#### Training complete ####\n")
 
         self.writer.close()
@@ -352,11 +345,14 @@ class EngineModule(BaseModule):
         return tensor
 
     @abstractmethod
-    def _get_train_loss(self, data: DataSample) -> torch.Tensor:  # pragma: no cover
+    def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:  # pragma: no cover
         """Compute the loss during training given the data.
 
         Different models can have different outputs and a different number of targets.
         This function has to get overwritten by subclasses.
+
+        Subclasses can use ``_curr_iter`` to write additional information to the tensorboard logs.
+        The loss is always written to the logs in ``self.train``.
         """
         raise NotImplementedError
 
@@ -421,6 +417,6 @@ class EngineModule(BaseModule):
             plt.show()
 
     @staticmethod
-    def _ids_to_one_hot(ids: torch.Tensor, nof_classes: int) -> torch.Tensor:
+    def _ids_to_one_hot(ids: torch.Tensor, nof_classes: int) -> torch.LongTensor:
         """Given a tensor containing the class ids, return the one hot representation."""
-        return F.one_hot(ids, nof_classes)  # pylint: disable=not-callable
+        return F.one_hot(ids, nof_classes).long()  # pylint: disable=not-callable

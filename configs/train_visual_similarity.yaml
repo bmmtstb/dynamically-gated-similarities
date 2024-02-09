@@ -5,17 +5,22 @@ This config uses the engine of the dgs module."
 device: "cuda"
 print_prio: "DEBUG"
 is_training: on
-log_dir: "./results/own_visual_sim/"
+log_dir: "./results/own/visual_sim/"
 
 
 train:
     epochs: 5
-    loss: "CrossEntropyLoss"
+    loss: "TorchreidCrossEntropyLoss"
+    loss_kwargs:
+        num_classes: 7529
     optimizer: "Adam"
+    optimizer_kwargs:
+        lr: 0.0001
+        weight_decay: 0.0001
     nof_classes: 7529
 
 test:
-    metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
+    metric: "EuclideanDistance"  # used to compute the distance matrix between target and predicted embeddings
 
 # #### #
 # DATA #

@@ -15,7 +15,7 @@ from torcheval.metrics.functional import multiclass_auprc
 from tqdm import tqdm
 
 from dgs.models.engine.engine import EngineModule
-from dgs.models.metric import compute_cmc
+from dgs.models.metric import compute_accuracy, compute_cmc
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.states import DataSample, get_ds_data_getter
 from dgs.utils.types import Config, Validations
@@ -52,7 +52,12 @@ class VisualSimilarityEngine(EngineModule):
         lr_scheds: list[Type[optim.lr_scheduler.LRScheduler]] = None,
     ):
         super().__init__(
-            config, model, test_loader, train_loader=train_loader, test_only=test_only, lr_scheds=lr_scheds
+            config=config,
+            model=model,
+            test_loader=test_loader,
+            train_loader=train_loader,
+            test_only=test_only,
+            lr_scheds=lr_scheds,
         )
         self.val_dl = val_loader
 
@@ -60,6 +65,8 @@ class VisualSimilarityEngine(EngineModule):
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]
+
+            self.topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
 
     def get_target(self, ds: DataSample) -> torch.LongTensor:
         """Get the target pIDs from the data."""
@@ -69,20 +76,26 @@ class VisualSimilarityEngine(EngineModule):
         """Get the image crop from the data."""
         return get_ds_data_getter(["image_crop"])(ds)[0]
 
-    def _get_train_loss(self, data: DataSample) -> torch.Tensor:
-        _, pred_ids = self.model(self.get_data(data))
+    def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
+        _, pred_id_probs = self.model(self.get_data(data))
         target_ids = self.get_target(data)
 
-        # assert all(
-        #     tid <= self.nof_classes for tid in target_ids
-        # ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
+        assert all(
+            tid <= self.nof_classes for tid in target_ids
+        ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
 
-        oh_t_ids = self._ids_to_one_hot(ids=target_ids, nof_classes=self.nof_classes).float()
+        oh_t_ids = self._ids_to_one_hot(ids=target_ids, nof_classes=self.nof_classes)
 
-        # assert pred_ids.shape == oh_t_ids.shape, f"p: {pred_ids.shape} t: {oh_t_ids.shape}"
-        # assert pred_ids.dtype == oh_t_ids.dtype, f"p: {pred_ids.dtype} t: {oh_t_ids.dtype}"
+        assert pred_id_probs.shape == oh_t_ids.shape, f"p: {pred_id_probs.shape} t: {oh_t_ids.shape}"
+        # assert pred_id_probs.dtype == oh_t_ids.dtype, f"p: {pred_id_probs.dtype} t: {oh_t_ids.dtype}"
 
-        loss = self.loss(pred_ids, oh_t_ids)
+        # loss = self.loss(pred_id_probs, oh_t_ids)
+        loss = self.loss(pred_id_probs, target_ids)
+
+        topk_accuracies = compute_accuracy(prediction=pred_id_probs, target=target_ids)
+        for k, accu in topk_accuracies.items():
+            self.writer.add_scalar(f"Train/top-{k} acc", accu, global_step=_curr_iter)
+
         return loss
 
     @torch.no_grad()
@@ -125,7 +138,7 @@ class VisualSimilarityEngine(EngineModule):
                 embeddings, target_ids
             """
 
-            total_m_ap: torch.DoubleTensor = torch.tensor(0.0, dtype=torch.float64, device=self.device)
+            total_m_ap: torch.Tensor = torch.tensor(0.0, dtype=torch.float64, device=self.device)
             embed_l: list[torch.Tensor] = []
             t_ids_l: list[torch.LongTensor] = []
 
@@ -137,12 +150,12 @@ class VisualSimilarityEngine(EngineModule):
                 embed, pred_id_prob = self.model(t_imgs)
 
                 # Obtain class probability predictions and mAP from data
-                m_ap = multiclass_auprc(
+                m_ap: torch.Tensor = multiclass_auprc(
                     input=F.softmax(pred_id_prob, dim=1),  # 2D class probabilities [B, num_classes]
                     target=t_id,  # gt labels    [B]
                 ).double()
 
-                total_m_ap += m_ap * t_imgs.size(0)  # map*B, later we will div by N
+                total_m_ap += m_ap * torch.tensor(t_imgs.size(0)).double()  # map*B, later we will div by N
 
                 # keep the results in lists
                 embed_l.append(embed)
