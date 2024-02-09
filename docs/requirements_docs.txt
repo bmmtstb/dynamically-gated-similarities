@@ -1,3 +1,15 @@
+# ############################# #
+# torch cpu as extra dependency #
+# ############################# #
+
+--index-url https://download.pytorch.org/whl/cpu torch==2.2.*
+--index-url https://download.pytorch.org/whl/cpu torchvision==0.17.*
+
+# ######################## #
+# regular pip dependencies #
+# ######################## #
+
+# av is for FFmpeg libraries and loading videos
 av
 coverage[toml]
 easydict
@@ -9,8 +21,3 @@ scipy
 sphinx
 terminaltables
 tqdm
-
-# torch cpu
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.*
-torchvision==0.16.*

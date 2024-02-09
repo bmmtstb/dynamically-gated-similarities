@@ -1,6 +1,16 @@
-# PyPi dependencies
+# ############################# #
+# torch cpu as extra dependency #
+# ############################# #
 
-av # for FFmpeg libraries and loading videos
+--index-url https://download.pytorch.org/whl/cpu torch==2.2.*
+--index-url https://download.pytorch.org/whl/cpu torchvision==0.17.*
+
+# ######################## #
+# regular pip dependencies #
+# ######################## #
+
+# av is for FFmpeg libraries and loading videos
+av
 black
 Cython
 coverage[toml]
@@ -21,17 +31,3 @@ torcheval
 torchreid==0.2.5
 tqdm
 visdom
-
-# -r ../dependencies/torchreid/requirements.txt
-# -e ./dependencies/torchreid
-
-# local dependencies
-
-# -e ./dependencies/PoseTrack21/eval/posetrack21/  # ignored by pylint, unused by pytest
-# -r ../dependencies/torchreid/requirements.txt  # ignored by pylint, unused by pytest
-# -e ./dependencies/torchreid  # ignored by pylint, unused by pytest
-
-# torch cpu as extra dependency
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.*
-torchvision==0.16.*
