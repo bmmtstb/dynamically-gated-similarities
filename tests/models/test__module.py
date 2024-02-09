@@ -74,7 +74,6 @@ class TestBaseModule(unittest.TestCase):
             (_def_repl("print_prio", ""), "'print_prio' is not valid", "empty print priority"),
             (_def_repl("print_prio", "None"), "'print_prio' is not valid", "caps not valid"),
             (_def_repl("print_prio", None), "'print_prio' is not valid", "None print priority"),
-            (_def_repl("gpus", ["0", "1", "2"]), "Used a custom validation", "gpus as list of str"),
         ]:
             with self.subTest(msg=msg):
                 with self.assertRaises(InvalidParameterException) as context:

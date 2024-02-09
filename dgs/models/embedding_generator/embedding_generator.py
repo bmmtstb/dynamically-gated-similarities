@@ -56,7 +56,7 @@ import torch
 from dgs.models.module import BaseModule
 from dgs.utils.types import Config, NodePath, Validations
 
-embedding_validations: Validations = {"embedding_size": ["int", ("gt", 0)]}
+embedding_validations: Validations = {"embedding_size": [int, ("gt", 0)]}
 
 
 class EmbeddingGeneratorModule(BaseModule):

@@ -3,7 +3,6 @@ Class and functions used during training and testing of different modules.
 """
 
 import logging
-import math
 import os
 import time
 import warnings
@@ -32,21 +31,20 @@ from dgs.utils.types import Config, FilePath, Validations
 from dgs.utils.visualization import torch_show_image
 
 train_validations: Validations = {
-    "loss": [("or", (("callable", ...), ("in", LOSS_FUNCTIONS)))],
-    "optimizer": [("or", (("callable", ...), ("in", OPTIMIZERS)))],
+    "loss": [("any", (("callable", ...), ("in", LOSS_FUNCTIONS)))],
+    "optimizer": [("any", (("callable", ...), ("in", OPTIMIZERS)))],
     # optional
-    "epochs": ["optional", "int", ("gte", 1)],
-    "optimizer_kwargs": ["optional", "dict"],
-    "loss_kwargs": ["optional", "dict"],
+    "epochs": ["optional", int, ("gte", 1)],
+    "optimizer_kwargs": ["optional", dict],
+    "loss_kwargs": ["optional", dict],
 }
 
 test_validations: Validations = {
-    "metric": [("or", (("callable", ...), ("in", METRICS)))],
+    "metric": [("any", ("callable", ("in", METRICS)))],
     # optional
-    "log_dir": ["optional", ("or", (("folder exists in project", ...), ("folder exists", ...)))],
-    "test_normalize": ["optional", "bool"],
+    "test_normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
-    "writer_kwargs": ["optional", "dict"],
+    "writer_kwargs": ["optional", dict],
 }
 
 

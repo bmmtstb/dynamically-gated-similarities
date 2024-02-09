@@ -18,34 +18,34 @@ pbeg_validations: Validations = {
     "bbox_format": [
         "optional",
         (
-            "or",
-            (
+            "any",
+            [
                 ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
                 ("isinstance", tv_tensors.BoundingBoxFormat),
-            ),
+            ],
         ),
     ],
-    "bias": ["optional", ("isinstance", bool)],
+    "bias": ["optional", bool],
     "hidden_layers": ["optional", ("instance", (list, tuple, None))],
     "hidden_layers_kp": ["optional", ("instance", (list, tuple, None))],
-    "nof_kernels": ["optional", "int", ("gt", 0)],
+    "nof_kernels": ["optional", int, ("gt", 0)],
 }
 
 lpbe_validations: Validations = {
-    "joint_shape": [("instance", (list, tuple)), ("len", 2), lambda tup: all(i > 0 for i in tup)],
+    "joint_shape": [list, ("len", 2), ("forall", (int, ("gt", 0)))],
     "bbox_format": [
         "optional",
         (
-            "or",
-            (
+            "any",
+            [
                 ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
                 ("isinstance", tv_tensors.BoundingBoxFormat),
-            ),
+            ],
         ),
     ],
-    "bias": ["optional", ("isinstance", bool)],
+    "bias": ["optional", bool],
     "hidden_layers": ["optional", ("instance", (list, tuple, None))],
-    "nof_kernels": ["optional", "int", ("gt", 0)],
+    "nof_kernels": ["optional", int, ("gt", 0)],
 }
 
 

@@ -8,7 +8,7 @@ from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.constants import OKS_SIGMAS
 from dgs.utils.types import Config, NodePath, Validations
 
-validations: Validations = {"format": ["str", ("in", list(OKS_SIGMAS.keys()))]}
+validations: Validations = {"format": [str, ("in", list(OKS_SIGMAS.keys()))]}
 
 
 class ObjectKeypointSimilarity(SimilarityModule):

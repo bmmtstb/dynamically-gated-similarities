@@ -30,7 +30,7 @@ with warnings.catch_warnings():
         # noinspection PyUnresolvedReferences
         from torchreid.reid.utils.torchtools import load_pretrained_weights
 
-torchreid_validations: Config = {"model_name": ["str", ("in", torchreid_models.keys())]}
+torchreid_validations: Config = {"model_name": [str, ("in", torchreid_models.keys())]}
 
 
 class TorchreidModel(EmbeddingGeneratorModule, nn.Module):

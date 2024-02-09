@@ -18,16 +18,26 @@ from dgs.utils.types import Config, NodePath, Validations
 from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
-    "device": [("or", (("in", ["cuda", "cpu"]), ("type", torch.device)))],
-    "is_training": [("instance", bool)],
-    "name": ["str", ("longer", 2)],
+    "device": [("any", [("in", ["cuda", "cpu"]), ("instance", torch.device)])],
+    "is_training": [bool],
+    "name": [str, ("longer", 2)],
     "print_prio": [("in", PRINT_PRIORITY)],
-    "sp": [("instance", bool)],
+    "sp": [bool],
     # optional
-    "description": ["optional", "str"],
-    "gpus": ["optional", lambda gpus: isinstance(gpus, list) and all(isinstance(gpu, int) for gpu in gpus)],
-    "log_dir": ["optional", "str"],
-    "num_workers": ["optional", "int", ("gte", 0)],
+    "description": ["optional", str],
+    "gpus": [
+        "optional",
+        list,
+        (
+            "any",
+            [
+                ("forall", (int, ("gte", -1))),
+                ("all", [("forall", str), lambda x: all(int(x_i) >= -1 for x_i in x)]),
+            ],
+        ),
+    ],
+    "log_dir": ["optional", str],
+    "num_workers": ["optional", int, ("gte", 0)],
 }
 
 
@@ -141,23 +151,27 @@ class BaseModule(ABC):
                 Every validation in this list has to be true for the validation to be successful.
 
                 The value for the validation can have multiple types:
-                    - a lambda function or other type of callable
-                    - a string as reference to a predefined validation function with one argument
+                    - A lambda function or other type of callable
+                    - A string as reference to a predefined validation function with one argument
                     - None for existence
-                    - a tuple with a string as reference to a predefined validation function
-                        with one additional argument
-                    - it is possible to write nested validations, but then every nested validation has to be a tuple,
-                        or a tuple of tuples.
-                        For convenience "or" and "and" can have unlimited tuples as their second argument, therefore
-                        acting as replacements for "any" and "all".
+                    - A tuple with a string as reference to a predefined validation function
+                      with one additional argument
+                    - It is possible to write nested validations, but then every nested validation has to be a tuple,
+                      or a tuple of tuples.
+                      For convenience, there are implementations for "any", "all", "not", "eq", "neq", and "xor".
+                      Those can have data which is a tuple containing other tuples or validations,
+                      or a single validation.
+                    - Lists and other iterables can be validated using "forall" running the given validations for every
+                      item in the input.
+                      A single validation or a tuple of (nested) validations is accepted as data.
 
         Example:
-            This example is an excerpt of the validation of the BaseModule-configuration.
+            This example is an excerpt of the validation for the BaseModule-configuration.
 
             >>> validations = {
                 "device": [
-                        "str",
-                        ("or", (
+                        str,
+                        ("any", (
                             ("in", ["cuda", "cpu"]),
                             ("instance", torch.device)
                 ))
@@ -196,18 +210,9 @@ class BaseModule(ABC):
                 if validation == "optional":
                     continue
 
-                # case custom callable
-                if callable(validation):
-                    if validation(value):
-                        continue
-                    raise InvalidParameterException(
-                        f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
-                        f"Used a custom validation: {inspect.getsource(validation)}"
-                    )
-
                 # case name as string or in tuple with additional values
-                if isinstance(validation, str | tuple):
-                    if isinstance(validation, str):  # no additional data, therefore set data to None
+                if isinstance(validation, str | tuple | type):
+                    if isinstance(validation, str | type):  # no additional data, therefore set data to None
                         validation_name, data = validation, None
                     else:
                         validation_name, data = validation
@@ -218,6 +223,15 @@ class BaseModule(ABC):
                         f"In module '{self.__class__.__name__}', parameter '{param_name}' is not valid. "
                         f"Value is '{value}' and is expected to have validation(s) '{list_of_validations}'."
                     )
+                # case custom callable
+                if callable(validation):
+                    if validation(value):
+                        continue
+                    raise InvalidParameterException(
+                        f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
+                        f"Used a custom validation: {inspect.getsource(validation)}"
+                    )
+
                 # no other case was true
                 raise ValidationException(
                     f"Validation is expected to be callable or tuple, but is '{type(validation)}'. "

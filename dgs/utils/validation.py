@@ -11,7 +11,7 @@ from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException, ValidationException
-from dgs.utils.files import is_file, to_abspath
+from dgs.utils.files import is_dir, is_file, is_project_dir, mkdir_if_missing, to_abspath
 from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage, Validator
 
 VALIDATIONS: dict[str, Validator] = {
@@ -19,21 +19,12 @@ VALIDATIONS: dict[str, Validator] = {
     # types
     "None": (lambda x, _: x is None),
     "not None": (lambda x, _: x is not None),
-    "bool": (lambda x, _: isinstance(x, bool)),
-    "str": (lambda x, _: isinstance(x, str)),
-    "int": (lambda x, _: isinstance(x, int)),
-    "float": (lambda x, _: isinstance(x, float)),
-    "dict": (lambda x, _: isinstance(x, dict)),
-    "list": (lambda x, _: isinstance(x, list)),
-    "set": (lambda x, _: isinstance(x, set)),
-    "tuple": (lambda x, _: isinstance(x, tuple)),
     "number": (lambda x, _: isinstance(x, int | float)),
     "callable": (lambda x, _: callable(x)),
-    "instance": isinstance,  # alias
-    "isinstance": isinstance,
-    "type": (lambda x, d: isinstance(d, type) and isinstance(x, d)),
     "iterable": (lambda x, _: isinstance(x, Iterable)),
     "sized": (lambda x, _: isinstance(x, Sized)),
+    "instance": isinstance,
+    "isinstance": isinstance,
     # number
     "gt": (lambda x, d: isinstance(d, int | float) and x > d),
     "gte": (lambda x, d: isinstance(d, int | float) and x >= d),
@@ -52,8 +43,6 @@ VALIDATIONS: dict[str, Validator] = {
     "not in": (lambda x, d: hasattr(x, "__contains__") and x not in d),
     "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),
     "not contains": (lambda x, d: hasattr(x, "__contains__") and d not in x),
-    "all type": (lambda x, d: hasattr(x, "__len__") and isinstance(d, type) and all(isinstance(xi, d) for xi in x)),
-    "all in": (lambda x, d: hasattr(x, "__len__") and hasattr(d, "__contains__") and all(xi in d for xi in x)),
     # string
     "startswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.startswith(d)),
     "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
@@ -63,18 +52,59 @@ VALIDATIONS: dict[str, Validator] = {
     "file exists in folder": (
         lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isfile(os.path.join(f, x))
     ),
-    "folder exists": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(x)),
-    "folder exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isdir(os.path.join(PROJECT_ROOT, x))),
+    "folder exists": (lambda x, b: isinstance(x, FilePath) and (is_dir(x) if not b else mkdir_if_missing(x) and True)),
+    "folder exists in project": (
+        lambda x, b: isinstance(x, FilePath)
+        and (is_project_dir(x) if not b else mkdir_if_missing(to_abspath(x)) and True)
+    ),
     "folder exists in folder": (
         lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isdir(os.path.join(f, x))
     ),
     # logical operators, including nested validations
     "eq": (lambda x, d: x == d),
     "neq": (lambda x, d: x != d),
-    "not": (lambda x, d: not VALIDATIONS[d[0]](x, d[1])),
-    "and": (lambda x, d: all(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
-    "or": (lambda x, d: any(VALIDATIONS[d[i][0]](x, d[i][1]) for i in range(len(d)))),
-    "xor": (lambda x, d: bool(VALIDATIONS[d[0][0]](x, d[0][1])) != bool(VALIDATIONS[d[1][0]](x, d[1][1]))),
+    "not": (lambda x, d: not VALIDATIONS["all"](x, d)),
+    "forall": (
+        lambda x, data: (
+            VALIDATIONS["iterable"](x, None)
+            and (
+                all(validate_value(value=x_i, data=data[1], validation=data[0]) for x_i in x)
+                if isinstance(data, tuple)
+                else (
+                    all(VALIDATIONS["all"](x_i, d_i) for d_i in data for x_i in x)
+                    if isinstance(data, list)
+                    else all(validate_value(value=x_i, data=None, validation=data) for x_i in x)
+                )
+            )
+        )
+    ),
+    "all": (
+        lambda x, data: (
+            (len(data) == 2 and validate_value(value=x, data=data[1], validation=data[0]))
+            if isinstance(data, tuple)
+            else (
+                (len(data) and all(VALIDATIONS["all"](x, sub_item) for sub_item in data))
+                if isinstance(data, list)
+                else validate_value(value=x, data=None, validation=data)
+            )
+        )
+    ),
+    "any": (
+        lambda x, data: (
+            (len(data) == 2 and validate_value(value=x, data=data[1], validation=data[0]))
+            if isinstance(data, tuple)
+            else (
+                any(VALIDATIONS["any"](x, sub_item) for sub_item in data)
+                if isinstance(data, list)
+                else validate_value(value=x, data=None, validation=data)
+            )
+        )
+    ),
+    "xor": (
+        lambda x, d: isinstance(d, list)
+        and len(d) == 2
+        and bool(VALIDATIONS["all"](x, d[0])) != bool(VALIDATIONS["all"](x, d[1]))
+    ),
 }
 """A list of default validations to check values using :meth:`validate_value`."""
 
@@ -229,7 +259,7 @@ def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
     elif ids.ndim != 1:
         raise ValueError(f"IDs should have only one dimension, but shape is {ids.shape}")
 
-    return ids.to(dtype=torch.int32)
+    return ids.int()
 
 
 def validate_images(images: Union[Image, torch.Tensor], dims: Union[int, None] = 4) -> TVImage:
@@ -325,6 +355,8 @@ def validate_value(value: any, data: any, validation: str) -> bool:
     Raises:
         KeyError: If the given `validation` does not exist.
     """
+    if isinstance(validation, type):
+        return isinstance(value, validation)
     if validation not in VALIDATIONS:
         raise KeyError(f"Validation {validation} does not exist.")
     try:

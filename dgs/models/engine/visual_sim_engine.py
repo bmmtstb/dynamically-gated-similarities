@@ -21,7 +21,9 @@ from dgs.models.states import DataSample, get_ds_data_getter
 from dgs.utils.types import Config, Validations
 
 train_validations: Validations = {
-    "nof_classes": ["int", ("gt", 0)],
+    "nof_classes": [int, ("gt", 0)],
+    # optional
+    "topk": ["optional", tuple, ("forall", (int, ("gt", 0)))],
 }
 
 
