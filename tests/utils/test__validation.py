@@ -269,6 +269,7 @@ class TestValidateValue(unittest.TestCase):
             (1, [int, ("gt", 1)], "all", False),
             (["a", "b"], str, "forall", True),
             (1, int, "forall", False),
+            ([None], "None", "forall", True),
             ([1, 2, 3], str, "forall", False),
             ([1, 2, 3], int, "forall", True),
             ([1, 2, 3], [int], "forall", True),

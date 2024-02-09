@@ -21,7 +21,7 @@ pbeg_validations: Validations = {
             "any",
             [
                 ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
-                ("isinstance", tv_tensors.BoundingBoxFormat),
+                ("instance", tv_tensors.BoundingBoxFormat),
             ],
         ),
     ],
@@ -32,14 +32,14 @@ pbeg_validations: Validations = {
 }
 
 lpbe_validations: Validations = {
-    "joint_shape": [list, ("len", 2), ("forall", (int, ("gt", 0)))],
+    "joint_shape": [list, ("len", 2), ("forall", [int, ("gt", 0)])],
     "bbox_format": [
         "optional",
         (
             "any",
             [
                 ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
-                ("isinstance", tv_tensors.BoundingBoxFormat),
+                ("instance", tv_tensors.BoundingBoxFormat),
             ],
         ),
     ],

@@ -68,35 +68,59 @@ VALIDATIONS: dict[str, Validator] = {
         lambda x, data: (
             VALIDATIONS["iterable"](x, None)
             and (
-                all(validate_value(value=x_i, data=data[1], validation=data[0]) for x_i in x)
+                all(VALIDATIONS[data[0]](x_i, data[1]) for x_i in x)
                 if isinstance(data, tuple)
                 else (
-                    all(VALIDATIONS["all"](x_i, d_i) for d_i in data for x_i in x)
-                    if isinstance(data, list)
-                    else all(validate_value(value=x_i, data=None, validation=data) for x_i in x)
+                    all(VALIDATIONS[data](x_i, None) for x_i in x)
+                    if isinstance(data, str)
+                    else (
+                        all(isinstance(x_i, data) for x_i in x)
+                        if isinstance(data, type)
+                        else (
+                            all(VALIDATIONS["all"](x_i, d_i) for d_i in data for x_i in x)
+                            if isinstance(data, list)
+                            else False
+                        )
+                    )
                 )
             )
         )
     ),
     "all": (
         lambda x, data: (
-            (len(data) == 2 and validate_value(value=x, data=data[1], validation=data[0]))
+            (len(data) == 2 and VALIDATIONS[data[0]](x, data[1]))
             if isinstance(data, tuple)
             else (
-                (len(data) and all(VALIDATIONS["all"](x, sub_item) for sub_item in data))
-                if isinstance(data, list)
-                else validate_value(value=x, data=None, validation=data)
+                VALIDATIONS[data](x, None)
+                if isinstance(data, str)
+                else (
+                    isinstance(x, data)
+                    if isinstance(data, type)
+                    else (
+                        (len(data) and all(VALIDATIONS["all"](x, sub_item) for sub_item in data))
+                        if isinstance(data, list)
+                        else False
+                    )
+                )
             )
         )
     ),
     "any": (
         lambda x, data: (
-            (len(data) == 2 and validate_value(value=x, data=data[1], validation=data[0]))
+            (len(data) == 2 and VALIDATIONS[data[0]](x, data[1]))
             if isinstance(data, tuple)
             else (
-                any(VALIDATIONS["any"](x, sub_item) for sub_item in data)
-                if isinstance(data, list)
-                else validate_value(value=x, data=None, validation=data)
+                VALIDATIONS[data](x, None)
+                if isinstance(data, str)
+                else (
+                    isinstance(x, data)
+                    if isinstance(data, type)
+                    else (
+                        (len(data) and any(VALIDATIONS["any"](x, sub_item) for sub_item in data))
+                        if isinstance(data, list)
+                        else False
+                    )
+                )
             )
         )
     ),
@@ -106,7 +130,6 @@ VALIDATIONS: dict[str, Validator] = {
         and bool(VALIDATIONS["all"](x, d[0])) != bool(VALIDATIONS["all"](x, d[1]))
     ),
 }
-"""A list of default validations to check values using :meth:`validate_value`."""
 
 
 def validate_bboxes(

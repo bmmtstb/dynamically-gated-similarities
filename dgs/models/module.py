@@ -31,8 +31,8 @@ module_validations: Validations = {
         (
             "any",
             [
-                ("forall", (int, ("gte", -1))),
-                ("all", [("forall", str), lambda x: all(int(x_i) >= -1 for x_i in x)]),
+                ("forall", [int, ("gte", -1)]),
+                ("all", [("forall", str), lambda x, _: all(int(x_i) >= -1 for x_i in x)]),
             ],
         ),
     ],
