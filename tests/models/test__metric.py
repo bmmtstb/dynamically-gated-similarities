@@ -8,6 +8,7 @@ from torch import nn
 
 from dgs.models.metric import (
     _validate_metric_inputs,
+    compute_accuracy,
     compute_cmc,
     CosineDistanceMetric,
     CosineSimilarityMetric,
@@ -21,6 +22,7 @@ from dgs.models.metric import (
 
 
 class TestMetrics(unittest.TestCase):
+
     def test_get_metric_from_name(self):
         for name, metric_class in METRICS.items():
             with self.subTest(msg=f"name: {name}, metric_class: {metric_class}"):
@@ -71,37 +73,6 @@ class TestMetrics(unittest.TestCase):
                         self.assertTrue("dummy" in METRICS)
         self.assertTrue("dummy" not in METRICS)
         self.assertTrue("new_dummy" not in METRICS)
-
-    def test_compute_cmc(self):
-        for distmat, labels, predictions, ranks, results in [
-            (
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([[1], [4]]).long(),
-                torch.tensor([2, 3, 4, 0, 1]).long(),
-                [1, 2, 3, 4, 5, 6],
-                [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
-            ),
-            (
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([1, 4]).long(),
-                torch.tensor([2, 3, 4, 0, 1]).long(),
-                [1, 2, 3, 4, 5, 6],
-                [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
-            ),
-        ]:
-            with self.subTest(
-                msg="ranks: {}, results: {}, distmat: {}, labels: {}, predictions: {}".format(
-                    ranks, results, distmat, labels, predictions
-                )
-            ):
-                with warnings.catch_warnings():  # will warn with rank 6, ignore it.
-                    warnings.filterwarnings(
-                        "ignore",
-                        message="Number of gallery samples.*is smaller than the max rank.*Setting rank.",
-                        category=UserWarning,
-                    )
-                    result_dict = {rank: float(result) for rank, result in zip(ranks, results)}
-                    self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), result_dict)
 
     def test_metrics_wrong_input_shape(self):
         for i1, i2, err in [
@@ -172,6 +143,51 @@ class TestMetrics(unittest.TestCase):
                 self.assertEqual(dist.shape, res.shape)
                 self.assertTrue(torch.allclose(dist, res))
                 self.assertTrue(torch.allclose(dist, dist_inv.T))
+
+
+class TestMetricCMC(unittest.TestCase):
+
+    def test_compute_cmc(self):
+        for distmat, labels, predictions, ranks, results in [
+            (
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([[1], [4]]).long(),
+                torch.tensor([2, 3, 4, 0, 1]).long(),
+                [1, 2, 3, 4, 5, 6],
+                [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
+            ),
+            (
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([1, 4]).long(),
+                torch.tensor([2, 3, 4, 0, 1]).long(),
+                [1, 2, 3, 4, 5, 6],
+                [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
+            ),
+        ]:
+            with self.subTest(
+                msg="ranks: {}, results: {}, distmat: {}, labels: {}, predictions: {}".format(
+                    ranks, results, distmat, labels, predictions
+                )
+            ):
+                with warnings.catch_warnings():  # will warn with rank 6, ignore it.
+                    warnings.filterwarnings(
+                        "ignore",
+                        message="Number of gallery samples.*is smaller than the max rank.*Setting rank.",
+                        category=UserWarning,
+                    )
+                    result_dict = {rank: float(result) for rank, result in zip(ranks, results)}
+                    self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), result_dict)
+
+
+class TestMetricAccuracy(unittest.TestCase):
+
+    def test_accuracy(self):
+        topk = (1, 2, 3)
+        prediction = torch.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)])
+        target: torch.LongTensor = torch.tensor([0, 1, 2, 3]).long()
+        topk_accuracy = {1: 100 / 4, 2: 200 / 4, 3: 300 / 4}
+
+        self.assertEqual(compute_accuracy(prediction=prediction, target=target, topk=topk), topk_accuracy)
 
 
 if __name__ == "__main__":

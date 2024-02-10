@@ -89,7 +89,7 @@ def compute_accuracy(
 
     res: dict[int, float] = {}
     for k in topk:
-        acc = correct[:, k].float().sum().mul_(100.0 / float(batch_size))
+        acc = correct[:, :k].float().sum().mul_(100).div_(batch_size)
         res[k] = acc.item()
 
     return res
