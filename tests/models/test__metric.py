@@ -22,7 +22,6 @@ from dgs.models.metric import (
 
 
 class TestMetrics(unittest.TestCase):
-
     def test_get_metric_from_name(self):
         for name, metric_class in METRICS.items():
             with self.subTest(msg=f"name: {name}, metric_class: {metric_class}"):
@@ -146,7 +145,6 @@ class TestMetrics(unittest.TestCase):
 
 
 class TestMetricCMC(unittest.TestCase):
-
     def test_compute_cmc(self):
         for distmat, labels, predictions, ranks, results in [
             (
@@ -180,7 +178,6 @@ class TestMetricCMC(unittest.TestCase):
 
 
 class TestMetricAccuracy(unittest.TestCase):
-
     def test_accuracy(self):
         topk = (1, 2, 3)
         prediction = torch.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)])
