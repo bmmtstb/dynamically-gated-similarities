@@ -6,6 +6,9 @@
 #  install torch with   #
 # specific cuda version #
 # ##################### #
+
+# --index-url can be used here, because this requirements file should only be installed line-by-line!
+
 --index-url https://download.pytorch.org/whl/cu121 torch==2.2.*
 --index-url https://download.pytorch.org/whl/cu121 torchvision==0.17.*
 --index-url https://download.pytorch.org/whl/cu121 torchaudio==2.2.*

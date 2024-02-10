@@ -1,16 +1,8 @@
-# ############################# #
-# torch cpu as extra dependency #
-# ############################# #
-
---index-url https://download.pytorch.org/whl/cpu torch==2.2.*
---index-url https://download.pytorch.org/whl/cpu torchvision==0.17.*
-
 # ######################## #
 # regular pip dependencies #
 # ######################## #
 
-# av is for FFmpeg libraries and loading videos
-av
+av==11.0.*
 black
 Cython
 coverage[toml]
@@ -31,3 +23,11 @@ torcheval
 torchreid==0.2.5
 tqdm
 visdom
+
+# ############################# #
+# torch cpu as extra dependency #
+# ############################# #
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.*
+torchvision==0.17.*
