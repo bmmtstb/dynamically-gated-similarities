@@ -87,6 +87,7 @@ class TestBaseModule(unittest.TestCase):
             ({"T": ["None"]}, {"T": None}, True),
             ({"T": ["optional"]}, {}, True),
             ({"T": [lambda _: True]}, {"T": None}, True),
+            ({"T": [lambda _: False]}, {"T": None}, False),
             ({"T": [lambda x: x is False]}, {"T": False}, True),
             ({"T": ["number", ("gt", 0)]}, {}, False),
             ({"T": ["optional"]}, {"T": None}, True),
