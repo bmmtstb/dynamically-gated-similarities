@@ -19,7 +19,7 @@ from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {
-    "dataset_path": [str, ("any", (("folder exists in project",), ("folder exists",)))],
+    "dataset_path": [str, ("any", ["folder exists in project", "folder exists"])],
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", (int, ("gt", 0)))],
     "requires_grad": ["optional", bool],

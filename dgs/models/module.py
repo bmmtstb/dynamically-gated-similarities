@@ -171,10 +171,12 @@ class BaseModule(ABC):
             >>> validations = {
                 "device": [
                         str,
-                        ("any", (
-                            ("in", ["cuda", "cpu"]),
-                            ("instance", torch.device)
-                ))
+                        ("any",
+                            [
+                                ("in", ["cuda", "cpu"]),
+                                ("instance", torch.device)
+                            ]
+                        )
                     ],
                     "print_prio": [("in", PRINT_PRIORITY)],
                     "callable": (lambda value: value == 1),

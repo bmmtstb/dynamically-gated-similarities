@@ -31,8 +31,8 @@ from dgs.utils.types import Config, FilePath, Validations
 from dgs.utils.visualization import torch_show_image
 
 train_validations: Validations = {
-    "loss": [("any", (("callable", ...), ("in", LOSS_FUNCTIONS)))],
-    "optimizer": [("any", (("callable", ...), ("in", OPTIMIZERS)))],
+    "loss": [("any", ["callable", ("in", LOSS_FUNCTIONS.keys())])],
+    "optimizer": [("any", ["callable", ("in", OPTIMIZERS.keys())])],
     # optional
     "epochs": ["optional", int, ("gte", 1)],
     "optimizer_kwargs": ["optional", dict],
@@ -40,7 +40,7 @@ train_validations: Validations = {
 }
 
 test_validations: Validations = {
-    "metric": [("any", ("callable", ("in", METRICS)))],
+    "metric": [("any", ["callable", ("in", METRICS.keys())])],
     # optional
     "test_normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
