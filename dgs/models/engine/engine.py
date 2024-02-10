@@ -7,7 +7,6 @@ import os
 import time
 import warnings
 from abc import abstractmethod
-from datetime import date
 from typing import Type
 
 import torch
@@ -145,9 +144,8 @@ class EngineModule(BaseModule):
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Logging
-        self.log_dir: FilePath = self.config.get("log_dir", "./results/")
         self.writer = SummaryWriter(
-            log_dir=os.path.join(self.log_dir, date.today().strftime("%Y%m%d")),
+            log_dir=self.log_dir,
             comment=self.config.get("description"),
             **self.params_test.get("writer_kwargs", {}),
         )
@@ -226,6 +224,8 @@ class EngineModule(BaseModule):
         self.logger.info("\n#### Start Training ####\n")
 
         # set model to train mode
+        if not hasattr(self.model, "train"):
+            warnings.warn("`model.train()` is not available.")
         self.model.train()
 
         # initialize variables
@@ -250,7 +250,7 @@ class EngineModule(BaseModule):
                 position=2,
                 total=len(self.train_dl),
             ):
-                curr_iter = self.curr_epoch * B + batch_idx
+                curr_iter = (self.curr_epoch - 1) * B + batch_idx
                 data_t.add(time_batch_start)
 
                 # OPTIMIZE MODEL
@@ -266,6 +266,7 @@ class EngineModule(BaseModule):
                 self.writer.add_scalar("Train/batch_time", batch_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/indiv_time", batch_t[-1] / B, global_step=curr_iter)
                 self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
+                self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
                 self.writer.flush()
                 # ############ #
                 # END OF BATCH #

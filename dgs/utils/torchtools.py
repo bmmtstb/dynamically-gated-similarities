@@ -9,15 +9,47 @@ import shutil
 import warnings
 from collections import OrderedDict
 from functools import partial
-from typing import Union
+from typing import TypeVar, Union
 
 import torch
-from torch import nn
-from torch.nn import Module
+from torch import nn, optim
+from torch.nn import Module as TorchModule
 
 from dgs.models.module import BaseModule
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.types import FilePath
+
+BaseMod = TypeVar("BaseMod", bound=BaseModule)
+TorchMod = TypeVar("TorchMod", bound=TorchModule)
+
+
+def _get_model_from_module(module: Union[TorchMod, BaseMod]) -> TorchMod:
+    """Given either a torch module or an instance of BaseModule, return a torch module.
+    Within a BaseModule, this function searches for a 'module' attribute.
+
+    Args:
+        module: The module containing or being a torch module.
+
+    Returns:
+        An instance of a torch module.
+
+    Raises:
+        ValueError if a torch module cannot be found
+    """
+    if isinstance(module, nn.DataParallel):
+        module = module.module
+
+    if isinstance(module, BaseModule):
+        if hasattr(module, "model"):
+            module = module.model
+        elif hasattr(module, "module"):
+            module = module.module
+        elif not isinstance(module, nn.Module):
+            raise ValueError(
+                f"model {module.__class__.__name__} is a BaseModule but there is no 'model' attribute "
+                f"and the model is not a subclass of nn.Module."
+            )
+    return module
 
 
 def save_checkpoint(
@@ -26,7 +58,7 @@ def save_checkpoint(
     is_best: bool = False,
     verbose: bool = True,
 ) -> None:
-    r"""Save a given checkpoint.
+    """Save a given checkpoint.
 
     Args:
         state: State dictionary. See examples.
@@ -58,7 +90,7 @@ def save_checkpoint(
 
 
 def load_checkpoint(fpath) -> dict:
-    r"""Load a given checkpoint.
+    """Load a given checkpoint.
 
     ``UnicodeDecodeError`` can be well handled, which means
     python2-saved files can be read from python3.
@@ -92,17 +124,25 @@ def load_checkpoint(fpath) -> dict:
     return checkpoint
 
 
-def resume_from_checkpoint(fpath: FilePath, model: nn.Module, optimizer=None, scheduler=None) -> int:
-    r"""Resumes training from a checkpoint.
+def resume_from_checkpoint(
+    fpath: FilePath,
+    model: Union[TorchMod, BaseMod],
+    optimizer: optim.Optimizer = None,
+    scheduler: optim.lr_scheduler.LRScheduler = None,
+    verbose: bool = False,
+) -> int:
+    """Resumes training from a checkpoint.
 
     This will load (1) model weights and (2) ``state_dict``
     of optimizer if ``optimizer`` is not None.
 
     Args:
-        fpath (FilePath): path to checkpoint.
-        model (nn.Module): model.
-        optimizer (Optimizer, optional): an Optimizer.
-        scheduler (LRScheduler, optional): an LRScheduler.
+        fpath: path to checkpoint.
+        model: model.
+        optimizer: an Optimizer.
+        scheduler: an LRScheduler.
+        verbose ():
+
 
     Returns:
         int: start_epoch.
@@ -114,98 +154,120 @@ def resume_from_checkpoint(fpath: FilePath, model: nn.Module, optimizer=None, sc
         >>>     fpath, model, optimizer, scheduler
         >>> )
     """
-    print(f"Loading checkpoint from '{fpath}'")
+    model = _get_model_from_module(module=model)
+
+    if verbose:
+        print(f"Loading checkpoint from '{fpath}'")
     checkpoint = load_checkpoint(fpath)
     model.load_state_dict(checkpoint["state_dict"])
-    print("Loaded model weights")
+    if verbose:
+        print("Loaded model weights")
     if optimizer is not None and "optimizer" in checkpoint.keys():
         optimizer.load_state_dict(checkpoint["optimizer"])
-        print("Loaded optimizer")
+        if verbose:
+            print("Loaded optimizer")
     if scheduler is not None and "scheduler" in checkpoint.keys():
         scheduler.load_state_dict(checkpoint["scheduler"])
-        print("Loaded scheduler")
-    start_epoch = checkpoint["epoch"]
-    print(f"Last epoch = {start_epoch}")
-    if "rank1" in checkpoint.keys():
-        print(f"Last rank1 = {checkpoint['rank1']:.1%}")
-    return start_epoch
+        if verbose:
+            print("Loaded scheduler")
+    return checkpoint["epoch"]
 
 
-def set_bn_to_eval(m: nn.Module) -> None:
-    r"""Sets BatchNorm layers to eval mode.
+def set_bn_to_eval(module: Union[TorchMod, BaseMod]) -> None:
+    """Sets BatchNorm layers to eval mode.
 
     Args:
-        m (nn.Module): A torch module.
+        module: A torch module.
     """
     # 1. no update for running mean and var
     # 2. scale and shift parameters are still trainable
-    classname = m.__class__.__name__
+    module = _get_model_from_module(module=module)
+    classname = module.__class__.__name__
     if classname.find("BatchNorm") != -1:
-        m.eval()
+        module.eval()
 
 
-def open_all_layers(model: nn.Module) -> None:
-    r"""Opens all layers in this model for training.
-
-    Args:
-        model (nn.Module): A torch module.
-
-    Examples:
-        >>> from torchreid.utils import open_all_layers
-        >>> open_all_layers(model)
-    """
-    model.train()
-    for p in model.parameters():
-        p.requires_grad = True
-
-
-def open_specified_layers(model: nn.Module, open_layers: str | list[str]) -> None:
-    r"""Opens specified layers in model for training while keeping
-    other layers frozen.
+def open_specified_layers(model: Union[TorchMod, BaseMod], open_layers: str | list[str], verbose: bool = False) -> None:
+    """Opens the specified layers in the given model for training while keeping all other layers frozen.
 
     Args:
-        model (nn.Module): A torch module.
-        open_layers (str or list): layers open for training.
+        model: A torch module or a BaseModule containing a torch module as attribute 'module'.
+        open_layers: Name or names of the layers to open for training.
+        verbose: Whether to print some debugging information.
 
     Examples:
-        >>> from torchreid.utils import open_specified_layers
-        >>> # Only model.classifier will be updated.
-        >>> open_layers = 'classifier'
-        >>> open_specified_layers(model, open_layers)
-        >>> # Only model.fc and model.classifier will be updated.
-        >>> open_layers = ['fc', 'classifier']
-        >>> open_specified_layers(model, open_layers)
+        In the first example open only the classifier-layer,
+        in the second one update the classifier and the fc-layer.
+
+        >>> from dgs.utils.torchtools import open_specified_layers
+        >>> open_specified_layers(model, open_layers='classifier')
+        >>> open_specified_layers(model, open_layers=['fc', 'classifier'])
+
+    Raises:
+        ValueError if a value in open_layers is not an attribute of the model.
     """
-    if isinstance(model, nn.DataParallel):
-        model = model.module
+    model = _get_model_from_module(module=model)
 
     if isinstance(open_layers, str):
         open_layers = [open_layers]
 
     for layer in open_layers:
-        assert hasattr(model, layer), f"{layer} is not an attribute of the model, please provide the correct name"
+        if not hasattr(model, layer):
+            raise ValueError(
+                f"{layer} is not an attribute of the model {model.__class__.__name__}, "
+                f"please provide the correct name or model."
+            )
 
-    for name, module in model.named_children():
+    nof_opened: int = 0
+    sub_module: TorchMod
+
+    for name, sub_module in model.named_children():
         if name in open_layers:
-            module.train()
-            for p in module.parameters():
-                p.requires_grad = True
+            sub_module.train()
+            sub_module.requires_grad_()
+            nof_opened += 1
         else:
-            module.eval()
-            for p in module.parameters():
-                p.requires_grad = False
+            sub_module.eval()
+            sub_module.requires_grad_(False)
+
+    if verbose:
+        print(f"Opened {nof_opened} layers and {len([model.children()]) - nof_opened} layers remain closed.")
 
 
-def load_pretrained_weights(model: nn.Module, weight_path: FilePath) -> None:
-    r"""Loads pretrianed weights to model.
+def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
+    """Opens all layers in this model for training.
+
+    Args:
+        model: A torch module.
+
+    Examples:
+        >>> from torchreid.utils import open_all_layers
+        >>> open_all_layers(model)
+    """
+
+    def open_module(m: TorchMod) -> None:
+        if hasattr(m, "requires_grad"):
+            m.requires_grad = True
+        if hasattr(m, "train"):
+            m.train()
+
+    model: TorchMod = _get_model_from_module(module=model)
+
+    model.train()
+    model.requires_grad_()
+    model.apply(open_module)
+
+
+def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
+    """Loads pretrianed weights to model.
 
     Features:
         - Incompatible layers (unmatched in name or size) will be ignored.
         - Can automatically deal with keys containing 'module.'.
 
     Args:
-        model (nn.Module): A torch module.
-        weight_path (FilePath): path to pretrained weights.
+        model: A torch module.
+        weight_path: path to pretrained weights.
 
     Examples:
         >>> from torchreid.utils import load_pretrained_weights
@@ -247,9 +309,7 @@ def load_pretrained_weights(model: nn.Module, weight_path: FilePath) -> None:
             print(f"** The following layers are discarded due to unmatched keys or layer size: {discarded_layers}")
 
 
-def configure_torch_module(
-    orig_cls: Union[BaseModule, Module], name: str | None = None
-) -> BaseModule:  # pragma: no cover
+def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None = None) -> BaseMod:  # pragma: no cover
     """Decorator to decorate a class, which has to be a child of torch.nn.Module and the BaseModule!
     The decorator will then call BaseModule.configure_torch_model on themselves after initializing the original class.
 
@@ -269,8 +329,8 @@ def configure_torch_module(
     """
     orig_init = orig_cls.__init__
 
-    def class_wrapper(self: Union[BaseModule, Module], *args, **kwargs):
-        if not isinstance(self, BaseModule) or not isinstance(self, Module):
+    def class_wrapper(self: Union[BaseMod, TorchMod], *args, **kwargs):
+        if not isinstance(self, BaseModule) or not isinstance(self, TorchModule):
             raise ValueError(f"Given class or function {self} is not a child of BaseModule and torch.nn.Module")
         # first initialize class
         orig_init(self, *args, **kwargs)

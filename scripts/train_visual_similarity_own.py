@@ -12,11 +12,13 @@ from dgs.models.dataset import get_data_loader
 from dgs.models.engine import VisualSimilarityEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import fill_in_defaults, load_config
+from dgs.utils.torchtools import open_all_layers, open_specified_layers
 
 CONFIG_FILE = "./configs/train_visual_similarity.yaml"
 TRAIN_BATCH_SIZE = 128
-TEST_BATCH_SIZE = 512
+TEST_BATCH_SIZE = 256
 TEST_ONLY = False
+OPEN_CLASSIFIER_ONLY = True
 
 
 if __name__ == "__main__":
@@ -42,6 +44,11 @@ if __name__ == "__main__":
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     model = module_loader(config=config, module="embedding_generator_visual")
+    # only modify the classifier
+    if OPEN_CLASSIFIER_ONLY:
+        open_specified_layers(model=model, open_layers=["classifier"], verbose=True)
+    else:
+        open_all_layers(model)
 
     engine = VisualSimilarityEngine(
         config=config,

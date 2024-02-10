@@ -23,7 +23,7 @@ from dgs.utils.types import Config, Validations
 train_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
     # optional
-    "topk": ["optional", tuple, ("forall", (int, ("gt", 0)))],
+    "topk": ["optional", tuple, ("forall", [int, ("gt", 0)])],
 }
 
 
@@ -186,7 +186,7 @@ class VisualSimilarityEngine(EngineModule):
         start_time: float = time.time()
 
         if not hasattr(self.model, "eval"):
-            warnings.warn("`model.eval()` is not callable.")
+            warnings.warn("`model.eval()` is not available.")
         self.model.eval()  # set model to test / evaluation mode
 
         self.logger.info(f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
@@ -214,3 +214,7 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"\n#### Evaluation of {self.name} complete ####\n")
 
         return results
+
+    def visualize_ranked_results(self, distmat: torch.Tensor) -> None:
+        """Use torchreids version of visualizing ranked results"""
+        raise NotImplementedError

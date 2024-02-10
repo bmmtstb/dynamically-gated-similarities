@@ -6,6 +6,7 @@ import inspect
 import logging
 import os
 from abc import ABC, abstractmethod
+from datetime import date
 from functools import wraps
 
 import torch
@@ -14,7 +15,8 @@ from torch.nn import Module
 from dgs.utils.config import get_sub_config
 from dgs.utils.constants import PRINT_PRIORITY
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.types import Config, NodePath, Validations
+from dgs.utils.files import mkdir_if_missing
+from dgs.utils.types import Config, FilePath, NodePath, Validations
 from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
@@ -136,6 +138,8 @@ class BaseModule(ABC):
         self.validate_params(module_validations, "config")
 
         # set up (file) logger
+        self.log_dir: FilePath = os.path.join(self.config.get("log_dir", "./results/"), date.today().strftime("%Y%m%d"))
+        mkdir_if_missing(self.log_dir)
         self.logger: logging.Logger = self._init_logger()
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
@@ -257,16 +261,14 @@ class BaseModule(ABC):
         logger.setLevel(log_level)
 
         # file handler
-        file_handler = logging.FileHandler(
-            os.path.join(self.config.get("log_dir", "./results/"), f"output-{self.name}.txt")
-        )
+        file_handler = logging.FileHandler(os.path.join(self.log_dir, f"output-{self.name}.txt"))
         logger.addHandler(file_handler)
         # stdout / stderr handler
         stream_handler = logging.StreamHandler()
         logger.addHandler(stream_handler)
 
         # set output format
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(fmt="%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
         file_handler.setFormatter(formatter)
         stream_handler.setFormatter(formatter)
 

@@ -17,7 +17,7 @@ TEST_CFG: Config = EasyDict(
         "description": "Test Description",
         "print_prio": "DEBUG",
         "device": "cpu",
-        "log_dir": "./tests/test_data/",
+        "log_dir": "./tests/test_data/logs/",
         "gpus": "",
         "sp": True,
         "is_training": False,

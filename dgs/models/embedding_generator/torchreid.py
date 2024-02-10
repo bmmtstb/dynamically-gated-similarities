@@ -67,7 +67,9 @@ class TorchreidModel(EmbeddingGeneratorModule, nn.Module):
 
         self.model_weights = self.params.get("weights", "pretrained")
         self.is_pretrained = self.model_weights == "pretrained"
-        self.model = self._init_model()
+
+        model = self._init_model()
+        self.add_module(name="model", module=model)
 
     def _init_model(self) -> nn.Module:
         """Initialize torchreid model"""
