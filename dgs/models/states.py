@@ -323,12 +323,12 @@ class DataSample(UserDict):
 
     @property
     def person_id(self) -> torch.LongTensor:
-        return self.data["person_id"]
+        return self.data["person_id"].long()
 
     @person_id.setter
-    def person_id(self, value: Union[int, torch.LongTensor]) -> None:
+    def person_id(self, value: Union[int, torch.Tensor]) -> None:
         self.data["person_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
-            device=self.device
+            device=self.device, dtype=torch.long
         )
 
     @property

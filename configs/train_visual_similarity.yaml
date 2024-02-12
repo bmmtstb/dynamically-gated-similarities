@@ -18,9 +18,11 @@ train:
         lr: 0.0003
         weight_decay: 0.0001
     nof_classes: 7529
+    topk: (1,)
 
 test:
     metric: "EuclideanDistance"  # used to compute the distance matrix between target and predicted embeddings
+    topk: (1,2,3,5,10,20,50)
 
 # #### #
 # DATA #

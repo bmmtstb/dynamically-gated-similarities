@@ -41,9 +41,9 @@ pyyaml==6.0.*
 scipy
 # # sphinx is used to build the docs
 sphinx
-# # use tb nightly, due to torchreid installing it and it bein incompatible with the regular tensorboard
+# # use tb nightly, due to torchreid installing it and it being incompatible with the regular tensorboard
 tb-nightly
-torcheval
+# torcheval
 tqdm
 visdom
 
@@ -54,12 +54,13 @@ visdom
 
 # Set up halpecocotools
 # fixme do we still need halpecocotools without AlphaPose ?
--e dependencies/halpecocotools/PythonAPI/
+# -e dependencies/halpecocotools/PythonAPI/
 # Torchreid - install requirements and Set up torchreid and cythonize
 # somehow installing requirements does not work just by calling setup
 -e dependencies/torchreid/
 # install PoseTrack21 evaluation toolkit
--e dependencies/PoseTrack21/eval/posetrack21/
+# fixme is this still required ?
+# -e dependencies/PoseTrack21/eval/posetrack21/
 # Alpha Pose plus its requirements - make sure this will be installed last!
 # -e dependencies/AlphaPose_Fork
 

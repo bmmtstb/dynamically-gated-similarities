@@ -416,6 +416,6 @@ class EngineModule(BaseModule):
             plt.show()
 
     @staticmethod
-    def _ids_to_one_hot(ids: torch.Tensor, nof_classes: int) -> torch.LongTensor:
+    def _ids_to_one_hot(ids: torch.Tensor, nof_classes: int) -> torch.Tensor:
         """Given a tensor containing the class ids, return the one hot representation."""
         return F.one_hot(ids, nof_classes).long()  # pylint: disable=not-callable

@@ -19,6 +19,7 @@ from dgs.models.metric import (
     METRICS,
     register_metric,
 )
+from helper import test_multiple_devices
 
 
 class TestMetrics(unittest.TestCase):
@@ -145,7 +146,8 @@ class TestMetrics(unittest.TestCase):
 
 
 class TestMetricCMC(unittest.TestCase):
-    def test_compute_cmc(self):
+    @test_multiple_devices
+    def test_compute_cmc(self, device):
         for distmat, labels, predictions, ranks, results in [
             (
                 torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
@@ -163,10 +165,14 @@ class TestMetricCMC(unittest.TestCase):
             ),
         ]:
             with self.subTest(
-                msg="ranks: {}, results: {}, distmat: {}, labels: {}, predictions: {}".format(
-                    ranks, results, distmat, labels, predictions
+                msg="ranks: {}, results: {}, distmat: {}, labels: {}, predictions: {}, device: {}".format(
+                    ranks, results, distmat, labels, predictions, device
                 )
             ):
+                distmat.to(device=device)
+                labels.to(device=device)
+                predictions.to(device=device)
+
                 with warnings.catch_warnings():  # will warn with rank 6, ignore it.
                     warnings.filterwarnings(
                         "ignore",
@@ -178,10 +184,12 @@ class TestMetricCMC(unittest.TestCase):
 
 
 class TestMetricAccuracy(unittest.TestCase):
-    def test_accuracy(self):
+
+    @test_multiple_devices
+    def test_accuracy(self, device):
         topk = (1, 2, 3)
-        prediction = torch.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)])
-        target: torch.LongTensor = torch.tensor([0, 1, 2, 3]).long()
+        prediction = torch.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)], dtype=torch.float32, device=device)
+        target = torch.tensor([0, 1, 2, 3], device=device).long()
         topk_accuracy = {1: 100 / 4, 2: 200 / 4, 3: 300 / 4}
 
         self.assertEqual(compute_accuracy(prediction=prediction, target=target, topk=topk), topk_accuracy)

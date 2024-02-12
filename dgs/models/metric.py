@@ -14,26 +14,43 @@ from dgs.utils.types import Metric
 
 @torch.no_grad()
 def compute_cmc(
-    distmat: torch.Tensor, query_pids: torch.LongTensor, gallery_pids: torch.LongTensor, ranks: list[int]
+    distmat: torch.Tensor, query_pids: torch.Tensor, gallery_pids: torch.Tensor, ranks: list[int]
 ) -> dict[int, float]:
-    """
+    r"""Compute the cumulative matching characteristics metric.
+
+    Cumulative Matching Characteristics
+    -----------------------------------
+
+    For further information see: https://cysu.github.io/open-reid/notes/evaluation_metrics.html.
+
     Single-gallery-shot means that each gallery identity has only one instance in the query.
+    The `single-gallery-shot` CMC top-k accuracy is defined as
+
+    .. math::
+       Acc_k = \begin{cases}
+          1 & \text{if top-}k\text{ ranked gallery samples contain the query identity} \\
+          0 & \text{otherwise}
+       \end{cases}
+
+    This represents a shifted step function.
+    The final CMC curve is computed by averaging the shifted step functions over all the queries.
+
+    The `multi-gallery-shot` accuracy is not implemented.
 
     Notes:
         Goal of person ReID:
         For each image in the query, find similar persons within the gallery set.
 
     Notes:
-        Does not remove invalid data.
+        This method does not remove "invalid" data.
         E.g., in market1501 iff gallery samples have the same pid and camid as the query.
 
     Args:
-        distmat: FloatTensor of shape ``[n_query x n_gallery]`` containing the distances between every item from
+        distmat: (Float)Tensor of shape ``[n_query x n_gallery]`` containing the distances between every item from
             gallery and query.
-        query_pids: LongTensor of shape ``[n_query (x 1)]`` containing the query IDs.
-        gallery_pids: LongTensor of shape ``[n_gallery (x 1)]``, containing the gallery IDs.
+        query_pids: (Long)Tensor of shape ``[n_query (x 1)]`` containing the query IDs.
+        gallery_pids: (Long)Tensor of shape ``[n_gallery (x 1)]``, containing the gallery IDs.
         ranks: List of integers containing the k values used for the evaluation.
-
 
     Returns:
         A list containing the float cmc accuracies for each of the k.
@@ -67,9 +84,7 @@ def compute_cmc(
 
 
 @torch.no_grad()
-def compute_accuracy(
-    prediction: torch.Tensor, target: torch.LongTensor, topk: tuple[int, ...] = (1,)
-) -> dict[int, float]:
+def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: tuple[int, ...] = (1,)) -> dict[int, float]:
     """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
 
     Args:
@@ -83,14 +98,15 @@ def compute_accuracy(
     """
     batch_size = target.size(0)
 
-    _, ids = prediction.topk(max(topk))
+    _, ids = prediction.topk(max(topk))  # [B x max(topk)]
 
-    correct = ids.eq(target.view(-1, 1))  # [B x max(topk)]
+    correct: torch.BoolTensor = ids.long().eq(target.long().view(-1, 1)).bool()  # [B x max(topk)]
+    del ids
 
     res: dict[int, float] = {}
     for k in topk:
-        acc = correct[:, :k].float().sum().mul_(100).div_(batch_size)
-        res[k] = acc.item()
+        acc = correct[:, :k].count_nonzero().mul_(100).double().div_(batch_size)
+        res[k] = float(acc.float().item())
 
     return res
 

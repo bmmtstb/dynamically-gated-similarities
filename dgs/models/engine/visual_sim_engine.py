@@ -8,10 +8,8 @@ from datetime import timedelta
 from typing import Type
 
 import torch
-import torch.nn.functional as F
 from torch import nn, optim
 from torch.utils.data import DataLoader as TorchDataLoader
-from torcheval.metrics.functional import multiclass_auprc
 from tqdm import tqdm
 
 from dgs.models.engine.engine import EngineModule
@@ -24,6 +22,11 @@ train_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
     # optional
     "topk": ["optional", tuple, ("forall", [int, ("gt", 0)])],
+}
+
+test_validations: Validations = {
+    # optional
+    "topk": ["optional", tuple, ("forall", [int, ("gt", 0)])]
 }
 
 
@@ -63,14 +66,17 @@ class VisualSimilarityEngine(EngineModule):
         )
         self.val_dl = val_loader
 
+        self.validate_params(test_validations, "params_test")
+        self.test_topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
+
         if not self.test_only:
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]
 
-            self.topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
+            self.train_topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
 
-    def get_target(self, ds: DataSample) -> torch.LongTensor:
+    def get_target(self, ds: DataSample) -> torch.Tensor:
         """Get the target pIDs from the data."""
         return get_ds_data_getter(["person_id"])(ds)[0].long()
 
@@ -94,7 +100,7 @@ class VisualSimilarityEngine(EngineModule):
         # loss = self.loss(pred_id_probs, oh_t_ids)
         loss = self.loss(pred_id_probs, target_ids)
 
-        topk_accuracies = compute_accuracy(prediction=pred_id_probs, target=target_ids)
+        topk_accuracies = compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.train_topk)
         for k, accu in topk_accuracies.items():
             self.writer.add_scalar(f"Train/top-{k} acc", accu, global_step=_curr_iter)
 
@@ -107,28 +113,10 @@ class VisualSimilarityEngine(EngineModule):
 
         Compute Rank-N for every rank in params_test["ranks"].
         Compute mean average precision of predicted target labels.
-
-        Cumulative Matching Characteristics
-        -----------------------------------
-
-        For further information see: https://cysu.github.io/open-reid/notes/evaluation_metrics.html.
-
-        The `single-gallery-shot` CMC top-k accuracy is defined as
-
-        .. math::
-           Acc_k = \begin{cases}
-              1 & \text{if top-}k\text{ ranked gallery samples contain the query identity} \\
-              0 & \text{otherwise}
-           \end{cases}
-
-        This represents a shifted step function.
-        The final CMC curve is computed by averaging the shifted step functions over all the queries.
-
-        The `multi-gallery-shot` accuracy is not implemented.
         """
         results: dict[str, any] = {}
 
-        def obtain_test_data(dl: TorchDataLoader, desc: str) -> tuple[torch.Tensor, torch.LongTensor]:
+        def obtain_test_data(dl: TorchDataLoader, desc: str) -> tuple[torch.Tensor, torch.Tensor]:
             """Given a dataloader,
             extract the embeddings describing the people, target pIDs, and the pIDs the model predicted.
 
@@ -140,9 +128,9 @@ class VisualSimilarityEngine(EngineModule):
                 embeddings, target_ids
             """
 
-            total_m_ap: torch.Tensor = torch.tensor(0.0, dtype=torch.float64, device=self.device)
+            total_m_aps: dict[int, float] = {k: 0 for k in self.test_topk}
             embed_l: list[torch.Tensor] = []
-            t_ids_l: list[torch.LongTensor] = []
+            t_ids_l: list[torch.Tensor] = []
 
             for batch in tqdm(dl, desc=f"Extract {desc} data"):  # with N = len(dl)
                 # Extract the (cropped) input image and the target pID.
@@ -152,34 +140,39 @@ class VisualSimilarityEngine(EngineModule):
                 embed, pred_id_prob = self.model(t_imgs)
 
                 # Obtain class probability predictions and mAP from data
-                m_ap: torch.Tensor = multiclass_auprc(
-                    input=F.softmax(pred_id_prob, dim=1),  # 2D class probabilities [B, num_classes]
+                B = t_imgs.size(0)
+                m_aps: dict[int, float] = compute_accuracy(
+                    prediction=pred_id_prob,  # 2D class probabilities [B, num_classes]
                     target=t_id,  # gt labels    [B]
-                ).double()
-
-                total_m_ap += m_ap * torch.tensor(t_imgs.size(0)).double()  # map*B, later we will div by N
+                    topk=self.test_topk,
+                )
+                for k in self.test_topk:
+                    total_m_aps[k] += m_aps[k] * float(B)  # map*B, later we will div by total N
 
                 # keep the results in lists
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
 
-            del t_imgs, t_id, embed, pred_id_prob, m_ap
+            del t_imgs, t_id, embed, pred_id_prob, m_aps
 
             # concatenate the result lists
             p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings             [N, E]
-            t_ids: torch.LongTensor = torch.cat(t_ids_l).long()  # 1D gt person labels [N]
-            m_ap: float = total_m_ap.div(len(dl.dataset)).item()  # compute total mean by dividing by N
+            t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
+
+            for k, val in total_m_aps.items():
+                m_ap = val / len(dl.dataset)
+                results[f"top-{k} acc"] = m_ap
+                self.logger.debug(f"top-{k} acc: {m_ap:.2}")
+
             assert len(t_ids) == len(p_embed), f"t ids: {len(t_ids)}, p embed: {len(p_embed)}"
 
             self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
-            del embed_l, t_ids_l, total_m_ap
+            del embed_l, t_ids_l, total_m_aps
 
             # normalize the predicted embeddings if wanted
             p_embed = self._normalize(p_embed)
 
             # concat all the intermediate mAPs and compute the unweighted mean
-            results[f"mean_avg_precision_{desc.lower()}"] = m_ap
-            self.logger.debug(f"mAP - {desc}: {m_ap:.2}")
 
             return p_embed, t_ids
 
@@ -194,6 +187,8 @@ class VisualSimilarityEngine(EngineModule):
 
         g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
         q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
+
+        results["query_embed"] = q_embed
 
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
