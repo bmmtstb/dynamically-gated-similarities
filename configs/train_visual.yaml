@@ -22,7 +22,7 @@ train:
     save_interval: 1
 
 test:
-    metric: "EuclideanSquaredDistance"  # used to compute the distance matrix between target and predicted embeddings
+    metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
     topk: [1,2,3,5,10,20,50]
 
 # #### #
