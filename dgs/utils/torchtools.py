@@ -56,6 +56,7 @@ def save_checkpoint(
     state: dict[str, any],
     save_dir: FilePath,
     is_best: bool = False,
+    remove_module_from_keys: bool = False,
     verbose: bool = True,
 ) -> None:
     """Save a given checkpoint.
@@ -65,11 +66,12 @@ def save_checkpoint(
         save_dir: directory to save checkpoint.
         is_best (bool, optional): if True, this checkpoint will be copied and named
             ``model-best.pth.tar``. Default is False.
+        remove_module_from_keys: Whether to remove the 'module.' prepend in the state dict of the module.
         verbose (bool, optional): whether to print a confirmation when the checkpoint has been created. Default is True.
 
     Examples:
         >>> state = {
-        >>>     'state_dict': model.state_dict(),
+        >>>     'model': model.state_dict(),
         >>>     'epoch': 10,
         >>>     'rank1': 0.5,
         >>>     'optimizer': optimizer.state_dict()
@@ -77,6 +79,17 @@ def save_checkpoint(
         >>> save_checkpoint(state, 'log/my_model')
     """
     mkdir_if_missing(save_dir)
+    # all the module keys start with 'module.' remove that
+    if remove_module_from_keys:
+        # remove 'module.' in state_dict's keys
+        state_dict = state["module"]
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            if k.startswith("module."):
+                k = k[7:]
+            new_state_dict[k] = v
+        state["module"] = new_state_dict
+
     # save
     epoch = int(state["epoch"])
     fpath = os.path.join(save_dir, f"epoch-{epoch:0>3}.pth")
@@ -102,7 +115,7 @@ def load_checkpoint(fpath) -> dict:
         dict
 
     Examples:
-        >>> from torchreid.utils import load_checkpoint
+        >>> from dgs.utils.torchtools import load_checkpoint
         >>> fpath = 'log/my_model/model.pth.tar-10'
         >>> checkpoint = load_checkpoint(fpath)
     """
@@ -148,7 +161,7 @@ def resume_from_checkpoint(
         int: start_epoch.
 
     Examples:
-        >>> from torchreid.utils import resume_from_checkpoint
+        >>> from dgs.utils.torchtools import resume_from_checkpoint
         >>> fpath = 'log/my_model/model.pth.tar-10'
         >>> start_epoch = resume_from_checkpoint(
         >>>     fpath, model, optimizer, scheduler
@@ -159,7 +172,7 @@ def resume_from_checkpoint(
     if verbose:
         print(f"Loading checkpoint from '{fpath}'")
     checkpoint = load_checkpoint(fpath)
-    model.load_state_dict(checkpoint["state_dict"])
+    model.load_state_dict(checkpoint["model"])
     if verbose:
         print("Loaded model weights")
     if optimizer is not None and "optimizer" in checkpoint.keys():
@@ -242,7 +255,7 @@ def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
         model: A torch module.
 
     Examples:
-        >>> from torchreid.utils import open_all_layers
+        >>> from dgs.utils.torchtools import open_all_layers
         >>> open_all_layers(model)
     """
 
@@ -271,13 +284,13 @@ def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
         weight_path: path to pretrained weights.
 
     Examples:
-        >>> from torchreid.utils import load_pretrained_weights
+        >>> from dgs.utils.torchtools import load_pretrained_weights
         >>> weight_path = 'log/my_model/model-best.pth.tar'
         >>> load_pretrained_weights(model, weight_path)
     """
     checkpoint = load_checkpoint(weight_path)
-    if "state_dict" in checkpoint:
-        state_dict = checkpoint["state_dict"]
+    if "model" in checkpoint:
+        state_dict = checkpoint["model"]
     else:
         state_dict = checkpoint
 

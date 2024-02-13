@@ -2,6 +2,7 @@
 Given config, load modules
 """
 
+from copy import deepcopy
 from typing import Type, TypeVar, Union
 
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
@@ -50,31 +51,37 @@ def module_loader(config: Config, module: str) -> Union[M, TorchDataLoader]:
     elif module == "pose_warping_module":
         m = get_pose_warping(module_name)
     elif module.startswith("dataloader_"):
-        return get_data_loader(config=config, ds=module_loader(config, module), path=path)
+        return get_data_loader(config=config, path=path, dl_module=module)
     elif module.startswith("dataset_"):
         # special case: the concatenated PT21 dataset is loaded via function not class
         if module_name == "PoseTrack21":
-            return get_pose_track_21(config, path)
+            return get_pose_track_21(config=config, path=path)
         m = get_dataset(module_name)
     else:
         raise NotImplementedError(f"Something went wrong while loading the module '{module}'")
 
     # instantiate module with its configuration and path
-    return m(config, path)
+    return m(config=config, path=path)
 
 
-def get_data_loader(config: Config, path: NodePath, ds: TorchDataset) -> TorchDataLoader:
+def get_data_loader(config: Config, path: NodePath, dl_module: str) -> TorchDataLoader:
     """Set up a torch data loader with some params from config.
 
     Args:
         config: The overall configuration of the algorithm.
         path: The node path to the params of this DataLoader.
-        ds: Reference to torch Dataset.
+        dl_module: Name of the DataLoader module in the config.
 
     Returns:
         A `torch.DataLoader` object for the given dataset.
     """
     params = get_sub_config(config, path)
+
+    ds_module = dl_module.replace("dataloader_", "dataset_")
+    ds_config: Config = deepcopy(config)
+    ds_config[ds_module] = ds_config[dl_module]
+
+    ds: TorchDataset = module_loader(config=ds_config, module=ds_module)
 
     data_loader = TorchDataLoader(
         dataset=ds,
