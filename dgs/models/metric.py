@@ -79,7 +79,7 @@ def compute_cmc(
 
         cmc = torch.any(matches[:, :rank], dim=1).sum()
 
-        cmcs[orig_rank] = float(cmc) / float(n_query)
+        cmcs[orig_rank] = float(cmc.float().item()) / float(n_query)
     return cmcs
 
 

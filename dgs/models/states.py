@@ -317,9 +317,9 @@ class DataSample(UserDict):
                 attr_value.to(*args, **kwargs)
         return self
 
-    def __str__(self) -> str:
-        """Overwrite representation to be image name."""
-        return f"{self.data['filepath']} {self.data['bbox']}"
+    def __len__(self) -> int:
+        """Override length to be the length of the filenames"""
+        return len(self.filepath)
 
     @property
     def person_id(self) -> torch.LongTensor:

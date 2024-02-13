@@ -21,12 +21,12 @@ from dgs.utils.types import Config, Validations
 train_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
     # optional
-    "topk": ["optional", tuple, ("forall", [int, ("gt", 0)])],
+    "topk": ["optional", ("forall", [int, ("gt", 0)])],
 }
 
 test_validations: Validations = {
     # optional
-    "topk": ["optional", tuple, ("forall", [int, ("gt", 0)])]
+    "topk": ["optional", ("forall", [int, ("gt", 0)])]
 }
 
 
@@ -37,6 +37,9 @@ class VisualSimilarityEngine(EngineModule):
 
     - ``get_data()`` should return the image crop
     - ``get_target()`` should return the target pIDs
+    - ``train_dl`` contains the test data as usual
+    - ``test_dl`` contains the query data
+    - ``val_dl`` contains the gallery data
 
     """
 
@@ -128,32 +131,31 @@ class VisualSimilarityEngine(EngineModule):
                 embeddings, target_ids
             """
 
-            total_m_aps: dict[int, float] = {k: 0 for k in self.test_topk}
+            total_m_aps: dict[int, float] = {k: 0.0 for k in self.test_topk}
             embed_l: list[torch.Tensor] = []
             t_ids_l: list[torch.Tensor] = []
 
             for batch in tqdm(dl, desc=f"Extract {desc} data"):  # with N = len(dl)
                 # Extract the (cropped) input image and the target pID.
                 # Then use the model to compute the predicted embedding and the predicted pID probabilities.
-                t_imgs = self.get_data(batch)
                 t_id = self.get_target(batch)
-                embed, pred_id_prob = self.model(t_imgs)
+                embed, pred_id_prob = self.model(self.get_data(batch))
 
                 # Obtain class probability predictions and mAP from data
-                B = t_imgs.size(0)
+                B = len(batch)
                 m_aps: dict[int, float] = compute_accuracy(
                     prediction=pred_id_prob,  # 2D class probabilities [B, num_classes]
                     target=t_id,  # gt labels    [B]
                     topk=self.test_topk,
                 )
                 for k in self.test_topk:
-                    total_m_aps[k] += m_aps[k] * float(B)  # map*B, later we will div by total N
+                    total_m_aps[k] += m_aps[k] * float(B)  # sum map*B, later we will divide by total N
 
                 # keep the results in lists
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
 
-            del t_imgs, t_id, embed, pred_id_prob, m_aps
+            del t_id, embed, pred_id_prob, m_aps
 
             # concatenate the result lists
             p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings             [N, E]
@@ -185,10 +187,11 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
         q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
+        g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
 
-        results["query_embed"] = q_embed
+        for targ_id, embed in enumerate(q_embed):
+            results["query_embed"][targ_id] = embed
 
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)

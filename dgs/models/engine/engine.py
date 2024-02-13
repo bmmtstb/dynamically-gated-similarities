@@ -36,6 +36,7 @@ train_validations: Validations = {
     "epochs": ["optional", int, ("gte", 1)],
     "optimizer_kwargs": ["optional", dict],
     "loss_kwargs": ["optional", dict],
+    "save_interval": ["optional", int, ("gte", 1)],
 }
 
 test_validations: Validations = {
@@ -100,6 +101,9 @@ class EngineModule(BaseModule):
     loss_kwargs (dict, optional):
         Additional kwargs for the loss.
         Default {}.
+    save_interval (int, optional):
+        The interval for saving (and evaluating) the model during training.
+        Default 5.
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
@@ -158,10 +162,16 @@ class EngineModule(BaseModule):
             self.validate_params(train_validations, attrib_name="params_train")
             if train_loader is None:
                 raise ValueError("test_only is False but train_loader is None.")
+            # data loader
             self.train_dl = train_loader
+
+            # epochs
             self.epochs: int = self.params_train.get("epochs", 1)
             self.start_epoch: int = self.params_train.get("start_epoch", 1)
             self.curr_epoch = self.start_epoch
+            self.save_interval: int = self.params_train.get("save_interval", 5)
+
+            # modules
             self.loss = get_loss_function(self.params_train["loss"])(
                 **self.params_train.get("loss_kwargs", {})  # optional loss kwargs
             )
@@ -169,7 +179,7 @@ class EngineModule(BaseModule):
                 self.model.parameters(),
                 **self.params_train.get("optimizer_kwargs", {"lr": 1e-4}),  # optional optimizer kwargs
             )
-            # the learning-rate scheduler needs the optimizer for instantiation
+            # the learning-rate schedulers need the optimizer for instantiation
             if lr_scheds is None:
                 self.lr_sched = [optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, factor=1, total_iters=10)]
             else:
@@ -214,7 +224,7 @@ class EngineModule(BaseModule):
 
     @enable_keyboard_interrupt
     def train(self) -> None:
-        """Train the given model using the given loss function, optimizer, and learning-rate scheduler.
+        """Train the given model using the given loss function, optimizer, and learning-rate schedulers.
 
         After every epoch, the current model is tested and the current model is saved.
         """
@@ -281,12 +291,14 @@ class EngineModule(BaseModule):
             self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2}")
             self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
 
-            # handle updating the learning rate scheduler(s)
+            # handle updating the learning rate schedulers(s)
             for sched in self.lr_sched:
                 sched.step()
-            # evaluate current model
-            metrics = self.test()
-            self.save_model(epoch=self.curr_epoch, metrics=metrics)
+
+            if self.curr_epoch % self.save_interval == 0:
+                # evaluate current model every few epochs
+                metrics = self.test()
+                self.save_model(epoch=self.curr_epoch, metrics=metrics)
 
         # ############### #
         # END OF TRAINING #
@@ -323,7 +335,7 @@ class EngineModule(BaseModule):
     def load_model(self, path: FilePath) -> None:  # pragma: no cover
         """Load the model from a file. Set the start epoch to the epoch specified in the loaded model."""
         self.start_epoch = resume_from_checkpoint(
-            fpath=path, model=self.model, optimizer=self.optimizer, scheduler=self.lr_sched
+            fpath=path, model=self.model, optimizer=self.optimizer, schedulers=self.lr_sched
         )
         self.curr_epoch = self.start_epoch
 
