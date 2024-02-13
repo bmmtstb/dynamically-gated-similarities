@@ -16,6 +16,7 @@ from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import compute_accuracy, compute_cmc
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.states import DataSample, get_ds_data_getter
+from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
 
 train_validations: Validations = {
@@ -133,7 +134,10 @@ class VisualSimilarityEngine(EngineModule):
             embed_l: list[torch.Tensor] = []
             t_ids_l: list[torch.Tensor] = []
 
+            batch_t: DifferenceTimer = DifferenceTimer()
+
             for batch in tqdm(dl, desc=f"Extract {desc} data"):  # with N = len(dl)
+                time_batch_start = time.time()  # reset timer for retrieving the data
                 # Extract the (cropped) input image and the target pID.
                 # Then use the model to compute the predicted embedding and the predicted pID probabilities.
                 t_id = self.get_target(batch)
@@ -152,6 +156,11 @@ class VisualSimilarityEngine(EngineModule):
                 # keep the results in lists
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
+
+                # timing
+                batch_t.add(time_batch_start)
+                self.writer.add_scalar("Test/batch_time_{desc}", batch_t[-1], global_step=self.curr_epoch)
+                self.writer.add_scalar("Test/indiv_time_{desc}", batch_t[-1] / B, global_step=self.curr_epoch)
 
             del t_id, embed, pred_id_prob, m_aps
 
