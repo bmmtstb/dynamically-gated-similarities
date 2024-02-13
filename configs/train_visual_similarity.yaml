@@ -4,7 +4,8 @@ This config uses the engine of the dgs module."
 
 device: "cuda"
 print_prio: "DEBUG"
-is_training: on
+#is_training: on
+is_training: off
 log_dir: "./results/own/visual_sim/"
 
 
@@ -29,7 +30,7 @@ test:
 # DATA #
 # #### #
 
-dataset_train:
+dataloader_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_data/train/"
@@ -37,22 +38,25 @@ dataset_train:
 #    json_path: "./posetrack_data/train/000001_bonn_train.json"
     crops_folder: "./crops/train/"
     requires_grad: false
+    batch_size: 128
 
-dataset_valid:
+dataloader_valid:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/val.json"
     force_img_reshape: true
     crops_folder: "./crops/gallery/"
     requires_grad: false
+    batch_size: 256
 
-dataset_test:
+dataloader_test:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/query.json"
     force_img_reshape: true
     crops_folder: "./crops/query/"
     requires_grad: false
+    batch_size: 256
 
 # ####### #
 # MODULES #

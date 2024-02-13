@@ -66,7 +66,8 @@ def compute_cmc(
     # sort by distance, lowest to highest
     indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
     # with predictions[indices] := sorted predictions
-    matches: torch.Tensor = torch.eq(gallery_pids[indices], query_pids).bool()  # BoolTensor [n_query x n_gallery]
+    # obtain a BoolTensor [n_query x max(ranks)] containing whether the r most probable classes equal the query
+    matches: torch.Tensor = torch.eq(gallery_pids[indices][:, : min(max(ranks), n_gallery)], query_pids).bool()
 
     for rank in ranks:
         orig_rank = rank
@@ -77,7 +78,7 @@ def compute_cmc(
             )
             rank = n_gallery
 
-        cmc = torch.any(matches[:, :rank], dim=1).sum()
+        cmc = matches[:, :rank].count_nonzero()
 
         cmcs[orig_rank] = float(cmc.float().item()) / float(n_query)
     return cmcs

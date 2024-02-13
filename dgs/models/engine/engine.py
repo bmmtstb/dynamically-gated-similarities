@@ -24,6 +24,7 @@ from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.states import DataSample
 from dgs.utils.config import get_sub_config
+from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
@@ -132,13 +133,11 @@ class EngineModule(BaseModule):
         model: nn.Module,
         test_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
-        test_only: bool = False,
         lr_scheds: list[Type[optim.lr_scheduler.LRScheduler]] = None,
     ):
         super().__init__(config, [])
 
         # Set up general attributes
-        self.test_only = test_only
         self.model = model
 
         # Set up test attributes
@@ -157,11 +156,11 @@ class EngineModule(BaseModule):
 
         # Set up train attributes
         self.params_train: Config = {}
-        if not self.test_only:
+        if self.config["is_training"]:
             self.params_train = get_sub_config(config, ["train"])
             self.validate_params(train_validations, attrib_name="params_train")
             if train_loader is None:
-                raise ValueError("test_only is False but train_loader is None.")
+                raise InvalidConfigException("is_training is turned on but train_loader is None.")
             # data loader
             self.train_dl = train_loader
 
@@ -207,7 +206,7 @@ class EngineModule(BaseModule):
         if "description" in self.config:
             self.logger.info(f"Config Description: {self.config['description']}")
 
-        if not self.test_only:
+        if self.config["is_training"]:
             self.train()
 
         self.test()

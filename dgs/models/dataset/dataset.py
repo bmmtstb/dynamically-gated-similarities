@@ -19,9 +19,11 @@ from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {
-    "dataset_path": [str, ("any", ["folder exists in project", "folder exists"])],
+    "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
+    # optional
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", (int, ("gt", 0)))],
+    "batch_size": ["optional", int, ("gt", 0)],
     "requires_grad": ["optional", bool],
 }
 
@@ -149,7 +151,7 @@ class BaseDataset(BaseModule, TorchDataset):
         Default (1024, 1024).
     crops_folder (FilePath, optional):
         A path (global, project local, or dataset local), containing the previously cropped images.
-        The structure is dataset dependent, and might not be necessary for some datasets.
+        The structure is dataset-dependent, and might not be necessary for some datasets.
         Default is not set, and the crops are generated live.
     crop_mode (str, optional):
         The mode for image cropping used when calling :func:``self.get_image_crop``.
@@ -161,6 +163,9 @@ class BaseDataset(BaseModule, TorchDataset):
     requires_grad (bool, optional):
         Whether some of the loaded data should require gradients.
         Default True.
+    batch_size (int, optional):
+        The batch size to use while creating the DataLoader for this Dataset.
+        Default 16.
     """
 
     data: list

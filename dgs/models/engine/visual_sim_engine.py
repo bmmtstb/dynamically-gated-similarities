@@ -56,7 +56,6 @@ class VisualSimilarityEngine(EngineModule):
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
-        test_only: bool = False,
         lr_scheds: list[Type[optim.lr_scheduler.LRScheduler]] = None,
     ):
         super().__init__(
@@ -64,7 +63,6 @@ class VisualSimilarityEngine(EngineModule):
             model=model,
             test_loader=test_loader,
             train_loader=train_loader,
-            test_only=test_only,
             lr_scheds=lr_scheds,
         )
         self.val_dl = val_loader
@@ -72,7 +70,7 @@ class VisualSimilarityEngine(EngineModule):
         self.validate_params(test_validations, "params_test")
         self.test_topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
 
-        if not self.test_only:
+        if self.config["is_training"]:
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]
@@ -190,8 +188,8 @@ class VisualSimilarityEngine(EngineModule):
         q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
         g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
 
-        for targ_id, embed in enumerate(q_embed):
-            results["query_embed"][targ_id] = embed
+        for targ_id, t_embed in enumerate(q_embed):
+            results["query_embed"][targ_id] = t_embed
 
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
