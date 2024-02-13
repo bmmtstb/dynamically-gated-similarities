@@ -4,8 +4,7 @@ This config uses the engine of the dgs module."
 
 device: "cuda"
 print_prio: "DEBUG"
-#is_training: on
-is_training: off
+is_training: on
 log_dir: "./results/own/visual_sim/"
 
 

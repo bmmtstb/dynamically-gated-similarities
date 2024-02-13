@@ -12,7 +12,7 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.torchtools import open_all_layers, open_specified_layers
 
-CONFIG_FILE = "./configs/train_visual_similarity.yaml"
+CONFIG_FILE = "./configs/train_visual.yaml"
 OPEN_CLASSIFIER_ONLY = True
 
 
