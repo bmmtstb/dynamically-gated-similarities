@@ -9,7 +9,7 @@ from dgs.models.module import BaseModule, module_validations as base_module_vali
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
 from dgs.utils.types import Config, Device
-from helper import test_multiple_devices
+from helper import get_default_config, test_multiple_devices
 
 TEST_CFG: Config = EasyDict(
     {
@@ -124,7 +124,11 @@ class TestBaseModule(unittest.TestCase):
         ]:
             with self.subTest(msg="module: {}, train: {}".format(module, train)):
                 m = BaseModule(
-                    config=fill_in_defaults({"name": "TestName", "is_training": train, "device": device}), path=[]
+                    config=fill_in_defaults(
+                        {"name": "TestName", "is_training": train, "device": device},
+                        default_cfg=get_default_config(),
+                    ),
+                    path=[],
                 )
                 self.assertEqual(module.bias.device.type, torch.device("cpu").type)
                 m.configure_torch_module(module, train)

@@ -6,10 +6,12 @@ from torchvision import tv_tensors
 from dgs.models.embedding_generator.pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.types import Device
-from helper import test_multiple_devices
+from helper import get_default_config, test_multiple_devices
 
 
 class TestPoseBased(unittest.TestCase):
+    default_cfg = get_default_config()
+
     @test_multiple_devices
     def test_linear_PBEG_out_shape(self, device: Device):
         for batch_size, params, out_shape in [
@@ -39,7 +41,10 @@ class TestPoseBased(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg=f"params: {params}"):
-                cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size, "device": device})
+                cfg = fill_in_defaults(
+                    {"pose_embedding_generator": params, "batch_size": batch_size, "device": device},
+                    self.default_cfg,
+                )
                 m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
                 kp = torch.rand((batch_size, *params["joint_shape"])).to(device=device)
                 bbox = tv_tensors.BoundingBoxes(torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100)).to(
@@ -62,7 +67,7 @@ class TestPoseBased(unittest.TestCase):
             "embedding_size": 5,
             "bbox_format": "xyxy",
         }
-        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size})
+        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size}, self.default_cfg)
         m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
         kp = torch.rand((batch_size, *params["joint_shape"])).reshape((batch_size, -1))
         bbox = torch.rand((batch_size, 4)).reshape((batch_size, -1))
@@ -81,7 +86,7 @@ class TestPoseBased(unittest.TestCase):
             "embedding_size": 5,
             "bbox_format": "xyxy",
         }
-        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size})
+        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size}, self.default_cfg)
         m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
         with self.assertRaises(ValueError) as e:
             m.forward()
@@ -97,7 +102,7 @@ class TestPoseBased(unittest.TestCase):
             "embedding_size": 4,
             "bbox_format": "xyxy",
         }
-        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size})
+        cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size}, self.default_cfg)
         m = KeyPointConvolutionPBEG(config=cfg, path=["pose_embedding_generator"])
         kp = torch.rand((batch_size, *params["joint_shape"]))
         bbox = tv_tensors.BoundingBoxes(torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100))
@@ -160,7 +165,9 @@ class TestPoseBased(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg=f"params: {params}"):
-                cfg = fill_in_defaults({"pose_embedding_generator": params, "batch_size": batch_size, "device": device})
+                cfg = fill_in_defaults(
+                    {"pose_embedding_generator": params, "batch_size": batch_size, "device": device}, self.default_cfg
+                )
                 m = KeyPointConvolutionPBEG(config=cfg, path=["pose_embedding_generator"])
                 kp = torch.rand((batch_size, *params["joint_shape"])).to(device=cfg["device"])
                 bbox = tv_tensors.BoundingBoxes(torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100)).to(

@@ -5,13 +5,15 @@ Helper methods for tests.
 import os
 import sys
 from contextlib import contextmanager
+from copy import deepcopy
 from io import StringIO
 from typing import Iterable
 
 import torch
 
+from dgs.default_config import cfg as default_config
 from dgs.utils.image import load_image
-from dgs.utils.types import Device, TVImage
+from dgs.utils.types import Config, Device, TVImage
 from dgs.utils.validation import validate_images
 
 
@@ -59,3 +61,15 @@ def capture_stdout(command, *args, **kwargs):
         yield sys.stdout.read()
     finally:
         sys.stdout = out
+
+
+def get_default_config() -> Config:
+    """Get the default configuration for tests.
+    Will replace a few values to keep all the data local in the tests folder.
+    """
+    cfg = deepcopy(default_config)
+
+    cfg.name = "Test"
+    cfg.train.log_dir = "./tests/test_data/logs/"
+
+    return cfg

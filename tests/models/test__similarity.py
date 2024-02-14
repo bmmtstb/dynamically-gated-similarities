@@ -11,9 +11,12 @@ from dgs.models.similarity import (
     SimilarityModule,
 )
 from dgs.utils.config import fill_in_defaults
+from helper import get_default_config
 
 
 class TestSimilarity(unittest.TestCase):
+    default_cfg = get_default_config()
+
     def test_similarity(self):
         # fixme why are the shapes so chaotic?
         for module, kwargs, out_shape in [
@@ -25,7 +28,7 @@ class TestSimilarity(unittest.TestCase):
         ]:
             with self.subTest(msg="module: {}, kwargs: {}".format(module, kwargs)):
                 path = ["pose_similarity"]
-                cfg = fill_in_defaults({"pose_similarity": kwargs})
+                cfg = fill_in_defaults({"pose_similarity": kwargs}, self.default_cfg)
 
                 m: SimilarityModule = module(config=cfg, path=path)
 

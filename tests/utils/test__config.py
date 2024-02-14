@@ -5,10 +5,11 @@ from unittest.mock import patch
 
 from easydict import EasyDict
 
-from dgs.default_config import cfg as default_config
+from dgs.default_config import cfg as DEFAULT_CFG
 from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults, get_sub_config, insert_into_config, load_config
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
+from helper import get_default_config
 
 EMPTY_CONFIG = EasyDict({})
 SIMPLE_CONFIG = EasyDict({"foo": "foo foo", "second": "value"})
@@ -92,7 +93,14 @@ class TestFillInConfig(unittest.TestCase):
                 (deepcopy(EMPTY_CONFIG), deepcopy(SIMPLE_CONFIG), deepcopy(SIMPLE_CONFIG), "Add empty to simple", True),
                 (deepcopy(SIMPLE_CONFIG), deepcopy(EMPTY_CONFIG), deepcopy(SIMPLE_CONFIG), "Add simple to empty"),
                 (deepcopy(NESTED_CONFIG), deepcopy(NESTED_CONFIG), deepcopy(NESTED_CONFIG), "Same stay - nested", True),
-                (deepcopy(EMPTY_CONFIG), None, deepcopy(default_config), "get replaced by default config", True),
+                (
+                    deepcopy(EMPTY_CONFIG),
+                    deepcopy(DEFAULT_CFG),
+                    deepcopy(DEFAULT_CFG),
+                    "get replaced by default config",
+                    True,
+                ),
+                (deepcopy(EMPTY_CONFIG), None, deepcopy(DEFAULT_CFG), "get replaced by default config", True),
                 (
                     EasyDict({"bar": {"x": 1}}),
                     deepcopy(NESTED_CONFIG),
@@ -144,6 +152,8 @@ class TestFillInConfig(unittest.TestCase):
         self.assertNotIn("second", NESTED_CONFIG)
         self.assertNotIn("bar", SIMPLE_CONFIG)
         self.assertNotIn("dog", SIMPLE_CONFIG)
+        for value in ["second", "bar", "dog"]:
+            self.assertNotIn(value, DEFAULT_CFG)
 
     def test_fill_in_default_nested_update_value(self):
         current = EasyDict({"bar": {"deeper": {"pickaxe": {"iron": 100}}}})
@@ -204,6 +214,7 @@ class TestLoadConfig(unittest.TestCase):
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_configs_dir(self):
+        default_cfg = get_default_config()
         for is_easydict in [True, False]:
             abs_path = "./configs/"
             paths = [
@@ -217,7 +228,7 @@ class TestLoadConfig(unittest.TestCase):
                     self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
                     self.assertIn("name", cfg)
                     name = cfg["name"]
-                    cfg_w_def = fill_in_defaults(cfg)
+                    cfg_w_def = fill_in_defaults(cfg, default_cfg=default_cfg)
                     b = BaseModule(cfg_w_def, [])
                     self.assertIsInstance(b, BaseModule)
                     self.assertEqual(b.name, name)
@@ -233,6 +244,8 @@ class TestLoadConfig(unittest.TestCase):
 
 class TestInsertIntoConfig(unittest.TestCase):
     def test_insert_into_config(self):
+        default_cfg = get_default_config()
+
         for path, value, default, copy, result in [
             # empty path
             ([], {"override": False}, {}, False, {"override": False}),
@@ -245,16 +258,20 @@ class TestInsertIntoConfig(unittest.TestCase):
             (["test"], {"override": True}, {"test": 0}, False, {"test": {"override": True}}),
             (["test"], {"override": True}, {"test": 0}, True, {"test": {"override": True}}),
             # default config
-            ([], {"override": False}, None, True, fill_in_defaults({"override": False})),
+            (
+                [],
+                {"override": False},
+                deepcopy(default_cfg),
+                True,
+                fill_in_defaults({"override": False}, deepcopy(default_cfg)),
+            ),
             (
                 ["device"],
                 {"override": True},
-                None,
+                deepcopy(default_cfg),
                 True,
-                fill_in_defaults({"device": {"override": True}}),
+                fill_in_defaults({"device": {"override": True}}, deepcopy(default_cfg)),
             ),
-            # (["test"], {"override": False}, None, False, {"override": True}),  # don't want to modify the default cfg
-            # (["device"], {"override": True}, None, False, {"override": True}),  # don't want to modify the default cfg
             # deeply nested
             (
                 ["bar", "deeper", "pickaxe", "copper"],
@@ -302,6 +319,7 @@ class TestInsertIntoConfig(unittest.TestCase):
                     self.assertEqual(orig, default)
                 else:
                     self.assertEqual(get_sub_config(default, path), value)
+        self.assertNotIn("override", default_cfg)
 
 
 if __name__ == "__main__":
