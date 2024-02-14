@@ -7,12 +7,13 @@ import os
 import time
 import warnings
 from abc import abstractmethod
-from typing import Type
+from typing import Type, Union
 
 import torch
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from torch import nn, optim
+from torch._dynamo import OptimizedModule
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import tv_tensors
@@ -43,6 +44,7 @@ train_validations: Validations = {
 test_validations: Validations = {
     "metric": [("any", ["callable", ("in", METRICS.keys())])],
     # optional
+    "compile_model": ["optional", bool],
     "test_normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
     "writer_kwargs": ["optional", dict],
@@ -88,6 +90,9 @@ class EngineModule(BaseModule):
     writer_kwargs (dict, optional):
         Additional kwargs for the torch writer.
         Default {}.
+    compile_model (bool, optional):
+        Whether to ``torch.compile`` the given model.
+        Default True.
 
 
     Optional Train Params
@@ -113,7 +118,7 @@ class EngineModule(BaseModule):
     loss: nn.Module
     metric: nn.Module
     optimizer: optim.Optimizer
-    model: nn.Module
+    model: Union[nn.Module, OptimizedModule]
     writer: SummaryWriter
 
     curr_epoch: int = 0
@@ -137,14 +142,17 @@ class EngineModule(BaseModule):
     ):
         super().__init__(config, [])
 
-        # Set up general attributes
-        self.model = model
-
         # Set up test attributes
         self.params_test: Config = get_sub_config(config, ["test"])
         self.validate_params(test_validations, attrib_name="params_test")
         self.test_dl = test_loader
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
+
+        # Set up general attributes
+        if self.params_test.get("compile_model", True):
+            self.model = torch.compile(model)
+        else:
+            self.model = model
 
         # Logging
         self.writer = SummaryWriter(
@@ -308,7 +316,7 @@ class EngineModule(BaseModule):
         self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
         self.logger.info("\n#### Training complete ####\n")
 
-        self.writer.close()
+        self.writer.flush()
 
     def save_model(self, epoch: int, metrics: dict[str, any]) -> None:  # pragma: no cover
         """Save the current model and other weights into a '.pth' file.
@@ -383,10 +391,10 @@ class EngineModule(BaseModule):
                     self.writer.add_image(f"{prepend}/{self.name}/{key}", value)
                 else:
                     self.writer.add_images(f"{prepend}/{self.name}/{key}", value)
-            # Embeddins as dict id -> embed
-            elif isinstance(value, dict) and "embed" in key:
-                for sub_id, embed in value.items():
-                    self.writer.add_embedding(embed, label_img=sub_id, tag=f"{prepend}/{self.name}/{key}")
+            # Embeddings as dict id -> embed
+            elif isinstance(value, tuple) and "_embed" in key:
+                ids, embeds = value
+                self.writer.add_embedding(embeds, metadata=ids, tag=f"{prepend}/{self.name}/{key}")
             # multiple values as dict sub-key -> sub_value
             elif isinstance(value, dict):
                 for sub_key, sub_value in value.items():

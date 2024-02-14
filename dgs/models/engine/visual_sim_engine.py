@@ -15,7 +15,7 @@ from tqdm import tqdm
 from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import compute_accuracy, compute_cmc
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.states import DataSample, get_ds_data_getter
+from dgs.models.states import DataSample
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
 
@@ -69,34 +69,36 @@ class VisualSimilarityEngine(EngineModule):
         self.val_dl = val_loader
 
         self.validate_params(test_validations, "params_test")
-        self.test_topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
+        self.test_topk: list[int] = self.params_test.get("topk", [1, 5, 10, 50])
 
         if self.config["is_training"]:
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]
 
-            self.train_topk: tuple[int, ...] = self.params_train.get("topk", (1, 5, 10, 50))
+            self.train_topk: list[int] = self.params_train.get("topk", [1, 5, 10, 50])
 
     def get_target(self, ds: DataSample) -> torch.Tensor:
         """Get the target pIDs from the data."""
-        return get_ds_data_getter(["person_id"])(ds)[0].long()
+        # return get_ds_data_getter(["person_id"])(ds)[0].long()
+        return ds["person_id"].long()
 
     def get_data(self, ds: DataSample) -> torch.Tensor:
         """Get the image crop from the data."""
-        return get_ds_data_getter(["image_crop"])(ds)[0]
+        # return get_ds_data_getter(["image_crop"])(ds)[0]
+        return ds["image_crop"]
 
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
         _, pred_id_probs = self.model(self.get_data(data))
         target_ids = self.get_target(data)
 
-        assert all(
-            tid <= self.nof_classes for tid in target_ids
-        ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
+        # assert all(
+        #     tid <= self.nof_classes for tid in target_ids
+        # ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
 
-        oh_t_ids = self._ids_to_one_hot(ids=target_ids, nof_classes=self.nof_classes)
+        # oh_t_ids = self._ids_to_one_hot(ids=target_ids, nof_classes=self.nof_classes)
 
-        assert pred_id_probs.shape == oh_t_ids.shape, f"p: {pred_id_probs.shape} t: {oh_t_ids.shape}"
+        # assert pred_id_probs.shape == oh_t_ids.shape, f"p: {pred_id_probs.shape} t: {oh_t_ids.shape}"
         # assert pred_id_probs.dtype == oh_t_ids.dtype, f"p: {pred_id_probs.dtype} t: {oh_t_ids.dtype}"
 
         # loss = self.loss(pred_id_probs, oh_t_ids)
@@ -135,32 +137,48 @@ class VisualSimilarityEngine(EngineModule):
             t_ids_l: list[torch.Tensor] = []
 
             batch_t: DifferenceTimer = DifferenceTimer()
+            batch: DataSample
 
-            for batch in tqdm(dl, desc=f"Extract {desc} data"):  # with N = len(dl)
+            for batch_idx, batch in tqdm(enumerate(dl), desc=f"Extract {desc}", total=len(dl)):
+
+                # batch start
                 time_batch_start = time.time()  # reset timer for retrieving the data
+                B = len(batch)
+                curr_iter = (self.curr_epoch - 1) * B + batch_idx
+
                 # Extract the (cropped) input image and the target pID.
                 # Then use the model to compute the predicted embedding and the predicted pID probabilities.
                 t_id = self.get_target(batch)
-                embed, pred_id_prob = self.model(self.get_data(batch))
+                img_crop = self.get_data(batch)
+                embed, pred_id_prob = self.model(img_crop)
 
                 # Obtain class probability predictions and mAP from data
-                B = len(batch)
                 m_aps: dict[int, float] = compute_accuracy(
                     prediction=pred_id_prob,  # 2D class probabilities [B, num_classes]
                     target=t_id,  # gt labels    [B]
                     topk=self.test_topk,
                 )
                 for k in self.test_topk:
-                    total_m_aps[k] += m_aps[k] * float(B)  # sum map*B, later we will divide by total N
+                    total_m_aps[k] += m_aps[k] * float(B)  # sum map*B, later we will divide by total len(dl.dataset)
+                    self.writer.add_scalar(f"Test/top_{k}_{desc}", m_aps[k], global_step=curr_iter)
 
                 # keep the results in lists
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
 
+                # write embedding results
+                self.writer.add_embedding(
+                    mat=embed,
+                    metadata=t_id.tolist(),
+                    label_img=img_crop,
+                    global_step=curr_iter,
+                    tag=f"Test/{desc}_embed",
+                )
+
                 # timing
                 batch_t.add(time_batch_start)
-                self.writer.add_scalar("Test/batch_time_{desc}", batch_t[-1], global_step=self.curr_epoch)
-                self.writer.add_scalar("Test/indiv_time_{desc}", batch_t[-1] / B, global_step=self.curr_epoch)
+                self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
+                self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / B, global_step=curr_iter)
 
             del t_id, embed, pred_id_prob, m_aps
 
@@ -197,9 +215,6 @@ class VisualSimilarityEngine(EngineModule):
         q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
         g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
 
-        for targ_id, t_embed in enumerate(q_embed):
-            results["query_embed"][targ_id] = t_embed
-
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
         self.logger.debug(f"Shape of distance matrix: {distance_matrix.shape}")
@@ -209,7 +224,7 @@ class VisualSimilarityEngine(EngineModule):
             distmat=distance_matrix,
             query_pids=q_t_ids,
             gallery_pids=g_t_ids,
-            ranks=self.params_test.get("ranks", [1, 5, 10, 20]),
+            ranks=self.test_topk,
         )
 
         self.print_results(results)

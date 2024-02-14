@@ -8,8 +8,9 @@ is_training: off
 log_dir: "./results/own/visual_sim/"
 
 test:
-    metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
-    topk: [1,2,3,5,10,20,50]
+    metric: "EuclideanSquareMetric"  # used to compute the distance matrix between target and predicted embeddings
+    topk: [1,2,3,5,10,20, 50, 100, 1000]
+    compile_model: true
 
 # #### #
 # DATA #
@@ -19,8 +20,10 @@ dataloader_valid:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/val.json"
+#    json_path: "./posetrack_person_search/query.json"
     force_img_reshape: true
     crops_folder: "./crops/gallery/"
+#    crops_folder: "./crops/query/"
     requires_grad: false
     batch_size: 256
 

@@ -30,10 +30,7 @@ base_dataset_validations: Validations = {
 
 def collate_devices(batch: list[torch.device], *_args, **_kwargs) -> torch.device:
     """Collate a batch of devices into a single device."""
-    device = batch[0]
-    if any(d != device for d in batch):
-        raise ValueError("Devices should be equal for each sample in a batch.")
-    return device
+    return batch[0]
 
 
 def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tensor:
@@ -55,8 +52,6 @@ def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> 
     """
     bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
     canvas_size = batch[0].canvas_size
-    # if any(bb.format != bb_format or bb.canvas_size != canvas_size for bb in batch):
-    #     raise ValueError("Canvas size and format has to be equal for all bounding boxes in a batch.")
 
     return tv_tensors.BoundingBoxes(
         torch.cat(batch),

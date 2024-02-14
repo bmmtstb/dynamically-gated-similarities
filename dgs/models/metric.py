@@ -12,11 +12,13 @@ from torch.linalg import vector_norm
 from dgs.utils.types import Metric
 
 
+@torch.compile
 @torch.no_grad()
 def compute_cmc(
     distmat: torch.Tensor, query_pids: torch.Tensor, gallery_pids: torch.Tensor, ranks: list[int]
 ) -> dict[int, float]:
     r"""Compute the cumulative matching characteristics metric.
+    It is expected, that the distmat has lower values when the predictions are close.
 
     Cumulative Matching Characteristics
     -----------------------------------
@@ -67,7 +69,8 @@ def compute_cmc(
     indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
     # with predictions[indices] := sorted predictions
     # obtain a BoolTensor [n_query x max(ranks)] containing whether the r most probable classes equal the query
-    matches: torch.Tensor = torch.eq(gallery_pids[indices][:, : min(max(ranks), n_gallery)], query_pids).bool()
+    most_prob = gallery_pids[indices][:, : min(max(ranks), n_gallery)]
+    matches: torch.Tensor = torch.eq(most_prob, query_pids).bool()
 
     for rank in ranks:
         orig_rank = rank
@@ -78,31 +81,38 @@ def compute_cmc(
             )
             rank = n_gallery
 
-        cmc = matches[:, :rank].count_nonzero()
+        cmc = torch.any(matches[:, :rank], dim=1).sum()
 
         cmcs[orig_rank] = float(cmc.float().item()) / float(n_query)
     return cmcs
 
 
+@torch.compile
 @torch.no_grad()
-def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: tuple[int, ...] = (1,)) -> dict[int, float]:
+def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[int] = None) -> dict[int, float]:
     """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
 
     Args:
         prediction: prediction matrix with shape ``[B x num_classes]``.
         target: ground truth labels with shape ``[B]``.
-        topk: A tuple containing the number of values to check for the top-k accuracies.
-            Default (1,).
+        topk: A list containing the number of values to check for the top-k accuracies.
+            Default [1].
 
     Returns:
         The accuracies for each of the ``k``-top predictions.
     """
+    if topk is None:
+        topk = [1]
+
     batch_size = target.size(0)
 
     _, ids = prediction.topk(max(topk))  # [B x max(topk)]
 
-    correct: torch.BoolTensor = ids.long().eq(target.long().view(-1, 1)).bool()  # [B x max(topk)]
-    del ids
+    ids = ids.long()
+    target = target.long()
+
+    correct: torch.BoolTensor = ids.eq(target.view(-1, 1)).bool()  # [B x max(topk)]
+    del ids, target
 
     res: dict[int, float] = {}
     for k in topk:
@@ -112,7 +122,7 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: tuple
     return res
 
 
-# @torch.compile
+@torch.compile(fullgraph=True)
 def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: int, eps: float) -> torch.Tensor:
     """See https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908"""
     # get normalization value
@@ -169,7 +179,7 @@ class EuclideanDistanceMetric(Metric):
 
     @staticmethod
     def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
-        """Compute squared Euclidean distance between two matrices with a matching second dimension.
+        """Compute Euclidean distance between two matrices with a matching second dimension.
 
         Args:
             input1: tensor of shape ``[a x E]``

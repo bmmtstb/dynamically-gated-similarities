@@ -148,30 +148,58 @@ class TestMetrics(unittest.TestCase):
 class TestMetricCMC(unittest.TestCase):
     @test_multiple_devices
     def test_compute_cmc(self, device):
-        for distmat, labels, predictions, ranks, results in [
+        for distmat, query, gallery, ranks, results in [
             (
                 torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([[1], [4]]).long(),
+                torch.tensor([1, 4]).int(),
                 torch.tensor([2, 3, 4, 0, 1]).long(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
             ),
-            (
+            (  # 2d label and no long
                 torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([1, 4]).long(),
-                torch.tensor([2, 3, 4, 0, 1]).long(),
+                torch.tensor([[1], [4]]).long(),
+                torch.tensor([[2, 3, 4, 0, 1]]).float(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
+            ),
+            (  # gallery contains an ID multiple times
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([2, 0]).long(),
+                torch.tensor([0, 1, 2, 2, 4]).long(),
+                [1, 2, 3, 4, 5, 6],
+                [0.0, 0.0, 0.5, 0.5, 1.0, 1.0],
+            ),
+            (  # query contains an ID multiple times
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([2, 2]).long(),
+                torch.tensor([0, 1, 3, 4, 2]).long(),
+                [1, 2, 3, 4, 5, 6],
+                [0.0, 0.0, 0.5, 0.5, 1.0, 1.0],
+            ),
+            (  # query and gallery contain the same ID multiple times
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([2, 2]).long(),
+                torch.tensor([2, 1, 3, 4, 2]).long(),
+                [1, 2, 3, 4, 5, 6],
+                [0.5, 0.5, 1.0, 1.0, 1.0, 1.0],
+            ),
+            (  # top rank only
+                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                torch.tensor([1, 2]).long(),
+                torch.tensor([1, 2, 3, 4, 0]).long(),
+                [1],
+                [1.0],
             ),
         ]:
             with self.subTest(
-                msg="ranks: {}, results: {}, distmat: {}, labels: {}, predictions: {}, device: {}".format(
-                    ranks, results, distmat, labels, predictions, device
+                msg="ranks: {}, results: {}, distmat: {}, query: {}, gallery: {}, device: {}".format(
+                    ranks, results, distmat, query, gallery, device
                 )
             ):
                 distmat.to(device=device)
-                labels.to(device=device)
-                predictions.to(device=device)
+                query.to(device=device)
+                gallery.to(device=device)
 
                 with warnings.catch_warnings():  # will warn with rank 6, ignore it.
                     warnings.filterwarnings(
@@ -180,7 +208,7 @@ class TestMetricCMC(unittest.TestCase):
                         category=UserWarning,
                     )
                     result_dict = {rank: float(result) for rank, result in zip(ranks, results)}
-                    self.assertEqual(compute_cmc(distmat, labels, predictions, ranks), result_dict)
+                    self.assertEqual(compute_cmc(distmat, query, gallery, ranks), result_dict)
 
 
 class TestMetricAccuracy(unittest.TestCase):
