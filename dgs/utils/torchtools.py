@@ -87,6 +87,8 @@ def save_checkpoint(
         for k, v in state_dict.items():
             if k.startswith("module."):
                 k = k[7:]
+            elif k.startswith("model."):
+                k = k[6:]
             new_state_dict[k] = v
         state["module"] = new_state_dict
 
@@ -137,6 +139,60 @@ def load_checkpoint(fpath) -> dict:
     return checkpoint
 
 
+def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
+    """Loads pretrianed weights to model.
+
+    Features:
+        - Incompatible layers (unmatched in name or size) will be ignored.
+        - Can automatically deal with keys containing 'module.'.
+
+    Args:
+        model: A torch module.
+        weight_path: path to pretrained weights.
+
+    Examples:
+        >>> from dgs.utils.torchtools import load_pretrained_weights
+        >>> weight_path = 'log/my_model/model-best.pth.tar'
+        >>> load_pretrained_weights(model, weight_path)
+    """
+    checkpoint = load_checkpoint(weight_path)
+    if "model" in checkpoint:
+        state_dict = checkpoint["model"]
+    else:
+        state_dict = checkpoint
+
+    model_dict = model.state_dict()
+    new_state_dict = OrderedDict()
+    matched_layers, discarded_layers = [], []
+
+    for k, v in state_dict.items():
+        if k in model_dict and model_dict[k].size() == v.size():
+            new_state_dict[k] = v
+            matched_layers.append(k)
+        elif k.startswith("module.") and k[7:] in model_dict and model_dict[k[7:]].size() == v.size():
+            new_state_dict[k[7:]] = v
+            matched_layers.append(k[7:])
+        elif k.startswith("model.") and k[6:] in model_dict and model_dict[k[6:]].size() == v.size():
+            new_state_dict[k[6:]] = v
+            matched_layers.append(k[6:])
+        else:
+            discarded_layers.append(k)
+
+    model_dict.update(new_state_dict)
+    model.load_state_dict(model_dict)
+
+    if len(matched_layers) == 0:
+        warnings.warn(
+            f"The pretrained weights '{weight_path}' cannot be loaded, "
+            f"please check the key names manually "
+            f"(** ignored and continue **)"
+        )
+    else:
+        print(f"Successfully loaded pretrained weights from '{weight_path}'")
+        if len(discarded_layers) > 0:
+            print(f"** The following layers are discarded due to unmatched keys or layer size: {discarded_layers}")
+
+
 def resume_from_checkpoint(
     fpath: FilePath,
     model: Union[TorchMod, BaseMod],
@@ -171,10 +227,14 @@ def resume_from_checkpoint(
 
     if verbose:
         print(f"Loading checkpoint from '{fpath}'")
-    checkpoint = load_checkpoint(fpath)
-    model.load_state_dict(checkpoint["model"])
+
+    load_pretrained_weights(model=model, weight_path=fpath)
+
     if verbose:
         print("Loaded model weights")
+
+    checkpoint = load_checkpoint(fpath)
+
     if optimizer is not None and "optimizer" in checkpoint.keys():
         optimizer.load_state_dict(checkpoint["optimizer"])
         if verbose:
@@ -270,57 +330,6 @@ def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
     model.train()
     model.requires_grad_()
     model.apply(open_module)
-
-
-def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
-    """Loads pretrianed weights to model.
-
-    Features:
-        - Incompatible layers (unmatched in name or size) will be ignored.
-        - Can automatically deal with keys containing 'module.'.
-
-    Args:
-        model: A torch module.
-        weight_path: path to pretrained weights.
-
-    Examples:
-        >>> from dgs.utils.torchtools import load_pretrained_weights
-        >>> weight_path = 'log/my_model/model-best.pth.tar'
-        >>> load_pretrained_weights(model, weight_path)
-    """
-    checkpoint = load_checkpoint(weight_path)
-    if "model" in checkpoint:
-        state_dict = checkpoint["model"]
-    else:
-        state_dict = checkpoint
-
-    model_dict = model.state_dict()
-    new_state_dict = OrderedDict()
-    matched_layers, discarded_layers = [], []
-
-    for k, v in state_dict.items():
-        if k.startswith("module."):
-            k = k[7:]  # discard module.
-
-        if k in model_dict and model_dict[k].size() == v.size():
-            new_state_dict[k] = v
-            matched_layers.append(k)
-        else:
-            discarded_layers.append(k)
-
-    model_dict.update(new_state_dict)
-    model.load_state_dict(model_dict)
-
-    if len(matched_layers) == 0:
-        warnings.warn(
-            f"The pretrained weights '{weight_path}' cannot be loaded, "
-            f"please check the key names manually "
-            f"(** ignored and continue **)"
-        )
-    else:
-        print(f"Successfully loaded pretrained weights from '{weight_path}'")
-        if len(discarded_layers) > 0:
-            print(f"** The following layers are discarded due to unmatched keys or layer size: {discarded_layers}")
 
 
 def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None = None) -> BaseMod:  # pragma: no cover

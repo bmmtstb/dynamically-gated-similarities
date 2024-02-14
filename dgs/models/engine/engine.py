@@ -149,10 +149,7 @@ class EngineModule(BaseModule):
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Set up general attributes
-        if self.params_test.get("compile_model", True):
-            self.model = torch.compile(model)
-        else:
-            self.model = model
+        self.model = model
 
         # Logging
         self.writer = SummaryWriter(
@@ -244,6 +241,11 @@ class EngineModule(BaseModule):
         if not hasattr(self.model, "train"):
             warnings.warn("`model.train()` is not available.")
         self.model.train()
+
+        # compile model if wanted
+        if self.params_test.get("compile_model", False):
+            self.logger.debug("Compile the model")
+            self.model = torch.compile(self.model)
 
         # initialize variables
         losses: list[float] = []
@@ -342,7 +344,10 @@ class EngineModule(BaseModule):
     def load_model(self, path: FilePath) -> None:  # pragma: no cover
         """Load the model from a file. Set the start epoch to the epoch specified in the loaded model."""
         self.start_epoch = resume_from_checkpoint(
-            fpath=path, model=self.model, optimizer=self.optimizer, schedulers=self.lr_sched
+            fpath=path,
+            model=self.model,
+            optimizer=self.optimizer if hasattr(self, "optimizer") else None,
+            schedulers=self.lr_sched if hasattr(self, "lr_sched") else None,
         )
         self.curr_epoch = self.start_epoch
 
