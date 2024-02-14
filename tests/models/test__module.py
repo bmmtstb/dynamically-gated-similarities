@@ -1,3 +1,4 @@
+import shutil
 import unittest
 from unittest.mock import patch
 
@@ -8,8 +9,9 @@ from torch import nn
 from dgs.models.module import BaseModule, module_validations as base_module_validation
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
+from dgs.utils.files import to_abspath
 from dgs.utils.types import Config, Device
-from helper import get_default_config, test_multiple_devices
+from helper import get_test_config, test_multiple_devices
 
 TEST_CFG: Config = EasyDict(
     {
@@ -126,7 +128,7 @@ class TestBaseModule(unittest.TestCase):
                 m = BaseModule(
                     config=fill_in_defaults(
                         {"name": "TestName", "is_training": train, "device": device},
-                        default_cfg=get_default_config(),
+                        default_cfg=get_test_config(),
                     ),
                     path=[],
                 )
@@ -138,3 +140,4 @@ class TestBaseModule(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+    shutil.rmtree(to_abspath("./tests/test_data/logs/"))

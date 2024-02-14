@@ -6,11 +6,11 @@ import torch
 from dgs.models.similarity import DynamicallyGatedSimilarities, StaticAlphaWeightingModule
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.types import Device
-from helper import get_default_config, test_multiple_devices
+from helper import get_test_config, test_multiple_devices
 
 
 class TestDGS(unittest.TestCase):
-    default_cfg = get_default_config()
+    default_cfg = get_test_config()
 
     def test_dgs_init(self):
         _ = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])
@@ -19,7 +19,7 @@ class TestDGS(unittest.TestCase):
     def test_dgs_forward(self, device: Device):
         N = 7
         T = 21
-        default_cfg = get_default_config()
+        default_cfg = get_test_config()
         for alpha, s1, s2, result in [
             (torch.tensor([0.7]), torch.ones((N, T)), torch.ones((N, T)), torch.ones((N, T))),
             (torch.tensor([[0.3]]), torch.ones((N, T)), torch.ones((N, T)), torch.ones((N, T))),
@@ -90,7 +90,7 @@ class TestDGS(unittest.TestCase):
 
 
 class TestConstantAlpha(unittest.TestCase):
-    default_cfg = get_default_config()
+    default_cfg = get_test_config()
 
     def test_constant_alpha_init(self):
         for alpha in [[1], [0.5, 0.5], [1 / 10 for _ in range(10)]]:

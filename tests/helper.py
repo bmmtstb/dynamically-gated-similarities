@@ -63,13 +63,13 @@ def capture_stdout(command, *args, **kwargs):
         sys.stdout = out
 
 
-def get_default_config() -> Config:
+def get_test_config() -> Config:
     """Get the default configuration for tests.
     Will replace a few values to keep all the data local in the tests folder.
     """
     cfg = deepcopy(default_config)
 
     cfg.name = "Test"
-    cfg.train.log_dir = "./tests/test_data/logs/"
+    cfg.log_dir = "./tests/test_data/logs/"
 
     return cfg

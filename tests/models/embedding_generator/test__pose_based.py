@@ -6,11 +6,11 @@ from torchvision import tv_tensors
 from dgs.models.embedding_generator.pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.types import Device
-from helper import get_default_config, test_multiple_devices
+from helper import get_test_config, test_multiple_devices
 
 
 class TestPoseBased(unittest.TestCase):
-    default_cfg = get_default_config()
+    default_cfg = get_test_config()
 
     @test_multiple_devices
     def test_linear_PBEG_out_shape(self, device: Device):

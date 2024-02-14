@@ -17,6 +17,7 @@ cfg.name = "DEFAULT"
 cfg.description = "Default configuration..."
 cfg.print_prio = "INFO"
 cfg.working_memory_size = 30
+cfg.log_dir = "./results/"
 
 # torch and device settings
 cfg.device = "cpu"  # tests need cpu as the default device!
@@ -33,7 +34,6 @@ cfg.train.epochs = 1
 cfg.train.loss = "NLLLoss"
 cfg.train.metric = "dummy"
 cfg.train.optimizer = "Adam"
-cfg.train.log_dir = "./results/"
 
 # ####### #
 # Testing #

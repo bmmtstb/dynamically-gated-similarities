@@ -11,11 +11,11 @@ from dgs.models.similarity import (
     SimilarityModule,
 )
 from dgs.utils.config import fill_in_defaults
-from helper import get_default_config
+from helper import get_test_config
 
 
 class TestSimilarity(unittest.TestCase):
-    default_cfg = get_default_config()
+    default_cfg = get_test_config()
 
     def test_similarity(self):
         # fixme why are the shapes so chaotic?
