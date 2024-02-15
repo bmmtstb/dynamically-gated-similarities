@@ -44,8 +44,11 @@ def torch_show_image(
         imgs = [imgs]
     _, axs = plt.subplots(ncols=len(imgs), squeeze=False)
     for i, img in enumerate(imgs):
-        img = img.detach()
-        img = ToPILImage()(img)
+        img = img.detach().clone()
+        img: torch.Tensor = convert_image_dtype(img, torch.uint8)
+        if img.ndim != 3:
+            raise ValueError(f"Sth went wrong, img shape is {img.shape}")
+        img = ToPILImage(mode="RGB")(img)
         axs[0, i].imshow(np.asarray(img))
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
     if show:

@@ -21,7 +21,7 @@ from dgs.utils.image import (
 )
 from dgs.utils.types import ImgShape, TVImage
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
-from helper import load_test_image, load_test_images
+from helper import load_test_image, load_test_images, test_multiple_devices
 
 # Map image name to shape.
 # Shape is torch shape and therefore [C x H x W].
@@ -116,17 +116,35 @@ class TestImageUtils(unittest.TestCase):
 
 
 class TestImage(unittest.TestCase):
-    def test_load_single_image(self):
-        for file_name, shape in TEST_IMAGES.items():
-            with self.subTest(msg=f"image name: {file_name}"):
-                fp = to_abspath(os.path.join("./tests/test_data/", file_name))
-                self.assertEqual(load_image(fp).shape[-3:], shape)
-                self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
 
-    def test_load_multiple_images_resized(self):
+    @test_multiple_devices
+    def test_load_single_image(self, device: torch.device):
+        for file_name, shape in TEST_IMAGES.items():
+            for dtype, min_, max_ in [
+                (torch.float32, 0.0, 1.0),
+                (torch.uint8, 0, 255),
+            ]:
+                with self.subTest(msg=f"image name: {file_name}, dtype: {dtype}, device: {device}"):
+                    fp = to_abspath(os.path.join("./tests/test_data/", file_name))
+                    img = load_image(fp, dtype=dtype, device=device)
+
+                    self.assertEqual(img.shape[-3:], shape)
+                    self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
+                    self.assertTrue(img.max() <= max_)
+                    self.assertTrue(img.min() >= min_)
+                    self.assertEqual(img.dtype, dtype)
+                    self.assertEqual(img.device, device)
+
+    @test_multiple_devices
+    def test_load_multiple_images_resized(self, device: torch.device):
         fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
         size: ImgShape = (300, 500)
-        self.assertEqual(tuple(load_image(fps, force_reshape=True, output_size=size).shape), (9, 3, 300, 500))
+        for dtype in [torch.float32, torch.uint8]:
+            with self.subTest(msg=f"dtype: {dtype}, device: {device}"):
+                imgs = load_image(fps, force_reshape=True, output_size=size, device=device, dtype=dtype)
+                self.assertEqual(imgs.shape, torch.Size((9, 3, 300, 500)))
+                self.assertEqual(imgs.dtype, dtype)
+                self.assertEqual(imgs.device, device)
 
     def test_load_multiple_images_exception(self):
         fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)

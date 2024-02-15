@@ -24,6 +24,7 @@ from torchvision import tv_tensors
 from torchvision.io import ImageReadMode, read_image, read_video
 from torchvision.transforms.v2.functional import (
     center_crop as tvt_center_crop,
+    convert_image_dtype,
     crop as tvt_crop,
     pad as tvt_pad,
     resize as tvt_resize,
@@ -86,17 +87,17 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     paths: FilePaths = validate_filepath(filepath)
 
     # Make sure to extract kwargs for tv_tensors.Image creation before sending kwargs through the custom Compose.
-    image_kwargs = {
-        "dtype": kwargs.pop("dtype", torch.float32),
-        "device": kwargs.pop("device", "cpu"),
-    }
+    dtype: torch.dtype = kwargs.pop("dtype", torch.float32)
+    device: torch.device = torch.device(kwargs.pop("device", "cpu"))
 
     # load images
     images = [read_image(path, mode=kwargs.pop("read_mode", ImageReadMode.RGB)) for path in paths]
 
     # if multiple images are loaded, reshape them to a given output_size
     if force_reshape:
-        transform = tvt.Compose([CustomToAspect(), CustomResize()])
+        transform = tvt.Compose(
+            [CustomToAspect(), CustomResize(), tvt.ToDtype({tv_tensors.Image: dtype, "others": None}, scale=True)]
+        )
         new_images: list[TVImage] = []
         mode: str = kwargs.pop("mode", "zero-pad")
         output_size: ImgShape = kwargs.pop("output_size", (512, 512))
@@ -116,7 +117,10 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
 
-    return tv_tensors.Image(torch.stack(images), **image_kwargs)
+    images = torch.stack(images)
+    images = convert_image_dtype(image=images, dtype=dtype)
+
+    return tv_tensors.Image(images, dtype=dtype, device=device)
 
 
 def load_video(filepath: FilePath, **kwargs) -> TVVideo:  # pragma: no cover
