@@ -45,7 +45,7 @@ test_validations: Validations = {
     "metric": [("any", ["callable", ("in", METRICS.keys())])],
     # optional
     "compile_model": ["optional", bool],
-    "test_normalize": ["optional", bool],
+    "normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
     "writer_kwargs": ["optional", dict],
 }
@@ -84,7 +84,7 @@ class EngineModule(BaseModule):
         The cmc ranks to use for evaluation.
         This value is used during training and testing.
         Default [1, 5, 10, 20]
-    test_normalize (bool, optional):
+    normalize (bool, optional):
         Whether to normalize the prediction and target during testing.
         Default False.
     writer_kwargs (dict, optional):
@@ -361,8 +361,8 @@ class EngineModule(BaseModule):
                 delattr(self, attr)
 
     def _normalize(self, tensor: torch.Tensor) -> torch.Tensor:
-        """If ``params_test.test_normalize`` is True, we want to obtain the normalized prediction and target."""
-        if self.params_test.get("test_normalize", False):
+        """If ``params_test.normalize`` is True, we want to obtain the normalized prediction and target."""
+        if self.params_test.get("normalize", False):
             self.logger.debug("Normalizing test data")
             tensor: torch.Tensor = nn.functional.normalize(tensor)
         return tensor

@@ -40,6 +40,7 @@ cfg.train.optimizer = "Adam"
 # ####### #
 cfg.test = EasyDict()
 cfg.test.metric = "dummy"
+cfg.test.normalize = False
 
 # ####### #
 # Dataset #
