@@ -120,6 +120,8 @@ class VisualSimilarityEngine(EngineModule):
         """
         results: dict[str, any] = {}
 
+        compiled_model = torch.compile(self.model)
+
         def obtain_test_data(dl: TorchDataLoader, desc: str) -> tuple[torch.Tensor, torch.Tensor]:
             """Given a dataloader,
             extract the embeddings describing the people, target pIDs, and the pIDs the model predicted.
@@ -150,7 +152,7 @@ class VisualSimilarityEngine(EngineModule):
                 # Then use the model to compute the predicted embedding and the predicted pID probabilities.
                 t_id = self.get_target(batch)
                 img_crop = self.get_data(batch)
-                embed, pred_id_prob = self.model(img_crop)
+                embed, pred_id_prob = compiled_model(img_crop)
 
                 # Obtain class probability predictions and mAP from data
                 m_aps: dict[int, float] = compute_accuracy(
