@@ -14,7 +14,7 @@ from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
 pbeg_validations: Validations = {
-    "joint_shape": [("instance", (list, tuple)), ("len", 2), lambda tup: all(i > 0 for i in tup)],
+    "joint_shape": [list, ("len", 2), lambda l: all(i > 0 for i in l)],
     "bbox_format": [
         "optional",
         (
