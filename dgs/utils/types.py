@@ -29,10 +29,6 @@ Validator = Callable[[any, any], bool]
 Validations = dict[str, list[Union[str, tuple[str, any], Validator, None]]]
 """A dictionary of validations, mapping a value of a given Config to some sort of validation."""
 
-# Pose State
-PoseStateTuple = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
-"""Current PoseState as tuple like (pose, jcs, bbox)"""
-
 # Data Handling
 DataGetter = Callable[["DataSample"], tuple[Union[torch.Tensor, any], ...]]
 """Function to extract specific data from a DataSample."""

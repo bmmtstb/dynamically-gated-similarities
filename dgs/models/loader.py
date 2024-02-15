@@ -12,7 +12,6 @@ from dgs.models.dataset.posetrack21 import get_pose_track_21
 from dgs.models.embedding_generator import get_embedding_generator
 from dgs.models.engine import get_engine
 from dgs.models.module import BaseModule
-from dgs.models.pose_warping import get_pose_warping
 from dgs.models.similarity import get_combined_similarity_module, get_similarity_module
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
@@ -48,8 +47,6 @@ def module_loader(config: Config, module: str) -> Union[M, TorchDataLoader]:
         m = get_embedding_generator(module_name)
     elif module.startswith("similarity_"):
         m = get_similarity_module(module_name)
-    elif module == "pose_warping_module":
-        m = get_pose_warping(module_name)
     elif module.startswith("dataloader_"):
         return get_data_loader(config=config, path=path, dl_module=module)
     elif module.startswith("dataset_"):

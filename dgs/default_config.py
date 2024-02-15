@@ -79,14 +79,6 @@ cfg.similarity_pose = EasyDict()
 cfg.similarity_pose.module_name = "euclidean"
 
 
-# ############# #
-# Warping Model #
-# ############# #
-cfg.pose_warping_module = EasyDict()
-cfg.pose_warping_module.module_name = "kalman"
-cfg.pose_warping_module.weights = ""
-
-
 # ######################## #
 # Combine the Similarities #
 # ######################## #

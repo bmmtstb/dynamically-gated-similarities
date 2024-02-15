@@ -2,13 +2,14 @@
 definitions and helpers for pose-state(s)
 """
 
-from collections import UserDict
+from collections import deque, UserDict
+from collections.abc import Iterable
 from typing import Union
 
 import torch
 from torchvision import tv_tensors
 
-from dgs.utils.types import Config, DataGetter, Device, FilePaths, Heatmap, Image, PoseStateTuple, TVImage
+from dgs.utils.types import DataGetter, Device, FilePaths, Heatmap, Image, TVImage
 from dgs.utils.validation import (
     validate_bboxes,
     validate_filepath,
@@ -18,201 +19,195 @@ from dgs.utils.validation import (
 )
 
 
-class PoseState:
-    """
-    PoseState = (Pose, JCS, BBox)
-    """
+class Queue:
+    """A single queue containing the last states of a specific torch.Tensor up to a limit N."""
 
-    pose: torch.Tensor
-    jcs: torch.Tensor
-    bbox: torch.Tensor
+    _shape: torch.Size
 
-    def __init__(self, pose: torch.Tensor, jcs: torch.Tensor, bbox: torch.Tensor) -> None:
-        """
+    def __init__(self, N: int, states: list[torch.Tensor] = None, shape: torch.Size = None) -> None:
+        self._states = deque(iterable=states if states else [], maxlen=N)
 
-        Args:
-            pose: pose or joint coordinates or the current state
-            jcs: joint confidence scores of this pose
-            bbox: bounding box coordinates relative to the full image
-        """
-        self.pose = pose
-        self.jcs = jcs
-        self.bbox = bbox
+        self._N: int = N
 
-    def __eq__(self, other) -> bool:
-        """Redefine the equality between two PoseState objects.
+        if states is not None and len(states):
+            first_shape = states[0].shape
+            if shape is not None and first_shape != shape:
+                raise ValueError(
+                    f"First shape of the values in states {first_shape} "
+                    f"must have the same shape as the given shape {shape}"
+                )
+            self._shape = first_shape
+        else:
+            self._shape = shape
 
-        Args:
-            other: PoseState object or PoseStateTuple to compare to.
-
-        Returns:
-            bool: Whether the two PoseState are equal.
-        """
-        if isinstance(other, PoseState):
-            return (
-                torch.equal(self.pose, other.pose)
-                and torch.equal(self.jcs, other.jcs)
-                and torch.equal(self.bbox, other.bbox)
-            )
-        if isinstance(other, tuple):
-            return (
-                torch.equal(self.pose, other[0])
-                and torch.equal(self.jcs, other[1])
-                and torch.equal(self.bbox, other[2])
-            )
-        raise NotImplementedError(f"Equality between PoseState and {type(other)} is not defined.")
-
-    def to(self, *args, **kwargs) -> "PoseState":
-        """
-        Override torch.Tensor.to() to work with PoseState class
-
-        Args:
-            See .to() of torch.
-
-            Examples:
-                device="cuda"
-                dtype=torch.int
-        """
-        self.pose = self.pose.to(*args, **kwargs)
-        self.jcs = self.jcs.to(*args, **kwargs)
-        self.bbox = self.bbox.to(*args, **kwargs)
+    def to(self, *args, **kwargs) -> "Queue":
+        """Call ``.to()`` like you do with any other ``torch.Tensor``."""
+        for i, state in enumerate(self._states):
+            self._states[i] = state.to(*args, **kwargs)
         return self
 
-    def __getitem__(self, item: str | int) -> torch.Tensor:
-        """Override PoseState["item"] to be class-specific.
+    def __getitem__(self, index: int) -> torch.Tensor:
+        return self._states[index]
+
+    def append(self, state: torch.Tensor) -> None:
+        """Append a new state to the Queue. Set shape if not set and make sure new states have the correct shape."""
+        if self._shape:
+            if state.shape != self._shape:
+                raise ValueError(
+                    f"The shape of the new state {state.shape} "
+                    f"does not match the shape of previous states {self._shape}."
+                )
+        else:
+            self._shape = state.shape
+        self._states.append(state)
+
+    def __len__(self) -> int:
+        return len(self._states)
+
+    def get_all(self) -> torch.Tensor:
+        """Get all the states from the Queue and stack them into a single torch.Tensor."""
+        if len(self) == 0:
+            raise ValueError("Can not stack the items of an empty Queue.")
+        return torch.stack(list(self._states))
+
+    @property
+    def shape(self) -> torch.Size:
+        """Get the shape of every tensor in this Queue."""
+        if self._shape is None:
+            raise ValueError("Can not get the shape of an empty Queue.")
+        return self._shape
+
+    @property
+    def device(self) -> torch.device:
+        """Get the device of every tensor in this Queue."""
+        if len(self) == 0:
+            raise ValueError("Can not get the device of an empty Queue.")
+        device = self._states[-1].device
+        assert all(state.device == device for state in self._states), "Not all tensors are on the same device"
+        return device
+
+    @property
+    def N(self) -> int:
+        return self._N
+
+    def clear(self) -> None:
+        """Clear all the states from the Queue."""
+        self._states.clear()
+
+    def copy(self) -> "Queue":
+        """Return a (deep) copy of self."""
+        return Queue(N=self._N, states=[state.detach().clone() for state in self._states], shape=self._shape)
+
+    def __eq__(self, other: "Queue") -> bool:
+        """Return whether another Queue is equal to self."""
+        return self._N == other._N and self._states == other._states and self._shape == other._shape
+
+
+TrackState = dict[str, torch.Tensor]
+TrackStates = dict[str, Queue]
+
+
+class Track:
+    """A single track containing one or multiple states that are tracked as a dictionary of Queues with a max length."""
+
+    _states: TrackStates = {}
+
+    def __init__(self, N: int, states: TrackStates = None) -> None:
+        """
+        Initialize an empty track.
 
         Args:
-            item: Name of the value to retrieve, has to be in `["pose", "jcs", "bbox"]`.
-
-        Returns:
-            State with the given name as `torch.Tensor`.
+            N: The maximum number of states contained in every Queue.
+                Should equal the working memory size.
+            states: A dict containing an initial state.
         """
-        if isinstance(item, str):
-            return self.__getattribute__(str(item))
-        return self.__getstate__()[item]
+        self._N: int = N
 
-    def __getstate__(self) -> PoseStateTuple:
-        """
-        Returns:
-            PoseState as tuple of torch.Tensor
-        """
-        return self.pose, self.jcs, self.bbox
+        if states is not None:
+            if any(q._states.maxlen != N for q in states.values()):
+                raise ValueError(f"Provided states must have max_length {N} but got {states}")
+            self._states = states
 
-    def __setstate__(self, state: PoseStateTuple) -> None:
-        """
-        Args:
-            state: PoseState or tuple of three torch tensors
-        """
-        self.pose = state[0]
-        self.jcs = state[1]
-        self.bbox = state[2]
-
-
-class PoseStates:
-    """
-    Custom "queue" of pose states with a max length.
-    Every track has one PoseStates object containing the history of detected poses, joint confidence scores (JCS), and
-    bounding box information (bbox).
-    """
-
-    def __init__(self, config: Config, max_length: int = 30) -> None:
-        """
-        Initialize empty queue with max length.
-
-        Args:
-            config: the current programs configuration
-            max_length: maximum number of pose states contained. Equals working memory size.
-        """
-        self.config: Config = config
-
-        self.max_length: int = max_length  # FIXME: get from params ?
-
-        self.poses: list[torch.Tensor] = []
-        self.jcss: list[torch.Tensor] = []
-        self.bboxes: list[torch.Tensor] = []
-
-    def _stack_tensor(self, lot: list[torch.Tensor], copy: bool = False) -> torch.Tensor:
-        """Stack state and create a copy of the tensor"""
-        if copy:
-            return torch.stack(lot).detach().clone().to(self.config["device"])
-        return torch.stack(lot).to(self.config["device"])
-
-    def get_states(self, items: int | slice = None, copy: bool = False) -> PoseState:
-        """Obtain a copy of the three states within this queue.
-        Due to multiprocessing, we technically have to freeze appending to ensure equal length and matching indices at
-        all times, but as long as it doesn't make problems, this will be postponed.
-
-        Args:
-            items: Index or slice of the state(s) to retrieve.
-            copy: Whether to create a detached and cloned copy of the current states or the real tensors.
-
-        Returns:
-            Three stacked tensors of cloned and detached current state on the configured device.
-        """
-        if isinstance(items, int):
-            # to be able to use torch.stack later, make sure to keep a list and not the single tensors
-            items: slice = slice(items, items)
-        elif items is None:
-            items: slice = slice(len(self))
-
-        return PoseState(
-            self._stack_tensor(self.poses[items], copy=copy),
-            self._stack_tensor(self.jcss[items], copy=copy),
-            self._stack_tensor(self.bboxes[items], copy=copy),
-        )
-
-    def __getitem__(self, item: int | slice) -> PoseState | list[PoseState]:
-        """Override get-item call (PoseStates[i]) to obtain pose state by indices.
-        Supports python indexing using slices.
-        Returns the exact torch tensor because it is not possible to add further parameters to this call.
-        Therefore, if you want to obtain a detached and cloned tensor use self.get_state(..., copy=True)
-
-        Args:
-            item: index or slice of the states to obtain
-
-        Returns:
-            Either a single pose state given an integer item or a list of pose states given a slice.
-        """
-        if isinstance(item, int):
-            return PoseState(self.poses[item], self.jcss[item], self.bboxes[item])
-        return PoseState(self._stack_tensor(self.poses), self._stack_tensor(self.jcss), self._stack_tensor(self.bboxes))
+    def __getitem__(self, index: int) -> TrackState:
+        """Get the i-th tensor of every Query."""
+        return {name: q[index] for name, q in self._states.items()}
 
     def __len__(self) -> int:
         """get length of this state"""
-        if len(self.jcss) == len(self.poses) == len(self.bboxes):
-            return len(self.jcss)
-        raise IndexError("Lists in PoseStates have different length.")
+        if not self.size():
+            return 0
 
-    def __iadd__(self, other: PoseState):
-        """
-        Override += to use append()
+        l: int = len(iter(self._states).__next__())
+        if any(len(q) != l for q in self._states.values()):
+            raise IndexError("Queues have different length.")
+        return l
 
-        Args:
-            other: Tuple of pose state to append to self.
+    def __eq__(self, other: "Track") -> bool:
+        """Compare two tracks."""
+        if not isinstance(other, Track):
+            return False
+        return (
+            self._N == other._N
+            and self._states.keys() == other._states.keys()
+            and all(other.get_queue(name) == q for name, q in self._states.items())
+        )
 
-        Returns:
-            Updated version of self.
-        """
-        self.append(other)
-        return self
+    def get_states(self) -> TrackStates:
+        return self._states
 
-    def append(self, new_state: PoseState | PoseStateTuple) -> None:
+    def get_state(self, index: int) -> TrackState:
+        """Get the i-th state of every Query."""
+        return {name: q[index] for name, q in self._states.items()}
+
+    def get_queues(self, names: Iterable[str]) -> TrackStates:
+        """Get the Queue with the given name."""
+        if any(name not in self._states for name in names):
+            raise ValueError(f"One of the provided names does not exist in the current states {self._states.keys()}.")
+        return {name: self._states[name] for name in names}
+
+    def get_queue(self, name: str) -> Queue:
+        """Get the Queue with the given name."""
+        return self._states[name]
+
+    def size(self) -> int:
+        """Get the number of Queues in states"""
+        return len(self._states)
+
+    def append(self, new_state: TrackState) -> None:
         """
         Right-Append new_state to the current states, but make sure that states have max length
 
         Args:
             new_state: pose, jcs and bbox to append to current state
         """
-        # pop old state if too long
-        if len(self) >= self.max_length:
-            self.poses.pop(0)
-            self.jcss.pop(0)
-            self.bboxes.pop(0)
+        if not new_state:
+            raise ValueError("Can not append an empty state")
         # append new state
-        pose, jcs, bbox = new_state
-        self.poses.append(pose.to(self.config["device"]))
-        self.jcss.append(jcs.to(self.config["device"]))
-        self.bboxes.append(bbox.to(self.config["device"]))
+        for name, t in new_state.items():
+            if name in self._states:
+                self._states[name].append(t)
+            else:
+                self._states[name] = Queue(N=self._N, states=[t])
+
+    def to(self, *args, **kwargs) -> "Track":
+        """Call ``.to()`` like you do with any other ``torch.Tensor``."""
+
+        for name, queue in self._states.items():
+            self._states[name] = queue.to(*args, **kwargs)
+        return self
+
+    @property
+    def names(self) -> list[str]:
+        """Get all the keys of this track."""
+        return [str(state) for state in self._states]
+
+    @property
+    def N(self) -> int:
+        return self._N
+
+    def copy(self) -> "Track":
+        """Create a (deep) copy of this track."""
+        return Track(N=self._N, states={name: q.copy() for name, q in self._states.items()})
 
 
 class DataSample(UserDict):

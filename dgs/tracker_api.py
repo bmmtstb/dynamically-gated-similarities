@@ -50,7 +50,6 @@ class DGSTracker:
         self.m_vis_siml: SimilarityModule = module_loader(self.cfg, "visual_similarity")
 
         self.m_pose_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "pose_embedding_generator")
-        # self.m_pose_warp: PoseWarpingModule = module_loader(self.cfg, "pose_warping_module")
         self.m_pose_siml: SimilarityModule = module_loader(self.cfg, "pose_similarity")
 
         self.m_alpha: CombineSimilarityModule = module_loader(self.cfg, "combined_similarity")
