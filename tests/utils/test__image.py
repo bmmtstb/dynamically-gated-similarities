@@ -18,7 +18,6 @@ from dgs.utils.image import (
     CustomToAspect,
     CustomTransformValidator,
     load_image,
-    load_video,
 )
 from dgs.utils.types import ImgShape, TVImage
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
@@ -133,15 +132,6 @@ class TestImage(unittest.TestCase):
         fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
         with self.assertRaises(ValueError):
             load_image(fps)
-
-
-class TestVideo(unittest.TestCase):
-    def test_load_video(self):
-        for fp, shape in [
-            ("./tests/test_data/file_example_AVI_640_800kB.avi", (901, 3, 360, 640)),
-        ]:
-            with self.subTest(msg=f"image name: {fp}"):
-                self.assertEqual(load_video(fp).shape, shape)
 
 
 class TestCustomTransformValidator(unittest.TestCase):

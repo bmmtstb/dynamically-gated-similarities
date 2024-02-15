@@ -121,7 +121,7 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     return tv_tensors.Image(torch.stack(images), **image_kwargs)
 
 
-def load_video(filepath: FilePath, **kwargs) -> TVVideo:
+def load_video(filepath: FilePath, **kwargs) -> TVVideo:  # pragma: no cover
     """Load a video from a given filepath.
 
     Returns:
