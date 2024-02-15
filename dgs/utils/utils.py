@@ -91,7 +91,6 @@ def extract_crops_from_images(
     imgs: TVImage = load_image(
         filepath=tuple(img_fps),
         device=device,
-        requires_grad=False,
     )
 
     # pass original images through CustomResizeCrop transform and get the resulting image crops on the cpu

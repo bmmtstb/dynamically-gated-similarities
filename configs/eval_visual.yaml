@@ -24,7 +24,6 @@ dataloader_valid:
     force_img_reshape: true
     crops_folder: "./crops/gallery/"
 #    crops_folder: "./crops/query/"
-    requires_grad: false
     batch_size: 256
 
 dataloader_test:
@@ -33,7 +32,6 @@ dataloader_test:
     json_path: "./posetrack_person_search/query.json"
     force_img_reshape: true
     crops_folder: "./crops/query/"
-    requires_grad: false
     batch_size: 256
 
 # ####### #

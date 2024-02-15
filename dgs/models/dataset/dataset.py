@@ -24,7 +24,6 @@ base_dataset_validations: Validations = {
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", (int, ("gt", 0)))],
     "batch_size": ["optional", int, ("gt", 0)],
-    "requires_grad": ["optional", bool],
 }
 
 
@@ -155,9 +154,6 @@ class BaseDataset(BaseModule, TorchDataset):
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
         Default (256, 256).
-    requires_grad (bool, optional):
-        Whether some of the loaded data should require gradients.
-        Default True.
     batch_size (int, optional):
         The batch size to use while creating the DataLoader for this Dataset.
         Default 16.
@@ -166,12 +162,8 @@ class BaseDataset(BaseModule, TorchDataset):
     data: list
     """Arbitrary data, which will be converted using :meth:`self.arbitrary_to_ds()`"""
 
-    rg: bool
-    """Whether the loaded data is required to have gradients or not."""
-
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
-        self.rg = self.params.get("requires_grad", True)
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         """Has to override call from BaseModule"""
@@ -220,9 +212,8 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         # check whether precomputed image crops exist
         if "crops_folder" in self.params:
-            ds.image_crop = load_image(ds.crop_path, requires_grad=self.rg, dtype=torch.float32)
+            ds.image_crop = load_image(ds.crop_path, dtype=torch.float32)
             ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path])
-            ds.keypoints_local.requires_grad = self.rg
             return
 
         # no crop folder path given, compute the crops
@@ -236,10 +227,9 @@ class BaseDataset(BaseModule, TorchDataset):
                 mode=self.params.get("image_mode", "zero-pad"),
                 output_size=self.params.get("image_size", (1024, 1024)),
                 device=ds.device,
-                requires_grad=False,
             )
         else:
-            ds.image = load_image(ds.filepath, device=ds.device, requires_grad=False)
+            ds.image = load_image(ds.filepath, device=ds.device)
 
         structured_input = {
             "image": ds.image,
@@ -251,10 +241,8 @@ class BaseDataset(BaseModule, TorchDataset):
         new_sample = self.transform_crop_resize()(structured_input)
 
         ds.image_crop = new_sample["image"]
-        ds.image_crop.requires_grad = self.rg
 
         ds.keypoints_local = new_sample["keypoints"]
-        ds.keypoints_local.requires_grad = self.rg
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:

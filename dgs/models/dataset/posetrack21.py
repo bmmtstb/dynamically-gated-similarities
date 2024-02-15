@@ -453,16 +453,14 @@ class PoseTrack21JSON(BaseDataset):
             A single DataSample object containing a batch of data.
         """
 
-        def stack_key(key: str, requires_grad: bool = self.rg) -> torch.Tensor:
-            return torch.stack(
-                [torch.tensor(self.data[i][key], device=self.device, requires_grad=requires_grad) for i in indices]
-            )
+        def stack_key(key: str) -> torch.Tensor:
+            return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
 
         keypoints, visibility = (
             torch.stack(
                 [
                     (
-                        torch.tensor(self.data[i]["keypoints"], requires_grad=self.rg).reshape((17, 3))
+                        torch.tensor(self.data[i]["keypoints"]).reshape((17, 3))
                         if len(self.data[i]["keypoints"])
                         else torch.zeros((17, 3))
                     )  # if there are no values present, use zeros
@@ -481,13 +479,12 @@ class PoseTrack21JSON(BaseDataset):
                 canvas_size=self.img_shape,
                 dtype=torch.float32,
                 device=self.device,
-                requires_grad=self.rg,
             ),
             keypoints=keypoints,
-            person_id=stack_key("person_id", requires_grad=False).int(),
+            person_id=stack_key("person_id").int(),
             # additional values which are not required
             joint_weight=visibility,
-            image_id=stack_key("image_id", requires_grad=False).int(),
+            image_id=stack_key("image_id").int(),
         )
         # add the paths to the image crops if the directory containing the crops is given
         if "crops_folder" in self.params:
@@ -510,9 +507,9 @@ class PoseTrack21JSON(BaseDataset):
         """Convert raw PoseTrack21 annotations to DataSample object."""
         keypoints, visibility = (
             (
-                torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32, requires_grad=self.rg)
+                torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32)
                 if len(a["keypoints"])
-                else torch.zeros((17, 3), device=self.device, dtype=torch.float32, requires_grad=self.rg)
+                else torch.zeros((17, 3), device=self.device, dtype=torch.float32)
             )
             .reshape((1, 17, 3))
             .split([2, 1], dim=-1)
@@ -526,7 +523,6 @@ class PoseTrack21JSON(BaseDataset):
                 dtype=torch.float32,
                 canvas_size=self.img_shape,
                 device=self.device,
-                requires_grad=self.rg,
             ),
             keypoints=keypoints,
             person_id=torch.tensor(a["person_id"] if "person_id" in a else -1, device=self.device, dtype=torch.long),

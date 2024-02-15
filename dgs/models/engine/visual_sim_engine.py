@@ -120,7 +120,8 @@ class VisualSimilarityEngine(EngineModule):
         """
         results: dict[str, any] = {}
 
-        compiled_model = torch.compile(self.model)
+        # compiled_model = torch.compile(self.model)
+        compiled_model = self.model
 
         def obtain_test_data(dl: TorchDataLoader, desc: str) -> tuple[torch.Tensor, torch.Tensor]:
             """Given a dataloader,
@@ -173,7 +174,7 @@ class VisualSimilarityEngine(EngineModule):
                     mat=embed,
                     metadata=t_id.tolist(),
                     label_img=img_crop,
-                    global_step=curr_iter,
+                    global_step=self.curr_epoch,
                     tag=f"Test/{desc}_embed",
                 )
 

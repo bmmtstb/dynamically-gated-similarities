@@ -291,7 +291,7 @@ class TorchreidPoseDataManager(TorchreidDM):
 
         def random_move(x: torch.Tensor) -> torch.Tensor:
             """Move a torch tensor by a little bit in random directions using a normal distribution ~N(0,1)."""
-            return x + torch.randn_like(x, requires_grad=True)
+            return x + torch.randn_like(x)
 
         def random_resize(x: torch.Tensor) -> torch.Tensor:
             """Resize the torch tensor by a little bit, up and down. Ranges from 0.95 to 1.05."""

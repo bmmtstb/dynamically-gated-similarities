@@ -44,7 +44,7 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
 
     Notes:
         To be able to compute gradients, the dtype has to be ``torch.float32``.
-        Therefore, the ``dtype`` and ``requires_grad`` kwargs are partially correlated.
+        Therefore, the ``dtype`` and ``requires_grad`` of the model are partially correlated.
 
     Args:
         filepath: Single string or list of absolute or local filepaths to the image.
@@ -54,7 +54,6 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     Keyword Args:
         dtype: The dtype of the image, most likely one of uint8, byte, or float32. Default torch.float32.
         device: Device the image should be on. Default "cpu"
-        requires_grad: Whether image tensor should include gradient. Default True.
         read_mode: Which ImageReadMode to use while loading the images.
         mode: If ``force_reshape`` is true, defines the resize mode, has to be in the modes of
             :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
@@ -90,7 +89,6 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     image_kwargs = {
         "dtype": kwargs.pop("dtype", torch.float32),
         "device": kwargs.pop("device", "cpu"),
-        "requires_grad": kwargs.pop("requires_grad", True),
     }
 
     # load images
@@ -132,12 +130,11 @@ def load_video(filepath: FilePath, **kwargs) -> TVVideo:  # pragma: no cover
 
     dtype = kwargs.get("dtype", torch.uint8)
     device = kwargs.get("device", "cpu")
-    requires_grad = kwargs.get("requires_grad", False)
 
     # read video, save frames and discard audio
     frames, *_ = read_video(fp, output_format="TCHW", pts_unit="sec")
 
-    return tv_tensors.Video(frames, dtype=dtype, device=device, requires_grad=requires_grad)
+    return tv_tensors.Video(frames, dtype=dtype, device=device)
 
 
 def compute_padding(old_w: int, old_h: int, target_aspect: float) -> list[int]:

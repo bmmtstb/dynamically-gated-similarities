@@ -36,7 +36,6 @@ dataloader_train:
 #    json_path: "./posetrack_data/train_first_half/"
 #    json_path: "./posetrack_data/train/000001_bonn_train.json"
     crops_folder: "./crops/train/"
-    requires_grad: false
     batch_size: 128
 
 dataloader_valid:
@@ -45,7 +44,6 @@ dataloader_valid:
     json_path: "./posetrack_person_search/val.json"
     force_img_reshape: true
     crops_folder: "./crops/gallery/"
-    requires_grad: false
     batch_size: 256
 
 dataloader_test:
@@ -54,7 +52,6 @@ dataloader_test:
     json_path: "./posetrack_person_search/query.json"
     force_img_reshape: true
     crops_folder: "./crops/query/"
-    requires_grad: false
     batch_size: 256
 
 # ####### #
