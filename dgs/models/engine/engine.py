@@ -91,8 +91,9 @@ class EngineModule(BaseModule):
         Additional kwargs for the torch writer.
         Default {}.
     compile_model (bool, optional):
-        Whether to ``torch.compile`` the given model.
-        Default True.
+        Whether to ``torch.compile`` the given model for testing.
+        Requires a SOTA GPU.
+        Default False.
 
 
     Optional Train Params
@@ -110,6 +111,11 @@ class EngineModule(BaseModule):
     save_interval (int, optional):
         The interval for saving (and evaluating) the model during training.
         Default 5.
+    compile_model (bool, optional):
+        Whether to ``torch.compile`` the given model for training.
+        Requires a SOTA GPU.
+        Default False.
+
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
@@ -235,7 +241,7 @@ class EngineModule(BaseModule):
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")
 
-        self.logger.info("\n#### Start Training ####\n")
+        self.logger.info("#### Start Training ####")
 
         # set model to train mode
         if not hasattr(self.model, "train"):
@@ -243,8 +249,8 @@ class EngineModule(BaseModule):
         self.model.train()
 
         # compile model if wanted
-        if self.params_test.get("compile_model", False):
-            self.logger.debug("Compile the model")
+        if self.params_train.get("compile_model", False):
+            self.logger.debug("Train - Compile the model")
             self.model = torch.compile(self.model)
 
         # initialize variables
@@ -256,7 +262,7 @@ class EngineModule(BaseModule):
         data: DataSample
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
-            self.logger.info(f"\n#### Training - Epoch {self.curr_epoch} ####\n")
+            self.logger.info(f"#### Training - Epoch {self.curr_epoch} ####")
 
             epoch_loss = 0
             time_epoch_start = time.time()
@@ -316,7 +322,7 @@ class EngineModule(BaseModule):
         self.logger.info(data_t.print(name="data", prepend="Training"))
         self.logger.info(batch_t.print(name="batch", prepend="Training"))
         self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
-        self.logger.info("\n#### Training complete ####\n")
+        self.logger.info("#### Training complete ####")
 
         self.writer.flush()
 

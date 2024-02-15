@@ -120,16 +120,29 @@ class VisualSimilarityEngine(EngineModule):
         """
         results: dict[str, any] = {}
 
-        # compiled_model = torch.compile(self.model)
-        compiled_model = self.model
+        # set up model
+        if self.params_test.get("compile_model", False):
+            self.logger.debug("Test - Compile the model")
+            model = torch.compile(self.model)
+        else:
+            model = self.model
 
-        def obtain_test_data(dl: TorchDataLoader, desc: str) -> tuple[torch.Tensor, torch.Tensor]:
-            """Given a dataloader,
-            extract the embeddings describing the people, target pIDs, and the pIDs the model predicted.
+        if not hasattr(model, "eval"):
+            warnings.warn("`model.eval()` is not available.")
+        model.eval()  # set model to test / evaluation mode
+
+        def extract_data(
+            dl: TorchDataLoader, desc: str, write_embeds: bool = False
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+            """Given a dataloader, extract the embeddings describing the people and the target pIDs.
+            Additionally, compute the accuracy.
 
             Args:
                 dl: The DataLoader to extract the data from.
-                desc: A description for printing and saving the data.
+                desc: A description for printing, writing, and saving the data.
+                write_embeds: Whether to write the embeddings to the tensorboard writer.
+                    Only "smaller" Datasets should be added.
+                    Default False.
 
             Returns:
                 embeddings, target_ids
@@ -138,6 +151,7 @@ class VisualSimilarityEngine(EngineModule):
             total_m_aps: dict[int, float] = {k: 0.0 for k in self.test_topk}
             embed_l: list[torch.Tensor] = []
             t_ids_l: list[torch.Tensor] = []
+            imgs_l: list[torch.Tensor] = []
 
             batch_t: DifferenceTimer = DifferenceTimer()
             batch: DataSample
@@ -153,7 +167,7 @@ class VisualSimilarityEngine(EngineModule):
                 # Then use the model to compute the predicted embedding and the predicted pID probabilities.
                 t_id = self.get_target(batch)
                 img_crop = self.get_data(batch)
-                embed, pred_id_prob = compiled_model(img_crop)
+                embed, pred_id_prob = model(img_crop)
 
                 # Obtain class probability predictions and mAP from data
                 m_aps: dict[int, float] = compute_accuracy(
@@ -162,61 +176,61 @@ class VisualSimilarityEngine(EngineModule):
                     topk=self.test_topk,
                 )
                 for k in self.test_topk:
-                    total_m_aps[k] += m_aps[k] * float(B)  # sum map*B, later we will divide by total len(dl.dataset)
+                    total_m_aps[k] += m_aps[k] * float(B)  # sum map * B, later divide by dataset length
                     self.writer.add_scalar(f"Test/top_{k}_{desc}", m_aps[k], global_step=curr_iter)
 
                 # keep the results in lists
+                imgs_l.append(img_crop)
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
-
-                # write embedding results
-                self.writer.add_embedding(
-                    mat=embed,
-                    metadata=t_id.tolist(),
-                    label_img=img_crop,
-                    global_step=self.curr_epoch,
-                    tag=f"Test/{desc}_embed",
-                )
 
                 # timing
                 batch_t.add(time_batch_start)
                 self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
                 self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / B, global_step=curr_iter)
 
-            del t_id, embed, pred_id_prob, m_aps
+            del t_id, embed, pred_id_prob, m_aps, img_crop
 
             # concatenate the result lists
-            p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings             [N, E]
+            p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
             t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
+            c_imgs: torch.Tensor = torch.cat(imgs_l)  # 4D images             [N x C X h x w]
 
             for k, val in total_m_aps.items():
-                m_ap = val / len(dl.dataset)
+                # noinspection PyTypeChecker
+                m_ap = float(val) / float(len(t_ids))
                 results[f"top-{k} acc"] = m_ap
                 self.logger.debug(f"top-{k} acc: {m_ap:.2}")
 
-            assert len(t_ids) == len(p_embed), f"t ids: {len(t_ids)}, p embed: {len(p_embed)}"
+            assert (
+                len(t_ids) == len(p_embed) == len(c_imgs)
+            ), f"tids: {len(t_ids)}, embed: {len(p_embed)}, imgs: {len(c_imgs)}"
 
             self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
-            del embed_l, t_ids_l, total_m_aps
+            del embed_l, t_ids_l, imgs_l, total_m_aps
 
             # normalize the predicted embeddings if wanted
             p_embed = self._normalize(p_embed)
 
-            # concat all the intermediate mAPs and compute the unweighted mean
+            if write_embeds:
+                # write embedding results
+                self.logger.debug("Add embeddings to writer.")
+                self.writer.add_embedding(
+                    mat=p_embed,
+                    metadata=t_ids.tolist(),
+                    label_img=c_imgs,
+                    tag=f"Test/{desc}_embeds_{self.curr_epoch}",
+                )
 
             return p_embed, t_ids
 
         start_time: float = time.time()
 
-        if not hasattr(self.model, "eval"):
-            warnings.warn("`model.eval()` is not available.")
-        self.model.eval()  # set model to test / evaluation mode
-
-        self.logger.info(f"\n#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####\n")
+        self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        q_embed, q_t_ids = obtain_test_data(dl=self.test_dl, desc="Query")
-        g_embed, g_t_ids = obtain_test_data(dl=self.val_dl, desc="Gallery")
+        q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query", write_embeds=True)
+        g_embed, g_t_ids = extract_data(dl=self.val_dl, desc="Gallery")
 
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
@@ -234,7 +248,7 @@ class VisualSimilarityEngine(EngineModule):
         self.write_results(results, prepend="Test", index=self.curr_epoch)
 
         self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
-        self.logger.info(f"\n#### Evaluation of {self.name} complete ####\n")
+        self.logger.info(f"#### Evaluation of {self.name} complete ####")
 
         return results
 
