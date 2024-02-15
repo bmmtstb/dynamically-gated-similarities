@@ -11,6 +11,18 @@ from torch.linalg import vector_norm
 
 from dgs.utils.types import Metric
 
+try:
+    # If torchreid is installed using `./dependencies/torchreid`
+    # noinspection PyUnresolvedReferences LongLine
+    from torchreid.metrics.distance import euclidean_squared_distance as TorchreidESD, cosine_distance as TorchreidCD
+except ModuleNotFoundError:
+    # if torchreid is installed using `pip install torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.metrics.distance import (
+        euclidean_squared_distance as TorchreidESD,
+        cosine_distance as TorchreidCD,
+    )
+
 
 @torch.compile
 @torch.no_grad()
@@ -18,7 +30,7 @@ def compute_cmc(
     distmat: torch.Tensor, query_pids: torch.Tensor, gallery_pids: torch.Tensor, ranks: list[int]
 ) -> dict[int, float]:
     r"""Compute the cumulative matching characteristics metric.
-    It is expected, that the distmat has lower values when the predictions are close.
+    It is expected that the distmat has lower values when the predictions are close.
 
     Cumulative Matching Characteristics
     -----------------------------------
@@ -204,7 +216,7 @@ class CosineSimilarityMetric(Metric):
            \text{cosine similarity} = S_C(A,B) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.dim = -1
         self.eps = 1e-5
@@ -242,7 +254,7 @@ class CosineDistanceMetric(Metric):
            \text{cosine distance} = 1 - S_C(A,B)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.dim = -1
         self.eps = 1e-5
@@ -263,6 +275,26 @@ class CosineDistanceMetric(Metric):
         return torch.ones_like(cs) - cs
 
 
+class TorchreidEuclideanSquaredDistance(Metric):
+    """Call TorchReid's version of the Euclidean squared distance."""
+
+    _func = torch.compile(TorchreidESD)
+
+    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        _validate_metric_inputs(input1, input2)
+        return self._func(input1, input2)
+
+
+class TorchreidCosineDistance(Metric):
+    """Call TorchReid's version of the cosine distance."""
+
+    _func = torch.compile(TorchreidCD)
+
+    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        _validate_metric_inputs(input1, input2)
+        return self._func(input1, input2)
+
+
 METRICS: dict[str, Type[Metric]] = {
     "CosineSimilarity": CosineSimilarityMetric,  # shorthand name
     "CosineSimilarityMetric": CosineSimilarityMetric,
@@ -274,6 +306,8 @@ METRICS: dict[str, Type[Metric]] = {
     "EuclideanDistanceMetric": EuclideanDistanceMetric,
     "TorchPairwiseDistance": nn.PairwiseDistance,
     "TorchCosineSimilarity": nn.CosineSimilarity,
+    "TorchreidEuclideanSquaredDistance": TorchreidEuclideanSquaredDistance,
+    "TorchreidCosineDistance": TorchreidCosineDistance,
 }
 
 
@@ -303,7 +337,7 @@ def register_metric(metric_name: str, metric: Type[Metric]) -> None:
         raise ValueError(
             f"The given metric '{metric_name}' already exists, please choose another name excluding {METRICS.keys()}."
         )
-    if not (callable(metric) and isinstance(metric, type) and issubclass(metric, Metric)):
+    if not (isinstance(metric, type) and issubclass(metric, Metric) and callable(metric)):
         raise ValueError(f"The given metric function is no callable or no subclass of Metric. Got: {metric}")
     METRICS[metric_name] = metric
 
