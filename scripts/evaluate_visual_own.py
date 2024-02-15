@@ -34,7 +34,8 @@ if __name__ == "__main__":
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     with HidePrint():
-        model = module_loader(config=config, module="embedding_generator_visual").cuda().eval()
+        model = module_loader(config=config, module="embedding_generator_visual").cuda()
+        model.eval()
 
     engine = VisualSimilarityEngine(
         config=config,
