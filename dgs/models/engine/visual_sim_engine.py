@@ -170,7 +170,7 @@ class VisualSimilarityEngine(EngineModule):
 
         # concatenate the result lists
         p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
-        t_ids: torch.Tensor = torch.cat(t_ids_l).long()  # 1D gt person labels [N]
+        t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
         N: int = len(t_ids)
 
         # Use the class probability predictions to obtain the accuracy
@@ -195,15 +195,13 @@ class VisualSimilarityEngine(EngineModule):
 
         if write_embeds:
             # write embedding results - take only the first 32x32 due to limitations in tensorboard
-            self.logger.debug("Add embeddings to writer.")
+            self.logger.info("Add embeddings to writer.")
             self.writer.add_embedding(
-                mat=p_embed[: min(1024, N)],
+                mat=p_embed[: min(1024, N), :],
                 metadata=t_ids[: min(1024, N)].tolist(),
-                label_img=torch.cat(imgs_l)[: min(1024, N)],  # 4D images [N x C X h x w]
+                label_img=torch.cat(imgs_l)[: min(1024, N)] if imgs_l else None,  # 4D images [N x C X h x w]
                 tag=f"Test/{desc}_embeds_{self.curr_epoch}",
             )
-
-        del imgs_l
 
         return p_embed, t_ids
 

@@ -24,18 +24,26 @@ class TestQueue(unittest.TestCase):
             self.assertEqual(q[i].item(), i)
 
     def test_append(self):
-        q = Queue(N=MAX_LENGTH)
+        q = Queue(N=MAX_LENGTH)  # without shape !
         for i in range(MAX_LENGTH + 3):
             q.append(torch.ones(1) * i)
             self.assertEqual(len(q), min(i + 1, MAX_LENGTH))
             self.assertTrue(torch.allclose(q[-1], torch.ones(1) * i))
 
-    def test_init(self):
-        q = Queue(N=MAX_LENGTH)
-        self.assertEqual(len(q), 0)
+    def test_append_wrong_shape(self):
+        q = ONE_QUEUE.copy()
+        with self.assertRaises(ValueError) as e:
+            q.append(torch.ones(2))
+        self.assertTrue("The shape of the new state" in str(e.exception), msg=e.exception)
 
-        q = Queue(N=MAX_LENGTH, states=[torch.ones(1)])
+    def test_init(self):
+        q = EMPTY_QUEUE.copy()
+        self.assertEqual(len(q), 0)
+        self.assertEqual(q.N, MAX_LENGTH)
+
+        q = ONE_QUEUE.copy()
         self.assertEqual(len(q), 1)
+        self.assertEqual(q.N, MAX_LENGTH)
 
         with self.assertRaises(ValueError) as e:
             _ = Queue(N=MAX_LENGTH, shape=torch.Size((2,)), states=[torch.ones(1)])
@@ -73,6 +81,12 @@ class TestQueue(unittest.TestCase):
             torch.allclose(stacked, torch.arange(start=0, end=MAX_LENGTH, dtype=torch.int, device=device).view((-1, 1)))
         )
         self.assertTrue(stacked.device, device)
+
+    def test_get_device_on_empty(self):
+        q = EMPTY_QUEUE.copy()
+        with self.assertRaises(ValueError) as e:
+            _ = q.device
+        self.assertTrue("Can not get the device of an empty Queue" in str(e.exception), msg=e.exception)
 
     def test_shape(self):
         empty_q = Queue(N=MAX_LENGTH)
