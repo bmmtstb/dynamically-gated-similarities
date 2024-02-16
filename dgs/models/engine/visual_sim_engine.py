@@ -230,8 +230,7 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        # q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query", write_embeds=True)
-        q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query")
+        q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query", write_embeds=True)
         g_embed, g_t_ids = extract_data(dl=self.val_dl, desc="Gallery")
 
         self.logger.debug("Use metric to compute the distance matrix.")
