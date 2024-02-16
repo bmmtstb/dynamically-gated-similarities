@@ -97,6 +97,16 @@ class TestQueue(unittest.TestCase):
         empty_q = Queue(N=MAX_LENGTH, shape=torch.Size((1, 2, 3)))
         self.assertEqual(empty_q.shape, torch.Size((1, 2, 3)))
 
+    def setUp(self):
+        self.assertEqual(len(EMPTY_QUEUE.copy()), 0)
+        self.assertEqual(len(ONE_QUEUE.copy()), 1)
+        self.assertEqual(len(FULL_QUEUE.copy()), MAX_LENGTH)
+
+    def tearDown(self):
+        self.assertEqual(len(EMPTY_QUEUE.copy()), 0)
+        self.assertEqual(len(ONE_QUEUE.copy()), 1)
+        self.assertEqual(len(FULL_QUEUE.copy()), MAX_LENGTH)
+
 
 if __name__ == "__main__":
     unittest.main()

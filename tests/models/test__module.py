@@ -9,7 +9,7 @@ from torch import nn
 from dgs.models.module import BaseModule, module_validations as base_module_validation
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.files import to_abspath
+from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import Config, Device
 from helper import get_test_config, test_multiple_devices
 
@@ -137,7 +137,12 @@ class TestBaseModule(unittest.TestCase):
                 self.assertEqual(module.training, train)
                 self.assertEqual(module.bias.device.type, device.type)
 
+    def setUp(self):
+        mkdir_if_missing("./tests/test_data/TEST_logs/")
+
+    def tearDown(self):
+        shutil.rmtree(to_abspath("./tests/test_data/TEST_logs/"))
+
 
 if __name__ == "__main__":
     unittest.main()
-    shutil.rmtree(to_abspath("./tests/test_data/logs/"))

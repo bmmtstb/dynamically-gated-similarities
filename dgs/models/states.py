@@ -137,8 +137,8 @@ class Track:
         if not self.size():
             return 0
 
-        l: int = len(iter(self._states).__next__())
-        if any(len(q) != l for q in self._states.values()):
+        l: int = len(iter(self._states.values()).__next__())
+        if len(self._states) > 1 and any(len(q) != l for q in self._states.values()):
             raise IndexError("Queues have different length.")
         return l
 
