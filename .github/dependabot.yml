@@ -15,6 +15,11 @@ updates:
     directory: "./docs/requirements_docs.txt"
     schedule:
       interval: "weekly"
+  # main dependencies
+  - package-ecosystem: "pip" # See documentation for possible values
+    directory: "./requirements.txt"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     # Workflow files stored in the default location of `.github/workflows`. (You don't need to specify `/.github/workflows` for `directory`. You can use `directory: "/"`.)
     directory: "/"
