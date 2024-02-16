@@ -180,9 +180,10 @@ class VisualSimilarityEngine(EngineModule):
                     self.writer.add_scalar(f"Test/top_{k}_{desc}", m_aps[k], global_step=curr_iter)
 
                 # keep the results in lists
-                imgs_l.append(img_crop)
                 embed_l.append(embed)
                 t_ids_l.append(t_id)
+                if write_embeds:
+                    imgs_l.append(img_crop)
 
                 # timing
                 batch_t.add(time_batch_start)
@@ -194,7 +195,6 @@ class VisualSimilarityEngine(EngineModule):
             # concatenate the result lists
             p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
             t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
-            c_imgs: torch.Tensor = torch.cat(imgs_l)  # 4D images             [N x C X h x w]
 
             for k, val in total_m_aps.items():
                 # noinspection PyTypeChecker
@@ -202,12 +202,10 @@ class VisualSimilarityEngine(EngineModule):
                 results[f"top-{k} acc"] = m_ap
                 self.logger.debug(f"top-{k} acc: {m_ap:.2}")
 
-            assert (
-                len(t_ids) == len(p_embed) == len(c_imgs)
-            ), f"tids: {len(t_ids)}, embed: {len(p_embed)}, imgs: {len(c_imgs)}"
+            assert len(t_ids) == len(p_embed), f"tids: {len(t_ids)}, embed: {len(p_embed)}"
 
             self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
-            del embed_l, t_ids_l, imgs_l, total_m_aps
+            del embed_l, t_ids_l, total_m_aps
 
             # normalize the predicted embeddings if wanted
             p_embed = self._normalize(p_embed)
@@ -218,9 +216,11 @@ class VisualSimilarityEngine(EngineModule):
                 self.writer.add_embedding(
                     mat=p_embed,
                     metadata=t_ids.tolist(),
-                    label_img=c_imgs,
+                    label_img=torch.cat(imgs_l),  # 4D images [N x C X h x w]
                     tag=f"Test/{desc}_embeds_{self.curr_epoch}",
                 )
+
+            del imgs_l
 
             return p_embed, t_ids
 
@@ -229,7 +229,8 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query", write_embeds=True)
+        # q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query", write_embeds=True)
+        q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query")
         g_embed, g_t_ids = extract_data(dl=self.val_dl, desc="Gallery")
 
         self.logger.debug("Use metric to compute the distance matrix.")
