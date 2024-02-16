@@ -18,6 +18,8 @@ from dgs.models.metric import (
     get_metric_from_name,
     METRICS,
     register_metric,
+    TorchreidCosineDistance,
+    TorchreidEuclideanSquaredDistance,
 )
 from helper import test_multiple_devices
 
@@ -108,6 +110,24 @@ class TestMetrics(unittest.TestCase):
                 self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * E))
                 self.assertTrue(torch.allclose(dist, dist_inv.T))
 
+    def test_euclid_sqr_dist_equals_torchreid(self):
+        for a, b, E in [
+            (2, 2, 7),
+            (2, 4, 8),
+            (5, 3, 6),
+        ]:
+            with self.subTest(msg="a: {}, b: {}, E: {}".format(a, b, E)):
+                own_func = EuclideanSquareMetric()
+                reid_func = TorchreidEuclideanSquaredDistance()
+
+                i1 = torch.rand((a, E))
+                i2 = torch.rand((b, E))
+
+                own_dist = own_func(i1, i2)
+                reid_dist = reid_func(i1, i2)
+
+                self.assertTrue(torch.allclose(own_dist, reid_dist))
+
     def test_euclid_dist(self):
         for a, b, E in [
             (2, 2, 7),
@@ -122,7 +142,6 @@ class TestMetrics(unittest.TestCase):
                 self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * math.sqrt(E)))
                 self.assertTrue(torch.allclose(dist, dist_inv.T))
 
-    @torch.no_grad()
     def test_cosine_distance(self):
         for t1, t2, res in [
             (torch.ones((2, 4)), torch.ones((3, 4)), torch.zeros((2, 3))),
@@ -136,6 +155,24 @@ class TestMetrics(unittest.TestCase):
                 self.assertEqual(dist.shape, res.shape)
                 self.assertTrue(torch.allclose(dist, res))
                 self.assertTrue(torch.allclose(dist, dist_inv.T))
+
+    def test_cosine_dist_equals_torchreid(self):
+        for a, b, E in [
+            (2, 2, 7),
+            (2, 4, 8),
+            (5, 3, 6),
+        ]:
+            with self.subTest(msg="a: {}, b: {}, E: {}".format(a, b, E)):
+                own_func = CosineDistanceMetric()
+                reid_func = TorchreidCosineDistance()
+
+                i1 = torch.rand((a, E))
+                i2 = torch.rand((b, E))
+
+                own_dist = own_func(i1, i2)
+                reid_dist = reid_func(i1, i2)
+
+                self.assertTrue(torch.allclose(own_dist, reid_dist))
 
     def test_cosine_similarity(self):
         for t1, t2, res in [

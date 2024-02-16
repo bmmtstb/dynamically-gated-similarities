@@ -24,7 +24,6 @@ except ModuleNotFoundError:
     )
 
 
-@torch.compile
 @torch.no_grad()
 def compute_cmc(
     distmat: torch.Tensor, query_pids: torch.Tensor, gallery_pids: torch.Tensor, ranks: list[int]
@@ -99,7 +98,6 @@ def compute_cmc(
     return cmcs
 
 
-@torch.compile
 @torch.no_grad()
 def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[int] = None) -> dict[int, float]:
     """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
@@ -135,7 +133,6 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[
     return res
 
 
-@torch.compile(fullgraph=True)
 def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: int, eps: float) -> torch.Tensor:
     """See https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908"""
     # get normalization value
@@ -279,21 +276,19 @@ class CosineDistanceMetric(Metric):
 class TorchreidEuclideanSquaredDistance(Metric):
     """Call TorchReid's version of the Euclidean squared distance."""
 
-    _func = torch.compile(TorchreidESD)
-
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         _validate_metric_inputs(input1, input2)
-        return self._func(input1, input2)
+        return TorchreidESD(input1=input1, input2=input2)
 
 
 class TorchreidCosineDistance(Metric):
     """Call TorchReid's version of the cosine distance."""
 
-    _func = torch.compile(TorchreidCD)
-
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         _validate_metric_inputs(input1, input2)
-        return self._func(input1, input2)
+        return TorchreidCD(input1=input1, input2=input2)
 
 
 METRICS: dict[str, Type[Metric]] = {
