@@ -103,6 +103,7 @@ def compute_cmc(
 @torch.no_grad()
 def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[int] = None) -> dict[int, float]:
     """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
+    Will use the k-biggest values in prediction.
 
     Args:
         prediction: prediction matrix with shape ``[B x num_classes]``.
@@ -128,7 +129,7 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[
 
     res: dict[int, float] = {}
     for k in topk:
-        acc = correct[:, :k].count_nonzero().mul_(100).double().div_(batch_size)
+        acc = correct[:, :k].any(dim=1).sum().double().mul_(100.0 / float(batch_size))
         res[k] = float(acc.float().item())
 
     return res

@@ -88,6 +88,8 @@ class VisualSimilarityEngine(EngineModule):
         # return get_ds_data_getter(["image_crop"])(ds)[0]
         return ds["image_crop"]
 
+    @enable_keyboard_interrupt
+    @torch.enable_grad()
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
         _, pred_id_probs = self.model(self.get_data(data))
         target_ids = self.get_target(data)
@@ -112,6 +114,101 @@ class VisualSimilarityEngine(EngineModule):
 
     @torch.no_grad()
     @enable_keyboard_interrupt
+    def _extract_data(
+        self, dl: TorchDataLoader, model, desc: str, results: dict[str, any], write_embeds: bool = False
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Given a dataloader, extract the embeddings describing the people and the target pIDs using the model.
+        Additionally, compute the accuracy and send the embeddings to the writer.
+
+        Args:
+            dl: The DataLoader to extract the data from.
+            model: The (compiled) model to use for predicting the outputs.
+            desc: A description for printing, writing, and saving the data.
+            results: A dict containing computed results.
+            write_embeds: Whether to write the embeddings to the tensorboard writer.
+                Only "smaller" Datasets should be added.
+                Default False.
+
+        Returns:
+            embeddings, target_ids
+        """
+
+        embed_l: list[torch.Tensor] = []
+        t_ids_l: list[torch.Tensor] = []
+        probs_l: list[torch.Tensor] = []
+        imgs_l: list[torch.Tensor] = []
+
+        batch_t: DifferenceTimer = DifferenceTimer()
+        batch: DataSample
+
+        for batch_idx, batch in tqdm(enumerate(dl), desc=f"Extract {desc}", total=len(dl)):
+
+            # batch start
+            time_batch_start = time.time()  # reset timer for retrieving the data
+            B = len(batch)
+            curr_iter = (self.curr_epoch - 1) * B + batch_idx
+
+            # Extract the (cropped) input image and the target pID.
+            # Then use the model to compute the predicted embedding and the predicted pID probabilities.
+            t_id = self.get_target(batch)
+            img_crop = self.get_data(batch)
+            embed, pred_id_prob = model(img_crop)
+
+            # keep the results in lists
+            embed_l.append(embed)
+            t_ids_l.append(t_id)
+            probs_l.append(pred_id_prob)
+            if write_embeds:
+                imgs_l.append(img_crop)
+
+            # timing
+            batch_t.add(time_batch_start)
+            self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
+            self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / B, global_step=curr_iter)
+
+        del t_id, embed, pred_id_prob, img_crop
+
+        # concatenate the result lists
+        p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
+        t_ids: torch.Tensor = torch.cat(t_ids_l).long()  # 1D gt person labels [N]
+        N: int = len(t_ids)
+
+        # Use the class probability predictions to obtain the accuracy
+        m_aps: dict[int, float] = compute_accuracy(
+            prediction=torch.cat(probs_l),  # 2D class probabilities [N, num_classes]
+            target=t_ids,
+            topk=self.test_topk,
+        )
+
+        for k, val in m_aps.items():
+            # noinspection PyTypeChecker
+            results[f"top-{k} acc"] = val
+            self.logger.debug(f"top-{k} acc: {val:.2}")
+
+        assert len(t_ids) == len(p_embed), f"tids: {len(t_ids)}, embed: {len(p_embed)}"
+
+        self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
+        del embed_l, t_ids_l, probs_l
+
+        # normalize the predicted embeddings if wanted
+        p_embed = self._normalize(p_embed)
+
+        if write_embeds:
+            # write embedding results - take only the first 32x32 due to limitations in tensorboard
+            self.logger.debug("Add embeddings to writer.")
+            self.writer.add_embedding(
+                mat=p_embed[: min(1024, N)],
+                metadata=t_ids[: min(1024, N)].tolist(),
+                label_img=torch.cat(imgs_l)[: min(1024, N)],  # 4D images [N x C X h x w]
+                tag=f"Test/{desc}_embeds_{self.curr_epoch}",
+            )
+
+        del imgs_l
+
+        return p_embed, t_ids
+
+    @torch.no_grad()
+    @enable_keyboard_interrupt
     def test(self) -> dict[str, any]:
         r"""Test the embeddings predicted by the model on the Test-DataLoader.
 
@@ -131,107 +228,15 @@ class VisualSimilarityEngine(EngineModule):
             warnings.warn("`model.eval()` is not available.")
         model.eval()  # set model to test / evaluation mode
 
-        def extract_data(
-            dl: TorchDataLoader, desc: str, write_embeds: bool = False
-        ) -> tuple[torch.Tensor, torch.Tensor]:
-            """Given a dataloader, extract the embeddings describing the people and the target pIDs.
-            Additionally, compute the accuracy.
-
-            Args:
-                dl: The DataLoader to extract the data from.
-                desc: A description for printing, writing, and saving the data.
-                write_embeds: Whether to write the embeddings to the tensorboard writer.
-                    Only "smaller" Datasets should be added.
-                    Default False.
-
-            Returns:
-                embeddings, target_ids
-            """
-
-            total_m_aps: dict[int, float] = {k: 0.0 for k in self.test_topk}
-            embed_l: list[torch.Tensor] = []
-            t_ids_l: list[torch.Tensor] = []
-            imgs_l: list[torch.Tensor] = []
-
-            batch_t: DifferenceTimer = DifferenceTimer()
-            batch: DataSample
-
-            for batch_idx, batch in tqdm(enumerate(dl), desc=f"Extract {desc}", total=len(dl)):
-
-                # batch start
-                time_batch_start = time.time()  # reset timer for retrieving the data
-                B = len(batch)
-                curr_iter = (self.curr_epoch - 1) * B + batch_idx
-
-                # Extract the (cropped) input image and the target pID.
-                # Then use the model to compute the predicted embedding and the predicted pID probabilities.
-                t_id = self.get_target(batch)
-                img_crop = self.get_data(batch)
-                embed, pred_id_prob = model(img_crop)
-
-                # Obtain class probability predictions and mAP from data
-                m_aps: dict[int, float] = compute_accuracy(
-                    prediction=pred_id_prob,  # 2D class probabilities [B, num_classes]
-                    target=t_id,  # gt labels    [B]
-                    topk=self.test_topk,
-                )
-                for k in self.test_topk:
-                    total_m_aps[k] += m_aps[k] * float(B)  # sum map * B, later divide by dataset length
-                    self.writer.add_scalar(f"Test/top_{k}_{desc}", m_aps[k], global_step=curr_iter)
-
-                # keep the results in lists
-                embed_l.append(embed)
-                t_ids_l.append(t_id)
-                if write_embeds:
-                    imgs_l.append(img_crop)
-
-                # timing
-                batch_t.add(time_batch_start)
-                self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
-                self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / B, global_step=curr_iter)
-
-            del t_id, embed, pred_id_prob, m_aps, img_crop
-
-            # concatenate the result lists
-            p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
-            t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
-            N: int = len(t_ids)
-
-            for k, val in total_m_aps.items():
-                # noinspection PyTypeChecker
-                m_ap = float(val) / float(N)
-                results[f"top-{k} acc"] = m_ap
-                self.logger.debug(f"top-{k} acc: {m_ap:.2}")
-
-            assert len(t_ids) == len(p_embed), f"tids: {len(t_ids)}, embed: {len(p_embed)}"
-
-            self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
-            del embed_l, t_ids_l, total_m_aps
-
-            # normalize the predicted embeddings if wanted
-            p_embed = self._normalize(p_embed)
-
-            if write_embeds:
-                # write embedding results - take only the first 32x32 due to limitations in tensorboard
-                self.logger.debug("Add embeddings to writer.")
-                self.writer.add_embedding(
-                    mat=p_embed[: min(1024, N)],
-                    metadata=t_ids[: min(1024, N)].tolist(),
-                    label_img=torch.cat(imgs_l)[: min(1024, N)],  # 4D images [N x C X h x w]
-                    tag=f"Test/{desc}_embeds_{self.curr_epoch}",
-                )
-
-            del imgs_l
-
-            return p_embed, t_ids
-
         start_time: float = time.time()
 
         self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        q_embed, q_t_ids = extract_data(dl=self.test_dl, desc="Query", write_embeds=True)
-        g_embed, g_t_ids = extract_data(dl=self.val_dl, desc="Gallery")
+        q_embed, q_t_ids = self._extract_data(
+            dl=self.test_dl, model=model, desc="Query", results=results, write_embeds=True
+        )
+        g_embed, g_t_ids = self._extract_data(dl=self.val_dl, model=model, desc="Gallery", results=results)
 
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)

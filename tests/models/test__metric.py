@@ -21,6 +21,15 @@ from dgs.models.metric import (
 )
 from helper import test_multiple_devices
 
+try:
+    # If torchreid is installed using `./dependencies/torchreid`
+    # noinspection PyUnresolvedReferences LongLine
+    from torchreid.metrics import accuracy as torchreid_acc
+except ModuleNotFoundError:
+    # if torchreid is installed using `pip install torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.metrics import accuracy as torchreid_acc
+
 
 class TestMetrics(unittest.TestCase):
     def test_get_metric_from_name(self):
@@ -215,12 +224,34 @@ class TestMetricAccuracy(unittest.TestCase):
 
     @test_multiple_devices
     def test_accuracy(self, device):
-        topk = (1, 2, 3)
+        topk = [1, 2, 3]
         prediction = torch.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)], dtype=torch.float32, device=device)
         target = torch.tensor([0, 1, 2, 3], device=device).long()
         topk_accuracy = {1: 100 / 4, 2: 200 / 4, 3: 300 / 4}
 
         self.assertEqual(compute_accuracy(prediction=prediction, target=target, topk=topk), topk_accuracy)
+
+    def test_accuracy_100_on_self(self):
+        topk = [1, 2, 3]
+        N = 512
+        nof_classes = 10
+        results = {1: 100.0, 2: 100.0, 3: 100.0}
+
+        prediction = torch.rand(size=(N, nof_classes), dtype=torch.float32)
+        target = torch.argmax(prediction, dim=1).long()
+
+        accs = compute_accuracy(prediction=prediction, target=target, topk=topk)
+        self.assertEqual(accs, results)
+
+    def test_compare_accuracy_own_vs_torchreid(self):
+        N = 512
+        nof_classes = 10
+        for _ in range(5):
+            prediction = torch.rand(size=(N, nof_classes), dtype=torch.float32)
+            target = torch.randint(low=1, high=nof_classes, size=(N,), dtype=torch.long)
+            own_acc = compute_accuracy(prediction=prediction, target=target, topk=None)[1]
+            tr_acc = torchreid_acc(output=prediction, target=target, topk=(1,))[0].item()
+            self.assertEqual(own_acc, tr_acc)
 
 
 if __name__ == "__main__":
