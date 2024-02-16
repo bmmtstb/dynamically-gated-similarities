@@ -195,10 +195,11 @@ class VisualSimilarityEngine(EngineModule):
             # concatenate the result lists
             p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
             t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
+            N: int = len(t_ids)
 
             for k, val in total_m_aps.items():
                 # noinspection PyTypeChecker
-                m_ap = float(val) / float(len(t_ids))
+                m_ap = float(val) / float(N)
                 results[f"top-{k} acc"] = m_ap
                 self.logger.debug(f"top-{k} acc: {m_ap:.2}")
 
@@ -211,12 +212,12 @@ class VisualSimilarityEngine(EngineModule):
             p_embed = self._normalize(p_embed)
 
             if write_embeds:
-                # write embedding results
+                # write embedding results - take only the first 32x32 due to limitations in tensorboard
                 self.logger.debug("Add embeddings to writer.")
                 self.writer.add_embedding(
-                    mat=p_embed,
-                    metadata=t_ids.tolist(),
-                    label_img=torch.cat(imgs_l),  # 4D images [N x C X h x w]
+                    mat=p_embed[: min(1024, N)],
+                    metadata=t_ids[: min(1024, N)].tolist(),
+                    label_img=torch.cat(imgs_l)[: min(1024, N)],  # 4D images [N x C X h x w]
                     tag=f"Test/{desc}_embeds_{self.curr_epoch}",
                 )
 
