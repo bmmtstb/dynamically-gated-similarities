@@ -34,7 +34,7 @@ def _get_model_from_module(module: Union[TorchMod, BaseMod]) -> TorchMod:
         An instance of a torch module.
 
     Raises:
-        ValueError if a torch module cannot be found
+        ValueError if a torch module cannot be found.
     """
     if isinstance(module, nn.DataParallel):
         module = module.module
@@ -453,3 +453,36 @@ def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None 
     # override original init method
     orig_cls.__init__ = class_wrapper
     return orig_cls
+
+
+def init_model_params(module: TorchMod) -> None:
+    """Given a torch module, initialize the model parameters using some default weights."""
+    model: TorchMod = _get_model_from_module(module)
+
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+
+        elif isinstance(m, nn.BatchNorm1d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+
+        elif isinstance(m, nn.InstanceNorm2d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+
+        elif isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, 0, 0.01)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.ConvTranspose2d):
+            nn.init.normal_(m.weight, std=0.001)
+            for name, _ in m.named_parameters():
+                if name in ["bias"]:
+                    nn.init.constant_(m.bias, 0)
