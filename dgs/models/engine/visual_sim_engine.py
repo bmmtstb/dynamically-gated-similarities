@@ -145,8 +145,7 @@ class VisualSimilarityEngine(EngineModule):
 
             # batch start
             time_batch_start = time.time()  # reset timer for retrieving the data
-            B = len(batch)
-            curr_iter = (self.curr_epoch - 1) * B + batch_idx
+            curr_iter = (self.curr_epoch - 1) * len(dl) + batch_idx
 
             # Extract the (cropped) input image and the target pID.
             # Then use the model to compute the predicted embedding and the predicted pID probabilities.
@@ -164,7 +163,7 @@ class VisualSimilarityEngine(EngineModule):
             # timing
             batch_t.add(time_batch_start)
             self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
-            self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / B, global_step=curr_iter)
+            self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / len(batch), global_step=curr_iter)
 
         del t_id, embed, pred_id_prob, img_crop
 
@@ -249,7 +248,7 @@ class VisualSimilarityEngine(EngineModule):
         )
 
         self.print_results(results)
-        self.write_results(results, prepend="Test", index=self.curr_epoch)
+        self.write_results(results, prepend="Test")
 
         self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
         self.logger.info(f"#### Evaluation of {self.name} complete ####")

@@ -258,7 +258,6 @@ class EngineModule(BaseModule):
         epoch_t: DifferenceTimer = DifferenceTimer()
         batch_t: DifferenceTimer = DifferenceTimer()
         data_t: DifferenceTimer = DifferenceTimer()
-        B: int = self.train_dl.batch_size
         data: DataSample
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
@@ -275,7 +274,7 @@ class EngineModule(BaseModule):
                 position=2,
                 total=len(self.train_dl),
             ):
-                curr_iter = (self.curr_epoch - 1) * B + batch_idx
+                curr_iter = (self.curr_epoch - 1) * len(self.train_dl) + batch_idx
                 data_t.add(time_batch_start)
 
                 # OPTIMIZE MODEL
@@ -289,7 +288,7 @@ class EngineModule(BaseModule):
                 epoch_loss += loss.item()
                 self.writer.add_scalar("Train/loss", loss.item(), global_step=curr_iter)
                 self.writer.add_scalar("Train/batch_time", batch_t[-1], global_step=curr_iter)
-                self.writer.add_scalar("Train/indiv_time", batch_t[-1] / B, global_step=curr_iter)
+                self.writer.add_scalar("Train/indiv_time", batch_t[-1] / len(data), global_step=curr_iter)
                 self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
                 self.writer.flush()
@@ -385,39 +384,43 @@ class EngineModule(BaseModule):
         """
         raise NotImplementedError
 
-    def write_results(self, results: dict[str, any], prepend: str, index: int) -> None:
+    def write_results(self, results: dict[str, any], prepend: str) -> None:
         """Given a dictionary of results, use the writer to save the values."""
         # pylint: disable=too-many-branches
 
         for key, value in results.items():
             # regular python value
             if isinstance(value, (int, float, str)):
-                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value, index)
+                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value, global_step=self.curr_epoch)
             # single valued tensor
             elif isinstance(value, torch.Tensor) and value.ndim == 1 and value.size(0) == 1:
-                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value.item(), index)
+                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value.item(), global_step=self.curr_epoch)
             # image
             elif isinstance(value, tv_tensors.Image):
                 if value.ndim == 3:
-                    self.writer.add_image(f"{prepend}/{self.name}/{key}", value)
+                    self.writer.add_image(f"{prepend}/{self.name}/{key}", value, global_step=self.curr_epoch)
                 else:
-                    self.writer.add_images(f"{prepend}/{self.name}/{key}", value)
+                    self.writer.add_images(f"{prepend}/{self.name}/{key}", value, global_step=self.curr_epoch)
             # Embeddings as dict id -> embed
             elif isinstance(value, tuple) and "_embed" in key:
                 ids, embeds = value
-                self.writer.add_embedding(embeds, metadata=ids, tag=f"{prepend}/{self.name}/{key}")
+                self.writer.add_embedding(
+                    embeds, metadata=ids, tag=f"{prepend}/{self.name}/{key}", global_step=self.curr_epoch
+                )
             # multiple values as dict sub-key -> sub_value
             elif isinstance(value, dict):
                 for sub_key, sub_value in value.items():
-                    self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{sub_key}", sub_value, index)
+                    self.writer.add_scalar(
+                        f"{prepend}/{self.name}/{key}-{sub_key}", sub_value, global_step=self.curr_epoch
+                    )
             # iterable of scalars
             elif isinstance(value, (list, dict, set)):
                 for i, sub_value in enumerate(value):
-                    self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{i}", sub_value, index)
+                    self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{i}", sub_value, global_step=self.curr_epoch)
             elif isinstance(value, str):
-                self.writer.add_text(tag=key, text_string=value, global_step=index)
+                self.writer.add_text(tag=key, text_string=value, global_step=self.curr_epoch)
             else:
-                warnings.warn(f"Unknown result for writer: {value} {key}")
+                warnings.warn(f"Unknown result for writer: {value} {key}, step: {self.curr_epoch}")
         self.logger.debug("results have been written to writer")
         self.writer.flush()
 
