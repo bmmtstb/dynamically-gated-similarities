@@ -135,7 +135,6 @@ class VisualSimilarityEngine(EngineModule):
 
         embed_l: list[torch.Tensor] = []
         t_ids_l: list[torch.Tensor] = []
-        probs_l: list[torch.Tensor] = []
         imgs_l: list[torch.Tensor] = []
 
         batch_t: DifferenceTimer = DifferenceTimer()
@@ -151,12 +150,11 @@ class VisualSimilarityEngine(EngineModule):
             # Then use the model to compute the predicted embedding and the predicted pID probabilities.
             t_id = self.get_target(batch)
             img_crop = self.get_data(batch)
-            embed, pred_id_prob = model(img_crop)
+            embed, _ = model(img_crop)
 
             # keep the results in lists
             embed_l.append(embed)
             t_ids_l.append(t_id)
-            probs_l.append(pred_id_prob)
             if write_embeds:
                 imgs_l.append(img_crop)
 
@@ -165,29 +163,17 @@ class VisualSimilarityEngine(EngineModule):
             self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
             self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / len(batch), global_step=curr_iter)
 
-        del t_id, embed, pred_id_prob, img_crop
+        del t_id, embed, img_crop
 
         # concatenate the result lists
         p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
         t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
         N: int = len(t_ids)
 
-        # Use the class probability predictions to obtain the accuracy
-        m_aps: dict[int, float] = compute_accuracy(
-            prediction=torch.cat(probs_l),  # 2D class probabilities [N, num_classes]
-            target=t_ids,
-            topk=self.test_topk,
-        )
-
-        for k, val in m_aps.items():
-            # noinspection PyTypeChecker
-            results[f"top-{k} acc"] = val
-            self.logger.debug(f"top-{k} acc: {val:.2}")
-
         assert len(t_ids) == len(p_embed), f"tids: {len(t_ids)}, embed: {len(p_embed)}"
 
         self.logger.debug(f"{desc} - Shapes - embeddings: {p_embed.shape}, target pIDs: {t_ids.shape}")
-        del embed_l, t_ids_l, probs_l
+        del embed_l, t_ids_l
 
         # normalize the predicted embeddings if wanted
         p_embed = self._normalize(p_embed)
