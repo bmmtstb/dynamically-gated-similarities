@@ -261,21 +261,27 @@ def set_bn_to_eval(module: Union[TorchMod, BaseMod]) -> None:
         module.eval()
 
 
-def open_specified_layers(model: Union[TorchMod, BaseMod], open_layers: str | list[str], verbose: bool = False) -> None:
-    """Opens the specified layers in the given model for training while keeping all other layers frozen.
+def open_specified_layers(
+    model: Union[TorchMod, BaseMod], open_layers: str | list[str], freeze_others: bool = True, verbose: bool = False
+) -> None:
+    """Opens the specified layers in the given model for training while keeping all other layers unchanged or frozen.
 
     Args:
         model: A torch module or a BaseModule containing a torch module as attribute 'module'.
         open_layers: Name or names of the layers to open for training.
+        freeze_others: Whether to freeze all the other modules that are not present in ``open_layers``.
         verbose: Whether to print some debugging information.
 
     Examples:
-        In the first example open only the classifier-layer,
-        in the second one update the classifier and the fc-layer.
+        In the first example, open only the classifier-layer and freeze the rest of the model.
+        Then, in the second example using the same model,
+        open the two fc-layers while keeping the previously opened classifier open.
+        In the third one open the fc- and classifier-layers and freeze everything else.
 
         >>> from dgs.utils.torchtools import open_specified_layers
         >>> open_specified_layers(model, open_layers='classifier')
-        >>> open_specified_layers(model, open_layers=['fc', 'classifier'])
+        >>> open_specified_layers(model, open_layers=['fc1', 'fc2'], freeze_others=False)
+        >>> open_specified_layers(other_model, open_layers=['fc', 'classifier'])
 
     Raises:
         ValueError if a value in open_layers is not an attribute of the model.
@@ -292,7 +298,7 @@ def open_specified_layers(model: Union[TorchMod, BaseMod], open_layers: str | li
                 f"please provide the correct name or model."
             )
 
-    nof_opened: int = 0
+    nof_opened, nof_freezed, still_open, still_closed = 0, 0, 0, 0
     sub_module: TorchMod
 
     for name, sub_module in model.named_children():
@@ -300,12 +306,20 @@ def open_specified_layers(model: Union[TorchMod, BaseMod], open_layers: str | li
             sub_module.train()
             sub_module.requires_grad_()
             nof_opened += 1
-        else:
+        elif freeze_others:
             sub_module.eval()
             sub_module.requires_grad_(False)
+            nof_freezed += 1
+        elif sub_module.training:
+            still_open += 1
+        else:
+            still_closed += 1
 
     if verbose:
-        print(f"Opened {nof_opened} layers and {len([model.children()]) - nof_opened} layers remain closed.")
+        if freeze_others:
+            print(f"Opened {nof_opened} layers. Froze {nof_freezed}.")
+        else:
+            print(f"Opened {nof_opened} layers. Layers still open: {still_open}. Layers still closed: {still_closed}")
 
 
 def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
@@ -330,6 +344,76 @@ def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
     model.train()
     model.requires_grad_()
     model.apply(open_module)
+
+
+def close_specified_layers(
+    model: Union[TorchMod, BaseMod], close_layers: str | list[str], open_others: bool = False, verbose: bool = False
+) -> None:
+    """Close / Freeze the specified layers in the given model for training while keeping all other layers unchanged.
+
+    Args:
+        model: A torch module or a BaseModule containing a torch module as attribute 'module'.
+        close_layers: Name or names of the layers to close for evaluation.
+        open_others: Whether to open all layers not present in ``close_layers``.
+        verbose: Whether to print some debugging information.
+
+    Raises:
+        ValueError if a value in close_layers is not an attribute of the model.
+    """
+    model = _get_model_from_module(module=model)
+
+    if isinstance(close_layers, str):
+        close_layers = [close_layers]
+
+    for layer in close_layers:
+        if not hasattr(model, layer):
+            raise ValueError(
+                f"{layer} is not an attribute of the model {model.__class__.__name__}, "
+                f"please provide the correct name or model."
+            )
+
+    nof_closed, nof_opened, still_closed, still_open = 0, 0, 0, 0
+    sub_module: TorchMod
+
+    for name, sub_module in model.named_children():
+        if name in close_layers:
+            sub_module.eval()
+            sub_module.requires_grad_(False)
+            nof_closed += 1
+        elif open_others:
+            sub_module.train()
+            sub_module.requires_grad_()
+            nof_opened += 1
+        elif sub_module.training:
+            still_open += 1
+        else:
+            still_closed += 1
+
+    if verbose:
+        if open_others:
+            print(f"Closed {nof_closed} layers. Opened {nof_opened} layers.")
+        else:
+            print(f"Closed {nof_closed} layers. Still open: {still_open}, kept closed: {still_closed}")
+
+
+def close_all_layers(model: Union[TorchMod, BaseMod]) -> None:
+    """Closes / Freezes all layers in this model, e.g., for evaluation.
+
+    Args:
+        model: A torch module.
+    """
+
+    def freeze_module(m: TorchMod) -> None:
+        if hasattr(m, "requires_grad"):
+            m.requires_grad = False
+        if hasattr(m, "eval"):
+            m.eval()
+
+    model: TorchMod = _get_model_from_module(module=model)
+
+    model.eval()
+    model.requires_grad_(False)
+    model.apply(freeze_module)
 
 
 def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None = None) -> BaseMod:  # pragma: no cover
