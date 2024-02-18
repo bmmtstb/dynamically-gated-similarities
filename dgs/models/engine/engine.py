@@ -10,7 +10,6 @@ from abc import abstractmethod
 from typing import Type, Union
 
 import torch
-import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from torch import nn, optim
 from torch._dynamo import OptimizedModule
@@ -447,8 +446,3 @@ class EngineModule(BaseModule):
         # if there were images drawn, show them
         if show_images:
             plt.show()
-
-    @staticmethod
-    def _ids_to_one_hot(ids: torch.Tensor, nof_classes: int) -> torch.Tensor:
-        """Given a tensor containing the class ids, return the one hot representation."""
-        return F.one_hot(ids, nof_classes).long()  # pylint: disable=not-callable

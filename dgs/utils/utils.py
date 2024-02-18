@@ -8,6 +8,7 @@ from typing import Union
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torchvision import tv_tensors
 from torchvision.io import write_jpeg
 from torchvision.transforms import v2 as tvt
@@ -136,3 +137,8 @@ class HidePrint:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
+
+
+def ids_to_one_hot(ids: Union[torch.Tensor, torch.LongTensor], nof_classes: int) -> torch.LongTensor:
+    """Given a tensor containing the class ids as LongTensor, return the one hot representation as LongTensor."""
+    return F.one_hot(ids.long(), nof_classes)  # pylint: disable=not-callable
