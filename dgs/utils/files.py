@@ -137,8 +137,12 @@ def read_json(filepath: FilePath) -> dict[any, any] | list[any]:
 
 
 def write_json(obj: dict, filepath: FilePath):  # pragma: no cover
-    """Writes to a json file."""
-    fpath = to_abspath(filepath)
-    mkdir_if_missing(os.path.dirname(fpath))
-    with open(fpath, "w", encoding="utf-8") as f:
+    """Writes to a json file.
+
+    Args:
+        obj: the dict or JSON to be written.
+        filepath: The absolute path to the .json file that should be created.
+    """
+    mkdir_if_missing(os.path.dirname(filepath))
+    with open(filepath, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=4, separators=(",", ": "))
