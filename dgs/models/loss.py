@@ -97,7 +97,9 @@ class CrossEntropyLoss(Loss):
         self.cross_entropy_loss = nn.CrossEntropyLoss(**kwargs)
 
     def forward(self, inputs: torch.FloatTensor, targets: torch.FloatTensor) -> torch.FloatTensor:
-        """Given predictions of shape ``[]`` and targets of shape ``[]`` compute and return the CrossEntropyLoss."""
+        """Given predictions of shape ``[B x nof_classes]`` and targets of shape ``[B]``
+        compute and return the CrossEntropyLoss.
+        """
         logits = self.log_softmax(inputs)
         return self.cross_entropy_loss(logits, targets)
 

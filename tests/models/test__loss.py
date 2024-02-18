@@ -72,6 +72,22 @@ class TestLoss(unittest.TestCase):
         logits = nn.functional.log_softmax(inputs, dim=1)
         self.assertTrue(torch.allclose(cel(logits, targets), nn.functional.cross_entropy(logits, targets)))
 
+    def test_compate_own_and_torchreid_loss(self):
+        B = 7
+        C = 23
+        eps = 0.1
+        reid_loss = get_loss_from_name("TorchreidCrossEntropyLoss")(
+            num_classes=C, use_gpu=False, eps=eps, label_smooth=True
+        )
+        own_loss = get_loss_from_name("CrossEntropyLoss")(label_smoothing=eps)
+        for _ in range(10):
+            inputs = torch.rand((B, C), dtype=torch.float32)
+            targets = torch.randint(low=0, high=C, size=(B,), dtype=torch.long)
+
+            l1 = reid_loss(inputs.detach().clone(), targets.detach().clone())
+            l2 = own_loss(inputs.detach().clone(), targets.detach().clone())
+            self.assertTrue(torch.allclose(l1, l2))
+
 
 if __name__ == "__main__":
     unittest.main()
