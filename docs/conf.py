@@ -45,6 +45,7 @@ extensions = [
     "sphinx.ext.napoleon",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
+# linkcheck
 linkcheck_ignore = [
     ".*bmmtstb\.github\.io\/dynamically\-gated\-similarities\/.*",  # Server is down while running docs workflow
 ]
@@ -52,6 +53,8 @@ linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
     ".*github\.io.*",
     ".*github\.com.*",
 ]
+user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0"
+# custom shortcuts
 rst_prolog = """
 .. |PT21| replace:: ``PoseTrack21``
 .. _PT21: https://openaccess.thecvf.com//content/CVPR2022/html/Doring_PoseTrack21_A_Dataset_for_Person_Search_Multi-Object_Tracking_and_Multi-Person_CVPR_2022_paper.html
