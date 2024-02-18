@@ -22,12 +22,13 @@ from dgs.utils.types import Config, Validations
 train_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
     # optional
-    "topk": ["optional", ("forall", [int, ("gt", 0)])],
+    "topk_acc": ["optional", ("forall", [int, ("gt", 0)])],
 }
 
 test_validations: Validations = {
     # optional
-    "topk": ["optional", ("forall", [int, ("gt", 0)])]
+    "topk_cmc": ["optional", ("forall", [int, ("gt", 0)])],
+    "write_embeds": ["optional", ("len", 2), ("forall", bool)],
 }
 
 
@@ -38,10 +39,30 @@ class VisualSimilarityEngine(EngineModule):
 
     - ``get_data()`` should return the image crop
     - ``get_target()`` should return the target pIDs
-    - ``train_dl`` contains the test data as usual
+    - ``train_dl`` contains the training data as usual
     - ``test_dl`` contains the query data
     - ``val_dl`` contains the gallery data
 
+
+    Train Params
+    ------------
+
+    nof_classes (int):
+        The number of classes in the training set.
+    topk_acc (list[int], optional):
+        The values for k for the top-k accuracy evaluation during training.
+        Default [1].
+
+    Test Params
+    -----------
+
+    topk_cmc (list[int], optional):
+        The values for k the top-k cmc evaluation during testing / evaluation.
+        Default [1, 5, 10, 50].
+    write_embeds (list[bool, bool], optional):
+        Whether to write the embeddings for the Query and Gallery Dataset to the tensorboard writer.
+        Only really feasible for smaller datasets ~1k embeddings.
+        Default [False, False].
     """
 
     val_dl: TorchDataLoader
@@ -69,14 +90,14 @@ class VisualSimilarityEngine(EngineModule):
         self.val_dl = val_loader
 
         self.validate_params(test_validations, "params_test")
-        self.test_topk: list[int] = self.params_test.get("topk", [1, 5, 10, 50])
+        self.topk_cmc: list[int] = self.params_test.get("topk_cmc", [1, 5, 10, 50])
 
         if self.config["is_training"]:
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]
 
-            self.train_topk: list[int] = self.params_train.get("topk", [1, 5, 10, 50])
+            self.topk_acc: list[int] = self.params_train.get("topk_acc", [1])
 
     def get_target(self, ds: DataSample) -> torch.Tensor:
         """Get the target pIDs from the data."""
@@ -94,19 +115,13 @@ class VisualSimilarityEngine(EngineModule):
         _, pred_id_probs = self.model(self.get_data(data))
         target_ids = self.get_target(data)
 
-        # assert all(
-        #     tid <= self.nof_classes for tid in target_ids
-        # ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
+        assert all(
+            tid <= self.nof_classes for tid in target_ids
+        ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
 
-        # oh_t_ids = self._ids_to_one_hot(ids=target_ids, nof_classes=self.nof_classes)
-
-        # assert pred_id_probs.shape == oh_t_ids.shape, f"p: {pred_id_probs.shape} t: {oh_t_ids.shape}"
-        # assert pred_id_probs.dtype == oh_t_ids.dtype, f"p: {pred_id_probs.dtype} t: {oh_t_ids.dtype}"
-
-        # loss = self.loss(pred_id_probs, oh_t_ids)
         loss = self.loss(pred_id_probs, target_ids)
 
-        topk_accuracies = compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.train_topk)
+        topk_accuracies = compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
         for k, accu in topk_accuracies.items():
             self.writer.add_scalar(f"Train/top-{k} acc", accu, global_step=_curr_iter)
 
@@ -115,7 +130,7 @@ class VisualSimilarityEngine(EngineModule):
     @torch.no_grad()
     @enable_keyboard_interrupt
     def _extract_data(
-        self, dl: TorchDataLoader, model, desc: str, results: dict[str, any], write_embeds: bool = False
+        self, dl: TorchDataLoader, model, desc: str, write_embeds: bool = False
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Given a dataloader, extract the embeddings describing the people and the target pIDs using the model.
         Additionally, compute the accuracy and send the embeddings to the writer.
@@ -124,7 +139,6 @@ class VisualSimilarityEngine(EngineModule):
             dl: The DataLoader to extract the data from.
             model: The (compiled) model to use for predicting the outputs.
             desc: A description for printing, writing, and saving the data.
-            results: A dict containing computed results.
             write_embeds: Whether to write the embeddings to the tensorboard writer.
                 Only "smaller" Datasets should be added.
                 Default False.
@@ -217,9 +231,17 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
         q_embed, q_t_ids = self._extract_data(
-            dl=self.test_dl, model=model, desc="Query", results=results, write_embeds=True
+            dl=self.test_dl,
+            model=model,
+            desc="Query",
+            write_embeds=self.params_test["write_embeds"][0] if "write_embeds" in self.params_test else False,
         )
-        g_embed, g_t_ids = self._extract_data(dl=self.val_dl, model=model, desc="Gallery", results=results)
+        g_embed, g_t_ids = self._extract_data(
+            dl=self.val_dl,
+            model=model,
+            desc="Gallery",
+            write_embeds=self.params_test["write_embeds"][1] if "write_embeds" in self.params_test else False,
+        )
 
         self.logger.debug("Use metric to compute the distance matrix.")
         distance_matrix = self.metric(q_embed, g_embed)
@@ -230,7 +252,7 @@ class VisualSimilarityEngine(EngineModule):
             distmat=distance_matrix,
             query_pids=q_t_ids,
             gallery_pids=g_t_ids,
-            ranks=self.test_topk,
+            ranks=self.topk_cmc,
         )
 
         self.print_results(results)

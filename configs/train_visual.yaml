@@ -10,20 +10,19 @@ log_dir: "./results/own/visual_sim/"
 
 train:
     epochs: 5
-    loss: "TorchreidCrossEntropyLoss"
-    loss_kwargs:
-        num_classes: 7529
+    loss: "CrossEntropyLoss"
     optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0003
         weight_decay: 0.0001
-    nof_classes: 7529
-    topk: (1,)
+    nof_classes: 5474
+    topk_acc: [1, 5]
     save_interval: 1
 
 test:
     metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
-    topk: [1,2,3,5,10,20,50]
+    topk_cmc: [1,2,3,5,10,20,50]
+    write_embeds: [True, False]
 
 # #### #
 # DATA #
@@ -32,13 +31,14 @@ test:
 dataloader_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_data/train/"
-#    json_path: "./posetrack_data/train_first_half/"
+#    json_path: "./posetrack_data/train/"
+    json_path: "./posetrack_data/train_first_half/"
 #    json_path: "./posetrack_data/train/000001_bonn_train.json"
     crops_folder: "./crops/train/"
     batch_size: 128
+    id_map: "./weights/pt21_id_map.json"
 
-dataloader_valid:
+dataloader_gallery:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/val.json"
@@ -46,7 +46,7 @@ dataloader_valid:
     crops_folder: "./crops/gallery/"
     batch_size: 256
 
-dataloader_test:
+dataloader_query:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/query.json"
@@ -62,4 +62,4 @@ embedding_generator_visual:
     module_name: "TorchreidModel"  # see `dgs.models.embedding_generator.__init__`
     model_name: "osnet_ain_x1_0"
     embedding_size: 512
-    nof_classes: 7529
+    nof_classes: 5474

@@ -9,8 +9,8 @@ log_dir: "./results/own/visual_sim/"
 
 test:
     metric: "EuclideanSquareMetric"  # used to compute the distance matrix between target and predicted embeddings
-    topk: [1,2,3,5,10,20, 50, 100, 1000]
-    compile_model: false
+    topk_cmc: [1,2,3,5,10,20, 50, 100, 1000]
+    write_embeds: [True, False]
 
 # #### #
 # DATA #
@@ -40,4 +40,4 @@ embedding_generator_visual:
     module_name: "TorchreidModel"  # see `dgs.models.embedding_generator.__init__`
     model_name: "osnet_ain_x1_0"
     embedding_size: 512
-    nof_classes: 7529
+    nof_classes: 5474

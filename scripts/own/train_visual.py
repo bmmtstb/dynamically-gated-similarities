@@ -24,14 +24,11 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # test / gallery
-    test_dl = module_loader(config=config, module="dataloader_test")
+    test_dl = module_loader(config=config, module="dataloader_gallery")
     # validation / query
-    val_dl = module_loader(config=config, module="dataloader_valid")
-
-    if config.get("is_training", True):
-        train_dl = None  # pylint: disable=invalid-name
-    else:
-        train_dl = module_loader(config=config, module="dataloader_train")
+    val_dl = module_loader(config=config, module="dataloader_query")
+    # train
+    train_dl = module_loader(config=config, module="dataloader_train")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 

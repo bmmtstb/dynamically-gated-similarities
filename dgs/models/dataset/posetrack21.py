@@ -392,6 +392,14 @@ class PoseTrack21JSON(BaseDataset):
 
     json_path (FilePath):
         The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
+    id_map (FilePath, optional):
+        The (local or absolute) path to a json file containing a mapping from person ID to classifier ID.
+        Both IDs are python integers, the IDs of the classifier should be continuous and zero-indexed.
+        If the number of classes is required for other parameters, e.g., the size of a classifier,
+        the length of this ID map should have the correct value.
+        By default, this value is not set or None.
+        In case this value is not present, the mapping will be created from scratch as the enumerated sorted person IDs.
+
 
     Important Inherited Params
     --------------------------
@@ -437,6 +445,16 @@ class PoseTrack21JSON(BaseDataset):
         self.len = len(json["annotations"])
         self.data: list[dict[str, any]] = json["annotations"]
 
+        # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
+        map_pid_to_cid: dict[int, int] = (
+            read_json(self.params["id_map"])
+            if "id_map" in self.params and self.params["id_map"] is not None
+            else {pid: i for i, pid in enumerate(sorted(set(anno["person_id"] for anno in json["annotations"])))}
+        )
+        # replace pIDs by class IDs
+        for anno in self.data:
+            anno["class_id"]: int = map_pid_to_cid[anno["person_id"]]
+
     def __len__(self) -> int:
         return self.len
 
@@ -481,7 +499,7 @@ class PoseTrack21JSON(BaseDataset):
                 device=self.device,
             ),
             keypoints=keypoints,
-            person_id=stack_key("person_id").int(),
+            person_id=stack_key("class_id").int(),
             # additional values which are not required
             joint_weight=visibility,
             image_id=stack_key("image_id").int(),
@@ -525,7 +543,7 @@ class PoseTrack21JSON(BaseDataset):
                 device=self.device,
             ),
             keypoints=keypoints,
-            person_id=torch.tensor(a["person_id"] if "person_id" in a else -1, device=self.device, dtype=torch.long),
+            person_id=torch.tensor(a["class_id"] if "class_id" in a else -1, device=self.device, dtype=torch.long),
             # additional values which are not required
             joint_weight=visibility,
             image_id=torch.tensor(a["image_id"], device=self.device, dtype=torch.long),
