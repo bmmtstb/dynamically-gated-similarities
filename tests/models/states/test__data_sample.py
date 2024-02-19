@@ -1,10 +1,11 @@
 import os
 import unittest
+from copy import deepcopy
 
 import torch
 from torchvision import tv_tensors
 
-from dgs.models.states import DataSample
+from dgs.models.states import DataSample, get_ds_data_getter
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.image import load_image
 from dgs.utils.types import Device, FilePath, FilePaths
@@ -34,12 +35,10 @@ DUMMY_BBOXES: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
 DUMMY_FILE_PATH: FilePath = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/" + IMG_NAME))
 DUMMY_FP_BATCH: FilePaths = tuple(DUMMY_FILE_PATH for _ in range(10))
 
-DUMMY_HM_TENSOR: torch.FloatTensor = (
-    torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
-)
+DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
 DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32)
 
-DUMMY_JOINT_WEIGHT: torch.FloatTensor = torch.tensor([i / J for i in range(J)]).view((1, J, 1)).float()
+DUMMY_JOINT_WEIGHT: torch.Tensor = torch.tensor([i / J for i in range(J)]).view((1, J, 1)).float()
 
 DUMMY_DATA: dict[str, any] = {
     "filepath": DUMMY_FILE_PATH,
@@ -102,6 +101,45 @@ class TestDataSample(unittest.TestCase):
                 self.assertEqual(ds.J, J)
                 self.assertEqual(ds.joint_dim, J_dim)
 
+    def test_init_with_kwargs(self):
+        fp = (os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),)
+        bbox = DUMMY_BBOX
+        kp = DUMMY_KEY_POINTS
+        ds = DataSample(filepath=fp, bbox=bbox, keypoints=kp, validate=False, dummy="dummy")
+
+        self.assertEqual(ds["dummy"], "dummy")
+
+    def test_crop_path(self):
+        ds = DataSample(
+            filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KEY_POINTS, validate=False, crop_path=("dummy",)
+        )
+        self.assertEqual(ds.crop_path, ("dummy",))
+
+    def test_len(self):
+        for fps, length in [
+            ((os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),), 1),
+            (
+                (
+                    os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),
+                    os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),
+                ),
+                2,
+            ),
+        ]:
+            with self.subTest(msg="fps: {}, length: {}".format(fps, length)):
+                ds = DataSample(filepath=fps, bbox=DUMMY_BBOX, keypoints=DUMMY_KEY_POINTS, validate=False)
+                self.assertEqual(len(ds), length)
+
+    @test_multiple_devices
+    def test_to(self, device: torch.device):
+        fp = (os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),)
+        bbox = DUMMY_BBOX.cpu()
+        kp = DUMMY_KEY_POINTS.cpu()
+        ds = DataSample(filepath=fp, bbox=bbox, keypoints=kp, validate=False)
+        ds.to(device=device)
+        self.assertEqual(ds.bbox.device, device)
+        self.assertEqual(ds.keypoints.device, device)
+
     def test_get_original_image(self):
         fp = tuple([DUMMY_FILE_PATH])
         img = load_image(filepath=fp)
@@ -113,9 +151,6 @@ class TestDataSample(unittest.TestCase):
         ds2 = DataSample(filepath=fp, bbox=DUMMY_BBOX, keypoints=DUMMY_KEY_POINTS, image=img)
 
         self.assertTrue(torch.allclose(ds2.image, img))
-
-    def test_cast_joint_weight(self):
-        pass
 
     @test_multiple_devices
     def test_init_with_device(self, device: Device):
@@ -153,6 +188,61 @@ class TestDataSample(unittest.TestCase):
                     self.assertEqual(ds.filepath, out_fp)
                     self.assertEqual(ds.J, J)
                     self.assertEqual(ds.joint_dim, J_dim)
+
+    def test_cast_joint_weight(self):
+        for weights, decimals, dtype, result in [
+            (
+                DUMMY_JOINT_WEIGHT.detach().clone(),
+                0,
+                torch.int32,
+                torch.round(torch.tensor([i / J for i in range(J)]).view((1, J, 1)), decimals=0).to(dtype=torch.int32),
+            ),
+            (
+                DUMMY_JOINT_WEIGHT.detach().clone(),
+                1,
+                torch.float32,
+                torch.round(torch.tensor([i / J for i in range(J)]).view((1, J, 1)), decimals=1),
+            ),
+            (  # typecast only
+                DUMMY_JOINT_WEIGHT.detach().clone(),
+                -1,
+                torch.int32,
+                torch.tensor([i / J for i in range(J)]).view((1, J, 1)).to(dtype=torch.int32),
+            ),
+            (  # start with int
+                DUMMY_JOINT_WEIGHT.detach().clone().int(),
+                0,
+                torch.int32,
+                torch.round(
+                    torch.tensor([i / J for i in range(J)], dtype=torch.int32).view((1, J, 1)).float(), decimals=0
+                ).to(dtype=torch.int32),
+            ),
+        ]:
+            for overwrite in [True, False]:
+                with self.subTest(
+                    msg="decimals: {}, dtype: {}, overwrite: {}, weights-type: {}, result: {}".format(
+                        decimals, dtype, overwrite, weights.dtype, result
+                    )
+                ):
+                    data = DUMMY_DATA.copy()
+                    data["joint_weight"] = weights
+                    ds = DataSample(**data)
+                    dsi = deepcopy(ds)
+                    r = dsi.cast_joint_weight(dtype=dtype, decimals=decimals, overwrite=overwrite)
+                    self.assertEqual(r.dtype, dtype)
+                    self.assertTrue(torch.allclose(r, result))
+                    if overwrite:
+                        self.assertTrue(torch.allclose(r, dsi.joint_weight))
+                    else:
+                        self.assertTrue(torch.allclose(dsi.joint_weight, ds.joint_weight))
+
+
+class TestDataGetter(unittest.TestCase):
+    def test_get_ds_data_getter(self):
+        getter = get_ds_data_getter(["image"])
+        self.assertTrue(callable(getter))
+        ds = DataSample(**DUMMY_DATA.copy())
+        self.assertTrue(torch.allclose(getter(ds)[0], ds.image))
 
 
 if __name__ == "__main__":

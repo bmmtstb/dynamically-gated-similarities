@@ -9,7 +9,7 @@ from typing import Union
 import torch
 from torchvision import tv_tensors
 
-from dgs.utils.types import DataGetter, Device, FilePaths, Heatmap, Image, TVImage
+from dgs.utils.types import DataGetter, FilePaths, Heatmap, Image, TVImage
 from dgs.utils.validation import (
     validate_bboxes,
     validate_filepath,
@@ -25,9 +25,11 @@ class Queue:
     _shape: torch.Size
 
     def __init__(self, N: int, states: list[torch.Tensor] = None, shape: torch.Size = None) -> None:
-        self._states = deque(iterable=states if states else [], maxlen=N)
-
+        if N <= 0:
+            raise ValueError(f"N must be greater than 0 but got {N}")
         self._N: int = N
+
+        self._states = deque(iterable=states if states else [], maxlen=N)
 
         if states is not None and len(states):
             first_shape = states[0].shape
@@ -121,6 +123,8 @@ class Track:
                 Should equal the working memory size.
             states: A dict containing an initial state.
         """
+        if N <= 0:
+            raise ValueError(f"N must be greater than 0 but got {N}")
         self._N: int = N
 
         if states is not None:
@@ -157,17 +161,27 @@ class Track:
 
     def get_state(self, index: int) -> TrackState:
         """Get the i-th state of every Query."""
+        if index >= self._N:
+            raise IndexError(f"Index {index} is larger than the maximum number of items in a queue {self.N}")
+        if index < -self._N:
+            raise IndexError(f"Index {index} is smaller than the maximum number of items in a queue {self.N}")
+        if any(index >= len(q) or index < -len(q) for q in self._states.values()):
+            raise IndexError(f"Index {index} is out of bounds for at least one query.")
         return {name: q[index] for name, q in self._states.items()}
-
-    def get_queues(self, names: Iterable[str]) -> TrackStates:
-        """Get the Queue with the given name."""
-        if any(name not in self._states for name in names):
-            raise ValueError(f"One of the provided names does not exist in the current states {self._states.keys()}.")
-        return {name: self._states[name] for name in names}
 
     def get_queue(self, name: str) -> Queue:
         """Get the Queue with the given name."""
+        if name not in self._states:
+            raise KeyError(f"Queue with name {name} does not exist in the current states.")
         return self._states[name]
+
+    def get_queues(self, names: Iterable[str]) -> TrackStates:
+        """Get all the Queues given a list of their names."""
+        if not names:
+            return {}
+        if any(name not in self._states for name in names):
+            raise IndexError(f"One of the provided names does not exist in the current states {self._states.keys()}.")
+        return {name: self._states[name] for name in names}
 
     def size(self) -> int:
         """Get the number of Queues in states"""
@@ -307,9 +321,9 @@ class DataSample(UserDict):
 
     def to(self, *args, **kwargs) -> "DataSample":
         """Override torch.Tensor.to() for the whole object."""
-        for attr_value in self.values():
+        for attr_key, attr_value in self.items():
             if isinstance(attr_value, torch.Tensor):
-                attr_value.to(*args, **kwargs)
+                self[attr_key] = attr_value.to(*args, **kwargs)
         return self
 
     def __len__(self) -> int:
@@ -359,12 +373,12 @@ class DataSample(UserDict):
         return self.data["keypoints"].shape[-1]
 
     @property
-    def heatmap(self) -> Heatmap:
+    def heatmap(self) -> Heatmap:  # pragma: no cover
         """Get the heatmaps of this sample."""
         return self.data["heatmap"]
 
     @heatmap.setter
-    def heatmap(self, value: Heatmap) -> None:
+    def heatmap(self, value: Heatmap) -> None:  # pragma: no cover
         """Set heatmap with a little bit of validation"""
         # make sure that heatmap has shape [B x J x h x w]
         self.data["heatmap"] = (validate_heatmaps(value) if self._validate else value).to(device=self.device)
@@ -422,7 +436,6 @@ class DataSample(UserDict):
         dtype: torch.dtype = torch.float32,
         decimals: int = 0,
         overwrite: bool = False,
-        device: Device = None,
     ) -> torch.Tensor:
         """Cast and return the joint weight as tensor.
 
@@ -445,8 +458,6 @@ class DataSample(UserDict):
                 But keep in mind that when information is compressed, e.g., when casting from float to bool,
                 simply calling float might not be enough to cast 0.9 to True.
             overwrite: Whether self.joint_weight will be overwritten or not.
-            device: Which device the tensor is being sent to.
-                Defaults to the device visibility on which the visibility tensor lies.
 
         Returns:
             A type-cast version of the tensor.
@@ -456,14 +467,19 @@ class DataSample(UserDict):
 
             If overwrite is False, the returned tensor will be a detached and cloned instance of `self.joint_weight`.
         """
-        if overwrite and decimals >= 0:
-            return self.joint_weight.round_(decimals=decimals).to(device=device, dtype=dtype)
-        if overwrite:
-            return self.joint_weight.to(device=device, dtype=dtype)
-        new_weights = self.joint_weight.detach().clone().to(device=device, dtype=dtype)
+        new_weights = self.joint_weight.detach().clone()
+        # round
         if decimals >= 0:
+            # round needs floating point tensor
+            if not torch.is_floating_point(new_weights):
+                new_weights = new_weights.to(dtype=torch.float32)
             new_weights.round_(decimals=decimals)
-        return new_weights.to(device=device, dtype=dtype)
+        # change dtype
+        new_weights = new_weights.to(dtype=dtype)
+        # overwrite existing value if requested
+        if overwrite:
+            self.joint_weight = new_weights
+        return new_weights
 
     @property
     def device(self):

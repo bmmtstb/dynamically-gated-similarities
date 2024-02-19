@@ -14,6 +14,23 @@ FULL_QUEUE: Queue = Queue(N=MAX_LENGTH, states=[torch.ones(1, dtype=torch.int) *
 
 class TestQueue(unittest.TestCase):
 
+    def test_init(self):
+        q = EMPTY_QUEUE.copy()
+        self.assertEqual(len(q), 0)
+        self.assertEqual(q.N, MAX_LENGTH)
+
+        q = ONE_QUEUE.copy()
+        self.assertEqual(len(q), 1)
+        self.assertEqual(q.N, MAX_LENGTH)
+
+        with self.assertRaises(ValueError) as e:
+            _ = Queue(N=MAX_LENGTH, shape=torch.Size((2,)), states=[torch.ones(1)])
+        self.assertTrue("First shape of the values in states" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(ValueError) as e:
+            _ = Queue(N=-1)
+        self.assertTrue("N must be greater than 0 but got" in str(e.exception), msg=e.exception)
+
     def test_get_item(self):
         empty_q = EMPTY_QUEUE.copy()
         with self.assertRaises(IndexError):
@@ -35,19 +52,6 @@ class TestQueue(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             q.append(torch.ones(2))
         self.assertTrue("The shape of the new state" in str(e.exception), msg=e.exception)
-
-    def test_init(self):
-        q = EMPTY_QUEUE.copy()
-        self.assertEqual(len(q), 0)
-        self.assertEqual(q.N, MAX_LENGTH)
-
-        q = ONE_QUEUE.copy()
-        self.assertEqual(len(q), 1)
-        self.assertEqual(q.N, MAX_LENGTH)
-
-        with self.assertRaises(ValueError) as e:
-            _ = Queue(N=MAX_LENGTH, shape=torch.Size((2,)), states=[torch.ones(1)])
-        self.assertTrue("First shape of the values in states" in str(e.exception), msg=e.exception)
 
     def test_clear(self):
         empty = EMPTY_QUEUE.copy()
