@@ -9,7 +9,7 @@ from torchvision.tv_tensors import BoundingBoxes
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import is_project_file
 from dgs.utils.types import Device
-from dgs.utils.utils import extract_crops_from_images, HidePrint, torch_to_numpy
+from dgs.utils.utils import extract_crops_from_images, HidePrint, ids_to_one_hot, torch_to_numpy
 from helper import capture_stdout, test_multiple_devices
 
 
@@ -96,6 +96,13 @@ class TestUtils(unittest.TestCase):
 
         with capture_stdout(no_printing, "Not shown!") as output:
             self.assertEqual("", output)
+
+    def test_to_one_hot(self):
+        nof_C = 10
+        t = torch.arange(nof_C)
+        expected = torch.diag(torch.ones(10, dtype=torch.long))
+        r = ids_to_one_hot(ids=t, nof_classes=nof_C)
+        self.assertTrue(torch.allclose(r, expected))
 
 
 if __name__ == "__main__":
