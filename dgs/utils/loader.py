@@ -4,11 +4,17 @@ Utility functions for loading instances.
 This module does not provide functionality for loading Modules.
 """
 
+from typing import Type, TypeVar
+
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Instance
 
+I = TypeVar("I")
 
-def register_instance(name: str, instance: any, instances: dict[str, any], inst_class: type, call: bool = True) -> None:
+
+def register_instance(
+    name: str, instance: Type[I], instances: dict[str, Type[I]], inst_class: type, call: bool = True
+) -> None:
     """Given an instance with a name, add it to the available instances.
 
     Args:
@@ -35,7 +41,7 @@ def register_instance(name: str, instance: any, instances: dict[str, any], inst_
     instances[name] = instance
 
 
-def get_instance_from_name(name: str, instances: dict[str, any]) -> any:
+def get_instance_from_name(name: str, instances: dict[str, Type[I]]) -> Type[I]:
     """Given the name of an instance and the dict containing a mapping from name to class, get the class.
 
     Args:
@@ -53,7 +59,7 @@ def get_instance_from_name(name: str, instances: dict[str, any]) -> any:
     return instances[name]
 
 
-def get_instance(instance: Instance, instances: dict[str, any], inst_class: type) -> any:
+def get_instance(instance: Instance, instances: dict[str, Type[I]], inst_class: type) -> Type[I]:
     """
 
     Args:

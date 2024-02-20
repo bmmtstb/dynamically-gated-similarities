@@ -2,6 +2,7 @@
 Functions to load and manage torch and custom loss functions.
 """
 
+import warnings
 from typing import Type
 
 from torch import nn
@@ -10,14 +11,16 @@ from dgs.utils.loader import get_instance, register_instance
 from dgs.utils.types import Instance, Loss
 from .loss import CrossEntropyLoss
 
-try:
-    # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
-except ModuleNotFoundError:
-    # if torchreid is installed using `pip install torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
+    try:
+        # If torchreid is installed using `./dependencies/torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
+    except ModuleNotFoundError:
+        # if torchreid is installed using `pip install torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
 
 
 LOSS_FUNCTIONS: dict[str, Type[Loss]] = {

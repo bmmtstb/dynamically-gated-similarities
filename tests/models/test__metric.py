@@ -24,14 +24,17 @@ from dgs.models.metric.metric import (
 )
 from helper import test_multiple_devices
 
-try:
-    # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.metrics import accuracy as torchreid_acc
-except ModuleNotFoundError:
-    # if torchreid is installed using `pip install torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.metrics import accuracy as torchreid_acc
+# catch cython warning
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
+    try:
+        # If torchreid is installed using `./dependencies/torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.metrics import accuracy as torchreid_acc
+    except ModuleNotFoundError:
+        # if torchreid is installed using `pip install torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.metrics import accuracy as torchreid_acc
 
 
 class TestMetrics(unittest.TestCase):

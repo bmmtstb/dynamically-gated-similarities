@@ -119,7 +119,7 @@ def extract_crops_from_images(
 class HidePrint:
     """Safely disable printing for a block of code.
 
-    Source: https://stackoverflow.com/a/45669280/5889825
+    Source: https://stackoverflow.com/a/45669280
 
     Examples:
         >>> with HidePrint():

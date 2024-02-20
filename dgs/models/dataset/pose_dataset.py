@@ -4,6 +4,7 @@ Default Datasets for pose-based data.
 TorchreidPoseDataset and TorchreidPoseDataManager are custom models for torchreid.
 """
 
+import warnings
 from typing import Callable, Type, Union
 
 import torch
@@ -13,26 +14,28 @@ from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchData
 from dgs.utils.types import FilePath
 from dgs.utils.utils import HidePrint
 
-try:
-    # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.data import Dataset as TorchreidDataset
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
+    try:
+        # If torchreid is installed using `./dependencies/torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.data import Dataset as TorchreidDataset
 
-    # noinspection PyUnresolvedReferences
-    from torchreid.data.datamanager import DataManager as TorchreidDM
+        # noinspection PyUnresolvedReferences
+        from torchreid.data.datamanager import DataManager as TorchreidDM
 
-    # noinspection PyUnresolvedReferences
-    from torchreid.data.sampler import build_train_sampler
-except ModuleNotFoundError:
-    # if torchreid is installed using `pip install torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.data import Dataset as TorchreidDataset
+        # noinspection PyUnresolvedReferences
+        from torchreid.data.sampler import build_train_sampler
+    except ModuleNotFoundError:
+        # if torchreid is installed using `pip install torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.data import Dataset as TorchreidDataset
 
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.data.datamanager import DataManager as TorchreidDM
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.data.datamanager import DataManager as TorchreidDM
 
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.data.sampler import build_train_sampler
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.data.sampler import build_train_sampler
 
 
 class TorchreidPoseDataset(TorchreidDataset):

@@ -31,14 +31,16 @@ from dgs.utils.states import DataSample
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 
-try:
-    # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.data import ImageDataset as TorchreidImageDataset
-except ModuleNotFoundError:
-    # if torchreid is installed using `pip install torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.data import ImageDataset as TorchreidImageDataset
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
+    try:
+        # If torchreid is installed using `./dependencies/torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.data import ImageDataset as TorchreidImageDataset
+    except ModuleNotFoundError:
+        # if torchreid is installed using `pip install torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.data import ImageDataset as TorchreidImageDataset
 
 
 # Do not allow import of 'PoseTrack21' base dataset

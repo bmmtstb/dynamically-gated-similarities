@@ -9,17 +9,22 @@ from torch.linalg import vector_norm
 
 from dgs.utils.types import Metric
 
-try:
-    # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.metrics.distance import euclidean_squared_distance as TorchreidESD, cosine_distance as TorchreidCD
-except ModuleNotFoundError:
-    # if torchreid is installed using `pip install torchreid`
-    # noinspection PyUnresolvedReferences
-    from torchreid.reid.metrics.distance import (
-        euclidean_squared_distance as TorchreidESD,
-        cosine_distance as TorchreidCD,
-    )
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
+    try:
+        # If torchreid is installed using `./dependencies/torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.metrics.distance import (
+            euclidean_squared_distance as TorchreidESD,
+            cosine_distance as TorchreidCD,
+        )
+    except ModuleNotFoundError:
+        # if torchreid is installed using `pip install torchreid`
+        # noinspection PyUnresolvedReferences
+        from torchreid.reid.metrics.distance import (
+            euclidean_squared_distance as TorchreidESD,
+            cosine_distance as TorchreidCD,
+        )
 
 
 @torch.no_grad()
