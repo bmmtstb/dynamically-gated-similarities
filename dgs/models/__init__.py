@@ -19,43 +19,43 @@ from dgs.utils.types import Config, NodePath
 M = TypeVar("M", bound=BaseModule)
 
 
-def module_loader(config: Config, module_name: str) -> Union[M, TorchDataLoader]:
+def module_loader(config: Config, module: str) -> Union[M, TorchDataLoader]:
     """Load a given module and pass down the configuration
 
     Args:
         config: The configuration of the current tracker
 
-        module_name: Name of submodule to load
+        module: Name of submodule to load
 
     Returns:
         Initialized instance of the submodule with its config.
     """
     # This model will have one branch for every module
     # pylint: disable=too-many-branches
-    path: NodePath = [module_name]
+    path: NodePath = [module]
     module_name: str = get_sub_config(config, path)["module_name"]
 
     m: Type[M]
 
     # Module import and initialization
-    if module_name == "engine":
+    if module == "engine":
         m = get_engine(module_name)
         path = []
-    elif module_name == "weighted_similarity":
+    elif module == "weighted_similarity":
         m = get_combined_similarity_module(module_name)
-    elif module_name.startswith("embedding_generator_"):
+    elif module.startswith("embedding_generator_"):
         m = get_embedding_generator(module_name)
-    elif module_name.startswith("similarity_"):
+    elif module.startswith("similarity_"):
         m = get_similarity_module(module_name)
-    elif module_name.startswith("dataloader_"):
-        return get_data_loader(config=config, path=path, dl_module=module_name)
-    elif module_name.startswith("dataset_"):
+    elif module.startswith("dataloader_"):
+        return get_data_loader(config=config, path=path, dl_module=module)
+    elif module.startswith("dataset_"):
         # special case: the concatenated PT21 dataset is loaded via function not class
         if module_name == "PoseTrack21":
             return get_pose_track_21(config=config, path=path)
         m = get_dataset(module_name)
     else:
-        raise NotImplementedError(f"Something went wrong while loading the module '{module_name}'")
+        raise NotImplementedError(f"Something went wrong while loading the module '{module}'")
 
     # instantiate module with its configuration and path
     return m(config=config, path=path)
