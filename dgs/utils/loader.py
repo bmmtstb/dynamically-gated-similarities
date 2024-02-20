@@ -71,7 +71,7 @@ def get_instance(instance: Instance, instances: dict[str, any], inst_class: type
         The class-type of the given instance.
     """
     if isinstance(instance, str):
-        return get_instance_from_name(name=str(instances), instances=instances)
+        return get_instance_from_name(name=str(instance), instances=instances)
     if isinstance(instance, type) and issubclass(instance, inst_class):
         return instance
     raise InvalidParameterException(f"Instance {instance} is neither string nor a subclass of '{inst_class}'")

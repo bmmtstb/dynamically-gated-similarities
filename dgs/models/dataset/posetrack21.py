@@ -30,7 +30,16 @@ from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.states import DataSample
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
-from torchreid.data import ImageDataset as TorchreidImageDataset
+
+try:
+    # If torchreid is installed using `./dependencies/torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.data import ImageDataset as TorchreidImageDataset
+except ModuleNotFoundError:
+    # if torchreid is installed using `pip install torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.data import ImageDataset as TorchreidImageDataset
+
 
 # Do not allow import of 'PoseTrack21' base dataset
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]

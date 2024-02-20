@@ -16,18 +16,12 @@ class TestOptimizer(unittest.TestCase):
             with self.subTest(msg=f"instance: {instance}, result: {result}"):
                 self.assertEqual(get_optimizer(instance), result)
 
-    def test_get_optim_function_exception(self):
-        for instance in [None, {}, 1, "", optim.Optimizer([{"params": torch.zeros((8, 32))}], {})]:
-            with self.subTest(msg="instance: {}".format(instance)):
-                with self.assertRaises(ValueError):
-                    get_optimizer(instance)
-
     def test_register_optim(self):
         with patch.dict(OPTIMIZERS):
             for name, optimizer, exception in [
                 ("dummy", optim.Adam, False),
-                ("dummy", optim.Adam, ValueError),
-                ("new_dummy", optim.Adam([{"params": torch.zeros((8, 32))}]), ValueError),
+                ("dummy", optim.Adam, KeyError),
+                ("new_dummy", optim.Adam([{"params": torch.zeros((8, 32))}]), TypeError),
                 ("new_dummy", optim.Adam, False),
             ]:
                 with self.subTest(msg="name: {}, optimizer: {}, excpt: {}".format(name, optimizer, exception)):

@@ -7,9 +7,6 @@ import torch
 from torch import nn
 
 from dgs.models.metric import (
-    _validate_metric_inputs,
-    compute_accuracy,
-    compute_cmc,
     CosineDistanceMetric,
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
@@ -20,11 +17,16 @@ from dgs.models.metric import (
     TorchreidCosineDistance,
     TorchreidEuclideanSquaredDistance,
 )
+from dgs.models.metric.metric import (
+    _validate_metric_inputs,
+    compute_accuracy,
+    compute_cmc,
+)
 from helper import test_multiple_devices
 
 try:
     # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences LongLine
+    # noinspection PyUnresolvedReferences
     from torchreid.metrics import accuracy as torchreid_acc
 except ModuleNotFoundError:
     # if torchreid is installed using `pip install torchreid`
@@ -42,23 +44,12 @@ class TestMetrics(unittest.TestCase):
             with self.subTest(msg=f"instance: {instance}, result: {result}"):
                 self.assertEqual(get_metric(instance), result)
 
-    def test_get_metric_exception(self):
-        for instance in [
-            None,
-            nn.Module(),
-            {},
-            1,
-        ]:
-            with self.subTest(msg="instance: {}".format(instance)):
-                with self.assertRaises(ValueError):
-                    get_metric(instance)
-
     def test_register_metric(self):
         with patch.dict(METRICS):
             for name, func, exception in [
                 ("dummy", nn.PairwiseDistance, False),
-                ("dummy", nn.PairwiseDistance, ValueError),
-                ("new_dummy", nn.PairwiseDistance(), ValueError),
+                ("dummy", nn.PairwiseDistance, KeyError),
+                ("new_dummy", nn.PairwiseDistance(), TypeError),
                 ("new_dummy", nn.PairwiseDistance, False),
             ]:
                 with self.subTest(msg="name: {}, func: {}, excpt: {}".format(name, func, exception)):

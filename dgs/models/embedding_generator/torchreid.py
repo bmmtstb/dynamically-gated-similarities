@@ -17,10 +17,10 @@ with warnings.catch_warnings():
     # ignore cython warning
     try:
         # If torchreid is installed using `./dependencies/torchreid`
-        # noinspection PyUnresolvedReferences LongLine
+        # noinspection PyUnresolvedReferences
         from torchreid.models import __model_factory as torchreid_models, build_model
 
-        # noinspection PyUnresolvedReferences LongLine
+        # noinspection PyUnresolvedReferences
         from torchreid.utils.torchtools import load_pretrained_weights
     except ModuleNotFoundError:
         # if torchreid is installed using `pip install torchreid`

@@ -19,9 +19,27 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dgs.models.dataset.pose_dataset import TorchreidPoseDataManager
 from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
-from torchreid.engine import ImageSoftmaxEngine
-from torchreid.models import build_model
-from torchreid.optim import build_lr_scheduler, build_optimizer
+
+try:
+    # If torchreid is installed using `./dependencies/torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.engine import ImageSoftmaxEngine
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.models import build_model
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.optim import build_lr_scheduler, build_optimizer
+except ModuleNotFoundError:
+    # if torchreid is installed using `pip install torchreid`
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.engine import ImageSoftmaxEngine
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.models import build_model
+
+    # noinspection PyUnresolvedReferences
+    from torchreid.reid.optim import build_lr_scheduler, build_optimizer
 
 LOG_DIR = f"./results/torchreid/pose/{date.today().strftime('%Y%m%d')}/"
 MODEL_NAME = "osnet_x1_0"

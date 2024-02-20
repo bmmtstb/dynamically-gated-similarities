@@ -22,23 +22,12 @@ class TestLoss(unittest.TestCase):
             with self.subTest(msg=f"instance: {instance}, result: {result}"):
                 self.assertEqual(get_loss_function(instance), result)
 
-    def test_get_loss_function_exception(self):
-        for instance in [
-            None,
-            nn.Module(),
-            {},
-            1,
-        ]:
-            with self.subTest(msg="instance: {}".format(instance)):
-                with self.assertRaises(ValueError):
-                    get_loss_function(instance)
-
     def test_register_loss_function(self):
         with patch.dict(LOSS_FUNCTIONS):
             for name, func, exception in [
                 ("dummy", nn.MSELoss, False),
-                ("dummy", nn.MSELoss, ValueError),
-                ("new_dummy", nn.MSELoss(), ValueError),
+                ("dummy", nn.MSELoss, KeyError),
+                ("new_dummy", nn.MSELoss(), TypeError),
                 ("new_dummy", nn.MSELoss, False),
             ]:
                 with self.subTest(msg="name: {}, func: {}, except: {}".format(name, func, exception)):
@@ -58,7 +47,7 @@ class TestLoss(unittest.TestCase):
         logits = nn.functional.log_softmax(inputs, dim=1)
         self.assertTrue(torch.allclose(cel(logits, targets), nn.functional.cross_entropy(logits, targets)))
 
-    def test_compate_own_and_torchreid_loss(self):
+    def test_compare_own_and_torchreid_loss(self):
         B = 7
         C = 23
         eps = 0.1

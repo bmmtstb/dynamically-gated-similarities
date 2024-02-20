@@ -11,7 +11,7 @@ from dgs.utils.types import Metric
 
 try:
     # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences LongLine
+    # noinspection PyUnresolvedReferences
     from torchreid.metrics.distance import euclidean_squared_distance as TorchreidESD, cosine_distance as TorchreidCD
 except ModuleNotFoundError:
     # if torchreid is installed using `pip install torchreid`

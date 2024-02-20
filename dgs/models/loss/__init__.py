@@ -12,7 +12,7 @@ from .loss import CrossEntropyLoss
 
 try:
     # If torchreid is installed using `./dependencies/torchreid`
-    # noinspection PyUnresolvedReferences LongLine
+    # noinspection PyUnresolvedReferences
     from torchreid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
 except ModuleNotFoundError:
     # if torchreid is installed using `pip install torchreid`
