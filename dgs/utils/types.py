@@ -7,6 +7,7 @@ from typing import Callable, Union
 import torch
 from easydict import EasyDict
 from torch import nn
+from torch.optim.lr_scheduler import LRScheduler
 from torch.types import Device as TorchDevice
 from torchvision.tv_tensors import Image as tv_Image, Mask as tv_Mask, Video as tv_Video
 
@@ -33,6 +34,10 @@ Validations = dict[str, list[Union[str, tuple[str, any], Validator, None]]]
 DataGetter = Callable[["DataSample"], tuple[Union[torch.Tensor, any], ...]]
 """Function to extract specific data from a DataSample."""
 
+# Modules
+Instance = Union[str, type]
+"""An instance to be loaded is either the name of that instance or a class-type."""
+
 # Torch
 Device = Union[TorchDevice, str]
 """Torch device, either descriptive string (e.g. "cpu" or "cuda:0") or torch.device object."""
@@ -42,6 +47,9 @@ Metric = nn.Module
 
 Loss = nn.Module
 """A module or function that computes a loss."""
+
+Scheduler = LRScheduler
+"""A Scheduler used to update the learning rate during training."""
 
 # Images
 TVImage = tv_Image

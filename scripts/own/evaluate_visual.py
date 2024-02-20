@@ -10,8 +10,8 @@ from datetime import timedelta
 import torch
 from tqdm import tqdm
 
-from dgs.models.engine import VisualSimilarityEngine
-from dgs.models.loader import module_loader
+from dgs.models import module_loader
+from dgs.models.engine.visual_sim_engine import VisualSimilarityEngine
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.files import to_abspath
 from dgs.utils.utils import HidePrint
@@ -27,14 +27,14 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # test / gallery
-    test_dl = module_loader(config=config, module="dataloader_test")
+    test_dl = module_loader(config=config, module_name="dataloader_test")
     # validation / query
-    val_dl = module_loader(config=config, module="dataloader_valid")
+    val_dl = module_loader(config=config, module_name="dataloader_valid")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     with HidePrint():
-        model = module_loader(config=config, module="embedding_generator_visual").cuda()
+        model = module_loader(config=config, module_name="embedding_generator_visual").cuda()
         model.eval()
 
     engine = VisualSimilarityEngine(
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     model_paths = sorted(glob.glob(os.path.join(to_abspath(SUB_DIR), "*.pth")), reverse=True)
 
-    for checkpoint_file in tqdm(model_paths, desc="Checkpoints"):
+    for checkpoint_file in tqdm(model_paths, desc="Checkpoints", position=0):
         # load checkpoint - set engine parameters and load model weights
         engine.load_model(path=checkpoint_file)
         # test / evaluate the module with the loaded weights

@@ -13,9 +13,9 @@ from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
-from dgs.models.states import DataSample
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
+from dgs.utils.states import DataSample
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {

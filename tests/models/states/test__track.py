@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from dgs.models.states import Track
+from dgs.utils.states import Track
 from helper import test_multiple_devices
 from .test__queue import EMPTY_QUEUE, FULL_QUEUE, ONE_QUEUE
 

@@ -2,8 +2,8 @@
 Base Tracker API structure of tracking via dynamically gated similarities
 """
 
+from dgs.models import module_loader
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
-from dgs.models.loader import module_loader
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.similarity.combined import CombineSimilarityModule
 from dgs.models.similarity.similarity import SimilarityModule

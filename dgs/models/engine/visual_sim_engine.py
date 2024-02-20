@@ -5,17 +5,16 @@ Engine for visual embedding training and testing.
 import time
 import warnings
 from datetime import timedelta
-from typing import Type
 
 import torch
-from torch import nn, optim
+from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
 
 from dgs.models.engine.engine import EngineModule
-from dgs.models.metric import compute_accuracy, compute_cmc
+from dgs.models.metric import metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.states import DataSample
+from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
 
@@ -26,7 +25,9 @@ train_validations: Validations = {
 }
 
 test_validations: Validations = {
+    "metric": [("any", ["callable", ("in", METRICS.keys())])],
     # optional
+    "metric_kwargs": ["optional", dict],
     "topk_cmc": ["optional", ("forall", [int, ("gt", 0)])],
     "write_embeds": ["optional", ("len", 2), ("forall", bool)],
 }
@@ -56,6 +57,22 @@ class VisualSimilarityEngine(EngineModule):
     Test Params
     -----------
 
+    metric (str|callable):
+        The name or class of the metric used during testing / evaluation.
+        The metric in the ``VisualSimilarityEngine`` is only used
+        to compute the distance between the query and gallery embeddings.
+        Therefore, a distance-based metric should be used.
+
+        It is possible to pass additional initialization kwargs to the metric
+        by adding them to the ``metric_kwargs`` parameter.
+
+
+    Optional Test Params
+    --------------------
+
+    metric_kwargs (dict, optional):
+        Specific kwargs for the metric.
+        Default {}.
     topk_cmc (list[int], optional):
         The values for k the top-k cmc evaluation during testing / evaluation.
         Default [1, 5, 10, 50].
@@ -78,14 +95,12 @@ class VisualSimilarityEngine(EngineModule):
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
-        lr_scheds: list[Type[optim.lr_scheduler.LRScheduler]] = None,
     ):
         super().__init__(
             config=config,
             model=model,
             test_loader=test_loader,
             train_loader=train_loader,
-            lr_scheds=lr_scheds,
         )
         self.val_dl = val_loader
 
@@ -121,7 +136,7 @@ class VisualSimilarityEngine(EngineModule):
 
         loss = self.loss(pred_id_probs, target_ids)
 
-        topk_accuracies = compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
+        topk_accuracies = metric.compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
         for k, accu in topk_accuracies.items():
             self.writer.add_scalar(f"Train/top-{k} acc", accu, global_step=_curr_iter)
 
@@ -190,17 +205,20 @@ class VisualSimilarityEngine(EngineModule):
         del embed_l, t_ids_l
 
         # normalize the predicted embeddings if wanted
-        p_embed = self._normalize(p_embed)
+        p_embed = self._normalize_test(p_embed)
 
         if write_embeds:
             # write embedding results - take only the first 32x32 due to limitations in tensorboard
             self.logger.info("Add embeddings to writer.")
             self.writer.add_embedding(
-                mat=p_embed[: min(1024, N), :],
-                metadata=t_ids[: min(1024, N)].tolist(),
-                label_img=torch.cat(imgs_l)[: min(1024, N)] if imgs_l else None,  # 4D images [N x C X h x w]
+                mat=p_embed[: min(512, N), :],
+                metadata=t_ids[: min(512, N)].tolist(),
+                label_img=torch.cat(imgs_l)[: min(512, N)] if imgs_l else None,  # 4D images [N x C X h x w]
                 tag=f"Test/{desc}_embeds_{self.curr_epoch}",
             )
+
+        assert isinstance(p_embed, torch.Tensor), f"p_embed is {p_embed}"
+        assert isinstance(t_ids, torch.Tensor), f"t_ids is {t_ids}"
 
         return p_embed, t_ids
 
@@ -248,7 +266,7 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.debug(f"Shape of distance matrix: {distance_matrix.shape}")
 
         self.logger.debug("Computing CMC")
-        results["cmc"] = compute_cmc(
+        results["cmc"] = metric.compute_cmc(
             distmat=distance_matrix,
             query_pids=q_t_ids,
             gallery_pids=g_t_ids,

@@ -17,6 +17,7 @@ import warnings
 from typing import Union
 
 import imagesize
+import numpy as np
 import torch
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors
@@ -24,9 +25,9 @@ from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.dataset.pose_dataset import TorchreidPoseDataset
-from dgs.models.states import DataSample
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
+from dgs.utils.states import DataSample
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 from torchreid.data import ImageDataset as TorchreidImageDataset
@@ -443,7 +444,7 @@ class PoseTrack21JSON(BaseDataset):
             self.img_shape: ImgShape = img_sizes.pop()
 
         self.len = len(json["annotations"])
-        self.data: list[dict[str, any]] = json["annotations"]
+        self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
 
         # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
         map_pid_to_cid: dict[int, int] = (
@@ -451,7 +452,7 @@ class PoseTrack21JSON(BaseDataset):
             if "id_map" in self.params and self.params["id_map"] is not None
             else {pid: i for i, pid in enumerate(sorted(set(anno["person_id"] for anno in json["annotations"])))}
         )
-        # replace pIDs by class IDs
+        # add class ID by mapping pIDs
         for anno in self.data:
             anno["class_id"]: int = map_pid_to_cid[anno["person_id"]]
 

@@ -33,8 +33,8 @@ import torch
 from torchvision import tv_tensors
 
 from dgs.models.dataset.dataset import BaseDataset
-from dgs.models.states import DataSample
 from dgs.utils.files import read_json
+from dgs.utils.states import DataSample
 from dgs.utils.types import Config, ImgShape, NodePath, Validations
 
 ap_load_validations: Validations = {"path": [str, "file exists in project", ("endswith", ".json")]}

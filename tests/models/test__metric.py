@@ -15,7 +15,6 @@ from dgs.models.metric import (
     EuclideanDistanceMetric,
     EuclideanSquareMetric,
     get_metric,
-    get_metric_from_name,
     METRICS,
     register_metric,
     TorchreidCosineDistance,
@@ -34,19 +33,6 @@ except ModuleNotFoundError:
 
 
 class TestMetrics(unittest.TestCase):
-    def test_get_metric_from_name(self):
-        for name, metric_class in METRICS.items():
-            with self.subTest(msg=f"name: {name}, metric_class: {metric_class}"):
-                metric = get_metric_from_name(name)
-                self.assertEqual(metric, metric_class)
-                self.assertTrue(issubclass(metric, nn.Module))
-
-    def test_get_metric_from_name_exception(self):
-        for name in ["", "undefined", "dummy", "metric"]:
-            with self.subTest(msg=f"name: {name}"):
-                with self.assertRaises(ValueError):
-                    get_metric_from_name(name)
-
     def test_get_metric(self):
         for instance, result in [
             ("CosineSimilarity", CosineSimilarityMetric),

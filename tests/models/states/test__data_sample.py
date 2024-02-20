@@ -5,9 +5,9 @@ from copy import deepcopy
 import torch
 from torchvision import tv_tensors
 
-from dgs.models.states import DataSample, get_ds_data_getter
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.image import load_image
+from dgs.utils.states import DataSample, get_ds_data_getter
 from dgs.utils.types import Device, FilePath, FilePaths
 from tests.helper import load_test_image, test_multiple_devices
 

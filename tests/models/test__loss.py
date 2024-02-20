@@ -6,7 +6,6 @@ from torch import nn
 
 from dgs.models.loss import (
     CrossEntropyLoss,
-    get_loss_from_name,
     get_loss_function,
     LOSS_FUNCTIONS,
     register_loss_function,
@@ -14,19 +13,6 @@ from dgs.models.loss import (
 
 
 class TestLoss(unittest.TestCase):
-    def test_get_loss_from_name(self):
-        for name, loss_class in LOSS_FUNCTIONS.items():
-            with self.subTest(msg=f"name: {name}, loss_class: {loss_class}"):
-                loss = get_loss_from_name(name)
-                self.assertEqual(loss, loss_class)
-                self.assertTrue(issubclass(loss, nn.Module))
-
-    def test_get_loss_from_name_exception(self):
-        for name in ["", "undefined", "dummy", "loss"]:
-            with self.subTest(msg=f"name: {name}"):
-                with self.assertRaises(ValueError):
-                    get_loss_from_name(name)
-
     def test_get_loss_function(self):
         for instance, result in [
             ("TorchL1Loss", nn.L1Loss),
@@ -76,10 +62,10 @@ class TestLoss(unittest.TestCase):
         B = 7
         C = 23
         eps = 0.1
-        reid_loss = get_loss_from_name("TorchreidCrossEntropyLoss")(
+        reid_loss = get_loss_function("TorchreidCrossEntropyLoss")(
             num_classes=C, use_gpu=False, eps=eps, label_smooth=True
         )
-        own_loss = get_loss_from_name("CrossEntropyLoss")(label_smoothing=eps)
+        own_loss = get_loss_function("CrossEntropyLoss")(label_smoothing=eps)
         for _ in range(10):
             inputs = torch.rand((B, C), dtype=torch.float32)
             targets = torch.randint(low=0, high=C, size=(B,), dtype=torch.long)

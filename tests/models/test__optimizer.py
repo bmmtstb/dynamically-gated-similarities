@@ -4,23 +4,10 @@ from unittest.mock import patch
 import torch
 from torch import optim
 
-from dgs.models.optimizer import get_optim_from_name, get_optimizer, OPTIMIZERS, register_optimizer
+from dgs.models.optimizer import get_optimizer, OPTIMIZERS, register_optimizer
 
 
 class TestOptimizer(unittest.TestCase):
-    def test_get_optim_from_name(self):
-        for name, optim_class in OPTIMIZERS.items():
-            with self.subTest(msg=f"name: {name}, optim_class: {optim_class}"):
-                optimizer = get_optim_from_name(name)
-                self.assertEqual(optimizer, optim_class)
-                self.assertTrue(issubclass(optimizer, optim.Optimizer))
-
-    def test_get_optim_from_name_exception(self):
-        for name in ["", "undefined", "dummy", "optim"]:
-            with self.subTest(msg=f"name: {name}"):
-                with self.assertRaises(ValueError):
-                    get_optim_from_name(name)
-
     def test_get_optim_function(self):
         for instance, result in [
             ("Adagrad", optim.Adagrad),

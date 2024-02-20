@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from dgs.models.states import Queue
+from dgs.utils.states import Queue
 from helper import test_multiple_devices
 
 MAX_LENGTH: int = 30

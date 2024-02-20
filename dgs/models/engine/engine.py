@@ -7,7 +7,7 @@ import os
 import time
 import warnings
 from abc import abstractmethod
-from typing import Type, Union
+from typing import Union
 
 import torch
 from matplotlib import pyplot as plt
@@ -19,12 +19,13 @@ from torchvision import tv_tensors
 from tqdm import tqdm
 
 from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
-from dgs.models.metric import get_metric, METRICS
+from dgs.models.metric import get_metric
 from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
-from dgs.models.states import DataSample
+from dgs.models.scheduler import get_scheduler, SCHEDULERS
 from dgs.utils.config import get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
+from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
@@ -35,13 +36,14 @@ train_validations: Validations = {
     "optimizer": [("any", ["callable", ("in", OPTIMIZERS.keys())])],
     # optional
     "epochs": ["optional", int, ("gte", 1)],
-    "optimizer_kwargs": ["optional", dict],
     "loss_kwargs": ["optional", dict],
+    "optimizer_kwargs": ["optional", dict],
     "save_interval": ["optional", int, ("gte", 1)],
+    "scheduler": ["optional", ("any", ["callable", ("in", SCHEDULERS.keys())])],
+    "scheduler_kwargs": ["optional", dict],
 }
 
 test_validations: Validations = {
-    "metric": [("any", ["callable", ("in", METRICS.keys())])],
     # optional
     "compile_model": ["optional", bool],
     "normalize": ["optional", bool],
@@ -61,24 +63,25 @@ class EngineModule(BaseModule):
     Test Params
     -----------
 
-    metric ():
-        ...
 
 
     Train Params
     ------------
 
-    loss ():
-        ...
-    optimizer ():
-        ...
+    loss (str|callable):
+        The name or class of the loss function used to compute the loss during training.
+        It is possible to pass additional initialization kwargs to the loss
+        by adding them to the ``loss_kwargs`` parameter.
+
+    optimizer (str|callable):
+        The name or class of the optimizer used for optimizing the model based on the loss during training.
+        It is possible to pass additional initialization kwargs to the optimizer
+        by adding them to the ``optimizer_kwargs`` parameter.
+
 
     Optional Test Params
     --------------------
 
-    metric_kwargs (dict, optional):
-        Additional kwargs for the metric.
-        Default {}.
     ranks (list[int], optional):
         The cmc ranks to use for evaluation.
         This value is used during training and testing.
@@ -104,6 +107,16 @@ class EngineModule(BaseModule):
     optimizer_kwargs (dict, optional):
         Additional kwargs for the optimizer.
         Default {}.
+    scheduler (str|callable, optional):
+        The name or instance of a scheduler.
+        If you want to use different or multiple schedulers, you can chain them using
+        ``torch.optim.lr_scheduler.ChainedScheduler`` or create a custom Scheduler and register it.
+        Default StepLR.
+    scheduler_kwargs (dict, optional):
+        Additional kwargs for the scheduler.
+        Keep in mind that the different schedulers need fairly different kwargs.
+        The optimizer will be passed to the scheduler during initialization as the `optimizer` keyword argument.
+        Default {"step_size": 1, "gamma": 0.1}.
     loss_kwargs (dict, optional):
         Additional kwargs for the loss.
         Default {}.
@@ -118,7 +131,7 @@ class EngineModule(BaseModule):
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
-    # pylint: disable = too-many-instance-attributes, too-many-arguments
+    # pylint: disable = too-many-instance-attributes
 
     loss: nn.Module
     metric: nn.Module
@@ -134,7 +147,7 @@ class EngineModule(BaseModule):
     train_dl: TorchDataLoader
     """The torch DataLoader containing the training data."""
 
-    lr_sched: list[optim.lr_scheduler.LRScheduler]
+    lr_sched: optim.lr_scheduler.LRScheduler
     """The learning-rate sheduler(s) can be changed by setting ``engine.lr_scheduler = [..., ...]``."""
 
     def __init__(
@@ -143,7 +156,6 @@ class EngineModule(BaseModule):
         model: nn.Module,
         test_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
-        lr_scheds: list[Type[optim.lr_scheduler.LRScheduler]] = None,
     ):
         super().__init__(config, [])
 
@@ -189,10 +201,9 @@ class EngineModule(BaseModule):
                 **self.params_train.get("optimizer_kwargs", {"lr": 1e-4}),  # optional optimizer kwargs
             )
             # the learning-rate schedulers need the optimizer for instantiation
-            if lr_scheds is None:
-                self.lr_sched = [optim.lr_scheduler.ConstantLR(optimizer=self.optimizer, factor=1, total_iters=10)]
-            else:
-                raise NotImplementedError
+            self.lr_sched = get_scheduler(self.params_train.get("scheduler", "StepLR"))(
+                **self.params_train.get("scheduler_kwargs", {"step_size": 1, "gamma": 0.1})
+            )
             self.writer.add_scalar("Train/batch_size", self.test_dl.batch_size)
 
     @enable_keyboard_interrupt
@@ -352,6 +363,7 @@ class EngineModule(BaseModule):
             model=self.model,
             optimizer=self.optimizer if hasattr(self, "optimizer") else None,
             schedulers=self.lr_sched if hasattr(self, "lr_sched") else None,
+            verbose=self.logger.isEnabledFor(logging.DEBUG),
         )
         self.curr_epoch = self.start_epoch
 
@@ -364,7 +376,7 @@ class EngineModule(BaseModule):
             if hasattr(self, attr):
                 delattr(self, attr)
 
-    def _normalize(self, tensor: torch.Tensor) -> torch.Tensor:
+    def _normalize_test(self, tensor: torch.Tensor) -> torch.Tensor:
         """If ``params_test.normalize`` is True, we want to obtain the normalized prediction and target."""
         if self.params_test.get("normalize", False):
             self.logger.debug("Normalizing test data")
