@@ -24,15 +24,15 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # test / gallery
-    test_dl = module_loader(config=config, module_name="dataloader_gallery")
+    test_dl = module_loader(config=config, module="dataloader_gallery")
     # validation / query
-    val_dl = module_loader(config=config, module_name="dataloader_query")
+    val_dl = module_loader(config=config, module="dataloader_query")
     # train
-    train_dl = module_loader(config=config, module_name="dataloader_train")
+    train_dl = module_loader(config=config, module="dataloader_train")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
-    model = module_loader(config=config, module_name="embedding_generator_visual")
+    model = module_loader(config=config, module="embedding_generator_visual")
     # only modify the classifier
     if OPEN_CLASSIFIER_ONLY:
         open_specified_layers(model=model, open_layers=["classifier"], verbose=True)

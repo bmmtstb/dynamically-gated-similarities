@@ -27,14 +27,14 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # test / gallery
-    test_dl = module_loader(config=config, module_name="dataloader_test")
+    test_dl = module_loader(config=config, module="dataloader_test")
     # validation / query
-    val_dl = module_loader(config=config, module_name="dataloader_valid")
+    val_dl = module_loader(config=config, module="dataloader_valid")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     with HidePrint():
-        model = module_loader(config=config, module_name="embedding_generator_visual").cuda()
+        model = module_loader(config=config, module="embedding_generator_visual").cuda()
         model.eval()
 
     engine = VisualSimilarityEngine(

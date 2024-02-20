@@ -78,7 +78,7 @@ def get_data_loader(config: Config, path: NodePath, dl_module: str) -> TorchData
     ds_config: Config = deepcopy(config)
     ds_config[ds_module] = ds_config[dl_module]
 
-    ds: TorchDataset = module_loader(config=ds_config, module_name=ds_module)
+    ds: TorchDataset = module_loader(config=ds_config, module=ds_module)
 
     data_loader = TorchDataLoader(
         dataset=ds,
