@@ -9,15 +9,20 @@ log_dir: "./results/own/visual_sim/"
 
 
 train:
-    epochs: 5
+    epochs: 50
     loss: "CrossEntropyLoss"
     optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0003
         weight_decay: 0.0001
+        betas: (0.9, 0.99)
     nof_classes: 5474
     topk_acc: [1, 5]
     save_interval: 1
+    scheduler: "StepLR"
+    scheduler_kwargs:
+        step_size: 1
+        gamma: 0.1
 
 test:
     metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
@@ -31,9 +36,8 @@ test:
 dataloader_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-#    json_path: "./posetrack_data/train/"
-    json_path: "./posetrack_data/train_first_half/"
-#    json_path: "./posetrack_data/train/000001_bonn_train.json"
+    json_path: "./posetrack_data/train/"
+#    json_path: "./posetrack_data/train_first_half/"
     crops_folder: "./crops/train/"
     batch_size: 128
     id_map: "./weights/pt21_id_map.json"

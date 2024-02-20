@@ -111,7 +111,7 @@ class EngineModule(BaseModule):
         The name or instance of a scheduler.
         If you want to use different or multiple schedulers, you can chain them using
         ``torch.optim.lr_scheduler.ChainedScheduler`` or create a custom Scheduler and register it.
-        Default StepLR.
+        Default "StepLR".
     scheduler_kwargs (dict, optional):
         Additional kwargs for the scheduler.
         Keep in mind that the different schedulers need fairly different kwargs.

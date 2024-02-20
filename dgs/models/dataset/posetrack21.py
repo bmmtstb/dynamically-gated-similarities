@@ -459,13 +459,15 @@ class PoseTrack21JSON(BaseDataset):
 
         # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
         map_pid_to_cid: dict[int, int] = (
-            read_json(self.params["id_map"])
+            {int(i): int(j) for i, j in read_json(self.params["id_map"]).items()}
             if "id_map" in self.params and self.params["id_map"] is not None
-            else {pid: i for i, pid in enumerate(sorted(set(anno["person_id"] for anno in json["annotations"])))}
+            else {
+                int(pid): int(i) for i, pid in enumerate(sorted(set(anno["person_id"] for anno in json["annotations"])))
+            }
         )
         # add class ID by mapping pIDs
         for anno in self.data:
-            anno["class_id"]: int = map_pid_to_cid[anno["person_id"]]
+            anno["class_id"]: int = map_pid_to_cid[int(anno["person_id"])]
 
     def __len__(self) -> int:
         return self.len
