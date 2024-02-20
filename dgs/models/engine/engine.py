@@ -202,7 +202,7 @@ class EngineModule(BaseModule):
             )
             # the learning-rate schedulers need the optimizer for instantiation
             self.lr_sched = get_scheduler(self.params_train.get("scheduler", "StepLR"))(
-                **self.params_train.get("scheduler_kwargs", {"step_size": 1, "gamma": 0.1})
+                optimizer=self.optimizer, **self.params_train.get("scheduler_kwargs", {"step_size": 1, "gamma": 0.1})
             )
             self.writer.add_scalar("Train/batch_size", self.test_dl.batch_size)
 

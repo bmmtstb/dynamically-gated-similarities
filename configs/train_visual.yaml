@@ -15,7 +15,7 @@ train:
     optimizer_kwargs:
         lr: 0.0003
         weight_decay: 0.0001
-        betas: (0.9, 0.99)
+        betas: [0.9, 0.99]
     nof_classes: 5474
     topk_acc: [1, 5]
     save_interval: 1
@@ -36,11 +36,11 @@ test:
 dataloader_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_data/train/"
-#    json_path: "./posetrack_data/train_first_half/"
+    json_path: "./posetrack_person_search/train.json"
     crops_folder: "./crops/train/"
     batch_size: 128
     id_map: "./weights/pt21_id_map.json"
+    force_img_reshape: true
 
 dataloader_gallery:
     module_name: "PoseTrack21"

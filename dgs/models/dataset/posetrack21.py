@@ -13,6 +13,7 @@ PoseTrack21 format:
 import glob
 import os
 import re
+import shutil
 import warnings
 from typing import Union
 
@@ -289,6 +290,27 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
         individually=True,  # the query annotations have different sizes and have to be looked at individually
         **kwargs,
     )
+    print("Extract crops from val")
+    val_dst = os.path.abspath(
+        os.path.join(dataset_dir, kwargs.get("val_dst_json_file", "./posetrack_person_search/gallery.json"))
+    )
+    val_src = to_abspath(os.path.join(dataset_dir, kwargs.get("val_json_file", "./posetrack_person_search/val.json")))
+    shutil.copyfile(val_src, val_dst)
+    extract_crops_from_json_annotation(
+        base_dataset_path=dataset_dir,
+        json_file=val_dst,
+        crops_dir="./crops/",  # val / gallery subdir will be created as "sub-dataset"
+        individually=True,  # the val annotations have different sizes and have to be looked at individually
+        **kwargs,
+    )
+    print("Extract crops from train")
+    extract_crops_from_json_annotation(
+        base_dataset_path=dataset_dir,
+        json_file=kwargs.get("train_json_file", "./posetrack_person_search/train.json"),
+        crops_dir="./crops/",  # train subdir will be created as "sub-dataset"
+        individually=True,  # the train annotations have different sizes and have to be looked at individually
+        **kwargs,
+    )
 
 
 def generate_pt21_submission(outfile: FilePath) -> None:
@@ -451,7 +473,10 @@ class PoseTrack21JSON(BaseDataset):
             self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
         else:
             if len(img_sizes) > 1:
-                raise ValueError(f"The images within a single folder should have equal shapes. json_path: {json_path}")
+                raise ValueError(
+                    f"The images within a single folder should have equal shapes. "
+                    f"json_path: {json_path}, shapes: {img_sizes}"
+                )
             self.img_shape: ImgShape = img_sizes.pop()
 
         self.len = len(json["annotations"])
