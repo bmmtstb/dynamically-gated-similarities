@@ -417,7 +417,7 @@ class PoseTrack21(BaseDataset):
     def __getitems__(self, indices: list[int]) -> DataSample:
         raise NotImplementedError
 
-    def arbitrary_to_ds(self, a) -> DataSample:
+    def arbitrary_to_ds(self, a, idx: int) -> DataSample:
         raise NotImplementedError
 
 

@@ -67,7 +67,7 @@ class AlphaPoseLoader(BaseDataset):
             raise ValueError(f"Expected all images to have the same shape, but found {canvas_sizes}")
         self.canvas_size: ImgShape = canvas_sizes.pop()
 
-    def arbitrary_to_ds(self, a) -> DataSample:
+    def arbitrary_to_ds(self, a, idx: int) -> DataSample:
         """Here `a` is one dict of the AP-JSON containing image_id, category_id, keypoints, score, box, and idx."""
         keypoints, visibility = (
             torch.tensor(a["keypoints"], dtype=torch.float32, device=self.device)
