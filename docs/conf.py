@@ -48,7 +48,7 @@ autosummary_generate = True  # Turn on sphinx.ext.autosummary
 # linkcheck
 linkcheck_ignore = [
     ".*bmmtstb\.github\.io\/dynamically\-gated\-similarities\/.*",  # Server is down while running docs workflow
-    "*stackoverflow.com/questions/8391411/how-to-block-calls-to-print/*",  # fixme: why doesn't this link work?
+    ".*stackoverflow\.com\/questions\/8391411\/how\-to\-block\-calls\-to\-print\/.*",  # fixme: why doesn't this link work?
 ]
 linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
     ".*github\.io.*",
