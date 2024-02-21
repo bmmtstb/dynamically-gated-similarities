@@ -295,12 +295,18 @@ class EngineModule(BaseModule):
                 # OPTIMIZE END
 
                 batch_t.add(time_batch_start)
-                self.writer.add_scalar("Train/loss", loss.item(), global_step=curr_iter)
-                self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
-                self.writer.add_scalar("Train/batch_time", batch_t[-1], global_step=curr_iter)
-                self.writer.add_scalar("Train/indiv_time", batch_t[-1] / len(data), global_step=curr_iter)
-                self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
                 epoch_loss += loss.item()
+                self.writer.add_scalars(
+                    main_tag="Train/loss",
+                    tag_scalar_dict={"curr": loss.item(), "avg": epoch_loss / float(batch_idx + 1)},
+                    global_step=curr_iter,
+                )
+                self.writer.add_scalars(
+                    main_tag="Train/time",
+                    tag_scalar_dict={"data": data_t[-1], "batch": batch_t[-1], "indiv": batch_t[-1] / len(data)},
+                    global_step=curr_iter,
+                )
+                self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
                 # ############ #
                 # END OF BATCH #
                 # ############ #
@@ -402,32 +408,27 @@ class EngineModule(BaseModule):
         for key, value in results.items():
             # regular python value
             if isinstance(value, (int, float, str)):
-                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value, global_step=self.curr_epoch)
+                self.writer.add_scalar(f"{prepend}/{key}", value, global_step=self.curr_epoch)
             # single valued tensor
             elif isinstance(value, torch.Tensor) and value.ndim == 1 and value.size(0) == 1:
-                self.writer.add_scalar(f"{prepend}/{self.name}/{key}", value.item(), global_step=self.curr_epoch)
+                self.writer.add_scalar(f"{prepend}/{key}", value.item(), global_step=self.curr_epoch)
             # image
             elif isinstance(value, tv_tensors.Image):
                 if value.ndim == 3:
-                    self.writer.add_image(f"{prepend}/{self.name}/{key}", value, global_step=self.curr_epoch)
+                    self.writer.add_image(f"{prepend}/{key}", value, global_step=self.curr_epoch)
                 else:
-                    self.writer.add_images(f"{prepend}/{self.name}/{key}", value, global_step=self.curr_epoch)
+                    self.writer.add_images(f"{prepend}/{key}", value, global_step=self.curr_epoch)
             # Embeddings as dict id -> embed
             elif isinstance(value, tuple) and "_embed" in key:
                 ids, embeds = value
-                self.writer.add_embedding(
-                    embeds, metadata=ids, tag=f"{prepend}/{self.name}/{key}", global_step=self.curr_epoch
-                )
-            # multiple values as dict sub-key -> sub_value
+                self.writer.add_embedding(embeds, metadata=ids, tag=f"{prepend}/{key}", global_step=self.curr_epoch)
+            # multiple values as dict can be written using add_scalars
             elif isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    self.writer.add_scalar(
-                        f"{prepend}/{self.name}/{key}-{sub_key}", sub_value, global_step=self.curr_epoch
-                    )
+                self.writer.add_scalars(f"{prepend}/{key}", value, global_step=self.curr_epoch)
             # iterable of scalars
             elif isinstance(value, (list, dict, set)):
                 for i, sub_value in enumerate(value):
-                    self.writer.add_scalar(f"{prepend}/{self.name}/{key}-{i}", sub_value, global_step=self.curr_epoch)
+                    self.writer.add_scalar(f"{prepend}/{key}-{i}", sub_value, global_step=self.curr_epoch)
             elif isinstance(value, str):
                 self.writer.add_text(tag=key, text_string=value, global_step=self.curr_epoch)
             else:

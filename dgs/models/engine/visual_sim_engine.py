@@ -184,8 +184,11 @@ class VisualSimilarityEngine(EngineModule):
 
             # timing
             batch_t.add(time_batch_start)
-            self.writer.add_scalar(f"Test/batch_time_{desc}", batch_t[-1], global_step=curr_iter)
-            self.writer.add_scalar(f"Test/indiv_time_{desc}", batch_t[-1] / len(batch), global_step=curr_iter)
+            self.writer.add_scalars(
+                main_tag="Test/time",
+                tag_scalar_dict={f"batch_{desc}": batch_t[-1], f"indiv_{batch}": batch_t[-1] / len(batch)},
+                global_step=curr_iter,
+            )
 
         del t_id, embed, img_crop
 
