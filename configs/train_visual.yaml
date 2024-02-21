@@ -9,7 +9,7 @@ log_dir: "./results/own/visual_sim/"
 
 
 train:
-    epochs: 50
+    epochs: 10
     loss: "CrossEntropyLoss"
     optimizer: "Adam"
     optimizer_kwargs:
@@ -18,7 +18,7 @@ train:
         betas: [0.9, 0.99]
     nof_classes: 5474
     topk_acc: [1, 5]
-    save_interval: 1
+    save_interval: 5
     scheduler: "StepLR"
     scheduler_kwargs:
         step_size: 1

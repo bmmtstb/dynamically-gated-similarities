@@ -280,7 +280,7 @@ class EngineModule(BaseModule):
             # loop over all the data
             for batch_idx, data in tqdm(
                 enumerate(self.train_dl),
-                desc=f"Per Batch - lr: {self.optimizer.param_groups[-1]['lr']:.8}",
+                desc=f"Train - Batch",
                 position=2,
                 total=len(self.train_dl),
             ):
@@ -288,19 +288,19 @@ class EngineModule(BaseModule):
                 data_t.add(time_batch_start)
 
                 # OPTIMIZE MODEL
-                loss = self._get_train_loss(data, curr_iter)
                 self.optimizer.zero_grad()
+                loss = self._get_train_loss(data, curr_iter)
                 loss.backward()
                 self.optimizer.step()
                 # OPTIMIZE END
 
                 batch_t.add(time_batch_start)
-                epoch_loss += loss.item()
                 self.writer.add_scalar("Train/loss", loss.item(), global_step=curr_iter)
                 self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/batch_time", batch_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/indiv_time", batch_t[-1] / len(data), global_step=curr_iter)
                 self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
+                epoch_loss += loss.item()
                 # ############ #
                 # END OF BATCH #
                 # ############ #
@@ -321,6 +321,8 @@ class EngineModule(BaseModule):
                 # evaluate current model every few epochs
                 metrics = self.test()
                 self.save_model(epoch=self.curr_epoch, metrics=metrics)
+
+            self.writer.flush()
 
         # ############### #
         # END OF TRAINING #

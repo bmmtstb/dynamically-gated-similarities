@@ -125,8 +125,9 @@ class VisualSimilarityEngine(EngineModule):
     @enable_keyboard_interrupt
     @torch.enable_grad()
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
-        _, pred_id_probs = self.model(self.get_data(data))
         target_ids = self.get_target(data)
+
+        _, pred_id_probs = self.model(self.get_data(data))
 
         loss = self.loss(pred_id_probs, target_ids)
 
