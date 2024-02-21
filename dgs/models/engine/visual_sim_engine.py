@@ -116,8 +116,7 @@ class VisualSimilarityEngine(EngineModule):
 
     def get_target(self, ds: DataSample) -> torch.Tensor:
         """Get the target pIDs from the data."""
-        # return get_ds_data_getter(["person_id"])(ds)[0].long()
-        return ds["person_id"].long()
+        return ds["class_id"].long()
 
     def get_data(self, ds: DataSample) -> torch.Tensor:
         """Get the image crop from the data."""

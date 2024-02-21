@@ -160,7 +160,7 @@ class BaseDataset(BaseModule, TorchDataset):
     """
 
     data: list
-    """Arbitrary data, which will be converted using :meth:`self.arbitrary_to_ds()`"""
+    """Arbitrary data, which will be converted using :func:`self.arbitrary_to_ds()`"""
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
@@ -188,7 +188,8 @@ class BaseDataset(BaseModule, TorchDataset):
         Returns:
             The DataSample containing all the data of this index.
         """
-        sample: DataSample = self.arbitrary_to_ds(self.data[idx]).to(self.device)
+        # don't call .to(self.device), the DS should be created on the correct device!
+        sample: DataSample = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
         if "image_crop" not in sample:
             self.get_image_crops(sample)
         return sample
@@ -199,8 +200,10 @@ class BaseDataset(BaseModule, TorchDataset):
         raise NotImplementedError
 
     @abstractmethod
-    def arbitrary_to_ds(self, a) -> DataSample:
-        """Given a single arbitrary data sample, convert it to a DataSample object."""
+    def arbitrary_to_ds(self, a: any, idx: int) -> DataSample:
+        """Given a single arbitrary data sample, convert it to a DataSample object.
+        The index ``i`` is given additionally, though might not be used by other datasets.
+        """
         raise NotImplementedError
 
     def get_image_crops(self, ds: DataSample) -> None:
@@ -210,10 +213,29 @@ class BaseDataset(BaseModule, TorchDataset):
 
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """
+        if "crop_path" in ds:
+            ds.image_crop = load_image(ds.crop_path, dtype=torch.float32, device=self.device)
+            ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
+                device=self.device
+            )
+            return
+
         # check whether precomputed image crops exist
         if "crops_folder" in self.params:
-            ds.image_crop = load_image(ds.crop_path, dtype=torch.float32)
-            ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path])
+            if "crop_path" not in ds:
+                crops_dir: FilePath = self.get_path_in_dataset(self.params.get("crops_folder"))
+                ds.crop_path = tuple(
+                    os.path.join(
+                        crops_dir,
+                        ds["img_path"][i].split("/")[-2],
+                        f"{ds['image_id'][i]}_{str(ds['person_id'][i])}.jpg",
+                    )
+                    for i in range(len(ds))
+                )
+            ds.image_crop = load_image(ds.crop_path, dtype=torch.float32, device=self.device)
+            ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
+                device=self.device
+            )
             return
 
         # no crop folder path given, compute the crops
@@ -240,9 +262,8 @@ class BaseDataset(BaseModule, TorchDataset):
         }
         new_sample = self.transform_crop_resize()(structured_input)
 
-        ds.image_crop = new_sample["image"]
-
-        ds.keypoints_local = new_sample["keypoints"]
+        ds.image_crop = new_sample["image"].to(dtype=torch.float32, device=self.device)
+        ds.keypoints_local = new_sample["keypoints"].to(dtype=torch.float32, device=self.device)
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:

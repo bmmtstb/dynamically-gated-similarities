@@ -47,7 +47,10 @@ with warnings.catch_warnings():
 # Do not allow import of 'PoseTrack21' base dataset
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
 
-pt21_json_validations: Validations = {"json_path": [("instance", FilePath)]}
+pt21_json_validations: Validations = {
+    "json_path": [("instance", FilePath)],
+    "crops_folder": [("instance", FilePath)],
+}
 
 
 def validate_pt21_json(json: dict) -> None:
@@ -479,20 +482,38 @@ class PoseTrack21JSON(BaseDataset):
                 )
             self.img_shape: ImgShape = img_sizes.pop()
 
-        self.len = len(json["annotations"])
-        self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
+        # precomputed image crops in a specific folder
+        crops_dir: FilePath = self.get_path_in_dataset(self.params.get("crops_folder"))
 
         # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
         map_pid_to_cid: dict[int, int] = (
             {int(i): int(j) for i, j in read_json(self.params["id_map"]).items()}
             if "id_map" in self.params and self.params["id_map"] is not None
-            else {
-                int(pid): int(i) for i, pid in enumerate(sorted(set(anno["person_id"] for anno in json["annotations"])))
-            }
+            else {int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in json["annotations"])))}
         )
-        # add class ID by mapping pIDs
-        for anno in self.data:
-            anno["class_id"]: int = map_pid_to_cid[int(anno["person_id"])]
+        # save the image-, person-, and class-ids for later use as torch tensors
+        self.img_ids: torch.Tensor = torch.tensor(
+            [int(a["image_id"]) for a in json["annotations"]], dtype=torch.long, device=self.device
+        )
+        self.pids: torch.Tensor = torch.tensor(
+            [int(a["person_id"]) for a in json["annotations"]], dtype=torch.long, device=self.device
+        )
+        self.cids: torch.Tensor = torch.tensor(
+            [map_pid_to_cid[int(a["person_id"])] for a in json["annotations"]], dtype=torch.long, device=self.device
+        )
+
+        for anno in json["annotations"]:
+            # add image and crop filepaths
+            anno["img_path"] = self.map_img_id_path[anno["image_id"]]
+            anno["crop_path"] = os.path.join(
+                crops_dir,
+                anno["img_path"].split("/")[-2],  # dataset name
+                f"{anno['image_id']}_{str(anno['person_id'])}.jpg",
+            )
+
+        # as np.ndarray to not store large python objects
+        self.len = len(json["annotations"])
+        self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
 
     def __len__(self) -> int:
         return self.len
@@ -513,23 +534,19 @@ class PoseTrack21JSON(BaseDataset):
         def stack_key(key: str) -> torch.Tensor:
             return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
 
-        keypoints, visibility = (
-            torch.stack(
-                [
-                    (
-                        torch.tensor(self.data[i]["keypoints"]).reshape((17, 3))
-                        if len(self.data[i]["keypoints"])
-                        else torch.zeros((17, 3))
-                    )  # if there are no values present, use zeros
-                    for i in indices
-                ]
-            )
-            .to(device=self.device, dtype=torch.float32)
-            .split([2, 1], dim=-1)
-        )
+        keypoints, _visibility = torch.stack(
+            [
+                (
+                    torch.tensor(self.data[i]["keypoints"], device=self.device, dtype=torch.float32).reshape((17, 3))
+                    if len(self.data[i]["keypoints"])
+                    else torch.zeros((17, 3), device=self.device, dtype=torch.float32)
+                )  # if there are no values present, use zeros
+                for i in indices
+            ]
+        ).split(split_size=[2, 1], dim=-1)
         ds = DataSample(
             validate=False,  # This is given PT21 data, no need to validate...
-            filepath=tuple(self.map_img_id_path[self.data[i]["image_id"]] for i in indices),
+            filepath=tuple(self.data[i]["img_path"] for i in indices),
             bbox=tv_tensors.BoundingBoxes(
                 stack_key("bbox").float(),
                 format="XYWH",
@@ -538,31 +555,21 @@ class PoseTrack21JSON(BaseDataset):
                 device=self.device,
             ),
             keypoints=keypoints,
-            person_id=stack_key("class_id").int(),
+            person_id=self.pids[indices],
+            # custom values
+            class_id=self.cids[indices],
+            crop_path=tuple(self.data[i]["crop_path"] for i in indices),
             # additional values which are not required
-            joint_weight=visibility,
-            image_id=stack_key("image_id").int(),
+            # joint_weight=visibility,
+            image_id=self.img_ids[indices],
         )
-        # add the paths to the image crops if the directory containing the crops is given
-        if "crops_folder" in self.params:
-            dir_path = self.get_path_in_dataset(self.params.get("crops_folder"))
-
-            ds.crop_path = tuple(
-                os.path.join(
-                    dir_path,
-                    self.map_img_id_path[self.data[i]["image_id"]].split("/")[-2],  # dataset name
-                    f"{self.data[i]['image_id']}_{str(self.data[i]['person_id'])}.jpg",
-                )
-                for i in indices
-            )
-
         # make sure to get the image crops for this batch
         self.get_image_crops(ds)
         return ds
 
-    def arbitrary_to_ds(self, a: dict) -> DataSample:
+    def arbitrary_to_ds(self, a: dict, idx: int) -> DataSample:
         """Convert raw PoseTrack21 annotations to DataSample object."""
-        keypoints, visibility = (
+        keypoints, _visibility = (
             (
                 torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32)
                 if len(a["keypoints"])
@@ -573,7 +580,8 @@ class PoseTrack21JSON(BaseDataset):
         )
         ds = DataSample(
             validate=False,  # This is given PT21 data, no need to validate...
-            filepath=tuple([self.map_img_id_path[a["image_id"]]]),
+            device=self.device,
+            filepath=(a["img_path"],),
             bbox=tv_tensors.BoundingBoxes(
                 torch.tensor(a["bbox"]).float(),
                 format="XYWH",
@@ -582,23 +590,16 @@ class PoseTrack21JSON(BaseDataset):
                 device=self.device,
             ),
             keypoints=keypoints,
-            person_id=torch.tensor(a["class_id"] if "class_id" in a else -1, device=self.device, dtype=torch.long),
+            person_id=self.pids[idx],
+            # custom values
+            class_id=self.cids[idx],
+            crop_path=(a["crop_path"],),
             # additional values which are not required
-            joint_weight=visibility,
-            image_id=torch.tensor(a["image_id"], device=self.device, dtype=torch.long),
+            # joint_weight=visibility,
+            image_id=self.img_ids[idx],
         )
-
-        # add the paths to the image crops if the directory containing the crops is given
-        if "crops_folder" in self.params:
-            dir_path = self.get_path_in_dataset(self.params.get("crops_folder"))
-
-            ds.crop_path = (
-                os.path.join(
-                    dir_path,
-                    self.map_img_id_path[a["image_id"]].split("/")[-2],  # dataset name
-                    f"{a['image_id']}_{str(a['person_id'])}.jpg",
-                ),  # make sure this is a tuple
-            )
+        # make sure to get the image crop for this sample
+        self.get_image_crops(ds)
         return ds
 
 
