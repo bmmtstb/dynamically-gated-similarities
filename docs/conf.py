@@ -48,13 +48,13 @@ autosummary_generate = True  # Turn on sphinx.ext.autosummary
 # linkcheck
 linkcheck_ignore = [
     ".*bmmtstb\.github\.io\/dynamically\-gated\-similarities\/.*",  # Server is down while running docs workflow
+    "*stackoverflow.com/questions/8391411/how-to-block-calls-to-print/*",  # fixme: why doesn't this link work?
 ]
 linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
     ".*github\.io.*",
     ".*github\.com.*",
     ".*stackoverflow\.com.*",
 ]
-user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25.0"
 # custom shortcuts
 rst_prolog = """
 .. |PT21| replace:: ``PoseTrack21``
