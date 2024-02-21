@@ -197,7 +197,7 @@ def resume_from_checkpoint(
     fpath: FilePath,
     model: Union[TorchMod, BaseMod],
     optimizer: optim.Optimizer = None,
-    schedulers: list[optim.lr_scheduler.LRScheduler] = None,
+    scheduler: optim.lr_scheduler.LRScheduler = None,
     verbose: bool = False,
 ) -> int:
     """Resumes training from a checkpoint.
@@ -209,9 +209,8 @@ def resume_from_checkpoint(
         fpath: The path to checkpoint. Can be a local or absolute path.
         model: The model that is currently trained.
         optimizer: An Optimizer.
-        schedulers: List containing one or multiple LRSchedulers.
-        verbose:
-
+        scheduler: A single LRScheduler.
+        verbose: Whether to print additional debug information.
 
     Returns:
         int: start_epoch.
@@ -239,11 +238,10 @@ def resume_from_checkpoint(
         optimizer.load_state_dict(checkpoint["optimizer"])
         if verbose:
             print("Loaded optimizer")
-    if schedulers is not None and "scheduler" in checkpoint.keys():
-        for name, scheduler in checkpoint["schedulers"].items():
-            schedulers[name].load_state_dict(scheduler)
+    if scheduler is not None and "scheduler" in checkpoint.keys():
+        scheduler.load_state_dict(checkpoint["scheduler"])
         if verbose:
-            print("Loaded schedulers")
+            print("Loaded scheduler")
     return checkpoint["epoch"]
 
 

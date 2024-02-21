@@ -148,7 +148,7 @@ class EngineModule(BaseModule):
     """The torch DataLoader containing the training data."""
 
     lr_sched: optim.lr_scheduler.LRScheduler
-    """The learning-rate sheduler(s) can be changed by setting ``engine.lr_scheduler = [..., ...]``."""
+    """The learning-rate scheduler can be changed by setting ``engine.lr_scheduler = ...``."""
 
     def __init__(
         self,
@@ -297,11 +297,10 @@ class EngineModule(BaseModule):
                 batch_t.add(time_batch_start)
                 epoch_loss += loss.item()
                 self.writer.add_scalar("Train/loss", loss.item(), global_step=curr_iter)
+                self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/batch_time", batch_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/indiv_time", batch_t[-1] / len(data), global_step=curr_iter)
-                self.writer.add_scalar("Train/data_time", data_t[-1], global_step=curr_iter)
                 self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
-                self.writer.flush()
                 # ############ #
                 # END OF BATCH #
                 # ############ #
@@ -315,9 +314,8 @@ class EngineModule(BaseModule):
             self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2}")
             self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
 
-            # handle updating the learning rate schedulers(s)
-            for sched in self.lr_sched:
-                sched.step()
+            # handle updating the learning rate scheduler
+            self.lr_sched.step()
 
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
@@ -350,7 +348,7 @@ class EngineModule(BaseModule):
                 "epoch": epoch,
                 "metrics": metrics,
                 "optimizer": self.optimizer.state_dict(),
-                "lr_scheduler": {i: sched.state_dict() for i, sched in enumerate(self.lr_sched)},
+                "lr_scheduler": self.lr_sched.state_dict(),
             },
             save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name.replace(' ', '_')}_{curr_lr:.10}/"),
             verbose=self.logger.isEnabledFor(logging.INFO),
@@ -362,7 +360,7 @@ class EngineModule(BaseModule):
             fpath=path,
             model=self.model,
             optimizer=self.optimizer if hasattr(self, "optimizer") else None,
-            schedulers=self.lr_sched if hasattr(self, "lr_sched") else None,
+            scheduler=self.lr_sched if hasattr(self, "lr_sched") else None,
             verbose=self.logger.isEnabledFor(logging.DEBUG),
         )
         self.curr_epoch = self.start_epoch

@@ -121,7 +121,6 @@ class VisualSimilarityEngine(EngineModule):
 
     def get_data(self, ds: DataSample) -> torch.Tensor:
         """Get the image crop from the data."""
-        # return get_ds_data_getter(["image_crop"])(ds)[0]
         return ds["image_crop"]
 
     @enable_keyboard_interrupt
@@ -129,10 +128,6 @@ class VisualSimilarityEngine(EngineModule):
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
         _, pred_id_probs = self.model(self.get_data(data))
         target_ids = self.get_target(data)
-
-        assert all(
-            tid <= self.nof_classes for tid in target_ids
-        ), f"{set(tid.item() for tid in target_ids if tid > self.nof_classes)}"
 
         loss = self.loss(pred_id_probs, target_ids)
 
@@ -142,8 +137,8 @@ class VisualSimilarityEngine(EngineModule):
 
         return loss
 
-    @torch.no_grad()
     @enable_keyboard_interrupt
+    @torch.no_grad()
     def _extract_data(
         self, dl: TorchDataLoader, model, desc: str, write_embeds: bool = False
     ) -> tuple[torch.Tensor, torch.Tensor]:
