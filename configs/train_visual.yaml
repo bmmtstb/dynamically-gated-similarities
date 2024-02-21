@@ -27,7 +27,7 @@ train:
 test:
     metric: "EuclideanSquare"  # used to compute the distance matrix between target and predicted embeddings
     topk_cmc: [1,2,3,5,10,20,50]
-    write_embeds: [True, False]
+    write_embeds: [False, False]
 
 # #### #
 # DATA #
@@ -38,7 +38,7 @@ dataloader_train:
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/train.json"
     crops_folder: "./crops/train/"
-    batch_size: 128
+    batch_size: 512
     id_map: "./weights/pt21_id_map.json"
     force_img_reshape: true
 
