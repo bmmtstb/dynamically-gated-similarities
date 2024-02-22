@@ -132,8 +132,8 @@ class VisualSimilarityEngine(EngineModule):
         loss = self.loss(pred_id_probs, target_ids)
 
         topk_accuracies = metric.compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
-        for k, accu in topk_accuracies.items():
-            self.writer.add_scalar(f"Train/top-{k} acc", accu, global_step=_curr_iter)
+
+        self.writer.add_scalars("Train/acc", tag_scalar_dict=topk_accuracies, global_step=_curr_iter)
 
         return loss
 
@@ -186,7 +186,7 @@ class VisualSimilarityEngine(EngineModule):
             batch_t.add(time_batch_start)
             self.writer.add_scalars(
                 main_tag="Test/time",
-                tag_scalar_dict={f"batch_{desc}": batch_t[-1], f"indiv_{batch}": batch_t[-1] / len(batch)},
+                tag_scalar_dict={f"batch_{desc}": batch_t[-1], f"indiv_{desc}": batch_t[-1] / len(batch)},
                 global_step=curr_iter,
             )
 
