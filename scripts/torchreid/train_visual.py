@@ -24,7 +24,6 @@ Notes:
 """
 
 from datetime import date
-from typing import Union
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -63,7 +62,6 @@ MODEL_NAME = "osnet_ain_x1_0"
 BATCH_TRAIN = 128
 HEIGHT = 256
 WIDTH = 256
-TRANSFORMS: Union[str, list[str]] = "random_flip"
 MARKET1501_500K: bool = False
 USE_GPU: bool = True
 DIST_METRIC: str = "euclidean"  # "cosine" or "euclidean"
@@ -71,7 +69,7 @@ EPOCHS: int = 5
 LOSS: str = "softmax"  # "softmax" or "triplet"
 PRE_TRAINED: bool = True
 TEST_ONLY: bool = False
-NUM_CLASSES: int = 7529
+NUM_CLASSES: int = 5474
 
 if __name__ == "__main__":
     # noinspection PyTypeChecker
@@ -102,7 +100,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=LOG_DIR, filename_suffix=f"{MODEL_NAME}")
 
     o = build_optimizer(model=m)
-    s = build_lr_scheduler(optimizer=o)
+    s = build_lr_scheduler(optimizer=o, max_epoch=2)
     engine = ImageSoftmaxEngine(datamanager=data_manager, model=m, optimizer=o, scheduler=s, use_gpu=USE_GPU)
     # set a custom writer in engine
     engine.writer = writer
