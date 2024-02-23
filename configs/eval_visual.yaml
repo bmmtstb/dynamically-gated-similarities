@@ -30,7 +30,7 @@ dataloader_test:
     json_path: "./posetrack_person_search/query.json"
     force_img_reshape: true
     crops_folder: "./crops/query/"
-    batch_size: 256
+    batch_size: 1024
 
 # ####### #
 # MODULES #

@@ -14,7 +14,7 @@ train:
     optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0003
-        weight_decay: 0.0001
+        weight_decay: 0.0005
         betas: [0.9, 0.99]
     nof_classes: 5474
     topk_acc: [1, 5]
@@ -38,7 +38,7 @@ dataloader_train:
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/train.json"
     crops_folder: "./crops/train/"
-    batch_size: 512
+    batch_size: 256
     id_map: "./weights/pt21_id_map.json"
     force_img_reshape: true
 
