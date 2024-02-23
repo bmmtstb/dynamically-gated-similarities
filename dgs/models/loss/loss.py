@@ -20,5 +20,5 @@ class CrossEntropyLoss(Loss):
         """Given predictions of shape ``[B x nof_classes]`` and targets of shape ``[B]``
         compute and return the CrossEntropyLoss.
         """
-        logits = self.log_softmax(inputs)
-        return self.cross_entropy_loss(logits, targets)
+        # inputs = self.log_softmax(inputs)
+        return self.cross_entropy_loss(inputs, targets)
