@@ -23,10 +23,10 @@ if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}")
 
     ds_start_time = time.time()
-    # test / gallery
-    test_dl = module_loader(config=config, module="dataloader_gallery")
     # validation / query
     val_dl = module_loader(config=config, module="dataloader_query")
+    # test / gallery
+    test_dl = module_loader(config=config, module="dataloader_gallery")
     # train
     train_dl = module_loader(config=config, module="dataloader_train")
 

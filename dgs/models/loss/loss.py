@@ -13,7 +13,7 @@ class CrossEntropyLoss(Loss):
 
     def __init__(self, **kwargs):
         super().__init__()
-        self.log_softmax = nn.LogSoftmax(dim=1)
+        # self.log_softmax = nn.LogSoftmax(dim=1)
         self.cross_entropy_loss = nn.CrossEntropyLoss(**kwargs)
 
     def forward(self, inputs: torch.FloatTensor, targets: torch.FloatTensor) -> torch.FloatTensor:

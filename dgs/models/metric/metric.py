@@ -120,7 +120,7 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[
 
     batch_size = target.size(0)
 
-    _, ids = prediction.topk(max(topk))  # [B x max(topk)]
+    _, ids = prediction.topk(k=max(topk))  # [B x max(topk)]
 
     ids = ids.long()
     target = target.long()

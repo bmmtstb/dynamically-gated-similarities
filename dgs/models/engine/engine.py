@@ -137,6 +137,7 @@ class EngineModule(BaseModule):
     metric: nn.Module
     optimizer: optim.Optimizer
     model: Union[nn.Module, OptimizedModule]
+    module: nn.Module
     writer: SummaryWriter
 
     curr_epoch: int = 0
@@ -166,6 +167,7 @@ class EngineModule(BaseModule):
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Set up general attributes
+        self.module = model
         self.model = get_model_from_module(model)
 
         # Logging

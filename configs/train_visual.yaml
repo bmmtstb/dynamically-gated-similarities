@@ -9,7 +9,7 @@ log_dir: "./results/own/visual_sim/"
 
 
 train:
-    epochs: 10
+    epochs: 5
     loss: "CrossEntropyLoss"
     optimizer: "Adam"
     optimizer_kwargs:

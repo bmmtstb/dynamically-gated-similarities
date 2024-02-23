@@ -123,22 +123,25 @@ class VisualSimilarityEngine(EngineModule):
         return ds["image_crop"]
 
     @enable_keyboard_interrupt
-    @torch.enable_grad()
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
         target_ids = self.get_target(data)
 
-        _, pred_id_probs = self.model(self.get_data(data).requires_grad_())
+        crops = self.get_data(data)
+        _, pred_id_probs = self.module(crops.requires_grad_())
 
         loss = self.loss(pred_id_probs, target_ids)
 
         topk_accuracies = metric.compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
-
-        self.writer.add_scalars("Train/acc", tag_scalar_dict=topk_accuracies, global_step=_curr_iter)
+        self.writer.add_scalars(
+            main_tag="Train/acc",
+            tag_scalar_dict={str(k): v for k, v in topk_accuracies.items()},
+            global_step=_curr_iter,
+        )
 
         return loss
 
-    @enable_keyboard_interrupt
     @torch.no_grad()
+    @enable_keyboard_interrupt
     def _extract_data(
         self, dl: TorchDataLoader, model, desc: str, write_embeds: bool = False
     ) -> tuple[torch.Tensor, torch.Tensor]:
