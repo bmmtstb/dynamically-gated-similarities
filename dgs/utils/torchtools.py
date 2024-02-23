@@ -457,30 +457,31 @@ def init_model_params(module: TorchMod) -> None:
     """Given a torch module, initialize the model parameters using some default weights."""
     model: TorchMod = _get_model_from_module(module)
 
-    for m in model.modules():
-        if isinstance(m, nn.Conv2d):
-            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+    for instance in model.modules():
+        init_instance_params(instance=instance)
 
-        elif isinstance(m, nn.BatchNorm2d):
-            nn.init.constant_(m.weight, 1)
-            nn.init.constant_(m.bias, 0)
 
-        elif isinstance(m, nn.BatchNorm1d):
-            nn.init.constant_(m.weight, 1)
-            nn.init.constant_(m.bias, 0)
-
-        elif isinstance(m, nn.InstanceNorm2d):
-            nn.init.constant_(m.weight, 1)
-            nn.init.constant_(m.bias, 0)
-
-        elif isinstance(m, nn.Linear):
-            nn.init.normal_(m.weight, 0, 0.01)
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.ConvTranspose2d):
-            nn.init.normal_(m.weight, std=0.001)
-            for name, _ in m.named_parameters():
-                if name in ["bias"]:
-                    nn.init.constant_(m.bias, 0)
+def init_instance_params(instance: nn.Module) -> None:
+    """Given a module instance, initialize a single instance."""
+    if isinstance(instance, nn.Conv2d):
+        nn.init.kaiming_normal_(instance.weight, mode="fan_out", nonlinearity="relu")
+        if instance.bias is not None:
+            nn.init.constant_(instance.bias, 0)
+    elif isinstance(instance, nn.BatchNorm2d):
+        nn.init.constant_(instance.weight, 1)
+        nn.init.constant_(instance.bias, 0)
+    elif isinstance(instance, nn.BatchNorm1d):
+        nn.init.constant_(instance.weight, 1)
+        nn.init.constant_(instance.bias, 0)
+    elif isinstance(instance, nn.InstanceNorm2d):
+        nn.init.constant_(instance.weight, 1)
+        nn.init.constant_(instance.bias, 0)
+    elif isinstance(instance, nn.Linear):
+        nn.init.normal_(instance.weight, 0, 0.01)
+        if instance.bias is not None:
+            nn.init.constant_(instance.bias, 0)
+    elif isinstance(instance, nn.ConvTranspose2d):
+        nn.init.normal_(instance.weight, std=0.001)
+        for name, _ in instance.named_parameters():
+            if name in ["bias"]:
+                nn.init.constant_(instance.bias, 0)
