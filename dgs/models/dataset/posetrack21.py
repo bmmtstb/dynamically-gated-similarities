@@ -12,7 +12,6 @@ PoseTrack21 format:
 
 import glob
 import os
-import re
 import shutil
 import warnings
 from typing import Union
@@ -447,7 +446,6 @@ class PoseTrack21JSON(BaseDataset):
     force_img_reshape (bool, optional):
         Whether to accept that images in one folder might have different shapes.
         Default False.
-
     """
 
     def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
@@ -652,21 +650,25 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
         self.instance: str = instance
 
         # annotation directory
-        self.annotation_dir: FilePath = os.path.join(self.dataset_dir, "posetrack_data")
+        self.anno_dir: FilePath = os.path.join(self.dataset_dir, "./posetrack_person_search/")
 
-        # image directory
+        # image (crop) directory
         train_dir: FilePath = os.path.join(self.dataset_dir, "crops/train")
         query_dir: FilePath = os.path.join(self.dataset_dir, "crops/query")
-        gallery_dir: FilePath = os.path.join(self.dataset_dir, "crops/val")
+        gallery_dir: FilePath = os.path.join(self.dataset_dir, "crops/gallery")
+
+        train: list[tuple]
+        query: list[tuple]
+        gallery: list[tuple]
 
         if self.instance == "images":
-            train: list[tuple] = self.process_dir(train_dir, path_glob="*/*.jpg", relabel=True)
-            query: list[tuple] = self.process_dir(query_dir, path_glob="*/*.jpg", cam_id=1)
-            gallery: list[tuple] = self.process_dir(gallery_dir, path_glob="*/*.jpg")
+            train = self.process_file("train.json", train_dir, relabel=True)
+            query = self.process_file("query.json", query_dir, cam_id=1)
+            gallery = self.process_file("val.json", gallery_dir)
         elif self.instance == "key_points":
-            train: list[tuple] = self.process_dir(train_dir, path_glob="*/*.pt", relabel=True)
-            query: list[tuple] = self.process_dir(query_dir, path_glob="*/*.pt", cam_id=1)
-            gallery: list[tuple] = self.process_dir(gallery_dir, path_glob="*/*.pt")
+            train = self.process_file("train.json", train_dir, relabel=True, is_kp=True)
+            query = self.process_file("query.json", query_dir, cam_id=1, is_kp=True)
+            gallery = self.process_file("val.json", gallery_dir, is_kp=True)
         else:
             raise NotImplementedError(f"instance {self.instance} is not valid.")
 
@@ -681,16 +683,16 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
             return TorchreidPoseDataset.__getitem__(self, index)
         raise NotImplementedError(f"instance {self.instance} is not valid.")
 
-    def process_dir(
-        self, dir_path: FilePath, path_glob: str, relabel: bool = False, cam_id: int = 0
+    def process_file(
+        self, filepath: FilePath, crops_dir: FilePath, relabel: bool = False, cam_id: int = 0, is_kp: bool = False
     ) -> list[tuple[str, int, int, int]]:  # pragma: no cover
-        """
-        Process all the data of one directory.
+        """Process all the data in a single directory.
 
         Args:
-            dir_path (FilePath): The absolute path to the directory containing images.
-                In this case will be something like '.../data/PoseTrack21/crops/train'.
-            path_glob (str): The glob pattern to find the files within the given ``dir_path``.
+            filepath (FilePath): The absolute path to the json file containing the annotations and image paths.
+                In this case will be something like '.../data/PoseTrack21/posetrack_person_search/train.json'.
+            crops_dir (FilePath): The absolute path to the directory containing the image crops.
+                In this case will be something like '.../data/PoseTrack21/crops/train/'.
             relabel (bool, optional): Whether to create labels from to pids,
                 to reduce the number of parameters in the model. Default False.
             cam_id (int, optional): The id of the camera to use.
@@ -698,22 +700,21 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
                 see `this issue <https://github.com/KaiyangZhou/deep-person-reid/issues/442#issuecomment-868757430>`_
                 for more details.
                 Default 0.
+            is_kp (bool, optional): Whether the files that should be loaded are key point or image files.
+                Default False, means image files ('.jpg').
 
         Returns:
             data (list[tuple[str, int, int, int]]): A list of tuples containing the absolute image path,
                 person id (label), camera id, and dataset id.
                 The dataset id is the video_id with a leading 1 for mpii and 2 for bonn, to remove duplicates.
-
-        Raises:
-            OSError: If there is no data.
         """
-        img_paths: list[str] = glob.glob(os.path.join(dir_path, path_glob))
-        pattern = re.compile(r"(\d+)_(\d+)")
+        json: dict[str, list[dict[str, any]]] = read_json(os.path.join(self.anno_dir, filepath))
 
-        if len(img_paths) == 0:
-            raise OSError(f"Could not find any instances using glob: {path_glob}.")
+        map_img_id_path: dict[int, FilePath] = {
+            img["id"]: to_abspath(os.path.join(self.dataset_dir, str(img["file_name"]))) for img in json["images"]
+        }
 
-        pid_container: set = set(int(pattern.search(fp).groups()[1]) for fp in img_paths)
+        pid_container: set = set(int(anno["person_id"]) for anno in json["annotations"])
         pid_container -= set(self._junk_pids)  # junk images are just ignored
         pid2label: dict[int, int] = {pid: label for label, pid in enumerate(pid_container)}
 
@@ -724,21 +725,21 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
         # camid: id of the camera = 0 for all train and gallery images; 1 for all in query
         # dsetid: dataset id = video_id with a leading 1 for mpii and 2 for bonn
 
-        for img_path in img_paths:
-            _, pid = map(int, pattern.search(img_path).groups())
+        for anno in json["annotations"]:
+            pid = anno["person_id"]
             if pid in self._junk_pids:
                 continue  # junk images are just ignored
+            ds_name = map_img_id_path[anno["image_id"]].split("/")[-2]
+            crop_path = os.path.join(crops_dir, ds_name, f"{anno['image_id']}_{str(pid)}.{'pt' if is_kp else 'jpg'}")
             if relabel:
                 pid = pid2label[pid]
-
             # create dsetid as int({"1" if ds_type == "mpii" else "2"}{video_id})
-            if "_" not in (ds_dir := img_path.split("/")[-2]):
+            if "_" not in ds_name:
                 dsetid: int = 0
             else:
-                ds_id, ds_type, *_ = ds_dir.split("_")
+                ds_id, ds_type, *_ = ds_name.split("_")
                 dsetid: int = int(f"{'1' if ds_type == 'mpii' else '2'}{str(ds_id)}")
-
-            data.append((img_path, pid, cam_id, dsetid))
+            data.append((crop_path, pid, cam_id, dsetid))
         return data
 
     # I want download_dataset() to be callable using ``PoseTrack21Torchreid.download_dataset()``
