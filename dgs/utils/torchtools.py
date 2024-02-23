@@ -23,7 +23,7 @@ BaseMod = TypeVar("BaseMod", bound=BaseModule)
 TorchMod = TypeVar("TorchMod", bound=TorchModule)
 
 
-def _get_model_from_module(module: Union[TorchMod, BaseMod]) -> TorchMod:
+def get_model_from_module(module: Union[TorchMod, BaseMod]) -> TorchMod:
     """Given either a torch module or an instance of BaseModule, return a torch module.
     Within a BaseModule, this function searches for a 'module' attribute.
 
@@ -222,7 +222,7 @@ def resume_from_checkpoint(
         >>>     fpath, model, optimizer, scheduler
         >>> )
     """
-    model = _get_model_from_module(module=model)
+    model = get_model_from_module(module=model)
 
     if verbose:
         print(f"Loading checkpoint from '{fpath}'")
@@ -253,7 +253,7 @@ def set_bn_to_eval(module: Union[TorchMod, BaseMod]) -> None:
     """
     # 1. no update for running mean and var
     # 2. scale and shift parameters are still trainable
-    module = _get_model_from_module(module=module)
+    module = get_model_from_module(module=module)
     classname = module.__class__.__name__
     if classname.find("BatchNorm") != -1:
         module.eval()
@@ -284,7 +284,7 @@ def open_specified_layers(
     Raises:
         ValueError if a value in open_layers is not an attribute of the model.
     """
-    model = _get_model_from_module(module=model)
+    model = get_model_from_module(module=model)
 
     if isinstance(open_layers, str):
         open_layers = [open_layers]
@@ -337,7 +337,7 @@ def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
         if hasattr(m, "train"):
             m.train()
 
-    model: TorchMod = _get_model_from_module(module=model)
+    model: TorchMod = get_model_from_module(module=model)
 
     model.train()
     model.requires_grad_()
@@ -358,7 +358,7 @@ def close_specified_layers(
     Raises:
         ValueError if a value in close_layers is not an attribute of the model.
     """
-    model = _get_model_from_module(module=model)
+    model = get_model_from_module(module=model)
 
     if isinstance(close_layers, str):
         close_layers = [close_layers]
@@ -407,7 +407,7 @@ def close_all_layers(model: Union[TorchMod, BaseMod]) -> None:
         if hasattr(m, "eval"):
             m.eval()
 
-    model: TorchMod = _get_model_from_module(module=model)
+    model: TorchMod = get_model_from_module(module=model)
 
     model.eval()
     model.requires_grad_(False)
@@ -455,7 +455,7 @@ def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None 
 
 def init_model_params(module: TorchMod) -> None:
     """Given a torch module, initialize the model parameters using some default weights."""
-    model: TorchMod = _get_model_from_module(module)
+    model: TorchMod = get_model_from_module(module)
 
     for instance in model.modules():
         init_instance_params(instance=instance)

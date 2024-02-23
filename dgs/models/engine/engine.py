@@ -27,7 +27,7 @@ from dgs.utils.config import get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
-from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
+from dgs.utils.torchtools import get_model_from_module, resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
 from dgs.utils.visualization import torch_show_image
 
@@ -166,7 +166,7 @@ class EngineModule(BaseModule):
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Set up general attributes
-        self.model = model
+        self.model = get_model_from_module(model)
 
         # Logging
         self.writer = SummaryWriter(
