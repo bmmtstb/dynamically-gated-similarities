@@ -114,4 +114,5 @@ if __name__ == "__main__":
             save_dir=LOG_DIR,
             dist_metric=DIST_METRIC,
             max_epoch=EPOCHS,
+            eval_freq=1,
         )
