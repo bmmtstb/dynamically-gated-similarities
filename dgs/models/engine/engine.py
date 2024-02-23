@@ -424,7 +424,11 @@ class EngineModule(BaseModule):
                 self.writer.add_embedding(embeds, metadata=ids, tag=f"{prepend}/{key}", global_step=self.curr_epoch)
             # multiple values as dict can be written using add_scalars
             elif isinstance(value, dict):
-                self.writer.add_scalars(f"{prepend}/{key}", value, global_step=self.curr_epoch)
+                self.writer.add_scalars(
+                    main_tag=f"{prepend}/{key}",
+                    tag_scalar_dict={str(k): v for k, v in value.items()},
+                    global_step=self.curr_epoch,
+                )
             # iterable of scalars
             elif isinstance(value, (list, dict, set)):
                 for i, sub_value in enumerate(value):
@@ -446,7 +450,7 @@ class EngineModule(BaseModule):
             elif key.lower() == "cmc":
                 self.logger.info("CMC curve:")
                 for r, cmc_i in value.items():
-                    self.logger.info(f"Rank-{r}: {cmc_i:.1%}")
+                    self.logger.info(f"Rank-{r}: {cmc_i:.2%}")
             elif isinstance(value, tv_tensors.Image):
                 show_images = True
                 torch_show_image(value, show=False)
