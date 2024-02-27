@@ -100,7 +100,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=LOG_DIR, filename_suffix=f"{MODEL_NAME}")
 
     o = build_optimizer(model=m)
-    s = build_lr_scheduler(optimizer=o, max_epoch=2)
+    s = build_lr_scheduler(optimizer=o)
     engine = ImageSoftmaxEngine(datamanager=data_manager, model=m, optimizer=o, scheduler=s, use_gpu=USE_GPU)
     # set a custom writer in engine
     engine.writer = writer
@@ -114,5 +114,6 @@ if __name__ == "__main__":
             save_dir=LOG_DIR,
             dist_metric=DIST_METRIC,
             max_epoch=EPOCHS,
+            open_layers=["classifier"],
             eval_freq=1,
         )
