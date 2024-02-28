@@ -101,7 +101,7 @@ class TorchreidSimilarity(SimilarityModule):
         """Initialize torchreid model"""
         m = build_model(
             name=self.params["model_name"],
-            num_classes=self.nof_classes,
+            num_classes=self.params["nof_classes"],
             pretrained=pretrained,
             use_gpu=self.device.type == "cuda",
         )

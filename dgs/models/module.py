@@ -216,8 +216,8 @@ class BaseModule(ABC):
                     continue
 
                 # case name as string or in tuple with additional values
-                if isinstance(validation, str | tuple | type):
-                    if isinstance(validation, str | type):  # no additional data, therefore set data to None
+                if isinstance(validation, (str, tuple, type)):
+                    if isinstance(validation, (str, type)):  # no additional data, therefore set data to None
                         validation_name, data = validation, None
                     else:
                         validation_name, data = validation
@@ -226,14 +226,15 @@ class BaseModule(ABC):
                         continue
                     raise InvalidParameterException(
                         f"In module '{self.__class__.__name__}', parameter '{param_name}' is not valid. "
-                        f"Value is '{value}' and is expected to have validation(s) '{list_of_validations}'."
+                        f"Value is '{value}' and is expected to have validation '{validation_name}' with data '{data}'."
+                        f"Total list of validations: '{list_of_validations}'."
                     )
                 # case custom callable
                 if callable(validation):
                     if validation(value):
                         continue
                     raise InvalidParameterException(
-                        f"In module {self.__class__.__name__}, parameter {param_name} is not valid. "
+                        f"In module {self.__class__.__name__}, parameter '{param_name}' is not valid. "
                         f"Used a custom validation: {inspect.getsource(validation)}"
                     )
 

@@ -5,7 +5,7 @@ Base Tracker API structure of tracking via dynamically gated similarities
 from dgs.models import module_loader
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.similarity.combined import CombineSimilarityModule
+from dgs.models.similarity.combined import CombinedSimilarityModule
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.types import FilePath
@@ -52,7 +52,7 @@ class DGSTracker:
         self.m_pose_reid: EmbeddingGeneratorModule = module_loader(self.cfg, "pose_embedding_generator")
         self.m_pose_siml: SimilarityModule = module_loader(self.cfg, "pose_similarity")
 
-        self.m_alpha: CombineSimilarityModule = module_loader(self.cfg, "combined_similarity")
+        self.m_alpha: CombinedSimilarityModule = module_loader(self.cfg, "combined_similarity")
 
         # datasets and dataloaders
         # test_dataset: BaseDataset = module_loader(self.cfg, "dataset")

@@ -37,8 +37,10 @@ VALIDATIONS: dict[str, Validator] = {
     ),
     # lists and other iterables
     "len": (lambda x, d: hasattr(x, "__len__") and len(x) == d),
-    "shorter": (lambda x, d: hasattr(x, "__len__") and len(x) <= d),
-    "longer": (lambda x, d: hasattr(x, "__len__") and len(x) >= d),
+    "shorter": (lambda x, d: hasattr(x, "__len__") and len(x) < d),
+    "longer": (lambda x, d: hasattr(x, "__len__") and len(x) > d),
+    "shorter eq": (lambda x, d: hasattr(x, "__len__") and len(x) <= d),
+    "longer eq": (lambda x, d: hasattr(x, "__len__") and len(x) >= d),
     "in": (lambda x, d: hasattr(d, "__contains__") and x in d),
     "not in": (lambda x, d: hasattr(x, "__contains__") and x not in d),
     "contains": (lambda x, d: hasattr(x, "__contains__") and d in x),

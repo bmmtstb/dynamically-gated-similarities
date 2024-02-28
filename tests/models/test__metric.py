@@ -6,21 +6,18 @@ from unittest.mock import patch
 import torch
 from torch import nn
 
-from dgs.models.metric import (
-    CosineDistanceMetric,
-    CosineSimilarityMetric,
-    EuclideanDistanceMetric,
-    EuclideanSquareMetric,
-    get_metric,
-    METRICS,
-    register_metric,
-    TorchreidCosineDistance,
-    TorchreidEuclideanSquaredDistance,
-)
+from dgs.models.metric import get_metric, METRICS, register_metric
 from dgs.models.metric.metric import (
     _validate_metric_inputs,
     compute_accuracy,
     compute_cmc,
+    CosineDistanceMetric,
+    CosineSimilarityMetric,
+    EuclideanDistanceMetric,
+    EuclideanSquareMetric,
+    PairwiseDistanceMetric,
+    TorchreidCosineDistance,
+    TorchreidEuclideanSquaredDistance,
 )
 from helper import test_multiple_devices
 
@@ -43,6 +40,7 @@ class TestMetrics(unittest.TestCase):
             ("CosineSimilarity", CosineSimilarityMetric),
             ("TorchPairwiseDistance", nn.PairwiseDistance),
             (nn.PairwiseDistance, nn.PairwiseDistance),
+            ("PairwiseDistanceMetric", PairwiseDistanceMetric),
         ]:
             with self.subTest(msg=f"instance: {instance}, result: {result}"):
                 self.assertEqual(get_metric(instance), result)

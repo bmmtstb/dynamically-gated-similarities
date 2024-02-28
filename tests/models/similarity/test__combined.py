@@ -3,8 +3,11 @@ import unittest
 import numpy as np
 import torch
 
-from dgs.models.similarity import DynamicallyGatedSimilarities, StaticAlphaWeightingModule
+from dgs.models import BaseModule
+from dgs.models.similarity import DynamicallyGatedSimilarities, get_dgs_module, StaticAlphaWeightingModule
+from dgs.models.similarity.combined import CombinedSimilarityModule
 from dgs.utils.config import fill_in_defaults
+from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Device
 from helper import get_test_config, test_multiple_devices
 
@@ -12,8 +15,29 @@ from helper import get_test_config, test_multiple_devices
 class TestDGS(unittest.TestCase):
     default_cfg = get_test_config()
 
+    def test_dgs_modules_class(self):
+        for name, mod_class, kwargs in [
+            ("DGS", DynamicallyGatedSimilarities, {}),
+            ("static_alpha", StaticAlphaWeightingModule, {"alpha": [0.4, 0.3, 0.3]}),
+        ]:
+            with self.subTest(msg="name: {}, module: {}, kwargs: {}".format(name, mod_class, kwargs)):
+                module = get_dgs_module(name)
+                self.assertEqual(module, mod_class)
+
+                cfg = fill_in_defaults({"dgs": kwargs}, default_cfg=self.default_cfg)
+                module = module(config=cfg, path=["dgs"])
+
+                self.assertTrue(isinstance(module, CombinedSimilarityModule))
+                self.assertTrue(isinstance(module, BaseModule))
+
+        with self.assertRaises(InvalidParameterException) as e:
+            _ = get_dgs_module("dummy")
+        self.assertTrue("Unknown combined similarity module with name" in str(e.exception), msg=e.exception)
+
     def test_dgs_init(self):
-        _ = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])
+        m = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])
+        self.assertTrue(isinstance(m, CombinedSimilarityModule))
+        self.assertTrue(isinstance(m, BaseModule))
 
     @test_multiple_devices
     def test_dgs_forward(self, device: Device):
@@ -93,28 +117,49 @@ class TestConstantAlpha(unittest.TestCase):
     default_cfg = get_test_config()
 
     def test_constant_alpha_init(self):
-        for alpha in [[1], [0.5, 0.5], [1 / 10 for _ in range(10)]]:
+        for alpha in [[0.9, 0.1], [0.5, 0.5], [0.1 for _ in range(10)]]:
             with self.subTest(msg="alpha: {}".format(alpha)):
-                _ = StaticAlphaWeightingModule(
+                m = StaticAlphaWeightingModule(
                     config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
                     path=["weighted_similarity"],
                 )
+                self.assertTrue(isinstance(m, CombinedSimilarityModule))
 
     def test_constant_alpha_init_exceptions(self):
-        for alpha in [[1], [0.5, 0.5], [1 / 10 for _ in range(10)]]:
+        for alpha, exp, text in [
+            ([1.0], InvalidParameterException, "parameter 'alpha' is not valid"),
+            ([0.5, 0.4], InvalidParameterException, "parameter 'alpha' is not valid. Used a custom validation"),
+            ([1 / 11 for _ in range(10)], InvalidParameterException, "parameter 'alpha' is not valid"),
+        ]:
             with self.subTest(msg="alpha: {}".format(alpha)):
-                _ = StaticAlphaWeightingModule(
-                    config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
-                    path=["weighted_similarity"],
-                )
+                cfg = fill_in_defaults({"sim": {"alpha": alpha}}, self.default_cfg)
+                with self.assertRaises(exp) as e:
+                    _ = StaticAlphaWeightingModule(config=cfg, path=["sim"])
+                self.assertTrue(text in str(e.exception), msg=e.exception)
 
     def test_constant_alpha_forward(self):
         N = 7
         T = 21
 
         for alpha, sn, result in [
-            ([1], (torch.ones((N, T)),), torch.ones((N, T))),
-            ([0.5, 0.5], (torch.ones((N, T)), torch.ones((N, T))), torch.ones((N, T))),
+            ([1.0, 0.0], (torch.ones((N, T)), torch.zeros((N, T))), torch.ones((N, T))),
+            ([0.5, 0.5], (torch.ones((N, T)), torch.zeros((N, T))), 0.5 * torch.ones((N, T))),
+            ([0.7, 0.3], (torch.ones((N, T)), -1 * torch.ones((N, T))), 0.4 * torch.ones((N, T))),
+            (
+                [0.2, 0.8],
+                (torch.tensor([[5, 0], [0, 5]]).float(), torch.tensor([[0, 1.25], [1.25, 0]]).float()),
+                torch.ones((2, 2)),
+            ),
+            (
+                [0.25, 0.25, 0.25, 0.25],
+                (torch.ones((N, T)), torch.ones((N, T)), torch.ones((N, T)), torch.ones((N, T))),
+                torch.ones((N, T)),
+            ),
+            (
+                [0.1, 0.2, 0.3, 0.4],
+                (torch.ones((N, T)), torch.ones((N, T)), -1 * torch.ones((N, T)), torch.zeros((N, T))),
+                torch.zeros((N, T)),
+            ),
         ]:
             with self.subTest(msg="alpha: {}, sn: {}".format(alpha, sn)):
                 m = StaticAlphaWeightingModule(
@@ -128,9 +173,7 @@ class TestConstantAlpha(unittest.TestCase):
         T = 21
 
         for alpha, sn, exception, err_msg in [
-            ([1], (torch.ones((N, T)), torch.ones((N, T))), ValueError, "length of the similarity matrices"),
             ([0.5, 0.5], (torch.ones((N, T)), np.ones((N, T))), TypeError, "All the values in args should be tensors"),
-            ([0.4, 0.4], (torch.ones((N, T)), torch.ones((N, T))), ValueError, "alpha should sum to 1"),
             ([0.5, 0.5], (torch.ones((N + 1, T)), torch.ones((N, T))), ValueError, "shapes of every tensor should"),
             ([0.5, 0.5], (torch.ones((N, T + 1)), torch.ones((N, T))), ValueError, "shapes of every tensor should"),
             ([0.5, 0.5], (torch.ones((N, T)), torch.ones((N + 1, T))), ValueError, "shapes of every tensor should"),

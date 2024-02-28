@@ -29,8 +29,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         self.func = self.oks
 
-        self.sigma: torch.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=torch.float32)
-        self.register_buffer("sigma_const", self.sigma)
+        sigma: torch.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=torch.float32)
+        self.register_buffer("sigma_const", sigma)
 
     def forward(self, data: tuple[torch.Tensor, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         r"""Compute the object key-point similarity between a ground truth label and detected key points.

@@ -12,7 +12,12 @@ from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
 static_alpha_validation: Validations = {
-    "alpha": [list, ("forall", [float, ("between", (0.0, 1.0))]), lambda x: sum(x) == 1],
+    "alpha": [
+        list,
+        ("longer", 1),
+        ("forall", [float, ("within", (0.0, 1.0))]),
+        lambda x: abs(sum(x_i for x_i in x) - 1.0) < 1e-6,
+    ],
 }
 
 
@@ -95,22 +100,30 @@ class DynamicallyGatedSimilarities(CombinedSimilarityModule):
 
 @configure_torch_module
 class StaticAlphaWeightingModule(CombinedSimilarityModule):
-    """Weight two or more similarity matrices using constant (float) values for alpha."""
+    """
+    Weight two or more similarity matrices using constant (float) values for alpha.
+
+    Params
+    ------
+
+    alpha (list[float]):
+        A list containing the constant weights for the different similarities.
+
+    """
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
         self.validate_params(static_alpha_validation)
 
-        self.alpha = nn.Parameter(
-            torch.tensor(self.params["alpha"], device=self.device).reshape(-1).float(),
-            requires_grad=False,
-        )
+        alpha = torch.tensor(self.params["alpha"], dtype=torch.float32).reshape(-1)
+        self.register_buffer("alpha_const", alpha)
+        self.len_alpha = len(alpha)
 
-        if not torch.allclose(a_sum := torch.sum(torch.abs(self.alpha)), torch.tensor(1.0)):
+        if not torch.allclose(a_sum := torch.sum(torch.abs(alpha)), torch.tensor(1.0)):
             raise ValueError(f"alpha should sum to 1.0, but got {a_sum:.8f}")
 
-    def forward(self, *tensors, **_kwargs) -> torch.FloatTensor:
+    def forward(self, *tensors, **_kwargs) -> torch.Tensor:
         """Given alpha from the configuration file and args of the same length,
         multiply each alpha with each matrix and compute the sum.
 
@@ -120,19 +133,28 @@ class StaticAlphaWeightingModule(CombinedSimilarityModule):
                 All the tensors should have the same size.
 
         Returns:
-            torch.Tensor: Weighted similarity matrix.
+            The weighted similarity matrix as FloatTensor.
 
         Raises:
             ValueError: If the ``tensors`` argument has the wrong shape
             TypeError: If the ``tensors`` argument contains an object that is not a `torch.tensor`.
         """
-        if any(not isinstance(t, torch.Tensor) for t in tensors):
-            raise TypeError("All the values in args should be tensors.")
-        if len(tensors) != len(self.alpha):
+        if isinstance(tensors, tuple):
+            if any(not isinstance(t, torch.Tensor) for t in tensors):
+                raise TypeError("All the values in args should be tensors.")
+
+            if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
+                raise ValueError("The shapes of every tensor should match.")
+
+            if len(tensors) == 1:
+                # given a single already stacked tensor
+                tensors = tensors[0]
+            else:
+                tensors = torch.stack(tensors)
+
+        if len(tensors) != self.len_alpha:
             raise ValueError(
-                f"The length of the similarity matrices {len(tensors)} "
-                f"should equal the length of alpha {len(self.alpha)}"
+                f"The length of the tensors {len(tensors)} should equal the length of alpha {self.len_alpha}"
             )
-        if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
-            raise ValueError("The shapes of every tensor should match.")
-        return torch.sum(torch.stack([alpha * mat for alpha, mat in zip(self.alpha, tensors)]), dim=0).float()
+
+        return torch.tensordot(self.alpha_const, tensors.float(), dims=1)
