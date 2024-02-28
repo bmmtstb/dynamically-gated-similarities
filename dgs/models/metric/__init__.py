@@ -13,6 +13,7 @@ from .metric import (
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
     EuclideanSquareMetric,
+    PairwiseDistanceMetric,
     TorchreidCosineDistance,
     TorchreidEuclideanSquaredDistance,
 )
@@ -26,6 +27,8 @@ METRICS: dict[str, Type[Metric]] = {
     "EuclideanSquareMetric": EuclideanSquareMetric,
     "EuclideanDistance": EuclideanDistanceMetric,  # shorthand name
     "EuclideanDistanceMetric": EuclideanDistanceMetric,
+    "PairwiseDistance": PairwiseDistanceMetric,  # shorthand name
+    "PairwiseDistanceMetric": PairwiseDistanceMetric,
     "TorchPairwiseDistance": nn.PairwiseDistance,
     "TorchCosineSimilarity": nn.CosineSimilarity,
     "TorchreidEuclideanSquaredDistance": TorchreidEuclideanSquaredDistance,

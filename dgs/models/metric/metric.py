@@ -6,6 +6,7 @@ import warnings
 
 import torch
 from torch.linalg import vector_norm
+from torch.nn import PairwiseDistance
 
 from dgs.utils.types import Metric
 
@@ -218,9 +219,9 @@ class CosineSimilarityMetric(Metric):
     """
 
     def __init__(self, *args, **kwargs) -> None:
+        self.dim = kwargs.pop("dim", -1)
+        self.eps = kwargs.pop("eps", 1e-5)
         super().__init__(*args, **kwargs)
-        self.dim = -1
-        self.eps = 1e-5
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         """Due to the sheer size of the |PT21| dataset,
@@ -256,9 +257,9 @@ class CosineDistanceMetric(Metric):
     """
 
     def __init__(self, *args, **kwargs) -> None:
+        self.dim = kwargs.pop("dim", -1)
+        self.eps = kwargs.pop("eps", 1e-5)
         super().__init__(*args, **kwargs)
-        self.dim = -1
-        self.eps = 1e-5
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         """
@@ -274,6 +275,33 @@ class CosineDistanceMetric(Metric):
 
         cs = custom_cosine_similarity(input1, input2, self.dim, self.eps)
         return torch.ones_like(cs) - cs
+
+
+class PairwiseDistanceMetric(Metric):
+    """Class to compute the pairwise distance."""
+
+    def __init__(self, *args, **kwargs):
+
+        p = kwargs.pop("p", 2)
+        eps = kwargs.pop("eps", 1e-5)
+        keepdim = kwargs.pop("keepdim", False)
+
+        super().__init__(*args, **kwargs)
+        self.dist = PairwiseDistance(p=p, eps=eps, keepdim=keepdim)
+        self.register_module("PairwiseDistanceModule", self.dist)
+
+    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        """Compute the pairwise distance between to inputs, where the second dimension has to match.
+
+        Args:
+            input1: tensor of shape ``[a x E]``
+            input2: tensor of shape ``[b x E]``
+
+        Returns:
+            tensor of shape ``[a x b]`` containing the distances.
+        """
+        _validate_metric_inputs(input1, input2)
+        return self.dist(input1, input2)
 
 
 class TorchreidEuclideanSquaredDistance(Metric):
