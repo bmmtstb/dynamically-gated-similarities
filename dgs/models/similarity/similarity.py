@@ -1,4 +1,4 @@
-"""Abstraction for modules that compute the similarity between two input tensors.
+r"""Abstraction for modules that compute the similarity between two input tensors.
 
 Similarity
 ==========

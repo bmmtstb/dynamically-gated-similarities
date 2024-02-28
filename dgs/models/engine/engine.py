@@ -45,7 +45,6 @@ train_validations: Validations = {
 
 test_validations: Validations = {
     # optional
-    "compile_model": ["optional", bool],
     "normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
     "writer_kwargs": ["optional", dict],
@@ -92,11 +91,6 @@ class EngineModule(BaseModule):
     writer_kwargs (dict, optional):
         Additional kwargs for the torch writer.
         Default {}.
-    compile_model (bool, optional):
-        Whether to ``torch.compile`` the given model for testing.
-        Requires a SOTA GPU.
-        Default False.
-
 
     Optional Train Params
     ---------------------
@@ -123,11 +117,6 @@ class EngineModule(BaseModule):
     save_interval (int, optional):
         The interval for saving (and evaluating) the model during training.
         Default 5.
-    compile_model (bool, optional):
-        Whether to ``torch.compile`` the given model for training.
-        Requires a SOTA GPU.
-        Default False.
-
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
@@ -181,6 +170,8 @@ class EngineModule(BaseModule):
         # Set up train attributes
         self.params_train: Config = {}
         if self.config["is_training"]:
+            if "train" not in config:
+                raise KeyError("'is_training' is True, but there is no key in the config named 'train'")
             self.params_train = get_sub_config(config, ["train"])
             self.validate_params(train_validations, attrib_name="params_train")
             if train_loader is None:
@@ -255,15 +246,7 @@ class EngineModule(BaseModule):
 
         self.logger.info("#### Start Training ####")
 
-        # set model to train mode
-        if not hasattr(self.model, "train"):
-            warnings.warn("`model.train()` is not available.")
-        self.model.train()
-
-        # compile model if wanted
-        if self.params_train.get("compile_model", False):
-            self.logger.debug("Train - Compile the model")
-            self.model = torch.compile(self.model)
+        self.set_model_mode("train")
 
         # initialize variables
         losses: list[float] = []
@@ -282,7 +265,7 @@ class EngineModule(BaseModule):
             # loop over all the data
             for batch_idx, data in tqdm(
                 enumerate(self.train_dl),
-                desc=f"Train - Batch",
+                desc="Train - Batch",
                 position=2,
                 total=len(self.train_dl),
             ):
@@ -342,6 +325,19 @@ class EngineModule(BaseModule):
         self.logger.info("#### Training complete ####")
 
         self.writer.flush()
+
+    def set_model_mode(self, mode: str) -> None:
+        """Set model mode to train or test."""
+        if mode not in ["train", "test", "eval"]:
+            raise ValueError(f"unknown mode: {mode}")
+        m = get_model_from_module(self.model)
+        # set model to train mode
+        if not hasattr(m, mode):
+            warnings.warn(f"`model.{mode}()` is not available.")
+        if mode == "train":
+            m.train()
+        else:
+            m.eval()
 
     def save_model(self, epoch: int, metrics: dict[str, any]) -> None:  # pragma: no cover
         """Save the current model and other weights into a '.pth' file.

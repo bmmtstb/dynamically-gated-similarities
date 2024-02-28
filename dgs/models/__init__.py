@@ -14,7 +14,6 @@ from dgs.models.module import BaseModule
 from dgs.models.similarity import get_dgs_module, get_similarity_module
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
-from torchreid.models import build_model
 
 M = TypeVar("M", bound=BaseModule)
 
@@ -52,8 +51,6 @@ def module_loader(config: Config, module: str) -> Union[M, TorchDataLoader]:
         if module_name == "PoseTrack21":
             return get_pose_track_21(config=config, path=path)
         m = get_dataset(module_name)
-    elif module == "torchreid":
-        m = build_model(name=..., num_classes=..., loss=..., pretrained=..., use_gpu=...)
     else:
         raise NotImplementedError(f"Something went wrong while loading the module '{module}'")
 

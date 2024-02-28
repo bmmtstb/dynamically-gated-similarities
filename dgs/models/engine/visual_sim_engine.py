@@ -3,7 +3,6 @@ Engine for visual embedding training and testing.
 """
 
 import time
-import warnings
 from datetime import timedelta
 
 import torch
@@ -150,7 +149,7 @@ class VisualSimilarityEngine(EngineModule):
 
         Args:
             dl: The DataLoader to extract the data from.
-            model: The (compiled) model to use for predicting the outputs.
+            model: The model to use for predicting the outputs.
             desc: A description for printing, writing, and saving the data.
             write_embeds: Whether to write the embeddings to the tensorboard writer.
                 Only "smaller" Datasets should be added.
@@ -233,16 +232,7 @@ class VisualSimilarityEngine(EngineModule):
         """
         results: dict[str, any] = {}
 
-        # set up model
-        if self.params_test.get("compile_model", False):
-            self.logger.debug("Test - Compile the model")
-            model = torch.compile(self.model)
-        else:
-            model = self.model
-
-        if not hasattr(model, "eval"):
-            warnings.warn("`model.eval()` is not available.")
-        model.eval()  # set model to test / evaluation mode
+        self.set_model_mode("eval")
 
         start_time: float = time.time()
 
@@ -251,13 +241,13 @@ class VisualSimilarityEngine(EngineModule):
 
         q_embed, q_t_ids = self._extract_data(
             dl=self.test_dl,
-            model=model,
+            model=self.model,
             desc="Query",
             write_embeds=self.params_test["write_embeds"][0] if "write_embeds" in self.params_test else False,
         )
         g_embed, g_t_ids = self._extract_data(
             dl=self.val_dl,
-            model=model,
+            model=self.model,
             desc="Gallery",
             write_embeds=self.params_test["write_embeds"][1] if "write_embeds" in self.params_test else False,
         )

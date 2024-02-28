@@ -683,6 +683,7 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
             return TorchreidPoseDataset.__getitem__(self, index)
         raise NotImplementedError(f"instance {self.instance} is not valid.")
 
+    # pylint: disable=too-many-arguments
     def process_file(
         self, filepath: FilePath, crops_dir: FilePath, relabel: bool = False, cam_id: int = 0, is_kp: bool = False
     ) -> list[tuple[str, int, int, int]]:  # pragma: no cover

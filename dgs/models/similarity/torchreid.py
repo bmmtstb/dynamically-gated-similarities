@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from dgs.models.metric import get_metric, METRICS
-from dgs.models.similarity import SimilarityModule
+from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.files import to_abspath
 from dgs.utils.torchtools import load_pretrained_weights
 from dgs.utils.types import Config
