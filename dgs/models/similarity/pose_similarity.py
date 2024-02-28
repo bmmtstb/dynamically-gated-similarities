@@ -4,13 +4,14 @@ Modules for computing the similarity between two poses.
 
 import torch
 from torchvision.ops import box_iou
-from torchvision.tv_tensors import BoundingBoxes
+from torchvision.transforms.v2 import ConvertBoundingBoxFormat
+from torchvision.tv_tensors import BoundingBoxes, BoundingBoxFormat
 
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.constants import OKS_SIGMAS
 from dgs.utils.types import Config, NodePath, Validations
 
-validations: Validations = {"format": [str, ("in", list(OKS_SIGMAS.keys()))]}
+oks_validations: Validations = {"format": [str, ("in", list(OKS_SIGMAS.keys()))]}
 
 
 class ObjectKeypointSimilarity(SimilarityModule):
@@ -19,15 +20,15 @@ class ObjectKeypointSimilarity(SimilarityModule):
     Params
     ------
 
-    format
-        The key point format, e.g., 'coco', 'coco-whole', ...
+    format (str):
+        The key point format, e.g., 'coco', 'coco-whole', ... has to be in OKS_SIGMAS.keys().
 
     """
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
-        self.func = self.oks
+        self.validate_params(oks_validations)
 
         sigma: torch.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=torch.float32)
         self.register_buffer("sigma_const", sigma)
@@ -61,15 +62,31 @@ class ObjectKeypointSimilarity(SimilarityModule):
         Fixme: exclude ignore regions from image_shape ?
 
         Args:
-            data: tuple containing the detected / predicted key points with shape ``[B x J x 2]``
-                and the areas of the respective ground-truth bounding-boxes with shape ``[B]``.
+            data: tuple containing the detected / predicted key points with shape ``[B1 x J x 2]``
+                and the areas of the respective ground-truth bounding-boxes with shape ``[B1]``.
                 To compute the bbox area, it is possible to use :class:`~torchvision.ops.box_area`.
-            target: ground truth key points including visibility as third dimension with shape ``[B x J x 2]``
+            target: ground truth key points including visibility as third dimension with shape ``[B2 x J x 2]``
         """
+
+        def extract_data(d: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+            """given key points with possible visibility. Key points can be batched.
+            Possible input shape: [(B) x J x (2|3)]
+            Return shape [B x J x 2] and [B x 1 x 1]
+            """
+            if d.ndim == 2:
+                d = d.unsqueeze(0)
+
+            if d.size(-1) == 3:
+                return d.split([2, 1], dim=-1)
+            return d, torch.ones((d.size(0), 1, 1), device=target.device)
+
+        # get pred and gt key-points as [B x J x 2] and visibility as [B x 1 x 1]
         pred_kps, bbox_area = data
-        gt_kp, gt_vis = target.split([2, 1], dim=-1)
+        pred_kps, _ = extract_data(pred_kps)
+        gt_kps, gt_vis = extract_data(target)
+
         # d = euclidean dist, don't compute sqrt, because only d^2 is required.
-        d2 = torch.sum(torch.pow(torch.subtract(gt_kp, pred_kps), 2), dim=-1)  # [B x J]
+        d2 = torch.sum(torch.pow(torch.subtract(gt_kps, pred_kps), 2), dim=-1)  # [B x J]
         # k = 2 * sig, only k^2 is required.
         k2 = torch.square(torch.mul(2, self.sigma_const))  # [J]
         # Ground truth scale as bounding box area in relation to the image area it lies within.
@@ -86,5 +103,14 @@ class ObjectKeypointSimilarity(SimilarityModule):
 class IntersectionOverUnion(SimilarityModule):
     """Use the bounding-box based intersection-over-union as a similarity metric."""
 
+    def __init__(self, config: Config, path: NodePath):
+        super().__init__(config, path)
+
+        self.transform = ConvertBoundingBoxFormat("XYXY")
+
     def forward(self, data: BoundingBoxes, target: BoundingBoxes) -> torch.Tensor:
+        if data.format != BoundingBoxFormat.XYXY:
+            data = self.transform(data)
+        if target.format != BoundingBoxFormat.XYXY:
+            target = self.transform(target)
         return box_iou(data, target)
