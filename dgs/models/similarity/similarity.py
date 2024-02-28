@@ -87,6 +87,7 @@ With velocity scores, a parameter reduction is obtained with :math:`E_P \lt J \c
 """
 
 from abc import abstractmethod
+from typing import Union
 
 import torch
 from torch import nn
@@ -107,6 +108,8 @@ class SimilarityModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, d1: torch.Tensor, d2: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, data: Union[torch.Tensor, tuple[torch.Tensor, ...]], target: Union[torch.Tensor, tuple[torch.Tensor, ...]]
+    ) -> torch.Tensor:
         """Compute the similarity between two input tensors."""
         raise NotImplementedError

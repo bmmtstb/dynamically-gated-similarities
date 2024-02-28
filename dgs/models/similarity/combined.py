@@ -11,10 +11,12 @@ from dgs.models.module import BaseModule
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
-static_alpha_validation: Validations = {"alpha": ["sized"]}
+static_alpha_validation: Validations = {
+    "alpha": [list, ("forall", [float, ("between", (0.0, 1.0))]), lambda x: sum(x) == 1],
+}
 
 
-class CombineSimilarityModule(BaseModule, nn.Module):
+class CombinedSimilarityModule(BaseModule, nn.Module):
     """Given two or more similarity matrices, combine them into a single similarity matrix."""
 
     def __init__(self, config: Config, path: NodePath):
@@ -29,7 +31,7 @@ class CombineSimilarityModule(BaseModule, nn.Module):
         raise NotImplementedError
 
 
-class DynamicallyGatedSimilarities(CombineSimilarityModule):
+class DynamicallyGatedSimilarities(CombinedSimilarityModule):
     r"""Use alpha to weight the two similarity matrices
 
     Given a weight :math:`\alpha`, compute the weighted similarity between :math:`S_1` and :math:`S_2`
@@ -92,7 +94,7 @@ class DynamicallyGatedSimilarities(CombineSimilarityModule):
 
 
 @configure_torch_module
-class StaticAlphaWeightingModule(CombineSimilarityModule):
+class StaticAlphaWeightingModule(CombinedSimilarityModule):
     """Weight two or more similarity matrices using constant (float) values for alpha."""
 
     def __init__(self, config: Config, path: NodePath):

@@ -9,12 +9,12 @@ from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchData
 
 from dgs.models.dataset import collate_data_samples, get_dataset
 from dgs.models.dataset.posetrack21 import get_pose_track_21
-from dgs.models.embedding_generator import get_embedding_generator
 from dgs.models.engine import get_engine
 from dgs.models.module import BaseModule
-from dgs.models.similarity import get_combined_similarity_module, get_similarity_module
+from dgs.models.similarity import get_dgs_module, get_similarity_module
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
+from torchreid.models import build_model
 
 M = TypeVar("M", bound=BaseModule)
 
@@ -42,9 +42,7 @@ def module_loader(config: Config, module: str) -> Union[M, TorchDataLoader]:
         m = get_engine(module_name)
         path = []
     elif module == "weighted_similarity":
-        m = get_combined_similarity_module(module_name)
-    elif module.startswith("embedding_generator_"):
-        m = get_embedding_generator(module_name)
+        m = get_dgs_module(module_name)
     elif module.startswith("similarity_"):
         m = get_similarity_module(module_name)
     elif module.startswith("dataloader_"):

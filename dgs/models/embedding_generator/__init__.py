@@ -13,11 +13,8 @@ from typing import Type
 from dgs.utils.exceptions import InvalidParameterException
 from .embedding_generator import EmbeddingGeneratorModule
 from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
-from .torchreid import TorchreidModel
 
 EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
-    "TorchReID": TorchreidModel,
-    "TorchreidModel": TorchreidModel,
     "LinearPBEG": LinearPBEG,
     "KeyPointConvolutionPBEG": KeyPointConvolutionPBEG,
 }
