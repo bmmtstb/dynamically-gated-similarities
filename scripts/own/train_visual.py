@@ -33,11 +33,6 @@ if __name__ == "__main__":
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     model = module_loader(config=config, module="similarity_visual")
-    # only modify the classifier
-    if OPEN_CLASSIFIER_ONLY:
-        open_specified_layers(model=model, open_layers=["classifier"], verbose=True)
-    else:
-        open_all_layers(model)
 
     engine = VisualSimilarityEngine(
         config=config,
@@ -46,6 +41,12 @@ if __name__ == "__main__":
         val_loader=val_dl,
         train_loader=train_dl,
     )
+
+    # only modify the classifier
+    if OPEN_CLASSIFIER_ONLY:
+        open_specified_layers(model=engine.model, open_layers=["classifier"], verbose=True)
+    else:
+        open_all_layers(engine.model)
 
     # train and test the module
     engine.run()
