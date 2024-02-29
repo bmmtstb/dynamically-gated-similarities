@@ -497,7 +497,7 @@ class PoseTrack21JSON(BaseDataset):
         pid_list: list[int] = []
         cid_list: list[int] = []
 
-        for anno in tqdm(json["annotations"], desc="annotations", total=self.len, leave=False, position=2):
+        for anno in json["annotations"]:
             img_id_list.append(int(anno["image_id"]))
             pid_list.append(int(anno["person_id"]))
             cid_list.append(int(map_pid_to_cid[int(anno["person_id"])]))
