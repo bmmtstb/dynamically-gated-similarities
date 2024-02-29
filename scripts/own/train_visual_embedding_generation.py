@@ -10,7 +10,7 @@ import torch
 from dgs.models import module_loader
 from dgs.models.engine import VisualSimilarityEngine
 from dgs.utils.config import fill_in_defaults, load_config
-from dgs.utils.torchtools import open_all_layers, open_specified_layers
+from dgs.utils.torchtools import close_all_layers, open_all_layers, open_specified_layers
 
 CONFIG_FILE = "./configs/train_visual.yaml"
 OPEN_CLASSIFIER_ONLY = True
@@ -44,6 +44,7 @@ if __name__ == "__main__":
 
     # only modify the classifier
     if OPEN_CLASSIFIER_ONLY:
+        close_all_layers(engine.model)
         open_specified_layers(model=engine.model, open_layers=["classifier"], verbose=True)
     else:
         open_all_layers(engine.model)

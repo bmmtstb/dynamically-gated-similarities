@@ -3,6 +3,7 @@ r"""See description of `~dgs.models.similarity.similarity`."""
 from abc import abstractmethod
 
 import torch
+from torch import nn
 
 from dgs.models.module import BaseModule
 from dgs.utils.types import Config, NodePath, Validations
@@ -10,7 +11,7 @@ from dgs.utils.types import Config, NodePath, Validations
 embedding_validations: Validations = {"embedding_size": [int, ("gt", 0)]}
 
 
-class EmbeddingGeneratorModule(BaseModule):
+class EmbeddingGeneratorModule(BaseModule, nn.Module):
     """Base class for handling modules of embedding generators.
 
     Description
@@ -38,23 +39,24 @@ class EmbeddingGeneratorModule(BaseModule):
     """The number of classes in the dataset / embedding."""
 
     def __init__(self, config: Config, path: NodePath):
-        super().__init__(config, path)
+        BaseModule.__init__(self, config=config, path=path)
+        nn.Module.__init__(self)
+
         self.validate_params(embedding_validations)
 
         self.embedding_size = self.params["embedding_size"]
         self.nof_classes = self.params["nof_classes"]
 
-    def __call__(self, *args, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:  # pragma: no cover
+    def __call__(self, *args, **kwargs) -> torch.Tensor:  # pragma: no cover
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, *args, **kwargs) -> torch.Tensor:
         """
         Predict next outputs using this Re-ID model.
 
         Returns:
-            The generated embedding with a shape of ``[N x E]``, with E being model-dependent.
+            The generated embeddings as tensor of shape ``[N x embedding_size]``.
         """
-
         raise NotImplementedError
