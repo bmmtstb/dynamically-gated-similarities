@@ -284,6 +284,7 @@ def open_specified_layers(
     Raises:
         ValueError if a value in open_layers is not an attribute of the model.
     """
+    # pylint: disable=too-many-branches
     model = get_model_from_module(module=model)
 
     if isinstance(open_layers, str):
@@ -303,10 +304,14 @@ def open_specified_layers(
         if name in open_layers:
             sub_module.train()
             sub_module.requires_grad_()
+            for p in sub_module.parameters():
+                p.requires_grad = True
             nof_opened += 1
         elif freeze_others:
             sub_module.eval()
             sub_module.requires_grad_(False)
+            for p in sub_module.parameters():
+                p.requires_grad = False
             nof_freezed += 1
         elif sub_module.training:
             still_open += 1
@@ -342,6 +347,8 @@ def open_all_layers(model: Union[TorchMod, BaseMod]) -> None:
     model.train()
     model.requires_grad_()
     model.apply(open_module)
+    for p in model.parameters():
+        p.requires_grad = True
 
 
 def close_specified_layers(
@@ -358,6 +365,7 @@ def close_specified_layers(
     Raises:
         ValueError if a value in close_layers is not an attribute of the model.
     """
+    # pylint: disable=too-many-branches
     model = get_model_from_module(module=model)
 
     if isinstance(close_layers, str):
@@ -377,10 +385,14 @@ def close_specified_layers(
         if name in close_layers:
             sub_module.eval()
             sub_module.requires_grad_(False)
+            for p in sub_module.parameters():
+                p.requires_grad = False
             nof_closed += 1
         elif open_others:
             sub_module.train()
             sub_module.requires_grad_()
+            for p in sub_module.parameters():
+                p.requires_grad = True
             nof_opened += 1
         elif sub_module.training:
             still_open += 1
@@ -412,9 +424,11 @@ def close_all_layers(model: Union[TorchMod, BaseMod]) -> None:
     model.eval()
     model.requires_grad_(False)
     model.apply(freeze_module)
+    for p in model.parameters():
+        p.requires_grad = False
 
 
-def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None = None) -> BaseMod:  # pragma: no cover
+def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], *_args, **orig_kwargs) -> BaseMod:  # pragma: no cover
     """Decorator to decorate a class, which has to be a child of torch.nn.Module and the BaseModule!
     The decorator will then call BaseModule.configure_torch_model on themselves after initializing the original class.
 
@@ -423,7 +437,9 @@ def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None 
 
     Args:
         orig_cls: The decorated class.
-        name: The name of `orig_cls`'s attribute / property which contains the `nn.Module` that should be configured.
+
+    Keyword Args:
+        names: The name or names of `orig_cls`'s attributes which contains the `nn.Module` that should be configured.
 
     Raises:
         ValueError: If the class is not a child of both required parent classes.
@@ -440,13 +456,17 @@ def configure_torch_module(orig_cls: Union[BaseMod, TorchMod], name: str | None 
         # first initialize class
         orig_init(self, *args, **kwargs)
         # then call configure_torch_model()
-        # if no name is provided, use the class as torch Module, otherwise on the attribute `name`
-        if name is not None:
-            if name not in self:
-                raise ValueError(f"Class {self} does not contain property of name {name}")
-            self.configure_torch_model(module=self[name])
-        else:
+        # if no names are provided, use the class as torch Module, otherwise on the attribute `names`
+        if "names" not in orig_kwargs:
             self.configure_torch_module(module=self)
+        else:
+            names = orig_kwargs["names"]
+            if isinstance(names, str):
+                names = [names]
+            for name in names:
+                if name not in self:
+                    raise ValueError(f"Class {self} does not contain property of name {name}")
+                self.configure_torch_model(module=self[name])
 
     # override original init method
     orig_cls.__init__ = class_wrapper

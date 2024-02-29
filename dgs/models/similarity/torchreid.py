@@ -10,7 +10,7 @@ from torch import nn
 from dgs.models.metric import get_metric, METRICS
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.files import to_abspath
-from dgs.utils.torchtools import load_pretrained_weights
+from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
 from dgs.utils.types import Config
 
 with warnings.catch_warnings():
@@ -40,6 +40,7 @@ torchreid_validations: Config = {
 }
 
 
+@configure_torch_module
 class TorchreidSimilarity(SimilarityModule):
     """Given image crops, generate Re-ID embedding using the torchreid package.
 
