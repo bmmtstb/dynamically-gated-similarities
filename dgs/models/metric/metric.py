@@ -28,7 +28,6 @@ with warnings.catch_warnings():
         )
 
 
-@torch.no_grad()
 def compute_cmc(
     distmat: torch.Tensor, query_pids: torch.Tensor, gallery_pids: torch.Tensor, ranks: list[int]
 ) -> dict[int, float]:
@@ -102,7 +101,6 @@ def compute_cmc(
     return cmcs
 
 
-@torch.no_grad()
 def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[int] = None) -> dict[int, float]:
     """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
     Will use the k-biggest values in prediction.
