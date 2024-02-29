@@ -110,15 +110,13 @@ class TorchreidSimilarity(SimilarityModule):
         if not pretrained:
             # custom model params
             load_pretrained_weights(m, to_abspath(self.model_weights))
-
         # send model to the device
         return self.configure_torch_module(m, train=False)
 
     def _init_func(self) -> nn.Module:
         """Initialize the similarity function"""
         name = self.params["similarity"]
-        sim_kwargs = self.params.get("similarity_kwargs", {})
-        m = get_metric(name)(**sim_kwargs)
+        m = get_metric(name)(**self.params.get("similarity_kwargs", {}))
 
         # send function to the device
         return self.configure_torch_module(m, train=False)

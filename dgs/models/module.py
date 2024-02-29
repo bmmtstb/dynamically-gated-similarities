@@ -313,3 +313,8 @@ class BaseModule(ABC):
         If nothing has to be done, just pass.
         Is used for terminating parallel execution and threads in specific models.
         """
+        self.logger.info("Terminating")
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
+        del self.logger
+        del self

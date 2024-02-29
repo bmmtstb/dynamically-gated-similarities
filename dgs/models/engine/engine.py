@@ -27,10 +27,9 @@ from dgs.utils.config import get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
-from dgs.utils.torchtools import get_model_from_module, resume_from_checkpoint, save_checkpoint
+from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
 from dgs.utils.visualization import torch_show_image
-from torchreid.utils import MetricMeter
 
 train_validations: Validations = {
     "loss": [("any", ["callable", ("in", LOSS_FUNCTIONS.keys())])],
@@ -157,8 +156,7 @@ class EngineModule(BaseModule):
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Set up general attributes
-        self.module = model
-        self.model = get_model_from_module(model)
+        self.model = self.configure_torch_module(model, train=self.config["is_training"])
 
         # Logging
         self.writer = SummaryWriter(
@@ -259,10 +257,12 @@ class EngineModule(BaseModule):
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
             self.logger.info(f"#### Training - Epoch {self.curr_epoch} ####")
 
+            self.model.zero_grad()  # fixme
+            self.optimizer.zero_grad()
+
             epoch_loss = 0
             time_epoch_start = time.time()
             time_batch_start = time.time()  # reset timer for retrieving the data
-            losses_meter = MetricMeter()
 
             # loop over all the data
             for batch_idx, data in tqdm(
@@ -276,13 +276,13 @@ class EngineModule(BaseModule):
 
                 # OPTIMIZE MODEL
                 loss = self._get_train_loss(data, curr_iter)
+                self.model.zero_grad()  # fixme
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
                 # OPTIMIZE END
 
                 batch_t.add(time_batch_start)
-                losses_meter.update({"loss": loss.item()})
                 epoch_loss += loss.item()
                 self.writer.add_scalars(
                     main_tag="Train/loss",
@@ -291,7 +291,12 @@ class EngineModule(BaseModule):
                 )
                 self.writer.add_scalars(
                     main_tag="Train/time",
-                    tag_scalar_dict={"data": data_t[-1], "batch": batch_t[-1], "indiv": batch_t[-1] / len(data)},
+                    tag_scalar_dict={
+                        "data": data_t[-1],
+                        "batch": batch_t[-1],
+                        "indiv": batch_t[-1] / len(data),
+                        "forwbackw": batch_t[-1] - data_t[-1],
+                    },
                     global_step=curr_iter,
                 )
                 self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
@@ -333,14 +338,13 @@ class EngineModule(BaseModule):
         """Set model mode to train or test."""
         if mode not in ["train", "test", "eval"]:
             raise ValueError(f"unknown mode: {mode}")
-        m = get_model_from_module(self.model)
         # set model to train mode
-        if not hasattr(m, mode):
+        if not hasattr(self.model, mode):
             warnings.warn(f"`model.{mode}()` is not available.")
         if mode == "train":
-            m.train()
+            self.model.train()
         else:
-            m.eval()
+            self.model.eval()
 
     def save_model(self, epoch: int, metrics: dict[str, any]) -> None:  # pragma: no cover
         """Save the current model and other weights into a '.pth' file.

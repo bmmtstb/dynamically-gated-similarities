@@ -394,12 +394,16 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
                 if child_path.endswith(".json")
             ]
 
+    if len(paths) == 1:
+        print(f"Loading dataset: {paths[0]}")
+        return PoseTrack21JSON(config=config, path=path, json_path=paths[0])
+
     return ConcatDataset(
         [
             PoseTrack21JSON(config=config, path=path, json_path=p)
             for p in tqdm(
                 paths,
-                desc=f"loading datasets: {ds_path}{ds.params['json_path'] if 'json_path' in ds.params else ''}",
+                desc=f"Loading datasets: {os.path.normpath(os.path.join(ds_path, ds.params.get('json_path', '')))}",
                 position=1,
             )
         ]

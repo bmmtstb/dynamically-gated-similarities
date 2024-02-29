@@ -12,7 +12,7 @@ from tqdm import tqdm
 from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.similarity import SimilarityModule
+from dgs.models.similarity import TorchreidSimilarity
 from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
@@ -87,12 +87,12 @@ class VisualSimilarityEngine(EngineModule):
     # The heart of the project might get a little larger...
     # pylint: disable=too-many-arguments,too-many-locals
 
-    model: SimilarityModule
+    model: TorchreidSimilarity
 
     def __init__(
         self,
         config: Config,
-        model: SimilarityModule,
+        model: TorchreidSimilarity,
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
@@ -126,13 +126,12 @@ class VisualSimilarityEngine(EngineModule):
     @enable_keyboard_interrupt
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
 
-        with torch.enable_grad():
-            target_ids = self.get_target(data)
+        target_ids = self.get_target(data)
 
-            crops = self.get_data(data)
-            pred_id_probs = self.module.predict_ids(crops)
+        crops = self.get_data(data)
+        pred_id_probs = self.model.predict_ids(crops)
 
-            loss = self.loss(pred_id_probs, target_ids)
+        loss = self.loss(pred_id_probs, target_ids)
 
         topk_accuracies = metric.compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
         self.writer.add_scalars(
@@ -146,14 +145,13 @@ class VisualSimilarityEngine(EngineModule):
     @torch.no_grad()
     @enable_keyboard_interrupt
     def _extract_data(
-        self, dl: TorchDataLoader, model, desc: str, write_embeds: bool = False
+        self, dl: TorchDataLoader, desc: str, write_embeds: bool = False
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Given a dataloader, extract the embeddings describing the people and the target pIDs using the model.
         Additionally, compute the accuracy and send the embeddings to the writer.
 
         Args:
             dl: The DataLoader to extract the data from.
-            model: The model to use for predicting the outputs.
             desc: A description for printing, writing, and saving the data.
             write_embeds: Whether to write the embeddings to the tensorboard writer.
                 Only "smaller" Datasets should be added.
@@ -180,7 +178,7 @@ class VisualSimilarityEngine(EngineModule):
             # Then use the model to compute the predicted embedding and the predicted pID probabilities.
             t_id = self.get_target(batch)
             img_crop = self.get_data(batch)
-            embed, _ = model(img_crop)
+            embed = self.model.predict_embeddings(img_crop)
 
             # keep the results in lists
             embed_l.append(embed)
@@ -226,7 +224,6 @@ class VisualSimilarityEngine(EngineModule):
 
         return p_embed, t_ids
 
-    @torch.no_grad()
     @enable_keyboard_interrupt
     def test(self) -> dict[str, any]:
         r"""Test the embeddings predicted by the model on the Test-DataLoader.
@@ -245,13 +242,11 @@ class VisualSimilarityEngine(EngineModule):
 
         q_embed, q_t_ids = self._extract_data(
             dl=self.test_dl,
-            model=self.model,
             desc="Query",
             write_embeds=self.params_test["write_embeds"][0] if "write_embeds" in self.params_test else False,
         )
         g_embed, g_t_ids = self._extract_data(
             dl=self.val_dl,
-            model=self.model,
             desc="Gallery",
             write_embeds=self.params_test["write_embeds"][1] if "write_embeds" in self.params_test else False,
         )
@@ -282,7 +277,3 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"#### Evaluation of {self.name} complete ####")
 
         return results
-
-    def visualize_ranked_results(self, distmat: torch.Tensor) -> None:
-        """Use torchreids version of visualizing ranked results"""
-        raise NotImplementedError
