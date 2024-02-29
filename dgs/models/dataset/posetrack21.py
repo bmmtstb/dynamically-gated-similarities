@@ -398,7 +398,9 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
         [
             PoseTrack21JSON(config=config, path=path, json_path=p)
             for p in tqdm(
-                paths, desc=f"loading datasets: {ds_path}{ds.params['json_path'] if 'json_path' in ds.params else ''}"
+                paths,
+                desc=f"loading datasets: {ds_path}{ds.params['json_path'] if 'json_path' in ds.params else ''}",
+                position=1,
             )
         ]
     )
@@ -460,15 +462,16 @@ class PoseTrack21JSON(BaseDataset):
         # validate and get json data
         json: dict[str, list[dict[str, any]]] = read_json(json_path)
         validate_pt21_json(json)
+        self.len = len(json["annotations"])
 
         # create a mapping from image id to full filepath
-        self.map_img_id_path: dict[int, FilePath] = {
+        map_img_id_path: dict[int, FilePath] = {
             img["id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
             for img in json["images"]
         }
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
-        img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in self.map_img_id_path.values()}
+        img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in map_img_id_path.values()}
         if self.params.get("force_img_reshape", False):
             # take the biggest value of every dimension
             self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
@@ -490,27 +493,27 @@ class PoseTrack21JSON(BaseDataset):
             else {int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in json["annotations"])))}
         )
         # save the image-, person-, and class-ids for later use as torch tensors
-        self.img_ids: torch.Tensor = torch.tensor(
-            [int(a["image_id"]) for a in json["annotations"]], dtype=torch.long, device=self.device
-        )
-        self.pids: torch.Tensor = torch.tensor(
-            [int(a["person_id"]) for a in json["annotations"]], dtype=torch.long, device=self.device
-        )
-        self.cids: torch.Tensor = torch.tensor(
-            [map_pid_to_cid[int(a["person_id"])] for a in json["annotations"]], dtype=torch.long, device=self.device
-        )
+        img_id_list: list[int] = []
+        pid_list: list[int] = []
+        cid_list: list[int] = []
 
-        for anno in json["annotations"]:
+        for anno in tqdm(json["annotations"], desc="annotations", total=self.len, leave=False, position=2):
+            img_id_list.append(int(anno["image_id"]))
+            pid_list.append(int(anno["person_id"]))
+            cid_list.append(int(map_pid_to_cid[int(anno["person_id"])]))
             # add image and crop filepaths
-            anno["img_path"] = self.map_img_id_path[anno["image_id"]]
+            anno["img_path"] = map_img_id_path[anno["image_id"]]
             anno["crop_path"] = os.path.join(
                 crops_dir,
                 anno["img_path"].split("/")[-2],  # dataset name
                 f"{anno['image_id']}_{str(anno['person_id'])}.jpg",
             )
 
+        self.img_ids: torch.Tensor = torch.tensor(img_id_list, dtype=torch.long, device=self.device)
+        self.pids: torch.Tensor = torch.tensor(pid_list, dtype=torch.long, device=self.device)
+        self.cids: torch.Tensor = torch.tensor(cid_list, dtype=torch.long, device=self.device)
+
         # as np.ndarray to not store large python objects
-        self.len = len(json["annotations"])
         self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
 
     def __len__(self) -> int:
