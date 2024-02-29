@@ -6,13 +6,13 @@ import time
 from datetime import timedelta
 
 import torch
-from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
 
 from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.similarity import SimilarityModule
 from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
@@ -87,10 +87,12 @@ class VisualSimilarityEngine(EngineModule):
     # The heart of the project might get a little larger...
     # pylint: disable=too-many-arguments,too-many-locals
 
+    model: SimilarityModule
+
     def __init__(
         self,
         config: Config,
-        model: nn.Module,
+        model: SimilarityModule,
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
@@ -123,12 +125,14 @@ class VisualSimilarityEngine(EngineModule):
 
     @enable_keyboard_interrupt
     def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
-        target_ids = self.get_target(data)
 
-        crops = self.get_data(data)
-        _, pred_id_probs = self.module(crops.requires_grad_())
+        with torch.enable_grad():
+            target_ids = self.get_target(data)
 
-        loss = self.loss(pred_id_probs, target_ids)
+            crops = self.get_data(data)
+            pred_id_probs = self.module.predict_ids(crops)
+
+            loss = self.loss(pred_id_probs, target_ids)
 
         topk_accuracies = metric.compute_accuracy(prediction=pred_id_probs, target=target_ids, topk=self.topk_acc)
         self.writer.add_scalars(
@@ -261,6 +265,13 @@ class VisualSimilarityEngine(EngineModule):
             distmat=distance_matrix,
             query_pids=q_t_ids,
             gallery_pids=g_t_ids,
+            ranks=self.topk_cmc,
+        )
+        # DUPLICATE #
+        results["cmc_inv"] = metric.compute_cmc(
+            distmat=self.metric(g_embed, q_embed),
+            query_pids=g_t_ids,
+            gallery_pids=q_t_ids,
             ranks=self.topk_cmc,
         )
 

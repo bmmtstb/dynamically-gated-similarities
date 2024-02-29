@@ -36,8 +36,10 @@ dataloader_test:
 # MODULES #
 # ####### #
 
-embedding_generator_visual:
-    module_name: "TorchreidModel"  # see `dgs.models.embedding_generator.__init__`
+similarity_visual:
+    module_name: "torchreid"  # see `dgs.models.similarity.__init__`
     model_name: "osnet_ain_x1_0"
+    similarity: "EuclideanSquare"
+    weights: "pretrained"
     embedding_size: 512
     nof_classes: 5474

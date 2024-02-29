@@ -27,6 +27,7 @@ def get_dgs_module(name: str) -> Type[CombinedSimilarityModule]:
     modules: dict[str, Type[CombinedSimilarityModule]] = {
         "DGS": DynamicallyGatedSimilarities,
         "dynamic_alpha": DynamicallyGatedSimilarities,  # synonym for DGS
+        "constant_alpha": StaticAlphaWeightingModule,  # synonym
         "static_alpha": StaticAlphaWeightingModule,
     }
     if name not in modules:

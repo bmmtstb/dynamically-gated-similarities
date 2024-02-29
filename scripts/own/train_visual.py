@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
-    model = module_loader(config=config, module="embedding_generator_visual")
+    model = module_loader(config=config, module="similarity_visual")
     # only modify the classifier
     if OPEN_CLASSIFIER_ONLY:
         open_specified_layers(model=model, open_layers=["classifier"], verbose=True)

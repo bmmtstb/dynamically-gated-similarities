@@ -10,7 +10,10 @@ log_dir: "./results/own/visual_sim/"
 
 train:
     epochs: 5
-    loss: "CrossEntropyLoss"
+#    loss: "CrossEntropyLoss"
+    loss: "TorchreidCrossEntropyLoss"
+    loss_kwargs:
+        num_classes: 5474
     optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0003
@@ -62,8 +65,10 @@ dataloader_query:
 # MODULES #
 # ####### #
 
-similarity:
-    module_name: "torchreid"  # see `dgs.models.embedding_generator.__init__`
+similarity_visual:
+    module_name: "torchreid"  # see `dgs.models.similarity.__init__`
     model_name: "osnet_ain_x1_0"
+    similarity: "EuclideanSquare"
+    weights: "pretrained"
     embedding_size: 512
     nof_classes: 5474

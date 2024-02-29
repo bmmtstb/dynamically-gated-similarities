@@ -103,6 +103,7 @@ class TorchreidSimilarity(SimilarityModule):
             name=self.params["model_name"],
             num_classes=self.params["nof_classes"],
             pretrained=pretrained,
+            loss="triplet",  # we always want to use the embeddings!
             use_gpu=self.device.type == "cuda",
         )
         if not pretrained:
@@ -121,6 +122,56 @@ class TorchreidSimilarity(SimilarityModule):
         # send function to the device
         return self.configure_torch_module(m, train=False)
 
+    def predict_ids(self, data: torch.Tensor) -> torch.Tensor:
+        """Predict class IDs given some input.
+
+        Args:
+            data: The input for the model, most likely a cropped image.
+
+        Returns:
+            Tensor containing class predictions, which are not necessarily a probability distribution.
+            Shape: ``[B x num_classes]``
+        """
+
+        def _get_torchreid_ids(r) -> torch.Tensor:
+            """Torchreid returns embeddings during eval and ids during training."""
+            if isinstance(r, torch.Tensor):
+                # During model building, triplet loss was forced for torchreid models.
+                # Therefore, only one return value means that only the embeddings are returned
+                return self.model.classifier(r)
+            if len(r) == 2:
+                ids, _ = r
+                return ids
+            raise NotImplementedError("Unknown torchreid model output.")
+
+        results = self.model(data)
+        return _get_torchreid_ids(results)
+
+    def predict_embeddings(self, data: torch.Tensor) -> torch.Tensor:
+        """Predict embeddings given some input.
+
+        Args:
+            data: The input for the model, most likely a cropped image.
+
+        Returns:
+            Tensor containing a batch B of embeddings.
+            Shape: ``[B x E]``
+        """
+
+        def _get_torchreid_embeds(r) -> torch.Tensor:
+            """Torchreid returns embeddings during eval and ids during training."""
+            if isinstance(r, torch.Tensor):
+                # During model building, triplet loss was forced for torchreid models.
+                # Therefore, only one return value means that only the embeddings are returned
+                return r
+            if len(r) == 2:
+                _, embeddings = r
+                return embeddings
+            raise NotImplementedError("Unknown torchreid model output.")
+
+        results = self.model(data)
+        return _get_torchreid_embeds(results)
+
     def forward(self, data: torch.Tensor, target: torch.Tensor, **_kwargs) -> torch.Tensor:
         """Forward call of the torchreid model.
 
@@ -138,20 +189,8 @@ class TorchreidSimilarity(SimilarityModule):
         Returns:
             The similarity between the predictions using this model and given targets as tensor of shape ``[a x b]``.
         """
-
-        def _get_torchreid_results(r) -> torch.Tensor:
-            """Torchreid returns embeddings during eval and ids during training."""
-            if isinstance(r, torch.Tensor):
-                # During model building, triplet loss was forced for torchreid models.
-                # Therefore, only one return value means that only the embeddings are returned
-                return r
-            if len(r) == 2:
-                _, embeddings = r
-                return embeddings
-            raise NotImplementedError("Unknown torchreid model output.")
-
-        results = self.model(data)
-        pred_embeds = _get_torchreid_results(results)
         # pred embeds have shape [A x E]
+        pred_embeds = self.predict_embeddings(data)
+        targ_embeds = self.predict_embeddings(target)
 
-        return self.func(pred_embeds, target)
+        return self.func(pred_embeds, targ_embeds)

@@ -30,6 +30,7 @@ from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import get_model_from_module, resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
 from dgs.utils.visualization import torch_show_image
+from torchreid.utils import MetricMeter
 
 train_validations: Validations = {
     "loss": [("any", ["callable", ("in", LOSS_FUNCTIONS.keys())])],
@@ -261,6 +262,7 @@ class EngineModule(BaseModule):
             epoch_loss = 0
             time_epoch_start = time.time()
             time_batch_start = time.time()  # reset timer for retrieving the data
+            losses_meter = MetricMeter()
 
             # loop over all the data
             for batch_idx, data in tqdm(
@@ -273,13 +275,14 @@ class EngineModule(BaseModule):
                 data_t.add(time_batch_start)
 
                 # OPTIMIZE MODEL
-                self.optimizer.zero_grad()
                 loss = self._get_train_loss(data, curr_iter)
+                self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
                 # OPTIMIZE END
 
                 batch_t.add(time_batch_start)
+                losses_meter.update({"loss": loss.item()})
                 epoch_loss += loss.item()
                 self.writer.add_scalars(
                     main_tag="Train/loss",
