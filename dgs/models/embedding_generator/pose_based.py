@@ -10,6 +10,7 @@ from torchvision import tv_tensors
 from torchvision.transforms.v2.functional import convert_bounding_box_format
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
+from dgs.utils.states import DataSample
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -181,11 +182,11 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             nn.Softmax(dim=-1),
         )
 
-    def forward(self, *data, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the custom key point convolution model.
 
         Params:
-            data: Tuple of size two containing the key-points and the corresponding bounding boxes.
+            ds: DataSample containing the key-points and the corresponding bounding boxes.
 
         Returns:
             This modules' prediction.
@@ -193,10 +194,9 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             ``ids`` is the probability to predict a class.
             The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
-        if len(data) != 2:
-            raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
         # extract key points and bboxes from data
-        kp, bboxes, *_args = data
+        kp = ds.keypoints
+        bboxes = ds.bbox
 
         # create new last dimension for the number of kernels -> 'nof_kernels'
         x = kp.unsqueeze(-1).expand(-1, -1, -1, self.nof_kernels)
@@ -292,11 +292,11 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             )
         )
 
-    def forward(self, *data, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the linear pose-based embedding generator.
 
         Params:
-            data: Either an already flattened tensor, containing the values of the key-point coordinates and the
+            ds: Either an already flattened tensor, containing the values of the key-point coordinates and the
                 bounding box as a single tensor of shape ``[B x self.J * self.j_dim + 4]``, or
                 the key-point coordinates and bounding boxes as tensors of shapes ``[B x self.J]`` and ``[B x 4]``.
 
@@ -306,22 +306,14 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             ``ids`` is the probability to predict a class.
             The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
-        if len(data) == 1:
-            # expect that input is already flattened
-            self.logger.debug(
-                "In the forward call of the LinearPBEG module data only contains one single value. "
-                "It is expected that this value is the flattened and concatenated key points and pose tensor.",
-            )
-            data, *args = data
-        elif len(data) > 1:
-            kp, bboxes, *args = data
-            # convert bboxes to the specified type
-            bboxes = convert_bounding_box_format(bboxes, new_format=self.params["bbox_format"])
-            data = torch.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
-        else:
-            raise ValueError(f"Data should contain key points and bounding boxes, but has length {len(data)}.")
+        # extract key points and bboxes from data
+        kp = ds.keypoints
+        bboxes = ds.bbox
+        # convert bboxes to the specified type
+        bboxes = convert_bounding_box_format(bboxes, new_format=self.params["bbox_format"])
+        data = torch.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
 
-        embeddings = self.model(data, *args, **kwargs)
+        embeddings = self.model(data)
 
         ids = self.classifier(embeddings)
 

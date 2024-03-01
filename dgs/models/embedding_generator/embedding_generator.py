@@ -6,6 +6,7 @@ import torch
 from torch import nn
 
 from dgs.models.module import BaseModule
+from dgs.utils.states import DataSample
 from dgs.utils.types import Config, NodePath, Validations
 
 embedding_validations: Validations = {"embedding_size": [int, ("gt", 0)]}
@@ -52,9 +53,8 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> torch.Tensor:
-        """
-        Predict next outputs using this Re-ID model.
+    def forward(self, ds: DataSample) -> torch.Tensor:
+        """Predict next outputs, given any data in a DataSample object, using this Re-ID model.
 
         Returns:
             The generated embeddings as tensor of shape ``[N x embedding_size]``.
