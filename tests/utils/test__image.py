@@ -130,8 +130,8 @@ class TestImage(unittest.TestCase):
 
                     self.assertEqual(img.shape[-3:], shape)
                     self.assertEqual(imagesize.get(fp), shape[-1:-3:-1])
-                    self.assertTrue(img.max() <= max_)
-                    self.assertTrue(img.min() >= min_)
+                    self.assertTrue(img.max().item() <= max_)
+                    self.assertTrue(img.min().item() >= min_)
                     self.assertEqual(img.dtype, dtype)
                     self.assertEqual(img.device, device)
 

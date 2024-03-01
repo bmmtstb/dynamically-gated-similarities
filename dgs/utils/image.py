@@ -24,7 +24,6 @@ from torchvision import tv_tensors
 from torchvision.io import ImageReadMode, read_image, read_video
 from torchvision.transforms.v2.functional import (
     center_crop as tvt_center_crop,
-    convert_image_dtype,
     crop as tvt_crop,
     pad as tvt_pad,
     resize as tvt_resize,
@@ -36,7 +35,14 @@ from dgs.utils.types import FilePath, FilePaths, ImgShape, TVImage, TVVideo
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
 
-def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False, **kwargs) -> TVImage:
+def load_image(
+    filepath: Union[FilePath, FilePaths],
+    force_reshape: bool = False,
+    dtype: torch.dtype = torch.float32,
+    device: torch.device = "cpu",
+    read_mode: ImageReadMode = ImageReadMode.RGB,
+    **kwargs,
+) -> TVImage:
     """Load an image or multiple images given a single or multiple filepaths.
 
     Notes:
@@ -51,11 +57,14 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
         filepath: Single string or list of absolute or local filepaths to the image.
         force_reshape: Whether to reshape the image(s) to a target shape.
             The mode and size can be specified in the kwargs.
+            Default False.
+        dtype: The dtype of the image, most likely one of uint8, byte, or float32.
+            Default torch.float32.
+        device: Device the image should be on.
+            Default "cpu"
+        read_mode: Which ImageReadMode to use while loading the images.
 
     Keyword Args:
-        dtype: The dtype of the image, most likely one of uint8, byte, or float32. Default torch.float32.
-        device: Device the image should be on. Default "cpu"
-        read_mode: Which ImageReadMode to use while loading the images.
         mode: If ``force_reshape`` is true, defines the resize mode, has to be in the modes of
             :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
         output_size: If ``force_reshape`` is true, defines the height and width of the returned images.
@@ -86,18 +95,13 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     """
     paths: FilePaths = validate_filepath(filepath)
 
-    # Make sure to extract kwargs for tv_tensors.Image creation before sending kwargs through the custom Compose.
-    dtype: torch.dtype = kwargs.pop("dtype", torch.float32)
-    device: torch.device = torch.device(kwargs.pop("device", "cpu"))
-
     # load images
-    images = [read_image(path, mode=kwargs.pop("read_mode", ImageReadMode.RGB)) for path in paths]
+    images = [read_image(path, mode=read_mode).to(device=device) for path in paths]
 
+    transform_dtype = tvt.ToDtype({tv_tensors.Image: dtype, "others": None}, scale=True)
     # if multiple images are loaded, reshape them to a given output_size
     if force_reshape:
-        transform = tvt.Compose(
-            [CustomToAspect(), CustomResize(), tvt.ToDtype({tv_tensors.Image: dtype, "others": None}, scale=True)]
-        )
+        transform = tvt.Compose([CustomToAspect(), CustomResize(), transform_dtype])
         new_images: list[TVImage] = []
         mode: str = kwargs.pop("mode", "zero-pad")
         output_size: ImgShape = kwargs.pop("output_size", (512, 512))
@@ -117,10 +121,9 @@ def load_image(filepath: Union[FilePath, FilePaths], force_reshape: bool = False
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
 
-    images = torch.stack(images)
-    images = convert_image_dtype(image=images, dtype=dtype)
+    images = tv_tensors.Image(torch.stack(images), device=device)
 
-    return tv_tensors.Image(images, dtype=dtype, device=device)
+    return transform_dtype(images)
 
 
 def load_video(filepath: FilePath, **kwargs) -> TVVideo:  # pragma: no cover
