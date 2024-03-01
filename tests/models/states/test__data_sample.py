@@ -78,7 +78,7 @@ class TestDataSample(unittest.TestCase):
                 "./tests/test_data/866-200x300.jpg",
                 DUMMY_BBOX_TENSOR,
                 DUMMY_KEY_POINTS_TENSOR,
-                "./tests/test_data/866-200x300.jpg",
+                tuple(["./tests/test_data/866-200x300.jpg"]),
                 DUMMY_BBOX_TENSOR,
                 DUMMY_KEY_POINTS_TENSOR,
                 False,
@@ -109,6 +109,15 @@ class TestDataSample(unittest.TestCase):
 
         self.assertEqual(ds["dummy"], "dummy")
 
+    def test_class_id(self):
+        ds = DataSample(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KEY_POINTS, validate=False, class_id=1)
+        self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
+
+        ds = DataSample(
+            filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KEY_POINTS, validate=False, class_id=torch.ones(1)
+        )
+        self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
+
     def test_crop_path(self):
         ds = DataSample(
             filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KEY_POINTS, validate=False, crop_path=("dummy",)
@@ -117,6 +126,7 @@ class TestDataSample(unittest.TestCase):
 
     def test_len(self):
         for fps, length in [
+            (os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"), 1),
             ((os.path.join(PROJECT_ROOT, "./tests/test_data/866-200x300.jpg"),), 1),
             (
                 (
@@ -166,7 +176,7 @@ class TestDataSample(unittest.TestCase):
         for set_dev_init in [True, False]:
             for validate in [True, False]:  # check whether it depends on validation
                 with self.subTest(msg=f"init: {set_dev_init}, validate: {validate}, device: {device}"):
-                    out_fp = tuple([DUMMY_FILE_PATH]) if validate else DUMMY_FILE_PATH
+                    out_fp = tuple([DUMMY_FILE_PATH])
                     # input data
                     data_dict = DUMMY_DATA.copy()
                     if set_dev_init:

@@ -306,6 +306,9 @@ class DataSample(UserDict):
             keypoints = validate_key_points(keypoints)
 
             assert bbox.device == keypoints.device
+        else:
+            # even without validation, make sure that filepath is a tuple not a string!
+            filepath = filepath if isinstance(filepath, tuple) else tuple([filepath])
 
         self.data["filepath"]: FilePaths = filepath
         self.data["bbox"]: tv_tensors.BoundingBoxes = (
@@ -353,7 +356,7 @@ class DataSample(UserDict):
     @property
     def filepath(self) -> FilePaths:
         """If data filepath has a single entry, return the filepath as a string, otherwise return the list."""
-        assert len(self.data["filepath"]) >= 1
+        assert isinstance(self.data["filepath"], tuple), f"filepath must be a tuple but got {self.data['filepath']}"
         return self.data["filepath"]
 
     @property
