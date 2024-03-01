@@ -10,6 +10,7 @@ from torch import nn
 from dgs.models.metric import get_metric, METRICS
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.files import to_abspath
+from dgs.utils.states import DataSample
 from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
 from dgs.utils.types import Config
 
@@ -121,6 +122,18 @@ class TorchreidSimilarity(SimilarityModule):
         # send function to the device
         return self.configure_torch_module(m, train=False)
 
+    def get_data(self, ds: DataSample) -> torch.Tensor:
+        """Given a DataSample get the current embedding or compute it using the image crop."""
+        if "embedding" in ds:
+            return ds["embedding"]
+        return self.model(ds.image_crop)
+
+    def get_target(self, ds: DataSample) -> torch.Tensor:
+        """Given a DataSample get the target embedding or compute it using the image crop."""
+        if "embedding" in ds:
+            return ds["embedding"]
+        return self.model(ds.image_crop)
+
     def predict_ids(self, data: torch.Tensor) -> torch.Tensor:
         """Predict class IDs given some input.
 
@@ -171,25 +184,28 @@ class TorchreidSimilarity(SimilarityModule):
         results = self.model(data)
         return _get_torchreid_embeds(results)
 
-    def forward(self, data: torch.Tensor, target: torch.Tensor, **_kwargs) -> torch.Tensor:
-        """Forward call of the torchreid model.
+    def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
+        """Forward call of the torchreid model used to compute the similarities between visual embeddings.
 
-        Will first compute the models' output of shape ``[a x E]``.
-        Then use this modules' metric
-        to compute the similarity between the predicted and the target embeddings with a shape of ``[a x b]``.
+        Either load or compute the visual embeddings for the data and target using the model.
+        The embeddings are tensors of respective shapes ``[a x E]`` and ``[b x E]``.
+        Then use this modules' metric to compute the similarity between the two embeddings.
 
         Notes:
             Torchreid expects images to have float values.
 
         Args:
-            data: The image crop to compute the embedding from, shape: ``[a x C x w x h]``.
-            target: The target embeddings, shape: ``[b x E]``.
+            data: A DataSample containing the predicted embedding or the image crop.
+                ``self.get_data()`` will then extract the embedding as tensor of shape: ``[a x E]``.
+            target: A Data Sample containing either the target embedding or the image crop.
+                ``self.get_target()`` is then used to extract embedding as tensor of shape ``[b x E]``.
 
         Returns:
-            The similarity between the predictions using this model and given targets as tensor of shape ``[a x b]``.
+            A similarity matrix containing values describing the similarity between every current- and target-embedding.
+            The similarity is a (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
         """
         # pred embeds have shape [A x E]
-        pred_embeds = self.predict_embeddings(data)
-        targ_embeds = self.predict_embeddings(target)
+        pred_embeds = self.get_data(ds=data)
+        targ_embeds = self.get_target(ds=target)
 
         return self.func(pred_embeds, targ_embeds)

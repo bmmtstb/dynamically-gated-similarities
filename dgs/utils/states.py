@@ -341,6 +341,16 @@ class DataSample(UserDict):
         )
 
     @property
+    def class_id(self) -> torch.LongTensor:
+        return self.data["class_id"].long()
+
+    @class_id.setter
+    def class_id(self, value: Union[int, torch.Tensor]) -> None:
+        self.data["class_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
+            device=self.device, dtype=torch.long
+        )
+
+    @property
     def filepath(self) -> FilePaths:
         """If data filepath has a single entry, return the filepath as a string, otherwise return the list."""
         assert len(self.data["filepath"]) >= 1
@@ -360,12 +370,9 @@ class DataSample(UserDict):
         return self.data["keypoints"].shape[-2]
 
     @property
-    def B(self):
+    def B(self) -> int:
         """Get the batch size."""
-        # fixme this does not work during initialization
-        # if not (self.bbox.shape[-2] == len(self.filepath) == self.keypoints.shape[-3]):
-        #     raise ValueError("Obtained different batch sizes from bbox, key points and filepaths")
-        return self.bbox.shape[-2]
+        return len(self.filepath)
 
     @property
     def joint_dim(self) -> int:

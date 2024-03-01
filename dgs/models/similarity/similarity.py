@@ -87,12 +87,12 @@ With velocity scores, a parameter reduction is obtained with :math:`E_P \lt J \c
 """
 
 from abc import abstractmethod
-from typing import Union
 
 import torch
 from torch import nn
 
 from dgs.models.module import BaseModule
+from dgs.utils.states import DataSample
 from dgs.utils.types import Config, NodePath
 
 
@@ -108,8 +108,16 @@ class SimilarityModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(
-        self, data: Union[torch.Tensor, tuple[torch.Tensor, ...]], target: Union[torch.Tensor, tuple[torch.Tensor, ...]]
-    ) -> torch.Tensor:
+    def get_data(self, ds: DataSample) -> any:
+        """Get the data used in this similarity module."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_target(self, ds: DataSample) -> any:
+        """Get the data used in this similarity module."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
         """Compute the similarity between two input tensors."""
         raise NotImplementedError
