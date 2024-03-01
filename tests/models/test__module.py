@@ -137,6 +137,13 @@ class TestBaseModule(unittest.TestCase):
                 self.assertEqual(module.training, train)
                 self.assertEqual(module.bias.device.type, device.type)
 
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_terminate_module(self):
+        m = BaseModule(config=get_test_config(), path=[])
+        self.assertTrue(hasattr(m, "logger"))
+        m.terminate()
+        self.assertFalse(hasattr(m, "logger"))
+
     def setUp(self):
         mkdir_if_missing("./tests/test_data/TEST_logs/")
 

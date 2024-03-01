@@ -261,7 +261,7 @@ class BaseModule(ABC):
         logger.setLevel(log_level)
 
         # file handler
-        file_handler = logging.FileHandler(os.path.join(self.log_dir, f"output-{self.name}.txt"))
+        file_handler = logging.FileHandler(os.path.join(self.log_dir, f"output-{self.name}.txt"), delay=True)
         logger.addHandler(file_handler)
         # stdout / stderr handler
         stream_handler = logging.StreamHandler()
@@ -313,8 +313,6 @@ class BaseModule(ABC):
         If nothing has to be done, just pass.
         Is used for terminating parallel execution and threads in specific models.
         """
-        self.logger.info("Terminating")
         for handler in self.logger.handlers:
             self.logger.removeHandler(handler)
         del self.logger
-        del self
