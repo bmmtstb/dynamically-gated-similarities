@@ -7,7 +7,7 @@ from typing import Union
 import torch
 from torch import nn
 from torchvision import tv_tensors
-from torchvision.transforms.v2.functional import convert_bounding_box_format
+from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.utils.states import DataSample
@@ -117,7 +117,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         Define the number of kernels to use for convolution.
         Default 5.
     bbox_format: (Union[str, tv_tensors.BoundingBoxFormat], optional)
-        The format of the bounding box coordinates.
+        The target format of the bounding box coordinates.
         This will have influence on the results.
         Default 'XYWH'.
 
@@ -140,16 +140,18 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         # get bias from parameters or use default: True
         bias: bool = self.params.get("bias", True)
 
+        self.bbox_converter = ConvertBoundingBoxFormat(format=self.params["bbox_format"])
+
         # define layers
-        self.conv = nn.Conv2d(J, J, kernel_size=(j_dim, self.nof_kernels), bias=bias)
-        self.flat = nn.Flatten()
+        conv = nn.Conv2d(J, J, kernel_size=(j_dim, self.nof_kernels), bias=bias)
+        flat = nn.Flatten()
 
         hidden_layers_kp = set_up_hidden_layer_sizes(
             input_size=J,
             output_size=0,  # placeholder output size will be ignored during creation
             hidden_layers=self.params.get("hidden_layers_kp"),
         )
-        self.fc1 = nn.Sequential(
+        fc1 = nn.Sequential(
             *[
                 nn.Linear(
                     in_features=hidden_layers_kp[i],
@@ -159,6 +161,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
                 for i in range(len(hidden_layers_kp) - 2)
             ],
         )
+        self.part1 = nn.Sequential(conv, flat, fc1)
 
         hidden_layers_all = set_up_hidden_layer_sizes(
             input_size=hidden_layers_kp[-2] + 4,  # last real layer-size of key point fc layers, defaults to J
@@ -174,7 +177,6 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
                 )
                 for i in range(len(hidden_layers_all) - 1)
             ],
-            nn.Softmax(dim=-1),
         )
 
         self.classifier = nn.Sequential(
@@ -194,23 +196,23 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             ``ids`` is the probability to predict a class.
             The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
-        # extract key points and bboxes from data
+        # extract key points and bboxes from data and get them into the right shape
         kp = ds.keypoints
         bboxes = ds.bbox
-
+        # convert bboxes to the specified type
+        bboxes = self.bbox_converter(bboxes)
         # create new last dimension for the number of kernels -> 'nof_kernels'
         x = kp.unsqueeze(-1).expand(-1, -1, -1, self.nof_kernels)
-        x = self.conv(x)  # Convolve the key points. Has an out shape of ``[B x J x 1 x 1]``
-        x = self.flat(x)  # flatten to have out shape of ``[B x J]``
-        x = self.fc1(x)  # fc layers for key points only, defaults no nothing
 
-        # convert bboxes to the specified type
-        bboxes = convert_bounding_box_format(bboxes, new_format=self.params["bbox_format"])
+        # Convolve the key points, get an output shape of [B x J x 1 x 1].
+        # Flatten to have out shape of [B x J].
+        # Run the fc layers for the key-points only, output [B x j]
+        x = self.part1(x)
 
-        # Concatenate ``[B x (J)]`` and ``[B x 4]``, and input them into the second fc layers.
-        # The activation function is called in this Sequential.
+        # Concatenate [B x j] and [B x 4] along the last dim.
+        # Then use that as input into the second group of fc layers to obtain the embeddings.
         embeddings = self.fc2(torch.cat([x, bboxes], dim=-1))
-
+        # Obtain the class (id) probabilities by calling the classifier on the embeddings.
         ids = self.classifier(embeddings)
 
         return embeddings, ids
@@ -242,7 +244,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
     bias: (bool, optional, default=True)
         Whether to use a bias term in the linear layers.
     bbox_format: (Union[str, tv_tensors.BoundingBoxFormat], optional, default='XYWH')
-        The format of the bounding box coordinates.
+        The target format of the bounding box coordinates.
         This will have influence on the results.
 
     Important Inherited Params
@@ -268,6 +270,8 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         )
 
         self.model = self._init_flattened_model()
+
+        self.bbox_converter = ConvertBoundingBoxFormat(format=self.params["bbox_format"])
 
     def _init_flattened_model(self) -> nn.Module:
         """Initialize linear pose embedding generator model."""
@@ -309,8 +313,8 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         # extract key points and bboxes from data
         kp = ds.keypoints
         bboxes = ds.bbox
-        # convert bboxes to the specified type
-        bboxes = convert_bounding_box_format(bboxes, new_format=self.params["bbox_format"])
+        # convert bboxes to the specified target type
+        bboxes = self.bbox_converter(bboxes)
         data = torch.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
 
         embeddings = self.model(data)

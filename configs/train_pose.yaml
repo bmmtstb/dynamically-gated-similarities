@@ -1,4 +1,4 @@
-name: "Train Pose-Embeddings"
+name: "WIP - Train Pose-Embeddings"
 description: "Train the embeddings for a pose-based embedding generator 
     using the embedding generators of the dgs module."
 
@@ -22,15 +22,26 @@ test:
 # DATA #
 # #### #
 
-dataset_train:
-    module_name: "PoseTrack21"
-    dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_data/train/000001_bonn_train.json"
+# FIXME: Set flag to not load image data
 
-dataset_test:
+dataloader_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_data/train/000001_bonn_train.json"
+    json_path: "./posetrack_person_search/train.json"
+    batch_size: 2048
+    id_map: "./weights/pt21_id_map.json"
+
+dataloader_gallery:
+    module_name: "PoseTrack21"
+    dataset_path: "./data/PoseTrack21/"
+    json_path: "./posetrack_person_search/val.json"
+    batch_size: 2048
+
+dataloader_query:
+    module_name: "PoseTrack21"
+    dataset_path: "./data/PoseTrack21/"
+    json_path: "./posetrack_person_search/query.json"
+    batch_size: 2048
 
 # ####### #
 # MODULES #
