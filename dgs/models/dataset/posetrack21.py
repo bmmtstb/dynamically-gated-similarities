@@ -482,7 +482,7 @@ class PoseTrack21JSON(BaseDataset):
         else:
             if len(img_sizes) > 1:
                 raise ValueError(
-                    f"The images within a single folder should have equal shapes. "
+                    f"The images within a single dataset should have equal shapes. "
                     f"json_path: {json_path}, shapes: {img_sizes}"
                 )
             self.img_shape: ImgShape = img_sizes.pop()

@@ -50,14 +50,20 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         Notes:
             To compute the bbox area, it is possible to use :class:`~torchvision.ops.box_area`.
-            It is expected that the bounding boxes are given in 'XYXY' format.
+            For the box_area function, it is expected that the bounding boxes are given in 'XYXY' format.
         """
         kps = ds.keypoints.float().view(ds.B, -1, 2)
 
         bboxes = ds.bbox
-        if bboxes.format != BoundingBoxFormat.XYXY:
+
+        if bboxes.format == BoundingBoxFormat.XYXY:
+            area = box_area(bboxes).float()  # (x2-x1) * (y2-y1)
+        elif bboxes.format == BoundingBoxFormat.XYWH:
+            area = bboxes[:, -2] * bboxes[:, -1]  # w * h
+        else:
             bboxes = self.transform(bboxes)
-        area = box_area(bboxes).float()
+            area = box_area(bboxes).float()
+
         return kps, area
 
     def get_target(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
