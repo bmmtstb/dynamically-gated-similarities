@@ -1,0 +1,45 @@
+name: "Evaluate the DGS-Tracker"
+description: "Evaluate the dynamically gated similarities tracker.
+The tracker consists of three basic similarity modules.
+Similarity by computing the bbox intersection over union, the key-point similarity using OKS, 
+and the visual similarity using the OSNet Model from the torchreid package."
+
+device: "cuda"
+print_prio: "DEBUG"
+is_training: off
+log_dir: "./results/own/dgs/"
+
+
+# #### #
+# DATA #
+# #### #
+
+dataloader_test:
+    module_name: "PoseTrack21"
+    dataset_path: "./data/PoseTrack21/"
+    json_path: "./posetrack_data/val/"
+    force_img_reshape: true
+    crops_folder: "./crops/val/"
+    batch_size: 256
+
+# ####### #
+# MODULES #
+# ####### #
+
+combine_similarities:
+    module_name: "constant_alpha"
+    alpha: [0.5, 0.25, 0.25]
+
+similarity_visual:
+    module_name: "torchreid"  # see `dgs.models.similarity.__init__`
+    model_name: "osnet_x1_0"
+    similarity: "EuclideanSquare"
+    weights: "pretrained"
+    nof_classes: 5474
+
+pose_similarity:
+    module_name: "oks"
+    format: "coco"
+
+box_similarity:
+    module_name: "iou"
