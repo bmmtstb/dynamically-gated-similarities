@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
+from dgs.utils.config import get_sub_config, insert_into_config
 from dgs.utils.files import to_abspath
 from dgs.utils.states import DataSample
 from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
@@ -50,6 +51,10 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         then load the weights.
         The classifier is not required for embedding generation.
 
+    Notes:
+        Setting the parameter ``embedding_size`` does not change this module's output.
+        Torchreid does not support custom embedding sizes.
+
     Params
     ------
 
@@ -64,9 +69,6 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
     Important Inherited Params
     --------------------------
 
-    embedding_size (int):
-        The size of the embedding.
-        This size does not necessarily have to match other embedding sizes.
     nof_classes (int):
         The number of classes in the dataset.
         Used during training to predict the id.
@@ -75,12 +77,19 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
     model: nn.Module
 
     def __init__(self, config, path):
-        EmbeddingGeneratorModule.__init__(self, config=config, path=path)
+        sub_cfg = get_sub_config(config, path)
+        if "embedding_size" in sub_cfg and sub_cfg["embedding_size"] != 512:
+            warnings.warn(
+                "The embedding size will be overwritten in torchreid embedding generators, "
+                "because torchreid does not support different sizes."
+            )
+        new_cfg = insert_into_config(path=path, value={"embedding_size": 512}, original=config)
+        EmbeddingGeneratorModule.__init__(self, config=new_cfg, path=path)
 
         self.model_weights = self.params.get("weights", "pretrained")
 
-        self.model = self._init_model(self.model_weights == "pretrained")
-        self.add_module(name="model", module=self.model)
+        model = self._init_model(self.model_weights == "pretrained")
+        self.add_module(name="model", module=model)
 
     def _init_model(self, pretrained: bool) -> nn.Module:
         """Initialize torchreid model"""
@@ -90,7 +99,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             pretrained=pretrained,
             use_gpu=self.device.type == "cuda",
         )
-        if not pretrained:
+        if not pretrained:  # pragma: no cover
             # custom model params
             load_pretrained_weights(m, to_abspath(self.model_weights))
         # send model to the device

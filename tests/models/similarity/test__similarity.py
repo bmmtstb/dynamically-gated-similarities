@@ -1,15 +1,19 @@
 import unittest
+import warnings
 
 from dgs.models import BaseModule
 from dgs.models.similarity import get_similarity_module, SimilarityModule, TorchreidSimilarity
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException
+from dgs.utils.utils import HidePrint
 from helper import get_test_config
 
 
 class TestSimilarity(unittest.TestCase):
 
     def test_get_similarity(self):
+        warnings.filterwarnings(action="ignore", message=".*NNPACK.*")
+
         test_config = get_test_config()
         for name, mod_class, kwargs in [
             (
@@ -24,7 +28,9 @@ class TestSimilarity(unittest.TestCase):
 
                 cfg = fill_in_defaults({"sim": kwargs}, default_cfg=test_config)
 
-                module = module(config=cfg, path=["sim"])
+                with HidePrint():
+                    module = module(config=cfg, path=["sim"])
+
                 self.assertTrue(isinstance(module, SimilarityModule))
                 self.assertTrue(isinstance(module, BaseModule))
 

@@ -38,7 +38,7 @@ class VisualSimilarityEngine(EngineModule):
     For this model:
 
     - ``get_data()`` should return the image crop
-    - ``get_target()`` should return the target pIDs
+    - ``get_target()`` should return the target class IDs
     - ``train_dl`` contains the training data as usual
     - ``test_dl`` contains the query data
     - ``val_dl`` contains the gallery data
@@ -81,11 +81,11 @@ class VisualSimilarityEngine(EngineModule):
         Default [False, False].
     """
 
-    val_dl: TorchDataLoader
-    """The torch DataLoader containing the validation (query) data."""
-
     # The heart of the project might get a little larger...
     # pylint: disable=too-many-arguments,too-many-locals
+
+    val_dl: TorchDataLoader
+    """The torch DataLoader containing the validation (query) data."""
 
     model: TorchreidSimilarity
 

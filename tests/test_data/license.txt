@@ -3,6 +3,7 @@ They are all the same underlying base photo in different aspects and resolutions
 List of images:
 * '866-200x300.jpg'
 * '866-200x800.jpg'
+* '866-256x256.jpg'
 * '866-300x200.jpg'
 * '866-500x500.jpg'
 * '866-500x1000.jpg'
