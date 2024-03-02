@@ -138,6 +138,25 @@ class TestBaseModule(unittest.TestCase):
                 self.assertEqual(module.bias.device.type, device.type)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_name_safe(self):
+        for name, safe in [
+            ("Dummy", "Dummy"),
+            ("S p a c e s", "S-p-a-c-e-s"),
+            ("D.o.t.t.e.d", "D_o_t_t_e_d"),
+            ("U_n_d_e_r_s_c_o_r_e_d", "U_n_d_e_r_s_c_o_r_e_d"),
+            ("T-i-l-e-d", "T-i-l-e-d"),
+        ]:
+            with self.subTest(msg="name: {}, safe: {}".format(name, safe)):
+                cfg = fill_in_defaults(
+                    {"name": name},
+                    default_cfg=get_test_config(),
+                )
+                m = BaseModule(config=cfg, path=[])
+
+                self.assertEqual(m.name, name)
+                self.assertEqual(m.name_safe, safe)
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_terminate_module(self):
         m = BaseModule(config=get_test_config(), path=[])
         self.assertTrue(hasattr(m, "logger"))

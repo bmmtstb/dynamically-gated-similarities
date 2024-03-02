@@ -7,12 +7,11 @@ import os
 import time
 import warnings
 from abc import abstractmethod
-from typing import Union
+from datetime import datetime
 
 import torch
 from matplotlib import pyplot as plt
 from torch import nn, optim
-from torch._dynamo import OptimizedModule
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import tv_tensors
@@ -23,7 +22,7 @@ from dgs.models.metric import get_metric
 from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
-from dgs.utils.config import get_sub_config
+from dgs.utils.config import get_sub_config, save_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
@@ -125,7 +124,7 @@ class EngineModule(BaseModule):
     loss: nn.Module
     metric: nn.Module
     optimizer: optim.Optimizer
-    model: Union[nn.Module, OptimizedModule]
+    model: nn.Module
     module: nn.Module
     writer: SummaryWriter
 
@@ -363,7 +362,7 @@ class EngineModule(BaseModule):
                 "optimizer": self.optimizer.state_dict(),
                 "lr_scheduler": self.lr_sched.state_dict(),
             },
-            save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name.replace(' ', '_')}_{curr_lr:.10}/"),
+            save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name_safe}_{curr_lr:.10}/"),
             verbose=self.logger.isEnabledFor(logging.INFO),
         )
 

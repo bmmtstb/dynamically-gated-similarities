@@ -250,7 +250,7 @@ class BaseModule(ABC):
 
     def _init_logger(self) -> logging.Logger:
         """Initialize a basic logger for this module."""
-        logger = logging.getLogger(self.name.replace(" ", "."))
+        logger = logging.getLogger(self.name_safe)
 
         if logger.hasHandlers():
             return logger
@@ -261,7 +261,7 @@ class BaseModule(ABC):
         logger.setLevel(log_level)
 
         # file handler
-        file_handler = logging.FileHandler(os.path.join(self.log_dir, f"output-{self.name}.txt"), delay=True)
+        file_handler = logging.FileHandler(os.path.join(self.log_dir, f"output-{self.name_safe}.txt"), delay=True)
         logger.addHandler(file_handler)
         # stdout / stderr handler
         stream_handler = logging.StreamHandler()
@@ -282,7 +282,12 @@ class BaseModule(ABC):
     @property
     def name(self) -> str:
         """Shorthand for getting the name of the module."""
-        return self.config["name"]
+        return str(self.config["name"])
+
+    @property
+    def name_safe(self) -> str:
+        """Shorthand for getting the name of the module usable in filepaths by replacing spaces and underscores."""
+        return str(self.config["name"]).replace(" ", "-").replace(".", "_")
 
     def configure_torch_module(self, module: Module, train: bool = None) -> Module:
         """Set compute mode and send model to the device or multiple parallel devices if applicable.
