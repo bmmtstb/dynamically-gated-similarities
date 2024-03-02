@@ -7,24 +7,24 @@ from easydict import EasyDict
 
 from dgs.default_config import cfg as DEFAULT_CFG
 from dgs.models.module import BaseModule
-from dgs.utils.config import fill_in_defaults, get_sub_config, insert_into_config, load_config
+from dgs.utils.config import easydict_to_dict, fill_in_defaults, get_sub_config, insert_into_config, load_config
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 from helper import get_test_config
 
 EMPTY_CONFIG = EasyDict({})
 SIMPLE_CONFIG = EasyDict({"foo": "foo foo", "second": "value"})
-
+SUB_DICT = {
+    "x": 1,
+    "y": 2,
+    "deeper": {
+        "ore": "iron",
+        "pickaxe": {"iron": 10, "diamond": 100.0},
+    },
+}
 NESTED_CONFIG = EasyDict(
     {
         "foo": 3,
-        "bar": {
-            "x": 1,
-            "y": 2,
-            "deeper": {
-                "ore": "iron",
-                "pickaxe": {"iron": 10, "diamond": 100.0},
-            },
-        },
+        "bar": SUB_DICT,
         "dog": SIMPLE_CONFIG,
     }
 )
@@ -327,6 +327,47 @@ class TestInsertIntoConfig(unittest.TestCase):
                 else:
                     self.assertEqual(get_sub_config(default, path), value)
         self.assertNotIn("override", test_cfg)
+
+
+class TestEasyDictToDict(unittest.TestCase):
+
+    def test_easydict_to_dict_simple(self):
+        for easy_dict, result in [
+            (EMPTY_CONFIG, {}),
+            (EasyDict({"a": 1, "b": 2}), {"a": 1, "b": 2}),
+            (SIMPLE_CONFIG, SIMPLE_CONFIG.__dict__),
+            (EasyDict(deepcopy(SUB_DICT)), SUB_DICT),
+        ]:
+            with self.subTest(msg="easy_dict: {}, result: {}".format(easy_dict, result)):
+                self.assertEqual(easydict_to_dict(easy_dict), result)
+
+    def test_dict_to_dict_stays(self):
+        for dict_ in [{"dummy": 1}, SUB_DICT]:
+            with self.subTest(msg="dict_: {}".format(dict_)):
+                # noinspection PyTypeChecker
+                self.assertEqual(easydict_to_dict(dict_), dict_)
+
+    def test_nested_easydict_in_others(self):
+        ed = EasyDict(
+            {
+                "a": [EasyDict({"a1": 1}), 2, 3],
+                "b": (
+                    1,
+                    2,
+                    EasyDict({"b3": [3, 4, EasyDict({"b5": 5})]}),
+                ),
+            }
+        )
+        output = {
+            "a": [{"a1": 1}, 2, 3],
+            "b": [
+                1,
+                2,
+                {"b3": [3, 4, {"b5": 5}]},
+            ],
+        }
+
+        self.assertEqual(easydict_to_dict(ed), output)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ Util- and helper-functions for handling configuration files and passing down sub
 Contains functions for validating configuration and parameter of modules.
 """
 
+import os
 from copy import deepcopy
 from typing import Union
 
@@ -11,7 +12,7 @@ import yaml
 from easydict import EasyDict
 
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
-from dgs.utils.files import to_abspath
+from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import Config, FilePath, NodePath
 
 
@@ -77,6 +78,25 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
     if easydict:
         return EasyDict(config)
     return config
+
+
+def save_config(filepath: FilePath, config: Config) -> None:  # pragma: no cover
+    """Given a configuration, save it as .yaml file at the given filepath.
+
+    Args:
+        filepath: The path at which the configuration file should be stored.
+        config: The configuration, either as regular dict or :class:`EasyDict`.
+    """
+    mkdir_if_missing(os.path.dirname(filepath))
+    if not (filepath.endswith(".yaml") or filepath.endswith(".yml")):
+        filepath += ".yaml"
+
+    # saving an EasyDict as yaml is not possible, therefore transform back to regular dict (recursive!)
+    if isinstance(config, EasyDict):
+        config = easydict_to_dict(config)
+
+    with open(filepath, "w", encoding="utf-8") as file:
+        yaml.dump(config, file)
 
 
 def fill_in_defaults(config: Config, default_cfg: Config = None, copy: bool = True) -> Config:
@@ -168,3 +188,16 @@ def insert_into_config(path: NodePath, value: Config, original: Config = None, c
         value = {p: value}
 
     return fill_in_defaults(value, original, copy=copy)
+
+
+def easydict_to_dict(ed: EasyDict) -> dict:
+    """Given an :class:`EasyDict` convert it to a regular dict recursively"""
+    if isinstance(ed, EasyDict):
+        ed = dict(ed)
+    if isinstance(ed, dict):
+        for key, value in ed.items():
+            ed[key] = easydict_to_dict(value)
+    elif isinstance(ed, (list, tuple)):  # there are no tuples in an easydict
+        ed = [easydict_to_dict(val) for val in ed]
+
+    return ed

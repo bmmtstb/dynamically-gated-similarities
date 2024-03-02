@@ -164,6 +164,11 @@ class EngineModule(BaseModule):
             **self.params_test.get("writer_kwargs", {}),
         )
         self.writer.add_scalar("Test/batch_size", self.test_dl.batch_size)
+        # save config in the out-folder to make sure values haven't changed
+        save_config(
+            filepath=os.path.join(self.log_dir, f"config-{self.name_safe}-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
+            config=config,
+        )
 
         # Set up train attributes
         self.params_train: Config = {}
