@@ -1,6 +1,5 @@
 import os
 import unittest
-import warnings
 
 import torch
 from torch import nn
@@ -18,7 +17,6 @@ J = 17
 class TestTorchreidEmbeddingGenerator(unittest.TestCase):
 
     def test_osnet_0_25_single_input(self):
-        warnings.filterwarnings(action="ignore", message=".*NNPACK.*")
 
         nof_classes = 2
         cfg = fill_in_defaults(
@@ -55,8 +53,6 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         self.assertEqual(list(pred_class_probs.shape), [1, 2])
 
     def test_osnet_0_25_batched_input(self):
-        warnings.filterwarnings(action="ignore", message=".*NNPACK.*")
-
         nof_classes = 2
         cfg = fill_in_defaults(
             {

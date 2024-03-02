@@ -1,5 +1,4 @@
 import unittest
-import warnings
 
 from dgs.models import BaseModule
 from dgs.models.similarity import get_similarity_module, SimilarityModule, TorchreidSimilarity
@@ -12,8 +11,6 @@ from helper import get_test_config
 class TestSimilarity(unittest.TestCase):
 
     def test_get_similarity(self):
-        warnings.filterwarnings(action="ignore", message=".*NNPACK.*")
-
         test_config = get_test_config()
         for name, mod_class, kwargs in [
             (
