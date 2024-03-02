@@ -16,14 +16,13 @@ oks_validations: Validations = {"format": [str, ("in", list(OKS_SIGMAS.keys()))]
 
 
 class ObjectKeypointSimilarity(SimilarityModule):
-    """Compute the object key-point similarity (OKS) between two poses.
+    """Compute the object key-point similarity (OKS) between two batches of poses.
 
     Params
     ------
 
     format (str):
         The key point format, e.g., 'coco', 'coco-whole', ... has to be in OKS_SIGMAS.keys().
-
     """
 
     def __init__(self, config: Config, path: NodePath):

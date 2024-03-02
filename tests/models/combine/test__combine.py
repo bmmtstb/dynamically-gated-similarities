@@ -3,9 +3,8 @@ import unittest
 import numpy as np
 import torch
 
-from dgs.models import BaseModule
-from dgs.models.similarity import DynamicallyGatedSimilarities, get_dgs_module, StaticAlphaWeightingModule
-from dgs.models.similarity.combined import CombinedSimilarityModule
+from dgs.models import BaseModule, get_dgs_module
+from dgs.models.combine.combine import CombineSimilaritiesModule, DynamicallyGatedSimilarities, StaticAlphaCombine
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Device
@@ -18,7 +17,7 @@ class TestDGS(unittest.TestCase):
     def test_dgs_modules_class(self):
         for name, mod_class, kwargs in [
             ("DGS", DynamicallyGatedSimilarities, {}),
-            ("static_alpha", StaticAlphaWeightingModule, {"alpha": [0.4, 0.3, 0.3]}),
+            ("static_alpha", StaticAlphaCombine, {"alpha": [0.4, 0.3, 0.3]}),
         ]:
             with self.subTest(msg="name: {}, module: {}, kwargs: {}".format(name, mod_class, kwargs)):
                 module = get_dgs_module(name)
@@ -27,16 +26,16 @@ class TestDGS(unittest.TestCase):
                 cfg = fill_in_defaults({"dgs": kwargs}, default_cfg=self.default_cfg)
                 module = module(config=cfg, path=["dgs"])
 
-                self.assertTrue(isinstance(module, CombinedSimilarityModule))
+                self.assertTrue(isinstance(module, CombineSimilaritiesModule))
                 self.assertTrue(isinstance(module, BaseModule))
 
         with self.assertRaises(InvalidParameterException) as e:
             _ = get_dgs_module("dummy")
-        self.assertTrue("Unknown combined similarity module with name" in str(e.exception), msg=e.exception)
+        self.assertTrue("Unknown combine similarities module with name" in str(e.exception), msg=e.exception)
 
     def test_dgs_init(self):
         m = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])
-        self.assertTrue(isinstance(m, CombinedSimilarityModule))
+        self.assertTrue(isinstance(m, CombineSimilaritiesModule))
         self.assertTrue(isinstance(m, BaseModule))
 
     @test_multiple_devices
@@ -119,11 +118,11 @@ class TestConstantAlpha(unittest.TestCase):
     def test_constant_alpha_init(self):
         for alpha in [[0.9, 0.1], [0.5, 0.5], [0.1 for _ in range(10)]]:
             with self.subTest(msg="alpha: {}".format(alpha)):
-                m = StaticAlphaWeightingModule(
+                m = StaticAlphaCombine(
                     config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
                     path=["weighted_similarity"],
                 )
-                self.assertTrue(isinstance(m, CombinedSimilarityModule))
+                self.assertTrue(isinstance(m, CombineSimilaritiesModule))
 
     def test_constant_alpha_init_exceptions(self):
         for alpha, exp, text in [
@@ -134,7 +133,7 @@ class TestConstantAlpha(unittest.TestCase):
             with self.subTest(msg="alpha: {}".format(alpha)):
                 cfg = fill_in_defaults({"sim": {"alpha": alpha}}, self.default_cfg)
                 with self.assertRaises(exp) as e:
-                    _ = StaticAlphaWeightingModule(config=cfg, path=["sim"])
+                    _ = StaticAlphaCombine(config=cfg, path=["sim"])
                 self.assertTrue(text in str(e.exception), msg=e.exception)
 
     def test_constant_alpha_forward(self):
@@ -162,7 +161,7 @@ class TestConstantAlpha(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg="alpha: {}, sn: {}".format(alpha, sn)):
-                m = StaticAlphaWeightingModule(
+                m = StaticAlphaCombine(
                     config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
                     path=["weighted_similarity"],
                 )
@@ -181,7 +180,7 @@ class TestConstantAlpha(unittest.TestCase):
         ]:
             with self.subTest(msg="alpha: {}, sn: {}, exp: {}, err_msg: {}".format(alpha, sn, exception, err_msg)):
                 with self.assertRaises(exception) as e:
-                    m = StaticAlphaWeightingModule(
+                    m = StaticAlphaCombine(
                         config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
                         path=["weighted_similarity"],
                     )

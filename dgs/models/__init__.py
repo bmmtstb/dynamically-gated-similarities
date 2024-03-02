@@ -7,11 +7,12 @@ from typing import Type, TypeVar, Union
 
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
+from dgs.models.combine import get_dgs_module
 from dgs.models.dataset import collate_data_samples, get_dataset
 from dgs.models.dataset.posetrack21 import get_pose_track_21
 from dgs.models.engine import get_engine
 from dgs.models.module import BaseModule
-from dgs.models.similarity import get_dgs_module, get_similarity_module
+from dgs.models.similarity import get_similarity_module
 from dgs.utils.config import get_sub_config
 from dgs.utils.types import Config, NodePath
 

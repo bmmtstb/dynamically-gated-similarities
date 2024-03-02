@@ -1,5 +1,7 @@
 """
-Models that combine the results of two or more similarity matrices.
+Implementation of modules that combine two or more similarity matrices.
+Obtain similarity matrices as a result of one or multiple
+:class:``~dgs.models.similarity.similarity.SimilarityModule`` s.
 """
 
 from abc import abstractmethod
@@ -14,14 +16,14 @@ from dgs.utils.types import Config, NodePath, Validations
 static_alpha_validation: Validations = {
     "alpha": [
         list,
-        ("longer", 1),
+        ("longer", 1),  # there is no need for combining a single model -> only accept two or more
         ("forall", [float, ("within", (0.0, 1.0))]),
-        lambda x: abs(sum(x_i for x_i in x) - 1.0) < 1e-6,
+        lambda x: abs(sum(x_i for x_i in x) - 1.0) < 1e-6,  # has to sum to 1
     ],
 }
 
 
-class CombinedSimilarityModule(BaseModule, nn.Module):
+class CombineSimilaritiesModule(BaseModule, nn.Module):
     """Given two or more similarity matrices, combine them into a single similarity matrix."""
 
     def __init__(self, config: Config, path: NodePath):
@@ -36,7 +38,8 @@ class CombinedSimilarityModule(BaseModule, nn.Module):
         raise NotImplementedError
 
 
-class DynamicallyGatedSimilarities(CombinedSimilarityModule):
+@configure_torch_module
+class DynamicallyGatedSimilarities(CombineSimilaritiesModule):
     r"""Use alpha to weight the two similarity matrices
 
     Given a weight :math:`\alpha`, compute the weighted similarity between :math:`S_1` and :math:`S_2`
@@ -99,7 +102,7 @@ class DynamicallyGatedSimilarities(CombinedSimilarityModule):
 
 
 @configure_torch_module
-class StaticAlphaWeightingModule(CombinedSimilarityModule):
+class StaticAlphaCombine(CombineSimilaritiesModule):
     """
     Weight two or more similarity matrices using constant (float) values for alpha.
 
@@ -108,6 +111,7 @@ class StaticAlphaWeightingModule(CombinedSimilarityModule):
 
     alpha (list[float]):
         A list containing the constant weights for the different similarities.
+        The weights should be probabilities and therefore sum to one and lie within [0..1].
 
     """
 
@@ -118,7 +122,7 @@ class StaticAlphaWeightingModule(CombinedSimilarityModule):
 
         alpha = torch.tensor(self.params["alpha"], dtype=torch.float32).reshape(-1)
         self.register_buffer("alpha_const", alpha)
-        self.len_alpha = len(alpha)
+        self.len_alpha: int = len(alpha)
 
         if not torch.allclose(a_sum := torch.sum(torch.abs(alpha)), torch.tensor(1.0)):
             raise ValueError(f"alpha should sum to 1.0, but got {a_sum:.8f}")
