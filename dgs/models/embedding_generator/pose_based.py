@@ -21,7 +21,7 @@ pbeg_validations: Validations = {
         (
             "any",
             [
-                ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
+                ("in", ["XYXY", "XYWH", "CXCYWH"]),
                 ("instance", tv_tensors.BoundingBoxFormat),
             ],
         ),
@@ -39,7 +39,7 @@ lpbe_validations: Validations = {
         (
             "any",
             [
-                ("in", ["XYXY", "XYWH", "CXCYWH", "xyxy", "xywh", "cxcywh"]),
+                ("in", ["XYXY", "XYWH", "CXCYWH"]),
                 ("instance", tv_tensors.BoundingBoxFormat),
             ],
         ),

@@ -24,7 +24,7 @@ class TestPoseBased(unittest.TestCase):
                     "joint_shape": [21, 2],
                     "nof_kernels": 10,
                     "embedding_size": 4,
-                    "bbox_format": "xyxy",
+                    "bbox_format": "XYXY",
                 },
                 (32, 4),
             ),
@@ -71,7 +71,7 @@ class TestPoseBased(unittest.TestCase):
                     "joint_shape": [21, 2],
                     "nof_kernels": 10,
                     "embedding_size": 4,
-                    "bbox_format": "xyxy",
+                    "bbox_format": "XYXY",
                 },
             ),
             (
@@ -96,7 +96,7 @@ class TestPoseBased(unittest.TestCase):
                     "nof_kernels": 10,
                     "bias": True,
                     "embedding_size": 8,
-                    "bbox_format": "xyxy",
+                    "bbox_format": "XYXY",
                 },
             ),
             (
@@ -108,7 +108,7 @@ class TestPoseBased(unittest.TestCase):
                     "joint_shape": [21, 2],
                     "nof_kernels": 10,
                     "embedding_size": 4,
-                    "bbox_format": "xyxy",
+                    "bbox_format": "XYXY",
                 },
             ),
         ]:

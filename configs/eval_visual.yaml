@@ -41,5 +41,4 @@ similarity_visual:
     model_name: "osnet_ain_x1_0"
     similarity: "EuclideanSquare"
     weights: "pretrained"
-    embedding_size: 512
     nof_classes: 5474

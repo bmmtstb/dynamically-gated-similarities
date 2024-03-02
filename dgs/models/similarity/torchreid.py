@@ -72,17 +72,10 @@ class TorchreidSimilarity(SimilarityModule):
     similarity_kwargs (dict, optional):
         Possibly pass additional kwargs to the similarity function.
         Default {}.
-
-    Important Inherited Params
-    --------------------------
-
-    embedding_size (int):
-        The size of the embedding.
-        This size does not necessarily have to match other embedding sizes.
-    nof_classes (int):
+    nof_classes (int, optional):
         The number of classes in the dataset.
-        Used during training to predict the id.
-
+        Should only be set if the classes are used at any point.
+        Default 1000.
     """
 
     model: nn.Module
@@ -103,7 +96,7 @@ class TorchreidSimilarity(SimilarityModule):
         """Initialize torchreid model"""
         m = build_model(
             name=self.params["model_name"],
-            num_classes=self.params["nof_classes"],
+            num_classes=self.params.get("nof_classes", 1000),
             pretrained=pretrained,
             loss="triplet",  # we always want to use the embeddings!
             use_gpu=self.device.type == "cuda",
@@ -121,18 +114,6 @@ class TorchreidSimilarity(SimilarityModule):
 
         # send function to the device
         return self.configure_torch_module(m, train=False)
-
-    def get_data(self, ds: DataSample) -> torch.Tensor:
-        """Given a DataSample get the current embedding or compute it using the image crop."""
-        if "embedding" in ds:
-            return ds["embedding"]
-        return self.model(ds.image_crop)
-
-    def get_target(self, ds: DataSample) -> torch.Tensor:
-        """Given a DataSample get the target embedding or compute it using the image crop."""
-        if "embedding" in ds:
-            return ds["embedding"]
-        return self.model(ds.image_crop)
 
     def predict_ids(self, data: torch.Tensor) -> torch.Tensor:
         """Predict class IDs given some input.
@@ -184,6 +165,18 @@ class TorchreidSimilarity(SimilarityModule):
         results = self.model(data)
         return _get_torchreid_embeds(results)
 
+    def get_data(self, ds: DataSample) -> torch.Tensor:
+        """Given a DataSample get the current embedding or compute it using the image crop."""
+        if "embedding" in ds:
+            return ds["embedding"]
+        return self.model(ds.image_crop)
+
+    def get_target(self, ds: DataSample) -> torch.Tensor:
+        """Given a DataSample get the target embedding or compute it using the image crop."""
+        if "embedding" in ds:
+            return ds["embedding"]
+        return self.model(ds.image_crop)
+
     def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.
 
@@ -196,8 +189,10 @@ class TorchreidSimilarity(SimilarityModule):
 
         Args:
             data: A DataSample containing the predicted embedding or the image crop.
+                If a predicted embedding exists, it should be stored as 'embedding' in the DataSample.
                 ``self.get_data()`` will then extract the embedding as tensor of shape: ``[a x E]``.
             target: A Data Sample containing either the target embedding or the image crop.
+                If a predicted embedding exists, it should be stored as 'embedding' in the DataSample.
                 ``self.get_target()`` is then used to extract embedding as tensor of shape ``[b x E]``.
 
         Returns:
