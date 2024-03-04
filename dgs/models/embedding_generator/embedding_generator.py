@@ -1,4 +1,6 @@
-r"""See description of `~dgs.models.similarity.similarity`."""
+"""
+Base module for models used for embedding generation.
+"""
 
 from abc import abstractmethod
 
@@ -9,7 +11,10 @@ from dgs.models.module import BaseModule
 from dgs.utils.states import DataSample
 from dgs.utils.types import Config, NodePath, Validations
 
-embedding_validations: Validations = {"embedding_size": [int, ("gt", 0)]}
+embedding_validations: Validations = {
+    "embedding_size": [int, ("gt", 0)],
+    "nof_classes": [int, ("gt", 0)],
+}
 
 
 class EmbeddingGeneratorModule(BaseModule, nn.Module):
@@ -34,7 +39,7 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
     """
 
     embedding_size: int
-    """The size of the embedding. It Does not necessarily have to match the size of other (different) embeddings."""
+    """The size of the embedding."""
 
     nof_classes: int
     """The number of classes in the dataset / embedding."""

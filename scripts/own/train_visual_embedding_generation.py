@@ -7,8 +7,8 @@ from datetime import timedelta
 
 import torch
 
-from dgs.models import module_loader
 from dgs.models.engine import VisualSimilarityEngine
+from dgs.models.loader import module_loader
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.torchtools import close_all_layers, open_all_layers, open_specified_layers
 
@@ -24,15 +24,15 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # validation / query
-    val_dl = module_loader(config=config, module="dataloader_query")
+    val_dl = module_loader(config=config, module_class="dataloader", key="val_dl")
     # test / gallery
-    test_dl = module_loader(config=config, module="dataloader_gallery")
+    test_dl = module_loader(config=config, module_class="dataloader_gallery", key="test_dl")
     # train
-    train_dl = module_loader(config=config, module="dataloader_train")
+    train_dl = module_loader(config=config, module_class="dataloader_train", key="train_dl")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
-    model = module_loader(config=config, module="similarity_visual")
+    model = module_loader(config=config, module_class="similarity", key="visual_similarity")
 
     engine = VisualSimilarityEngine(
         config=config,

@@ -12,7 +12,7 @@ from tqdm import tqdm
 from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.similarity import TorchreidSimilarity
+from dgs.models.similarity.torchreid import TorchreidSimilarity
 from dgs.utils.states import DataSample
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
@@ -96,13 +96,9 @@ class VisualSimilarityEngine(EngineModule):
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
+        **kwargs,
     ):
-        super().__init__(
-            config=config,
-            model=model,
-            test_loader=test_loader,
-            train_loader=train_loader,
-        )
+        super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader, **kwargs)
         self.val_dl = val_loader
 
         self.validate_params(test_validations, "params_test")

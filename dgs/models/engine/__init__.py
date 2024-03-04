@@ -5,9 +5,9 @@ Modules for running, training and testing multiple other modules.
 from typing import Type
 
 from dgs.utils.loader import get_instance, register_instance
+from dgs.utils.types import Instance
 from .engine import EngineModule
 from .visual_sim_engine import VisualSimilarityEngine
-from ...utils.types import Instance
 
 ENGINES: dict[str, Type[EngineModule]] = {
     "VisualSimilarityEngine": VisualSimilarityEngine,

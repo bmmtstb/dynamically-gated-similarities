@@ -1,9 +1,8 @@
 import unittest
 
-from dgs.models import BaseModule
+from dgs.models.module import BaseModule
 from dgs.models.similarity import get_similarity_module, SimilarityModule, TorchreidSimilarity
 from dgs.utils.config import fill_in_defaults
-from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.utils import HidePrint
 from helper import get_test_config
 
@@ -31,9 +30,9 @@ class TestSimilarity(unittest.TestCase):
                 self.assertTrue(isinstance(module, SimilarityModule))
                 self.assertTrue(isinstance(module, BaseModule))
 
-        with self.assertRaises(InvalidParameterException) as e:
+        with self.assertRaises(KeyError) as e:
             _ = get_similarity_module("dummy")
-        self.assertTrue("Unknown similarity with name" in str(e.exception), msg=e.exception)
+        self.assertTrue("Instance 'dummy' is not defined in" in str(e.exception), msg=e.exception)
 
 
 if __name__ == "__main__":

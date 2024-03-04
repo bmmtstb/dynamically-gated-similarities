@@ -16,7 +16,7 @@ test:
 # DATA #
 # #### #
 
-dataloader_valid:
+valid_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/val.json"
@@ -24,7 +24,7 @@ dataloader_valid:
     crops_folder: "./crops/gallery/"
     batch_size: 256
 
-dataloader_test:
+test_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/query.json"
@@ -36,7 +36,10 @@ dataloader_test:
 # MODULES #
 # ####### #
 
-similarity_visual:
+engine:
+    module_name: "VisualSimilarityEngine"
+
+visual_similarity:
     module_name: "torchreid"  # see `dgs.models.similarity.__init__`
     model_name: "osnet_ain_x1_0"
     similarity: "EuclideanSquare"

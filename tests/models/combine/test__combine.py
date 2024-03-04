@@ -3,8 +3,9 @@ import unittest
 import numpy as np
 import torch
 
-from dgs.models import BaseModule, get_combine_module
+from dgs.models.combine import get_combine_module
 from dgs.models.combine.combine import CombineSimilaritiesModule, DynamicallyGatedSimilarities, StaticAlphaCombine
+from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Device
@@ -29,9 +30,9 @@ class TestDGS(unittest.TestCase):
                 self.assertTrue(isinstance(module, CombineSimilaritiesModule))
                 self.assertTrue(isinstance(module, BaseModule))
 
-        with self.assertRaises(InvalidParameterException) as e:
+        with self.assertRaises(KeyError) as e:
             _ = get_combine_module("dummy")
-        self.assertTrue("Unknown combine similarities module with name" in str(e.exception), msg=e.exception)
+        self.assertTrue("Instance 'dummy' is not defined in" in str(e.exception), msg=e.exception)
 
     def test_dgs_init(self):
         m = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])

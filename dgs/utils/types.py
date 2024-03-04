@@ -27,7 +27,7 @@ FilePaths = tuple[FilePath, ...]
 Validator = Callable[[any, any], bool]
 """A function for validating a value of a Config object. Accepts up to two values and returns a boolean."""
 
-Validations = dict[str, list[Union[str, tuple[str, any], Validator, None]]]
+Validations = dict[str, list[Union[str, type, tuple[str, any], Validator]]]
 """A dictionary of validations, mapping a value of a given Config to some sort of validation."""
 
 # Data Handling

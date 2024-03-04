@@ -8,7 +8,7 @@ from typing import Type
 
 from dgs.utils.loader import get_instance, register_instance
 from .alphapose import AlphaPoseLoader
-from .dataset import BaseDataset, collate_data_samples
+from .dataset import BaseDataset
 from .posetrack21 import PoseTrack21JSON
 
 DATASETS: dict[str, Type[BaseDataset]] = {
@@ -22,6 +22,6 @@ def get_dataset(name: str) -> Type[BaseDataset]:
     return get_instance(instance=name, instances=DATASETS, inst_class=BaseDataset)
 
 
-def register_combine_module(name: str, new_ds: Type[BaseDataset]) -> None:
-    """Register a new daatset module in ``DATASETS``, to be able to use it from configuration files."""
+def register_dataset(name: str, new_ds: Type[BaseDataset]) -> None:
+    """Register a new dataset module in :data:``DATASETS``, to be able to use it from configuration files."""
     register_instance(name=name, instance=new_ds, instances=DATASETS, inst_class=BaseDataset)

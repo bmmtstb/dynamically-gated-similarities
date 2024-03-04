@@ -7,10 +7,10 @@ from torchvision.ops import box_area, box_iou
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 from torchvision.tv_tensors import BoundingBoxes, BoundingBoxFormat
 
-from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.constants import OKS_SIGMAS
 from dgs.utils.states import DataSample
 from dgs.utils.types import Config, NodePath, Validations
+from .similarity import SimilarityModule
 
 oks_validations: Validations = {"format": [str, ("in", list(OKS_SIGMAS.keys()))]}
 

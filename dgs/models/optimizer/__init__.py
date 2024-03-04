@@ -2,12 +2,13 @@
 Load, register, and initialize different optimizers.
 """
 
-from typing import Type, Union
+from typing import Type
 
 from torch import optim
 from torch.optim import Optimizer
 
 from dgs.utils.loader import get_instance, register_instance
+from dgs.utils.types import Instance
 
 OPTIMIZERS: dict[str, Type[Optimizer]] = {
     "Adadelta": optim.Adadelta,
@@ -26,16 +27,16 @@ OPTIMIZERS: dict[str, Type[Optimizer]] = {
 }
 
 
-def register_optimizer(optim_name: str, optimizer: Type[Optimizer]) -> None:
+def register_optimizer(name: str, new_optimizer: Type[Optimizer]) -> None:
     """Register a new optimizer to be used with custom configs.
 
     Args:
-        optim_name: Name of the new optimizer, e.g. "CustomAdam".
-            The name cannot be a value already present in ``OPTIMIZERS``.
-        optimizer: The type / class of the optimizer to register.
+        name: Name of the new optimizer, e.g. "CustomAdam".
+            The name cannot be a value already present in :data:``OPTIMIZERS``.
+        new_optimizer: The type / class of the optimizer to register.
 
     Raises:
-        ValueError: If ``optim_name`` is in ``OPTIMIZERS.keys()`` or the ``optimizer`` is invalid.
+        ValueError: If ``optim_name`` is in :data:``OPTIMIZERS.keys()`` or the instance is invalid.
 
     Examples::
 
@@ -45,15 +46,15 @@ def register_optimizer(optim_name: str, optimizer: Type[Optimizer]) -> None:
             ...
         register_optimizer("CustomAdam", CustomAdam)
     """
-    register_instance(name=optim_name, instance=optimizer, instances=OPTIMIZERS, inst_class=Optimizer)
+    register_instance(name=name, instance=new_optimizer, instances=OPTIMIZERS, inst_class=Optimizer)
 
 
-def get_optimizer(instance: Union[str, Optimizer]) -> Type[Optimizer]:
+def get_optimizer(instance: Instance) -> Type[Optimizer]:
     """Given the name or an instance of an optimizer, return the respective instance.
 
     Args:
-        instance: Either the name of the optimizer, which has to be in ``OPTIMIZERS``,
-            or a subclass of ``Optimizer``.
+        instance: Either the name of the optimizer, which has to be in :data:``OPTIMIZERS``,
+            or a subclass of :class:``Optimizer``.
 
     Raises:
         ValueError: If the instance has the wrong type.

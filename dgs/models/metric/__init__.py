@@ -41,7 +41,7 @@ def register_metric(name: str, new_metric: Type[Metric]) -> None:
 
     Args:
         name: Name of the new metric, e.g. "CustomDistance".
-            The name cannot be a value that is already in ``METRICS``.
+            The name cannot be a value that is already in :data:``METRICS``.
         new_metric: The type of metric to register.
 
     Raises:
@@ -65,7 +65,7 @@ def get_metric(instance: Instance) -> Type[Metric]:
     """Given the name or an instance of a metric, return the respective instance.
 
     Args:
-        instance: Either the name of the metric, which has to be in ``METRICS``, or a subclass of ``Metric``.
+        instance: Either the name of the metric, which has to be in :data:``METRICS``, or a subclass of ``Metric``.
 
     Raises:
         ValueError: If the instance has the wrong type.

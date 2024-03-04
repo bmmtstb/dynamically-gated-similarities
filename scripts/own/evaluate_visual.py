@@ -10,8 +10,8 @@ from datetime import timedelta
 import torch
 from tqdm import tqdm
 
-from dgs.models import module_loader
-from dgs.models.engine.visual_sim_engine import VisualSimilarityEngine
+from dgs.models.engine import VisualSimilarityEngine
+from dgs.models.loader import module_loader
 from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.files import to_abspath
 from dgs.utils.utils import HidePrint
@@ -27,22 +27,17 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # test / gallery
-    test_dl = module_loader(config=config, module="dataloader_test")
+    test_dl = module_loader(config=config, module_class="dataloader", key="test_dl")
     # validation / query
-    val_dl = module_loader(config=config, module="dataloader_valid")
+    val_dl = module_loader(config=config, module_class="dataloader", key="val_dl")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     with HidePrint():
-        model = module_loader(config=config, module="embedding_generator_visual").cuda()
+        model = module_loader(config=config, module_class="similarity", key="visual_similarity").cuda()
         model.eval()
 
-    engine = VisualSimilarityEngine(
-        config=config,
-        model=model,
-        test_loader=test_dl,
-        val_loader=val_dl,
-    )
+    engine = VisualSimilarityEngine(config=config, model=model, test_loader=test_dl, val_loader=val_dl)
 
     model_paths = sorted(glob.glob(os.path.join(to_abspath(SUB_DIR), "*.pth")), reverse=True)
 

@@ -59,11 +59,11 @@ def register_loss_function(name: str, new_loss: Type[Loss]) -> None:
 
     Args:
         name: Name of the new loss function, e.g. "CustomNNLLoss".
-            The name cannot be a value that is already in ``LOSS_FUNCTIONS``.
+            The name cannot be a value that is already in :data:``LOSS_FUNCTIONS``.
         new_loss: The type of loss function to register.
 
     Raises:
-        ValueError: If ``loss_name`` is in ``LOSS_FUNCTIONS.keys()`` or the ``loss_function`` is invalid.
+        ValueError: If ``loss_name`` is in :data:``LOSS_FUNCTIONS.keys()`` or the instance is invalid.
 
     Examples::
 
@@ -83,8 +83,8 @@ def get_loss_function(instance: Instance) -> Type[Loss]:
     """Given the name or an instance of a loss function, return the respective instance.
 
     Args:
-        instance: Either the name of the loss function, which has to be in ``LOSS_FUNCTIONS``,
-            or a subclass of ``Loss``.
+        instance: Either the name of the loss function, which has to be in :data:``LOSS_FUNCTIONS``,
+            or a subclass of :class:``~.Loss``.
 
     Raises:
         ValueError: If the instance has the wrong type.

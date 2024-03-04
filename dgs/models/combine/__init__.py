@@ -28,5 +28,5 @@ def get_combine_module(name: Instance) -> Type[CombineSimilaritiesModule]:
 
 
 def register_combine_module(name: str, new_combine: Type[CombineSimilaritiesModule]) -> None:
-    """Register a new combine module in ``COMBINE_MODULES``, to be able to use it from configuration files."""
+    """Register a new combine module in :data:``COMBINE_MODULES``, to be able to use it from configuration files."""
     register_instance(name=name, instance=new_combine, instances=COMBINE_MODULES, inst_class=CombineSimilaritiesModule)

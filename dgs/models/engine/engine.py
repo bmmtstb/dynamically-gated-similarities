@@ -30,6 +30,10 @@ from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
 from dgs.utils.visualization import torch_show_image
 
+engine_validations: Validations = {
+    "module_name": [str],
+}
+
 train_validations: Validations = {
     "loss": [("any", ["callable", ("in", LOSS_FUNCTIONS.keys())])],
     "optimizer": [("any", ["callable", ("in", OPTIMIZERS.keys())])],
@@ -57,6 +61,13 @@ class EngineModule(BaseModule):
 
     Notes:
         The trained module is saved every epoch.
+
+    Params
+    ------
+
+    module_name (str):
+        Name of the Engine subclass.
+        Has to be in :data:`~.ENGINES`.
 
     Test Params
     -----------
@@ -145,6 +156,7 @@ class EngineModule(BaseModule):
         model: nn.Module,
         test_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,
+        **_kwargs,
     ):
         super().__init__(config, [])
 

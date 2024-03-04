@@ -37,7 +37,7 @@ test:
 # DATA #
 # #### #
 
-dataloader_train:
+train_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/train.json"
@@ -46,7 +46,7 @@ dataloader_train:
     id_map: "./weights/pt21_id_map.json"
     force_img_reshape: true
 
-dataloader_gallery:
+gallery_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/val.json"
@@ -54,7 +54,7 @@ dataloader_gallery:
     crops_folder: "./crops/gallery/"
     batch_size: 256
 
-dataloader_query:
+query_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_person_search/query.json"
@@ -66,7 +66,10 @@ dataloader_query:
 # MODULES #
 # ####### #
 
-similarity_visual:
+engine:
+    module_name: "VisualSimilarityEngine"
+
+visual_similarity:
     module_name: "torchreid"  # see `dgs.models.similarity.__init__`
     model_name: "osnet_ain_x1_0"
     similarity: "EuclideanSquare"

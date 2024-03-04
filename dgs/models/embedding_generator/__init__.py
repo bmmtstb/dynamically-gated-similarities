@@ -6,6 +6,8 @@ Given some input data, predict something like an embedding vector to describe th
 This vector is then used to compare it to other embedding vectors using a similarity function.
 The vector of one specified target should be close to other generated vectors of this target,
 but as far as possible from independent targets.
+
+For using an EmbeddingGeneratorModule as similarity, see the description of :class:`~.SimilarityModule`.
 """
 
 from typing import Type
