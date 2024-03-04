@@ -7,7 +7,7 @@ from typing import Type, TypeVar, Union
 
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
-from dgs.models.combine import get_dgs_module
+from dgs.models.combine import get_combine_module
 from dgs.models.dataset import collate_data_samples, get_dataset
 from dgs.models.dataset.posetrack21 import get_pose_track_21
 from dgs.models.engine import get_engine
@@ -41,8 +41,8 @@ def module_loader(config: Config, module: str) -> Union[M, TorchDataLoader]:
     if module == "engine":
         m = get_engine(module_name)
         path = []
-    elif module == "weighted_similarity":
-        m = get_dgs_module(module_name)
+    elif module == "combine":
+        m = get_combine_module(module_name)
     elif module.startswith("similarity_"):
         m = get_similarity_module(module_name)
     elif module.startswith("dataloader_"):

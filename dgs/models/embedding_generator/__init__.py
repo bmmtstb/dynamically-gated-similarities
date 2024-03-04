@@ -10,7 +10,7 @@ but as far as possible from independent targets.
 
 from typing import Type
 
-from dgs.utils.exceptions import InvalidParameterException
+from dgs.utils.loader import get_instance, register_instance
 from .embedding_generator import EmbeddingGeneratorModule
 from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
 
@@ -21,9 +21,10 @@ EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
 
 
 def get_embedding_generator(name: str) -> Type[EmbeddingGeneratorModule]:
-    """Given the name of one dataset, return the type."""
-    if name not in EMBEDDING_GENERATORS:
-        raise InvalidParameterException(
-            f"Unknown embedding generator with name: {name}. Allowed names: {EMBEDDING_GENERATORS.keys()}"
-        )
-    return EMBEDDING_GENERATORS[name]
+    """Given the name or a new instance of an embedding generator module, return the type."""
+    return get_instance(instance=name, instances=EMBEDDING_GENERATORS, inst_class=EmbeddingGeneratorModule)
+
+
+def register_embedding_generator(name: str, new_eg: Type[EmbeddingGeneratorModule]) -> None:
+    """Register a new embedding generator in ``EMBEDDING_GENERATORS``, to be able to use it from configuration files."""
+    register_instance(name=name, instance=new_eg, instances=EMBEDDING_GENERATORS, inst_class=EmbeddingGeneratorModule)

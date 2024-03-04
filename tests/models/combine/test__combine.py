@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import torch
 
-from dgs.models import BaseModule, get_dgs_module
+from dgs.models import BaseModule, get_combine_module
 from dgs.models.combine.combine import CombineSimilaritiesModule, DynamicallyGatedSimilarities, StaticAlphaCombine
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException
@@ -20,7 +20,7 @@ class TestDGS(unittest.TestCase):
             ("static_alpha", StaticAlphaCombine, {"alpha": [0.4, 0.3, 0.3]}),
         ]:
             with self.subTest(msg="name: {}, module: {}, kwargs: {}".format(name, mod_class, kwargs)):
-                module = get_dgs_module(name)
+                module = get_combine_module(name)
                 self.assertEqual(module, mod_class)
 
                 cfg = fill_in_defaults({"dgs": kwargs}, default_cfg=self.default_cfg)
@@ -30,7 +30,7 @@ class TestDGS(unittest.TestCase):
                 self.assertTrue(isinstance(module, BaseModule))
 
         with self.assertRaises(InvalidParameterException) as e:
-            _ = get_dgs_module("dummy")
+            _ = get_combine_module("dummy")
         self.assertTrue("Unknown combine similarities module with name" in str(e.exception), msg=e.exception)
 
     def test_dgs_init(self):
