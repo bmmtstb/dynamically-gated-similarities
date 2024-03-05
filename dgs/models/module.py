@@ -13,7 +13,7 @@ import torch
 from torch.nn import Module
 
 from dgs.utils.config import get_sub_config
-from dgs.utils.constants import PRINT_PRIORITY
+from dgs.utils.constants import PRECISION_MAP, PRINT_PRIORITY
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.types import Config, FilePath, NodePath, Validations
@@ -24,22 +24,11 @@ module_validations: Validations = {
     "is_training": [bool],
     "name": [str, ("longer", 2)],
     "print_prio": [("in", PRINT_PRIORITY)],
-    "sp": [bool],
     # optional
     "description": ["optional", str],
-    "gpus": [
-        "optional",
-        list,
-        (
-            "any",
-            [
-                ("forall", [int, ("gte", -1)]),
-                ("all", [("forall", str), lambda x, _: all(int(x_i) >= -1 for x_i in x)]),
-            ],
-        ),
-    ],
     "log_dir": ["optional", str],
     "num_workers": ["optional", int, ("gte", 0)],
+    "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), torch.dtype])],
 }
 
 
@@ -81,29 +70,25 @@ class BaseModule(ABC):
     Configuration
     -------------
 
-    device: (Device, optional, default="cuda")
+    device: (Device)
         The device to run this module and tracker on.
-
-    gpus: (list[int], optional, default=[0])
-        List of GPU IDs to use during multi-GPU training or running.
-
-    num_workers: (int, optional, default=0)
-        The number of additional workers, the torch DataLoader should use to load the datasets.
-
-    print_prio: (str, optional, default: "INFO")
+    is_training: (bool)
+        Whether the torch modules should train or evaluate.
+    name (str):
+        The name of this configuration.
+        Mostly used for printing, logging, and file saving.
+    print_prio: (str)
         How much information should be printed while running.
         Default "INFO" will print status reports but no debugging information.
 
-    sp: (bool, optional, default=True)
-        Whether to use a single process (sp) or use multiprocessing.
-        If sp is false, 'gpus' has to be defined.
-
-    is_training: (bool, optional, default=False)
-        Whether the torch modules should train or evaluate.
 
     log_dir (FilePath, optional, default="./results/"):
         Path to directory where all the files of this run are saved.
         The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/").
+    num_workers: (int, optional, default=0)
+        The number of additional workers, the torch DataLoader should use to load the datasets.
+    precision (Union[type, str, torch.dtype], optional, default=torch.float32)
+        The precision at which this module should operate.
 
     Attributes:
         config: The overall configuration of the whole algorithm.
@@ -123,16 +108,6 @@ class BaseModule(ABC):
         self.config: Config = config
         self.params: Config = get_sub_config(config, path)
         self._path: NodePath = path
-
-        # gpus might be string
-        if not self.config["gpus"]:
-            self.config["gpus"] = [-1]
-        elif isinstance(self.config["gpus"], str):
-            self.config["gpus"] = [int(i) for i in self.config["gpus"].split(",")]
-
-        # set default value of num_workers
-        if not self.config["num_workers"]:
-            self.config["num_workers"] = 0
 
         self.validate_params(module_validations, "config")
 
@@ -276,18 +251,34 @@ class BaseModule(ABC):
 
     @property
     def device(self) -> torch.device:
-        """Shorthand for getting the device configuration."""
+        """Get the device of this module."""
         return torch.device(self.config["device"])
 
     @property
     def name(self) -> str:
-        """Shorthand for getting the name of the module."""
+        """Get the name of the module."""
         return str(self.config["name"])
 
     @property
     def name_safe(self) -> str:
-        """Shorthand for getting the name of the module usable in filepaths by replacing spaces and underscores."""
+        """Get the escaped name of the module usable in filepaths by replacing spaces and underscores."""
         return str(self.config["name"]).replace(" ", "-").replace(".", "_")
+
+    @property
+    def precision(self) -> torch.dtype:
+        """Get the floating point precision used in this module."""
+        if "precision" not in self.config:
+            return torch.float32
+        precision = self.config["precision"]
+        if isinstance(precision, torch.dtype):
+            return precision
+        if precision == int:
+            return torch.int
+        if precision == float:
+            return torch.float
+        if isinstance(precision, str):
+            return PRECISION_MAP[precision]
+        raise NotImplementedError
 
     def configure_torch_module(self, module: Module, train: bool = None) -> Module:
         """Set compute mode and send model to the device or multiple parallel devices if applicable.
@@ -305,10 +296,7 @@ class BaseModule(ABC):
             module.train()
         else:
             module.eval()
-        # send model to device(s)
-        if (not self.config["sp"] and len(self.config["gpus"]) > 1) or len(self.config["gpus"]) > 1:  # pragma: no cover
-            raise NotImplementedError("Parallel does not work yet.")
-            # return DistributedDataParallel(module, device_ids=self.config.gpus).to(self.device)
+        # send model to device(s) - multiple devices not supported
         module.to(device=self.device)
         return module
 

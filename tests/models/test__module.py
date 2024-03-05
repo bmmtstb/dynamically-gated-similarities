@@ -8,6 +8,7 @@ from torch import nn
 
 from dgs.models.module import BaseModule, module_validations as base_module_validation
 from dgs.utils.config import fill_in_defaults
+from dgs.utils.constants import PRECISION_MAP
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
 from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import Config, Device
@@ -53,16 +54,10 @@ class TestBaseModule(unittest.TestCase):
             _def_repl("print_prio", "INFO"),
             _def_repl("print_prio", "WARNING"),
             _def_repl("print_prio", "ERROR"),
-            _def_repl("gpus", None),
-            _def_repl("gpus", [0, 1, 2]),
-            _def_repl("gpus", "0,1,2,3"),
-            _def_repl("gpus", ""),
-            _def_repl("num_workers", None),
             _def_repl("num_workers", 4),
-            _def_repl("sp", True),
-            _def_repl("sp", False),
             _def_repl("training", True),
             _def_repl("training", False),
+            _def_repl("precision", "float64"),
         ]:
             with self.subTest(msg=str(cfg)):
                 BaseModule(config=cfg, path=[]).validate_params(base_module_validation, "config")
@@ -155,6 +150,50 @@ class TestBaseModule(unittest.TestCase):
 
                 self.assertEqual(m.name, name)
                 self.assertEqual(m.name_safe, safe)
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_no_precision_in_cfg(self):
+        cfg = get_test_config()
+        m = BaseModule(config=cfg, path=[])
+        self.assertEqual(m.precision, torch.float32)
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_precision_raises(self):
+        cfg = fill_in_defaults(
+            {"precision": "dummy"},
+            default_cfg=get_test_config(),
+        )
+        with self.assertRaises(InvalidParameterException) as e:
+            _ = BaseModule(config=cfg, path=[])
+        self.assertTrue("parameter 'precision' is not valid" in str(e.exception), msg=e.exception)
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_precision(self):
+        for precision, dtype in [
+            (int, torch.int),
+            (float, torch.float),
+            (torch.float, torch.float),
+            (torch.float32, torch.float32),
+            (torch.float64, torch.float64),
+        ]:
+            with self.subTest(msg="precision: {}, dtype: {}".format(precision, dtype)):
+                cfg = fill_in_defaults(
+                    {"precision": precision},
+                    default_cfg=get_test_config(),
+                )
+                m = BaseModule(config=cfg, path=[])
+                self.assertEqual(m.precision, dtype)
+
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_precision_constants(self):
+        for precision, dtype in PRECISION_MAP.items():
+            with self.subTest(msg="precision: {}, dtype: {}".format(precision, dtype)):
+                cfg = fill_in_defaults(
+                    {"precision": precision},
+                    default_cfg=get_test_config(),
+                )
+                m = BaseModule(config=cfg, path=[])
+                self.assertEqual(m.precision, dtype)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_terminate_module(self):

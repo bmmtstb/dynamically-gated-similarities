@@ -20,7 +20,7 @@ PRINT_PRIORITY: dict[str, int] = {
 PROJECT_ROOT: str = os.path.normpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 """Path to this projects' root directory."""
 
-OKS_SIGMAS: dict[str, torch.FloatTensor] = {
+OKS_SIGMAS: dict[str, torch.Tensor] = {
     # pylint: disable=line-too-long
     # fmt: off
     "halpe-full-body": torch.div(
@@ -117,4 +117,26 @@ KEY_POINT_NAMES: dict[str, list[str]] = {
         "left_ankle",  # 15
         "right_ankle",  # 16
     ],
+}
+
+PRECISION_MAP: [str, torch.dtype] = {
+    "bfloat16": torch.bfloat16,
+    "bool": torch.bool,
+    "cfloat": torch.cfloat,
+    "complex128": torch.complex128,
+    "complex64": torch.complex64,
+    "double": torch.double,
+    "float": torch.float,
+    "float16": torch.float16,
+    "float32": torch.float32,
+    "float64": torch.float64,
+    "half": torch.half,
+    "int": torch.int,
+    "int16": torch.int16,
+    "int32": torch.int32,
+    "int64": torch.int64,
+    "int8": torch.int8,
+    "long": torch.long,
+    "short": torch.short,
+    "uint8": torch.uint8,
 }

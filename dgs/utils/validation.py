@@ -383,7 +383,7 @@ def validate_value(value: any, data: any, validation: str) -> bool:
     if isinstance(validation, type):
         return isinstance(value, validation)
     if validation not in VALIDATIONS:
-        raise KeyError(f"Validation {validation} does not exist.")
+        raise KeyError(f"Validation '{validation}' does not exist.")
     try:
         return VALIDATIONS[validation](value, data)
     except Exception as e:
