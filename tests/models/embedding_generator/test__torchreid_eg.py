@@ -23,7 +23,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
             {
                 "is_training": False,
                 "device": "cpu",
-                "embed_gen": {"model_name": "osnet_x0_25", "nof_classes": nof_classes},
+                "embed_gen": {"module_name": "torchreid", "model_name": "osnet_x0_25", "nof_classes": nof_classes},
             },
             get_test_config(),
         )
@@ -58,7 +58,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
             {
                 "is_training": False,
                 "device": "cpu",
-                "embed_gen": {"model_name": "osnet_x0_25", "nof_classes": nof_classes},
+                "embed_gen": {"module_name": "torchreid", "model_name": "osnet_x0_25", "nof_classes": nof_classes},
             },
             get_test_config(),
         )

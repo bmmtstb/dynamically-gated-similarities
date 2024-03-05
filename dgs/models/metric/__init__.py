@@ -13,22 +13,28 @@ from .metric import (
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
     EuclideanSquareMetric,
+    NegativeSoftmaxEuclideanDistance,
+    NegativeSoftmaxEuclideanSquaredDistance,
     PairwiseDistanceMetric,
     TorchreidCosineDistance,
     TorchreidEuclideanSquaredDistance,
 )
 
 METRICS: dict[str, Type[Metric]] = {
-    "CosineSimilarity": CosineSimilarityMetric,  # shorthand name
+    "CosineSimilarity": CosineSimilarityMetric,  # alias
     "CosineSimilarityMetric": CosineSimilarityMetric,
-    "CosineDistance": CosineDistanceMetric,  # shorthand name
+    "CosineDistance": CosineDistanceMetric,  # alias
     "CosineDistanceMetric": CosineDistanceMetric,
-    "EuclideanSquare": EuclideanSquareMetric,  # shorthand name
+    "EuclideanSquare": EuclideanSquareMetric,  # alias
     "EuclideanSquareMetric": EuclideanSquareMetric,
-    "EuclideanDistance": EuclideanDistanceMetric,  # shorthand name
+    "EuclideanDistance": EuclideanDistanceMetric,  # alias
     "EuclideanDistanceMetric": EuclideanDistanceMetric,
-    "PairwiseDistance": PairwiseDistanceMetric,  # shorthand name
+    "PairwiseDistance": PairwiseDistanceMetric,  # alias
     "PairwiseDistanceMetric": PairwiseDistanceMetric,
+    "NegSoftmaxEuclideanDist": NegativeSoftmaxEuclideanDistance,  # alias
+    "NegativeSoftmaxEuclideanDistance": NegativeSoftmaxEuclideanDistance,
+    "NegSoftmaxEuclideanSqDist": NegativeSoftmaxEuclideanSquaredDistance,  # alias
+    "NegativeSoftmaxEuclideanSquaredDistance": NegativeSoftmaxEuclideanSquaredDistance,
     "TorchPairwiseDistance": nn.PairwiseDistance,
     "TorchCosineSimilarity": nn.CosineSimilarity,
     "TorchreidEuclideanSquaredDistance": TorchreidEuclideanSquaredDistance,

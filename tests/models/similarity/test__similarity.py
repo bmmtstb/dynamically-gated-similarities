@@ -21,7 +21,7 @@ class TestSimilarity(unittest.TestCase):
             with self.subTest(msg="name: {}, mod_class: {}, kwargs: {}".format(name, mod_class, kwargs)):
                 module = get_similarity_module(name)
                 self.assertEqual(module, mod_class)
-
+                kwargs["module_name"] = name
                 cfg = fill_in_defaults({"sim": kwargs}, default_cfg=test_config)
 
                 with HidePrint():

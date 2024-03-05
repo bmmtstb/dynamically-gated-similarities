@@ -24,6 +24,7 @@ class TestDGS(unittest.TestCase):
                 module = get_combine_module(name)
                 self.assertEqual(module, mod_class)
 
+                kwargs["module_name"] = name
                 cfg = fill_in_defaults({"dgs": kwargs}, default_cfg=self.default_cfg)
                 module = module(config=cfg, path=["dgs"])
 
@@ -132,7 +133,7 @@ class TestConstantAlpha(unittest.TestCase):
             ([1 / 11 for _ in range(10)], InvalidParameterException, "parameter 'alpha' is not valid"),
         ]:
             with self.subTest(msg="alpha: {}".format(alpha)):
-                cfg = fill_in_defaults({"sim": {"alpha": alpha}}, self.default_cfg)
+                cfg = fill_in_defaults({"sim": {"alpha": alpha, "module_name": "constant_alpha"}}, self.default_cfg)
                 with self.assertRaises(exp) as e:
                     _ = StaticAlphaCombine(config=cfg, path=["sim"])
                 self.assertTrue(text in str(e.exception), msg=e.exception)

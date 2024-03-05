@@ -42,6 +42,8 @@ class TestPoseBased(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg=f"params: {params}"):
+                params["module_name"] = "LinearPBEG"
+
                 cfg = fill_in_defaults(
                     {"pose_embedding_generator": params, "batch_size": batch_size, "device": device},
                     self.default_cfg,
@@ -113,6 +115,7 @@ class TestPoseBased(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg=f"params: {params}"):
+                params["module_name"] = "KeyPointConvolutionPBEG"
                 cfg = fill_in_defaults(
                     {"pose_embedding_generator": params, "batch_size": batch_size, "device": device}, self.default_cfg
                 )

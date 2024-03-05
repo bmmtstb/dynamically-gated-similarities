@@ -5,6 +5,7 @@ Methods for handling the computation of distances and other metrics.
 import warnings
 
 import torch
+from torch import nn
 from torch.linalg import vector_norm
 from torch.nn import PairwiseDistance
 
@@ -289,7 +290,7 @@ class PairwiseDistanceMetric(Metric):
         self.register_module("PairwiseDistanceModule", self.dist)
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
-        """Compute the pairwise distance between to inputs, where the second dimension has to match.
+        """Compute the pairwise distance between the two inputs, where the second dimension has to match.
 
         Args:
             input1: tensor of shape ``[a x E]``
@@ -300,6 +301,67 @@ class PairwiseDistanceMetric(Metric):
         """
         _validate_metric_inputs(input1, input2)
         return self.dist(input1, input2)
+
+
+class NegativeSoftmaxEuclideanDistance(Metric):
+    """Class to compute the Softmax distribution of the negative Euclidean distance.
+
+    Keyword Args:
+        softmax_dim (int): The dimension along which to compute the softmax.
+    """
+
+    def __init__(self, *args, softmax_dim: int = -1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dist = EuclideanDistanceMetric()
+        self.softmax = nn.Softmax(dim=softmax_dim)
+
+    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        """First compute the Euclidean distance between the two inputs, of which the second dimension has to match.
+        Then compute the softmax of the negative distance along the second dimension.
+
+        Args:
+            input1: tensor of shape ``[a x E]``
+            input2: tensor of shape ``[b x E]``
+
+        Returns:
+            A tensor of shape ``[a x b]`` containing the similarity between the inputs as probability.
+            By default, the softmax is computed along the last dimension,
+            but you can change the behavior by changing the kwargs during initialization.
+        """
+        _validate_metric_inputs(input1, input2)
+        d = self.dist(input1, input2)
+        return self.softmax(-d)
+
+
+class NegativeSoftmaxEuclideanSquaredDistance(Metric):
+    """Class to compute the Softmax distribution of the negative squared Euclidean distance.
+
+    Keyword Args:
+        softmax_dim (int): The dimension along which to compute the softmax.
+    """
+
+    def __init__(self, *args, softmax_dim: int = -1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dist = EuclideanSquareMetric()
+        self.softmax = nn.Softmax(dim=softmax_dim)
+
+    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        """First compute the squared Euclidean distance between the two inputs.
+        The second dimension of the inputs has to match.
+        Then compute the softmax of the negative distance along the second dimension.
+
+        Args:
+            input1: tensor of shape ``[a x E]``
+            input2: tensor of shape ``[b x E]``
+
+        Returns:
+            A tensor of shape ``[a x b]`` containing the similarity between the inputs as probability.
+            By default, the softmax is computed along the last dimension,
+            but you can change the behavior by changing the kwargs during initialization.
+        """
+        _validate_metric_inputs(input1, input2)
+        d = self.dist(input1, input2)
+        return self.softmax(-d)
 
 
 class TorchreidEuclideanSquaredDistance(Metric):

@@ -14,7 +14,7 @@ class TestPoseSimilarities(unittest.TestCase):
     default_cfg = get_test_config()
 
     def test_oks(self):
-        cfg = fill_in_defaults({"oks": {"format": "coco"}}, default_cfg=self.default_cfg.copy())
+        cfg = fill_in_defaults({"oks": {"format": "coco", "module_name": "oks"}}, default_cfg=self.default_cfg.copy())
         sim = ObjectKeypointSimilarity(config=cfg, path=["oks"])
         self.assertTrue(isinstance(sim, SimilarityModule))
 
@@ -76,7 +76,7 @@ class TestPoseSimilarities(unittest.TestCase):
         self.assertTrue(torch.allclose(oks34[0], oks43[:, 0]), oks34)
 
     def test_iou(self):
-        cfg = fill_in_defaults({"iou": {}}, default_cfg=self.default_cfg.copy())
+        cfg = fill_in_defaults({"iou": {"module_name": "iou"}}, default_cfg=self.default_cfg.copy())
         sim = IntersectionOverUnion(config=cfg, path=["iou"])
         self.assertTrue(isinstance(sim, SimilarityModule))
         bbox1 = BoundingBoxes([0, 0, 5, 5], canvas_size=(10, 10), format="xyxy")
