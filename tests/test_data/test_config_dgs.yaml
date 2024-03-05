@@ -1,0 +1,34 @@
+name: "Test the DGS-Tracker"
+
+device: "cpu"
+print_prio: "DEBUG"
+is_training: off
+log_dir: "./tests/test_data/logs/"
+
+# ####### #
+# MODULES #
+# ####### #
+
+dgs:
+    names: ["vis_sim", "pose_sim", "box_sim"]
+    combine: "combine_sims"
+
+combine_sims:
+    module_name: "constant_alpha"
+    alpha: [0.5, 0.30, 0.20]
+
+vis_sim:
+    module_name: "torchreid"  # see `dgs.models.similarity.__init__`
+    model_name: "osnet_x0_25"
+    similarity: "NegSoftmaxEuclideanDist"
+    weights: "pretrained"
+    nof_classes: 10
+
+pose_sim:
+    module_name: "oks"
+    format: "coco"
+    softmax: true
+
+box_sim:
+    module_name: "iou"
+    softmax: true

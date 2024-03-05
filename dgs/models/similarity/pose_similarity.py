@@ -3,6 +3,7 @@ Modules for computing the similarity between two poses.
 """
 
 import torch
+from torch import nn
 from torchvision.ops import box_area, box_iou
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 from torchvision.tv_tensors import BoundingBoxes, BoundingBoxFormat
@@ -23,6 +24,11 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
     format (str):
         The key point format, e.g., 'coco', 'coco-whole', ... has to be in OKS_SIGMAS.keys().
+
+    softmax (bool, optional):
+        Whether to compute the softmax of the result.
+        All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
+        Default False.
     """
 
     def __init__(self, config: Config, path: NodePath):
@@ -42,6 +48,11 @@ class ObjectKeypointSimilarity(SimilarityModule):
         )
         # Set up a transform function to convert the bounding boxes if they have the wrong format
         self.transform = ConvertBoundingBoxFormat("XYXY")
+
+        # Set up softmax function if requested
+        self.softmax = nn.Sequential()
+        if self.params.get("softmax", False):
+            self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
         """Given a data sample, compute the detected / predicted key points with shape ``[B1 x J x 2]``
@@ -130,22 +141,36 @@ class ObjectKeypointSimilarity(SimilarityModule):
         # The count of non-zero visibilities in the ground-truth
         count = torch.count_nonzero(gt_vis, dim=-1)  # [B2]
         # for every pair in B, sum over all J
-        return torch.div(torch.where(gt_vis.T, ks, 0).sum(dim=-2), count).nan_to_num_(nan=0.0, posinf=0.0)
+        return self.softmax(torch.div(torch.where(gt_vis.T, ks, 0).sum(dim=-2), count).nan_to_num_(nan=0.0, posinf=0.0))
 
 
 class IntersectionOverUnion(SimilarityModule):
-    """Use the bounding-box based intersection-over-union as a similarity metric."""
+    """Use the bounding-box based intersection-over-union as a similarity metric.
+
+    Params
+    ------
+
+    softmax (bool, optional):
+        Whether to compute the softmax of the result.
+        All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
+        Default False.
+    """
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
         self.transform = ConvertBoundingBoxFormat("XYXY")
 
+        # Set up softmax function if requested
+        self.softmax = nn.Sequential()
+        if self.params.get("softmax", False):
+            self.softmax.append(nn.Softmax(dim=-1))
+
     def get_data(self, ds: DataSample) -> BoundingBoxes:
         """Given a DataSample obtain the ground truth bounding boxes as BoundingBoxes object of size ``[B1 x 4]``.
 
         Notes:
-            It is expected that the bounding boxes are given in 'XYXY' format.
+            The box_iou function expects that the bounding boxes are in the 'XYXY' format.
         """
         bboxes = ds.bbox
         if bboxes.format != BoundingBoxFormat.XYXY:
@@ -156,7 +181,7 @@ class IntersectionOverUnion(SimilarityModule):
         """Given a DataSample obtain the ground truth bounding boxes as BoundingBoxes object of size ``[B2 x 4]``.
 
         Notes:
-            It is expected that the bounding boxes are given in 'XYXY' format.
+            The box_iou function expects that the bounding boxes are in the 'XYXY' format.
         """
         bboxes = ds.bbox
         if bboxes.format != BoundingBoxFormat.XYXY:
@@ -164,4 +189,4 @@ class IntersectionOverUnion(SimilarityModule):
         return bboxes
 
     def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
-        return box_iou(self.get_data(ds=data), self.get_target(ds=target))
+        return self.softmax(box_iou(self.get_data(ds=data), self.get_target(ds=target)))

@@ -330,7 +330,7 @@ class NegativeSoftmaxEuclideanDistance(Metric):
         """
         _validate_metric_inputs(input1, input2)
         d = self.dist(input1, input2)
-        return self.softmax(-d)
+        return self.softmax(torch.neg(d))
 
 
 class NegativeSoftmaxEuclideanSquaredDistance(Metric):
@@ -361,7 +361,7 @@ class NegativeSoftmaxEuclideanSquaredDistance(Metric):
         """
         _validate_metric_inputs(input1, input2)
         d = self.dist(input1, input2)
-        return self.softmax(-d)
+        return self.softmax(torch.neg(d))
 
 
 class TorchreidEuclideanSquaredDistance(Metric):

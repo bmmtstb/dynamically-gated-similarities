@@ -62,7 +62,7 @@ data_file = ".coverage"
 source = ["dgs"]
 omit = [
     "*/utils/torchtools.py",  # copied from torchreid
-    "tracker_api.py",  # will only contain default tracker which can't really be tested without data
+    "*/engine/*",  # engine cant really be tested without data
     "visualization.py",  # printing is hard to test
 ]
 
@@ -74,9 +74,6 @@ fail_under = 50  # fixme target is 80
 skip_covered = true
 skip_empty = true
 ignore_errors = true
-omit = [# files
-    "*/utils/torchtools.py",  # copied from torchreid
-]
 # Regexes for lines to exclude from consideration
 exclude_also = [
     # Don't complain about missing debug-only code:
