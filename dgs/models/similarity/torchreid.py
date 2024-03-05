@@ -61,11 +61,22 @@ class TorchreidSimilarity(SimilarityModule):
 
     model_name (str):
         The name of the torchreid model used.
-        Has to be one of ``~torchreid.models.__model_factory.keys()``.
+        Has to be one of :data:`torchreid.models.__model_factory.keys()`.
     similarity (str):
         The name of the similarity function / metric to use.
-        Has to be one of ``dgs.models.metric.METRICS``
+        Has to be one of :data:`~dgs.models.metric.METRICS`
 
+    compute_softmax (bool, optional):
+        Whether to compute the softmax of the similarity as the last step of the model.
+        Some metrics do not return a probability distribution or even values in range :math:`[0, 1]`,
+        which makes it hard to sum them up using the :class:`~.CombineSimilaritiesModule` modules.
+        For example, the cosine similarity returns values in range :math:`[-1, 1]`,
+        where 1 means that the vectors are close.
+        On the other hand, the Euclidean distance will be larger for values that are further apart, with no upper limit.
+        You can use the :class:`~.NegativeSoftmaxEuclideanDistance` or
+        :class:`~.NegativeSoftmaxEuclideanSquaredDistance` as metric.
+
+        Default True.
     weights (Union[str, FilePath], optional):
         A path to the model weights or the string 'pretrained' for the default pretrained torchreid model.
         Default 'pretrained'.
@@ -91,6 +102,10 @@ class TorchreidSimilarity(SimilarityModule):
 
         self.func = self._init_func()
         self.add_module(name="func", module=self.func)
+
+        self.final = nn.Sequential()
+        if self.params.get("compute_softmax", False):
+            self.final.append(nn.Softmax(dim=-1))
 
     def _init_model(self, pretrained: bool) -> nn.Module:
         """Initialize torchreid model"""
@@ -197,10 +212,15 @@ class TorchreidSimilarity(SimilarityModule):
 
         Returns:
             A similarity matrix containing values describing the similarity between every current- and target-embedding.
-            The similarity is a (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
+            The similarity should be (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
+            If the provided metric does not return a probability distribution,
+            you might want to change the metric or set the 'compute_softmax' parameter of this module.
+            This will ensure better / correct behavior when combining this similarity with others.
         """
         # pred embeds have shape [A x E]
         pred_embeds = self.get_data(ds=data)
         targ_embeds = self.get_target(ds=target)
 
-        return self.func(pred_embeds, targ_embeds)
+        dist = self.func(pred_embeds, targ_embeds)
+
+        return self.final(dist)

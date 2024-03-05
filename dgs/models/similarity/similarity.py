@@ -7,7 +7,11 @@ from torch import nn
 
 from dgs.models.module import BaseModule
 from dgs.utils.states import DataSample
-from dgs.utils.types import Config, NodePath
+from dgs.utils.types import Config, NodePath, Validations
+
+similarity_validations: Validations = {
+    "module_name": [str],
+}
 
 
 class SimilarityModule(BaseModule, nn.Module):
@@ -16,6 +20,8 @@ class SimilarityModule(BaseModule, nn.Module):
     def __init__(self, config: Config, path: NodePath):
         BaseModule.__init__(self, config, path)
         nn.Module.__init__(self)
+
+        self.validate_params(similarity_validations)
 
     def __call__(self, *args, **kwargs) -> torch.Tensor:  # pragma: no cover
         """see self.forward()"""

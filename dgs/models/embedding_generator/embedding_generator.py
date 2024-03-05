@@ -12,6 +12,7 @@ from dgs.utils.states import DataSample
 from dgs.utils.types import Config, NodePath, Validations
 
 embedding_validations: Validations = {
+    "module_name": [str],
     "embedding_size": [int, ("gt", 0)],
     "nof_classes": [int, ("gt", 0)],
 }

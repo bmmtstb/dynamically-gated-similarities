@@ -13,6 +13,10 @@ from dgs.models.module import BaseModule
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
+combine_validations: Validations = {
+    "module_name": [str],
+}
+
 static_alpha_validation: Validations = {
     "alpha": [
         list,
@@ -29,6 +33,8 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
     def __init__(self, config: Config, path: NodePath):
         BaseModule.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
+
+        self.validate_params(combine_validations)
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
@@ -120,7 +126,7 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
 
         self.validate_params(static_alpha_validation)
 
-        alpha = torch.tensor(self.params["alpha"], dtype=torch.float32).reshape(-1)
+        alpha = torch.tensor(self.params["alpha"], dtype=self.precision).reshape(-1)
         self.register_buffer("alpha_const", alpha)
         self.len_alpha: int = len(alpha)
 

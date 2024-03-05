@@ -15,6 +15,8 @@ from dgs.models.metric.metric import (
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
     EuclideanSquareMetric,
+    NegativeSoftmaxEuclideanDistance,
+    NegativeSoftmaxEuclideanSquaredDistance,
     PairwiseDistanceMetric,
     TorchreidCosineDistance,
     TorchreidEuclideanSquaredDistance,
@@ -167,6 +169,46 @@ class TestMetrics(unittest.TestCase):
                 self.assertEqual(dist.shape, res.shape)
                 self.assertTrue(torch.allclose(dist, res))
                 self.assertTrue(torch.allclose(dist, dist_inv.T))
+
+    def test_neg_softmax_euclidean(self):
+        for t1, t2, res, res_inv in [
+            (torch.ones((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (torch.zeros((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (torch.ones((2, 4)), torch.zeros((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (
+                torch.tensor([[1, 0], [1, 1], [0, 1]]),
+                torch.ones((1, 2)),
+                torch.ones((3, 1)),
+                nn.functional.softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+            ),
+        ]:
+            with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
+                m = NegativeSoftmaxEuclideanDistance()
+                sim = m(t1.float(), t2.float())
+                sim_inv = m(t2.float(), t1.float())
+                self.assertEqual(sim.shape, res.shape)
+                self.assertTrue(torch.allclose(sim.float(), res.float()), (sim, res))
+                self.assertTrue(torch.allclose(sim_inv.float(), res_inv.float()), (sim_inv, res_inv))
+
+    def test_neg_softmax_squared_euclidean(self):
+        for t1, t2, res, res_inv in [
+            (torch.ones((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (torch.zeros((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (torch.ones((2, 4)), torch.zeros((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (
+                torch.tensor([[1, 0], [1, 1], [0, 1]]),
+                torch.ones((1, 2)),
+                torch.ones((3, 1)),
+                nn.functional.softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+            ),
+        ]:
+            with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
+                m = NegativeSoftmaxEuclideanSquaredDistance()
+                sim = m(t1.float(), t2.float())
+                sim_inv = m(t2.float(), t1.float())
+                self.assertEqual(sim.shape, res.shape)
+                self.assertTrue(torch.allclose(sim, res), (sim, res))
+                self.assertTrue(torch.allclose(sim_inv, res_inv), (sim_inv, res_inv))
 
 
 class TestMetricCMC(unittest.TestCase):
