@@ -40,7 +40,7 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> torch.FloatTensor:
+    def forward(self, *args, **kwargs) -> torch.Tensor:
         raise NotImplementedError
 
 
@@ -59,20 +59,20 @@ class DynamicallyGatedSimilarities(CombineSimilaritiesModule):
     It is possible that :math:`S_1` and :math:`S_2` have different shapes in at least one dimension.
     """
 
-    def forward(self, *tensors, alpha: torch.FloatTensor = torch.tensor([0.5, 0.5]), **_kwargs) -> torch.FloatTensor:
+    def forward(self, *tensors, alpha: torch.Tensor = torch.tensor([0.5, 0.5]), **_kwargs) -> torch.Tensor:
         """The forward call of this module combines two weight matrices given a third importance weight :math:`\alpha`.
         :math:`\alpha` describes how important s1 is, while :math:`(1- \alpha)` does the same for s2.
 
         All tensors should be on the same device and ``s1`` and ``s2`` should have the same shape.
 
         Args:
-            tensors (tuple[torch.FloatTensor, ...]): Two weight matrices as tuple of FloatTensors.
+            tensors (tuple[torch.Tensor, ...]): Two weight matrices as tuple of FloatTensors.
                 Both should have values in range [0,1] and be of the same shape ``[N x T]``.
             alpha: Weight :math:`\alpha`. Should be a FloatTensor in range [0,1].
                 The shape of :math:`\alpha` can either be ``[]``, ``[1 (x 1)]``, or ``[N x 1]``.
 
         Returns:
-            torch.FloatTensor: The weighted similarity matrix.
+            torch.Tensor: The weighted similarity matrix.
 
         Raises:
             ValueError: If alpha or the matrices have invalid shapes.

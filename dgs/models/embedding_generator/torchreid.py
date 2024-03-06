@@ -114,7 +114,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
 
         Args:
             ds: A :class:`DataSample` containing the cropped image as input for the model.
-                TVImage or FloatTensor of shape ``[B x C x w x h]``.
+                :class:`Image` or FloatTensor of shape ``[B x C x w x h]``.
 
         Returns:
             A batch of embeddings as tensor of shape: ``[B x E]``.

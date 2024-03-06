@@ -16,7 +16,7 @@ from torchvision.transforms.functional import convert_image_dtype
 
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.image import CustomCropResize, load_image
-from dgs.utils.types import Device, FilePath, FilePaths, TVImage
+from dgs.utils.types import Device, FilePath, FilePaths, Image
 
 
 def torch_to_numpy(t: torch.Tensor) -> np.ndarray:
@@ -39,7 +39,7 @@ def extract_crops_from_images(
     boxes: tv_tensors.BoundingBoxes,
     key_points: torch.Tensor = None,
     **kwargs,
-) -> tuple[TVImage, torch.Tensor]:
+) -> tuple[Image, torch.Tensor]:
     """Given a list of original image paths and a list of target crops paths,
     use the given bounding boxes to extract their content as image crops and save them as new images.
 
@@ -89,7 +89,7 @@ def extract_crops_from_images(
         ),
     )
 
-    imgs: TVImage = load_image(
+    imgs: Image = load_image(
         filepath=tuple(img_fps),
         device=device,
     )
@@ -139,6 +139,6 @@ class HidePrint:
         sys.stdout = self._original_stdout
 
 
-def ids_to_one_hot(ids: Union[torch.Tensor, torch.LongTensor], nof_classes: int) -> torch.LongTensor:
+def ids_to_one_hot(ids: Union[torch.Tensor, torch.Tensor], nof_classes: int) -> torch.Tensor:
     """Given a tensor containing the class ids as LongTensor, return the one hot representation as LongTensor."""
     return F.one_hot(ids.long(), nof_classes)  # pylint: disable=not-callable

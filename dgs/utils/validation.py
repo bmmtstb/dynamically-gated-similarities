@@ -12,7 +12,7 @@ from torchvision import tv_tensors
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException, ValidationException
 from dgs.utils.files import is_dir, is_file, is_project_dir, mkdir_if_missing, to_abspath
-from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, TVImage, Validator
+from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, Validator
 
 VALIDATIONS: dict[str, Validator] = {
     "optional": (lambda _x, _d: True),
@@ -136,6 +136,7 @@ VALIDATIONS: dict[str, Validator] = {
 
 def validate_bboxes(
     bboxes: tv_tensors.BoundingBoxes,
+    length: int = None,
     dims: Union[int, None] = 2,
     box_format: Union[tv_tensors.BoundingBoxFormat, None] = None,
 ) -> tv_tensors.BoundingBoxes:
@@ -144,6 +145,8 @@ def validate_bboxes(
 
     Args:
         bboxes: `tv_tensor.BoundingBoxes` object with an arbitrary shape, most likely ``[B x 4]``.
+        length: The number of items or batch-size the tensor should have.
+            Default `None` does not validate the length.
         dims: Number of dimensions bboxes should have.
             Use None to not force any number of dimensions.
             Defaults to two dimensions with the bounding box dimensions as ``[B x 4]``.
@@ -163,20 +166,24 @@ def validate_bboxes(
     if box_format is not None and box_format != bboxes.format:
         raise ValueError(f"Bounding boxes are expected to be in format {box_format} but are in format {bboxes.format}")
 
-    if dims is None:
-        return bboxes
+    saved = bboxes
 
-    new_bboxes = validate_dimensions(bboxes, dims)
+    if dims is not None:
+        bboxes = validate_dimensions(tensor=bboxes, dims=dims, length=length)
+    elif length is not None and len(bboxes) != length:
+        raise ValidationException(f"Bounding box length is expected to be {length} but got {len(bboxes)}")
 
-    return tv_tensors.wrap(new_bboxes, like=bboxes)
+    return tv_tensors.wrap(bboxes, like=saved)
 
 
-def validate_dimensions(tensor: torch.Tensor, dims: int) -> torch.Tensor:
+def validate_dimensions(tensor: torch.Tensor, dims: int, *_, length: int = None) -> torch.Tensor:
     """Given a tensor, make sure he has the correct number of dimensions.
 
     Args:
         tensor: Any `torch.tensor` or other object that can be converted to one.
         dims: Number of dimensions the tensor should have.
+        length: The number of items or batch-size the tensor should have.
+            Default `None` does not validate the length.
 
     Returns:
         A `torch.tensor` with the correct number of dimensions.
@@ -204,14 +211,19 @@ def validate_dimensions(tensor: torch.Tensor, dims: int) -> torch.Tensor:
     while tensor.ndim < dims:
         tensor.unsqueeze_(0)
 
+    if length is not None and length != len(tensor):
+        raise ValidationException(f"length is expected to be {length} but got {len(tensor)}")
+
     return tensor
 
 
-def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePaths:
+def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath], FilePaths], length: int = None) -> FilePaths:
     """Validate the file path.
 
     Args:
         file_paths: Path to the file as a string or a file object.
+        length: The length a :class:`FilePaths` object should have.
+            Except for a length of 1 not applicable for :class:`FilePath`.
 
     Returns:
         FilePaths: The validated file path.
@@ -220,7 +232,14 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePa
         InvalidPathException: If at least one of the paths in `file_paths` does not exist.
     """
     if isinstance(file_paths, (list, tuple)):
+        if length is not None and len(file_paths) != length:
+            raise ValidationException(f"Expected {length} paths but got {len(file_paths)}.")
         return tuple(validate_filepath(file_path)[0] for file_path in file_paths)
+
+    if isinstance(file_paths, str) and length is not None and length != 1:
+        raise ValidationException(f"Expected {length} paths but got a single path {file_paths}.")
+
+    file_paths = str(file_paths)
     if not is_file(file_paths):
         raise InvalidPathException(filepath=file_paths)
 
@@ -228,16 +247,18 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath]]) -> FilePa
 
 
 def validate_heatmaps(
-    heatmaps: Union[torch.Tensor, Heatmap], dims: Union[int, None] = 4, nof_joints: int = None
+    heatmaps: Union[torch.Tensor, Heatmap], length: int = None, dims: Union[int, None] = 4, nof_joints: int = None
 ) -> Heatmap:
     """Validate a given tensor of heatmaps, whether it has the correct format and shape.
 
     Args:
         heatmaps: tensor-like object
+        length: The number of items or batch-size the tensor should have.
+            Default `None` does not validate the length.
         dims: Number of dimensions heatmaps should have.
             Use None to not force any number of dimensions.
             Defaults to four dimensions with the heatmap dimensions as ``[B x J x w x h]``.
-        nof_joints: The number of joints the heatmap should have.
+        nof_joints: The number of joints the heatmap should have (``J``).
             Default None does not validate the number of joints at all.
 
     Returns:
@@ -254,28 +275,32 @@ def validate_heatmaps(
         raise ValueError(f"The number of joints should be {nof_joints} but is {heatmaps.shape[-2]}.")
 
     if dims is not None:
-        heatmaps = validate_dimensions(heatmaps, dims)
+        heatmaps = validate_dimensions(tensor=heatmaps, dims=dims, length=length)
+    elif length is not None and len(heatmaps) != length:
+        raise ValidationException(f"Heatmap length is expected to be {length} but got {len(heatmaps)}")
 
     return tv_tensors.Mask(heatmaps)
 
 
-def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
+def validate_ids(ids: Union[int, torch.Tensor], length: int = None) -> torch.Tensor:
     """Validate a given tensor or single integer value.
 
     Args:
         ids: Arbitrary torch tensor to check.
+        length: The number of items or batch-size the tensor should have.
+            Default `None` does not validate the length.
 
     Returns:
-        torch.IntTensor: Torch integer tensor with one dimension.
+        torch.Tensor: Torch integer tensor with one dimension.
 
     Raises:
-        TypeError: If `ids` is not a `torch.IntTensor`.
+        TypeError: If `ids` is not a `torch.Tensor`.
     """
     if isinstance(ids, int):
         ids = torch.tensor([ids], dtype=torch.int)
 
-    if not isinstance(ids, torch.Tensor) or (isinstance(ids, torch.Tensor) and ids.dtype != torch.int):
-        raise TypeError(f"The input should be a torch int tensor but is {type(ids)}")
+    if not isinstance(ids, torch.Tensor) or ids.is_floating_point() or ids.is_complex():
+        raise TypeError(f"The input should be an integer or an whole numbered torch.Tensor but is {type(ids)}")
 
     ids.squeeze_()
 
@@ -284,32 +309,39 @@ def validate_ids(ids: Union[int, torch.Tensor]) -> torch.IntTensor:
     elif ids.ndim != 1:
         raise ValueError(f"IDs should have only one dimension, but shape is {ids.shape}")
 
-    return ids.int()
+    if length is not None and ids.size(0) != length:
+        raise ValidationException(f"IDs length is expected to be {length} but got {ids.size(0)}")
+
+    return ids.long()
 
 
-def validate_images(images: Union[Image, torch.Tensor], dims: Union[int, None] = 4) -> TVImage:
+def validate_images(images: Union[Image, torch.Tensor], length: int = None, dims: Union[int, None] = 4) -> Image:
     """Given one single or multiple images, validate them and return a torchvision-tensor image.
 
     Args:
         images: torch tensor or tv_tensor.Image object
+        length: The number of items or batch-size the tensor should have.
+            Default `None` does not validate the length.
         dims: Number of dimensions img should have.
             Use None to not force any number of dimensions.
             Defaults to four dimensions with the image dimensions as ``[B x C x H x W]``.
 
     Returns:
-        TVImage: The images as `tv_tensor.Image` object with exactly `dims` dimensions.
+        Image: The images as `tv_tensor.Image` object with exactly `dims` dimensions.
 
     Raises:
         TypeError: If `images` is not a Tensor or cannot be cast to one.
         ValueError: If the dimension of the `images` channels is wrong.
     """
-    if not isinstance(images, (torch.Tensor, torch.ByteTensor, torch.FloatTensor, tv_tensors.Image)) or not (
+    if not isinstance(images, (torch.Tensor, torch.Tensor, torch.Tensor, tv_tensors.Image)) or not (
         isinstance(images, torch.Tensor) and images.dtype in [torch.float32, torch.uint8]  # iff tensor, check dtype
     ):
         raise TypeError(f"Image should be torch tensor or tv_tensor Image but is {type(images)}.")
 
     if dims is not None:
-        images = validate_dimensions(images, dims)
+        images = validate_dimensions(tensor=images, dims=dims, length=length)
+    elif length is not None and len(images) != length:
+        raise ValidationException(f"Image length is expected to be {length} but got {len(images)}")
 
     if images.ndim < 3:
         raise ValueError(f"Image should have at least 3 dimensions. Shape: {images.shape}.")
@@ -323,18 +355,24 @@ def validate_images(images: Union[Image, torch.Tensor], dims: Union[int, None] =
 
 
 def validate_key_points(
-    key_points: torch.Tensor, dims: Union[int, None] = 3, nof_joints: int = None, joint_dim: int = None
+    key_points: torch.Tensor,
+    length: int = None,
+    dims: Union[int, None] = 3,
+    nof_joints: int = None,
+    joint_dim: int = None,
 ) -> torch.Tensor:
     """Given a tensor of key points, validate them and return them as torch tensor of the correct shape.
 
     Args:
         key_points: One `torch.tensor` or any similarly structured data.
+        length: The number of items or batch-size the tensor should have.
+            Default `None` does not validate the length.
         dims: The number of dimensions `key_points` should have.
             Use `None` to not force any number of dimensions.
             Defaults to three dimensions with the key point dimensions as ``[B x J x 2|3]``.
-        nof_joints: The number of joints `key_points` should have.
+        nof_joints: The number of joints ``key_points`` should have (``J``).
             Default `None` does not validate the number of joints at all.
-        joint_dim: The dimensionality the joint dimension should have.
+        joint_dim: The dimensionality the joint dimension should have (``2|3``).
             Default `None` does not validate the dimensionality additionally to being two or three.
 
     Returns:
@@ -361,7 +399,9 @@ def validate_key_points(
         raise ValueError(f"The number of joints should be {nof_joints} but is {key_points.shape[-2]}.")
 
     if dims is not None:
-        key_points = validate_dimensions(key_points, dims)
+        key_points = validate_dimensions(tensor=key_points, dims=dims, length=length)
+    elif length is not None and len(key_points) != length:
+        raise ValidationException(f"Key-point length is expected to be {length} but got {len(key_points)}")
 
     return key_points
 

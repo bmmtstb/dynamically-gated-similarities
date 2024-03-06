@@ -7,6 +7,7 @@ from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException, ValidationException
+from dgs.utils.types import FilePaths
 from dgs.utils.validation import (
     validate_bboxes,
     validate_dimensions,
@@ -19,8 +20,11 @@ from dgs.utils.validation import (
 )
 
 J = 20
+B = 10
+IMG_NAME = "866-200x300.jpg"
 
-DUMMY_IMAGE_TENSOR: torch.ByteTensor = torch.ones((1, 3, 10, 20)).byte()
+
+DUMMY_IMAGE_TENSOR: torch.Tensor = torch.ones((1, 3, 10, 20)).byte()
 DUMMY_IMAGE: tv_tensors.Image = tv_tensors.Image(DUMMY_IMAGE_TENSOR)
 
 DUMMY_KEY_POINTS_TENSOR: torch.Tensor = torch.rand((1, J, 2))
@@ -31,13 +35,17 @@ DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     DUMMY_BBOX_TENSOR, format=tv_tensors.BoundingBoxFormat.XYWH, canvas_size=(1000, 1000)
 )
 
-DUMMY_HM_TENSOR: torch.FloatTensor = (
-    torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
-)
+DUMMY_ID: torch.Tensor = torch.ones(1).long()
+
+DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
 DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32)
 
+DUMMY_FP_STRING: str = f"./tests/test_data/{IMG_NAME}"
+DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/" + IMG_NAME)),)
+DUMMY_FP_BATCH: FilePaths = tuple(DUMMY_FP_STRING for _ in range(B))
 
-class TestValidation(unittest.TestCase):
+
+class TestValidateImages(unittest.TestCase):
     def test_validate_image(self):
         for image, dims, output in [
             (DUMMY_IMAGE_TENSOR, 4, DUMMY_IMAGE),
@@ -76,6 +84,17 @@ class TestValidation(unittest.TestCase):
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
                 with self.assertRaises(exception_type):
                     validate_images(images=image, dims=dims)
+
+    def test_img_length(self):
+        self.assertTrue(torch.allclose(validate_images(DUMMY_IMAGE, length=1, dims=None), DUMMY_IMAGE))
+
+    def test_img_length_exception(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_images(DUMMY_IMAGE, length=4, dims=None)
+        self.assertTrue("Image length is expected to be 4 but got 1" in str(e.exception), msg=e.exception)
+
+
+class TestValidateKeyPoints(unittest.TestCase):
 
     def test_validate_key_points(self):
         for key_points, dims, nof_joints, joint_dim, output in [
@@ -117,6 +136,16 @@ class TestValidation(unittest.TestCase):
                 with self.assertRaises(exception_type):
                     validate_key_points(key_points=key_points, dims=dims, joint_dim=joint_dim, nof_joints=nof_joints)
 
+    def test_kp_length(self):
+        self.assertTrue(torch.allclose(validate_key_points(DUMMY_KEY_POINTS, length=1, dims=None), DUMMY_KEY_POINTS))
+
+    def test_kp_length_exception(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_key_points(DUMMY_KEY_POINTS, length=4, dims=None)
+        self.assertTrue("Key-point length is expected to be 4 but got 1" in str(e.exception), msg=e.exception)
+
+
+class TestValidateBBoxes(unittest.TestCase):
     def test_validate_bboxes(self):
         for bboxes, dims, box_format, output in [
             (DUMMY_BBOX, 2, None, DUMMY_BBOX),
@@ -148,15 +177,26 @@ class TestValidation(unittest.TestCase):
                 with self.assertRaises(exception_type):
                     validate_bboxes(bboxes=bboxes, dims=dims, box_format=box_format),
 
+    def test_bbox_length(self):
+        self.assertTrue(torch.allclose(validate_bboxes(DUMMY_BBOX, length=1, dims=None), DUMMY_BBOX))
+
+    def test_bbox_length_exception(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_bboxes(DUMMY_BBOX, length=4, dims=None)
+        self.assertTrue("Bounding box length is expected to be 4 but got 1" in str(e.exception), msg=e.exception)
+
+
+class TestValidateDimensions(unittest.TestCase):
     def test_validate_dimensions(self):
-        for tensor, dims, output in [
-            (torch.ones((1, 1)), 2, torch.ones((1, 1))),
-            (torch.ones((2, 2, 2)), 3, torch.ones((2, 2, 2))),
-            (torch.ones((1, 1, 1, 1, 5)), 1, torch.ones(5)),
-            (torch.ones(5), 5, torch.ones((1, 1, 1, 1, 5))),
-            (torch.ones((2, 1, 5)), 2, torch.ones((2, 5))),
-            (np.ones((2, 5), dtype=np.int32), 2, torch.ones(size=(2, 5), dtype=torch.int32)),
-            ([[1, 1]], 2, torch.tensor([[1, 1]])),
+        for tensor, dims, l, output in [
+            (torch.ones((1, 1)), 2, None, torch.ones((1, 1))),
+            (torch.ones((1, 1)), 2, 1, torch.ones((1, 1))),
+            (torch.ones((2, 2, 2)), 3, 2, torch.ones((2, 2, 2))),
+            (torch.ones((1, 1, 1, 1, 5)), 1, 5, torch.ones(5)),
+            (torch.ones(5), 5, None, torch.ones((1, 1, 1, 1, 5))),
+            (torch.ones((2, 1, 5)), 2, 2, torch.ones((2, 5))),
+            (np.ones((2, 5), dtype=np.int32), 2, None, torch.ones(size=(2, 5), dtype=torch.int32)),
+            ([[13, 7]], 2, 13, torch.tensor([[13, 7]])),
         ]:
             with self.subTest(msg=f"tensor: {tensor}, dims: {dims}"):
                 self.assertTrue(
@@ -166,7 +206,7 @@ class TestValidation(unittest.TestCase):
                     )
                 )
 
-    def test_validate_dimensions_exceptions(self):
+    def test_validate_dimensions_exceptions_dims(self):
         for tensor, dims, exception_type in [
             ([[1, 1], [1]], 1, TypeError),
             ("dummy", 1, TypeError),
@@ -177,18 +217,44 @@ class TestValidation(unittest.TestCase):
                 with self.assertRaises(exception_type):
                     validate_dimensions(tensor=tensor, dims=dims),
 
+    def test_validate_dimensions_exceptions_length(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_dimensions(torch.ones((5, 2)), dims=2, length=2)
+        self.assertTrue("length is expected to be" in str(e.exception), msg=e.exception)
+
+
+class TestValidateFilePaths(unittest.TestCase):
     def test_validate_file_path(self):
-        full_path = tuple([os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"))])
+        full_path = tuple([os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING))])
         for file_path in [
-            "./tests/test_data/866-200x300.jpg",
-            os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"),
-            ["./tests/test_data/866-200x300.jpg"],
+            DUMMY_FP_STRING,
+            os.path.join(PROJECT_ROOT, DUMMY_FP_STRING),
+            DUMMY_FP,
+            [DUMMY_FP_STRING],
         ]:
             with self.subTest(msg=f"file_path: {file_path}"):
                 self.assertEqual(
                     validate_filepath(file_paths=file_path),
                     full_path,
                 )
+
+    def test_multiple_file_paths(self):
+        full_path = os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING))
+        resulting_paths = tuple([full_path for _ in range(B)])
+
+        r = validate_filepath(file_paths=DUMMY_FP_BATCH)
+        self.assertEqual(r, resulting_paths)
+
+    def test_validate_file_path_with_size(self):
+        path = tuple([os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING))])
+        for file_paths, length in [
+            (DUMMY_FP_STRING, 1),
+            (path, 1),
+            (tuple(path for _ in range(5)), 5),
+        ]:
+            with self.subTest(msg=f"file_path: {file_paths}, length: {length}"):
+                fps = validate_filepath(file_paths, length=length)
+                self.assertEqual(len(fps), length)
 
     def test_validate_filepath_exceptions(self):
         for fps, exception_type in [
@@ -199,14 +265,28 @@ class TestValidation(unittest.TestCase):
                 with self.assertRaises(exception_type):
                     validate_filepath(file_paths=fps),
 
+    def test_validate_filepath_with_wrong_size(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_filepath(
+                file_paths=tuple([os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"))]),
+                length=2,
+            )
+        self.assertTrue("Expected 2 paths but got 1" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_filepath(file_paths="tests/test_data/866-200x300.jpg", length=2)
+        self.assertTrue("Expected 2 paths but got a single path" in str(e.exception), msg=e.exception)
+
+
+class TestValidateIDs(unittest.TestCase):
     def test_validate_ids(self):
         for tensor, output in [
-            (1, torch.ones(1).to(dtype=torch.int32)),
-            (123456, torch.tensor([123456]).int()),
-            (torch.ones((1, 1, 100, 1)).int(), torch.ones(1).to(dtype=torch.int32)),
-            (torch.ones((2, 1)).int(), torch.ones(2).to(dtype=torch.int32)),
-            (torch.ones(20).int(), torch.ones(20).to(dtype=torch.int32)),
-            (torch.tensor([[1, 2, 3, 4]]).int(), torch.tensor([1, 2, 3, 4]).int()),
+            (1, torch.ones(1).to(dtype=torch.long)),
+            (123456, torch.tensor([123456]).long()),
+            (torch.ones((1, 1, 100, 1)).int(), torch.ones(100).to(dtype=torch.long)),
+            (torch.ones((2, 1)).long(), torch.ones(2).to(dtype=torch.long)),
+            (torch.ones(20).to(dtype=torch.int32), torch.ones(20).to(dtype=torch.long)),
+            (torch.tensor([[1, 2, 3, 4]]), torch.tensor([1, 2, 3, 4]).long()),
         ]:
             with self.subTest(msg=f"ids: {tensor}"):
                 self.assertTrue(torch.allclose(validate_ids(ids=tensor), output))
@@ -222,6 +302,16 @@ class TestValidation(unittest.TestCase):
                 with self.assertRaises(exception_type):
                     validate_ids(ids=tensor),
 
+    def test_ids_length(self):
+        self.assertTrue(torch.allclose(validate_ids(DUMMY_ID, length=1), DUMMY_ID))
+
+    def test_ids_length_exception(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_ids(DUMMY_ID, length=4)
+        self.assertTrue("IDs length is expected to be 4 but got 1" in str(e.exception), msg=e.exception)
+
+
+class TestValidateHeatmaps(unittest.TestCase):
     def test_validate_heatmaps(self):
         for tensor, dims, n_j, output in [
             (DUMMY_HM_TENSOR, None, None, DUMMY_HM),
@@ -240,6 +330,14 @@ class TestValidation(unittest.TestCase):
             with self.subTest(f"shape: {tensor.shape}, n_j: {n_j}, excp: {exception_type}"):
                 with self.assertRaises(exception_type):
                     validate_heatmaps(tensor, nof_joints=n_j),
+
+    def test_hm_length(self):
+        self.assertTrue(torch.allclose(validate_heatmaps(DUMMY_HM, length=1, dims=None), DUMMY_HM))
+
+    def test_hm_length_exception(self):
+        with self.assertRaises(ValidationException) as e:
+            _ = validate_heatmaps(DUMMY_HM, length=4, dims=None)
+        self.assertTrue("Heatmap length is expected to be 4 but got 1" in str(e.exception), msg=e.exception)
 
 
 class TestValidateValue(unittest.TestCase):

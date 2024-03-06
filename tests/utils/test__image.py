@@ -19,7 +19,7 @@ from dgs.utils.image import (
     CustomTransformValidator,
     load_image,
 )
-from dgs.utils.types import ImgShape, TVImage
+from dgs.utils.types import Image, ImgShape
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
 from helper import load_test_image, load_test_images, test_multiple_devices
 
@@ -71,7 +71,7 @@ def create_coordinate_diagonal(
 
 
 def create_structured_data(
-    image: TVImage,
+    image: Image,
     out_shape: ImgShape,
     mode: str,
     bbox: tv_tensors.BoundingBoxes = None,

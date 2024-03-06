@@ -125,7 +125,7 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[
     ids = ids.long()
     target = target.long()
 
-    correct: torch.BoolTensor = ids.eq(target.view(-1, 1)).bool()  # [B x max(topk)]
+    correct: torch.Tensor = ids.eq(target.view(-1, 1)).bool()  # [B x max(topk)]
     del ids, target
 
     res: dict[int, float] = {}

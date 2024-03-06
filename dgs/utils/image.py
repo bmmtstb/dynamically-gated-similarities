@@ -31,7 +31,7 @@ from torchvision.transforms.v2.functional import (
 
 from dgs.utils.exceptions import ValidationException
 from dgs.utils.files import to_abspath
-from dgs.utils.types import FilePath, FilePaths, ImgShape, TVImage, TVVideo
+from dgs.utils.types import FilePath, FilePaths, Image, ImgShape, Video
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
 
@@ -42,7 +42,7 @@ def load_image(
     device: torch.device = "cpu",
     read_mode: ImageReadMode = ImageReadMode.RGB,
     **kwargs,
-) -> TVImage:
+) -> Image:
     """Load an image or multiple images given a single or multiple filepaths.
 
     Notes:
@@ -102,7 +102,7 @@ def load_image(
     # if multiple images are loaded, reshape them to a given output_size
     if force_reshape:
         transform = tvt.Compose([CustomToAspect(), CustomResize(), transform_dtype])
-        new_images: list[TVImage] = []
+        new_images: list[Image] = []
         mode: str = kwargs.pop("mode", "zero-pad")
         output_size: ImgShape = kwargs.pop("output_size", (512, 512))
 
@@ -126,7 +126,7 @@ def load_image(
     return transform_dtype(images)
 
 
-def load_video(filepath: FilePath, **kwargs) -> TVVideo:  # pragma: no cover
+def load_video(filepath: FilePath, **kwargs) -> Video:  # pragma: no cover
     """Load a video from a given filepath.
 
     Returns:
@@ -423,7 +423,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
 
     def _handle_padding(
         self,
-        image: TVImage,
+        image: Image,
         bboxes: tv_tensors.BoundingBoxes,
         coordinates: torch.Tensor,
         mode: str,
@@ -486,7 +486,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
 
     def _handle_inside_crop(
         self,
-        image: TVImage,
+        image: Image,
         bboxes: tv_tensors.BoundingBoxes,
         coordinates: torch.Tensor,
         **kwargs,
@@ -655,8 +655,8 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         self,
         coordinates: torch.Tensor,
         corners: torch.Tensor,
-        image: TVImage,
-    ) -> tuple[TVImage, torch.Tensor]:
+        image: Image,
+    ) -> tuple[Image, torch.Tensor]:
         """Handle method outside crop to keep forward cleaner"""
         # extract corners from current bboxes
         left, top, box_width, box_height = corners
