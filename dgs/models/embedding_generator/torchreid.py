@@ -113,7 +113,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             Make sure forward is only called in the evaluation mode.
 
         Args:
-            ds: A DataSample containing the cropped image as input for the model.
+            ds: A :class:`DataSample` containing the cropped image as input for the model.
                 TVImage or FloatTensor of shape ``[B x C x w x h]``.
 
         Returns:

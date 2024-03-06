@@ -274,8 +274,8 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
 
     Notes:
         For further information about the kwargs see the functions:
-        :func:`~dgs.dataset.posetrack.extract_all_bboxes()` and
-        :func:`~dgs.dataset.posetrack.extract_crops_from_json_annotation()`.
+        :func:`~.extract_all_bboxes` and
+        :func:`~.extract_crops_from_json_annotation`.
     """
     print("Extract crops from annotations.")
     extract_all_bboxes(
@@ -524,7 +524,7 @@ class PoseTrack21JSON(BaseDataset):
         return self.len
 
     def __getitems__(self, indices: list[int]) -> DataSample:
-        """Given list of indices, return DataSample object.
+        """Given list of indices, return a :class:`DataSample` object.
 
         Batching might be faster if we do not have to create DataSample twice.
         Once for every single object, once for the batch.
@@ -533,7 +533,7 @@ class PoseTrack21JSON(BaseDataset):
             indices: List of indices.
 
         Returns:
-            A single DataSample object containing a batch of data.
+            A single :class:`DataSample` object containing a batch of data.
         """
 
         def stack_key(key: str) -> torch.Tensor:
@@ -573,7 +573,7 @@ class PoseTrack21JSON(BaseDataset):
         return ds
 
     def arbitrary_to_ds(self, a: dict, idx: int) -> DataSample:
-        """Convert raw PoseTrack21 annotations to DataSample object."""
+        """Convert raw PoseTrack21 annotations to a :class:`DataSample` object."""
         keypoints, _visibility = (
             (
                 torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32)

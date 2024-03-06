@@ -33,8 +33,10 @@ class BaseDataset(BaseModule, TorchDataset):
 
     The BaseDataset assumes that one sample of dataset (one :meth:`self.__getitem__` call)
     contains one single bounding box.
+    Therefore, a batch of this dataset contains ``B`` bounding boxes,
+    with the same amount of filepaths, images, key-points, ... .
     It should be possible to work with a plain dict,
-    but to have a few quality-of-life features, the DataSample class was implemented.
+    but to have a few quality-of-life features, the :class:`DataSample` class was implemented.
 
     Why not use the Image ID as Index?
     ----------------------------------
@@ -54,6 +56,7 @@ class BaseDataset(BaseModule, TorchDataset):
 
     Params
     ------
+
     dataset_path (FilePath):
         Path to the directory of the dataset.
         The value has to either be a local project path, or a valid absolute path.
@@ -62,7 +65,7 @@ class BaseDataset(BaseModule, TorchDataset):
         Default False.
     image_mode (str, optional):
         Only applicable if ``force_img_reshape`` is True.
-        The cropping mode used for loading the full images when calling :func:``self.get_image_crop``.
+        The cropping mode used for loading the full images when calling :func:`self.get_image_crop`.
         Value has to be in CustomToAspect.modes.
         Default "zero-pad".
     image_size (tuple[int, int], optional):
@@ -74,7 +77,7 @@ class BaseDataset(BaseModule, TorchDataset):
         The structure is dataset-dependent, and might not be necessary for some datasets.
         Default is not set, and the crops are generated live.
     crop_mode (str, optional):
-        The mode for image cropping used when calling :func:``self.get_image_crop``.
+        The mode for image cropping used when calling :func:`self.get_image_crop`.
         Value has to be in CustomToAspect.modes.
         Default "zero-pad".
     crop_size (tuple[int, int], optional):
@@ -86,7 +89,7 @@ class BaseDataset(BaseModule, TorchDataset):
     """
 
     data: list
-    """Arbitrary data, which will be converted using :func:`self.arbitrary_to_ds()`"""
+    """Arbitrary data, which will be converted using :func:`self.arbitrary_to_ds`"""
 
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
@@ -106,13 +109,14 @@ class BaseDataset(BaseModule, TorchDataset):
         """Retrieve data at index from given dataset.
         Should load / precompute the images from given filepaths if not done already.
 
-        This method uses the function :func:`self.arbitrary_to_ds()` to obtain the data.
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
 
         Args:
-            idx: index of the dataset object. Is a reference to the same object as len().
+            idx: An index of the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            The DataSample containing all the data of this index.
+            A :class:`DataSample` containing all the data of this index.
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         sample: DataSample = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
@@ -122,20 +126,20 @@ class BaseDataset(BaseModule, TorchDataset):
 
     @abstractmethod
     def __getitems__(self, indices: list[int]) -> DataSample:
-        """Given a list of indices, return a single DataSample object containing them all."""
+        """Given a list of indices, return a single :class:`DataSample` object containing them all."""
         raise NotImplementedError
 
     @abstractmethod
     def arbitrary_to_ds(self, a: any, idx: int) -> DataSample:
-        """Given a single arbitrary data sample, convert it to a DataSample object.
-        The index ``i`` is given additionally, though might not be used by other datasets.
+        """Given a single sample of arbitrary data, convert it to a :class:`DataSample` object.
+        The index ``idx`` is given additionally, though might not be used by other datasets.
         """
         raise NotImplementedError
 
     def get_image_crops(self, ds: DataSample) -> None:
         """Add the image crops and local key points to a given sample.
-        Works for single or batched DataSample objects.
-        Modifies the given DataSample in place.
+        Works for single or batched :class:`DataSample` objects.
+        This function modifies the given DataSample in place.
 
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """

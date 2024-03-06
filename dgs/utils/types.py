@@ -32,7 +32,7 @@ Validations = dict[str, list[Union[str, type, tuple[str, any], Validator]]]
 
 # Data Handling
 DataGetter = Callable[["DataSample"], tuple[Union[torch.Tensor, any], ...]]
-"""Function to extract specific data from a DataSample."""
+"""Function to extract specific data from a :class:`DataSample`."""
 
 # Modules
 Instance = Union[str, type]

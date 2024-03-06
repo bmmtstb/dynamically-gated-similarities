@@ -228,7 +228,8 @@ class DataSample(UserDict):
     """Class for storing one or multiple samples of data.
 
     By default, the DataSample validates all new inputs.
-    If you validate elsewhere, or you don't want validation for performance reasons, it can be turned off.
+    If you validate elsewhere, use an existing dataset,
+    or you don't want validation for performance reasons, it can be turned off.
 
 
     During initialization, the following keys have to be given:
@@ -493,7 +494,7 @@ class DataSample(UserDict):
 
     @property
     def device(self):
-        """Get the device of the DataSample. Defaults to the device of self.bbox if nothing is given."""
+        """Get the device of this DataSample. Defaults to the device of self.bbox if nothing is given."""
         if "device" not in self.data:
             self.data["device"] = self.bbox.device
         return self.data["device"]
@@ -504,7 +505,9 @@ class DataSample(UserDict):
 
 
 def get_ds_data_getter(attributes: list[str]) -> DataGetter:
-    """Given a list of attribute names, return a function, that gets those attributes from a given DataSample."""
+    """Given a list of attribute names,
+    return a function, that gets those attributes from a given :class:`DataSample`.
+    """
 
     def getter(ds: DataSample) -> Union[torch.Tensor, tuple[torch.Tensor, ...]]:
         """The getter function."""

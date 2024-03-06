@@ -181,13 +181,13 @@ class TorchreidSimilarity(SimilarityModule):
         return _get_torchreid_embeds(results)
 
     def get_data(self, ds: DataSample) -> torch.Tensor:
-        """Given a DataSample get the current embedding or compute it using the image crop."""
+        """Given a :class:`DataSample` get the current embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
         return self.model(ds.image_crop)
 
     def get_target(self, ds: DataSample) -> torch.Tensor:
-        """Given a DataSample get the target embedding or compute it using the image crop."""
+        """Given a :class:`DataSample` get the target embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
         return self.model(ds.image_crop)
@@ -203,10 +203,10 @@ class TorchreidSimilarity(SimilarityModule):
             Torchreid expects images to have float values.
 
         Args:
-            data: A DataSample containing the predicted embedding or the image crop.
+            data: A :class:`DataSample` containing the predicted embedding or the image crop.
                 If a predicted embedding exists, it should be stored as 'embedding' in the DataSample.
                 ``self.get_data()`` will then extract the embedding as tensor of shape: ``[a x E]``.
-            target: A Data Sample containing either the target embedding or the image crop.
+            target: A :class:`DataSample` containing either the target embedding or the image crop.
                 If a predicted embedding exists, it should be stored as 'embedding' in the DataSample.
                 ``self.get_target()`` is then used to extract embedding as tensor of shape ``[b x E]``.
 

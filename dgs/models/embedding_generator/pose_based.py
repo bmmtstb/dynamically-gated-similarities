@@ -188,7 +188,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         """Forward pass of the custom key point convolution model.
 
         Params:
-            ds: DataSample containing the key-points and the corresponding bounding boxes.
+            ds: A :class:`DataSample` containing the key-points and the corresponding bounding boxes.
 
         Returns:
             This modules' prediction.

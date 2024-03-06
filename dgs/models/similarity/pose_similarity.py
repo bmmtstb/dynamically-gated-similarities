@@ -55,12 +55,12 @@ class ObjectKeypointSimilarity(SimilarityModule):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
-        """Given a data sample, compute the detected / predicted key points with shape ``[B1 x J x 2]``
+        """Given a :class:`DataSample`, compute the detected / predicted key points with shape ``[B1 x J x 2]``
         and the areas of the respective ground-truth bounding-boxes with shape ``[B1]``.
 
         Notes:
-            To compute the bbox area, it is possible to use :class:`~torchvision.ops.box_area`.
-            For the box_area function, it is expected that the bounding boxes are given in 'XYXY' format.
+            To compute the bbox area, it is possible to use the :class:`~torchvision.ops.box_area` function.
+            The box_area function expects that the bounding boxes are given in 'XYXY' format.
         """
         kps = ds.keypoints.float().view(ds.B, -1, 2)
 
@@ -77,7 +77,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
         return kps, area
 
     def get_target(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
-        """Given a DataSample obtain the ground truth key points and the key-point-visibility.
+        """Given a :class:`DataSample` obtain the ground truth key points and the key-point-visibility.
         Both are tensors, the key points are a FloatTensor of shape ``[B2 x J x 2]``
         and the visibility is a BoolTensor of shape ``[B2 x J]``.
         """
@@ -114,8 +114,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
         Fixme: exclude ignore regions from image_shape ?
 
         Args:
-            data: A DataSample object containing at least the key points and the bounding box.
-            target: A DataSample containing at least the target key points.
+            data: A :class:`DataSample` object containing at least the key points and the bounding box.
+            target: A :class:`DataSample` containing at least the target key points.
         """
         # get predicted key-points as [B1 x J x 2] and bbox area as [B1]
         pred_kps, bbox_area = self.get_data(ds=data)
@@ -167,7 +167,8 @@ class IntersectionOverUnion(SimilarityModule):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: DataSample) -> BoundingBoxes:
-        """Given a DataSample obtain the ground truth bounding boxes as BoundingBoxes object of size ``[B1 x 4]``.
+        """Given a :class:`DataSample` obtain the ground-truth bounding-boxes as
+        :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[B1 x 4]``.
 
         Notes:
             The box_iou function expects that the bounding boxes are in the 'XYXY' format.
@@ -178,10 +179,11 @@ class IntersectionOverUnion(SimilarityModule):
         return bboxes
 
     def get_target(self, ds: DataSample) -> BoundingBoxes:
-        """Given a DataSample obtain the ground truth bounding boxes as BoundingBoxes object of size ``[B2 x 4]``.
+        """Given a :class:`DataSample` obtain the ground-truth bounding-boxes as
+        :class:`torchvision.tv_etnsors.BoundingBoxes` object of size ``[B2 x 4]``.
 
         Notes:
-            The box_iou function expects that the bounding boxes are in the 'XYXY' format.
+            The function :func:`box_iou` expects that the bounding boxes are in the 'XYXY' format.
         """
         bboxes = ds.bbox
         if bboxes.format != BoundingBoxFormat.XYXY:

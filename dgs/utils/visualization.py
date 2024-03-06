@@ -174,18 +174,19 @@ def show_images_with_additional(
 
     Notes:
         Additional kwargs are passed down.
-        See the kwargs of :func:`show_image_with_additional()` for more information.
+        See the kwargs of :func:`show_image_with_additional` for more information.
 
     Args:
         imgs: A list containing some kind of torch images to be shown.
             The shape of every image has to be three-dimensional: ``[C x H x W]``.
         key_points: If present, key points to be drawn on top of every image.
             There can be a different number of detected key points per image.
-        bboxes: If present, a list of bounding boxes as a list of ``tv_tv_tensors.BoundingBoxes`` objects.
+        bboxes: If present, a list of bounding boxes.
+            Bounding boxes as :class:``~torchvision.tv_tv_tensors.BoundingBoxes`` objects.
         show: Whether to show the grid of images after drawing the image(s).
-        kp_connectivity: If present can contain a list of instructions or one single conncectivity.
+        kp_connectivity: If present can contain a list of instructions or one single connectivity.
             The keypoint connectivity is a list of tuples (ID start -> ID end) or
-            a string (key) value of ``dgs.utils.constants.SKELETONS``.
+            a string (key) value of :data:``~dgs.utils.constants.SKELETONS``.
         kp_visibilities: (Bool) Tensor containing the visibility of every key point.
             Default None means that all the keypoints are visible.
 
