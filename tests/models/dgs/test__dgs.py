@@ -6,12 +6,13 @@ from torch.nn.functional import softmax as f_softmax
 from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.models.dgs.dgs import DGSModule
-from dgs.utils.config import load_config
+from dgs.utils.config import fill_in_defaults, load_config
 from dgs.utils.states import DataSample
 from dgs.utils.utils import HidePrint
 from helper import load_test_image, load_test_images
 
 J = 17
+PATH = ["dgs"]
 
 
 class TestDGSModule(unittest.TestCase):
@@ -20,12 +21,25 @@ class TestDGSModule(unittest.TestCase):
         cfg = load_config("./tests/test_data/test_config_dgs.yaml")
 
         with HidePrint():
-            m = DGSModule(config=cfg, path=["dgs"])
+            m = DGSModule(config=cfg, path=PATH)
 
         self.assertTrue(isinstance(m, DGSModule))
         self.assertTrue(isinstance(m.combine, nn.Module))
 
         self.assertEqual(len(m.params["names"]), 3)
+
+    def test_init_variants(self):
+
+        cfg = fill_in_defaults(
+            {PATH[0]: {"similarity_softmax": True, "combined_softmax": True}},
+            load_config("./tests/test_data/test_config_dgs.yaml"),
+        )
+
+        with HidePrint():
+            m = DGSModule(config=cfg, path=PATH)
+
+        self.assertTrue(len(m.combined_softmax) == 1)
+        self.assertTrue(len(m.similarity_softmax) == 1)
 
     def test_forward_equal_inputs(self):
         cfg = load_config("./tests/test_data/test_config_dgs.yaml")
@@ -34,7 +48,7 @@ class TestDGSModule(unittest.TestCase):
         img_crop_path = ("./tests/test_data/" + img_name,)
 
         with HidePrint():
-            m = DGSModule(config=cfg, path=["dgs"])
+            m = DGSModule(config=cfg, path=PATH)
 
         ds_input = DataSample(
             filepath=img_crop_path,

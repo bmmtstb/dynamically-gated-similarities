@@ -277,7 +277,7 @@ class CosineDistanceMetric(Metric):
 
 
 class PairwiseDistanceMetric(Metric):
-    """Class to compute the pairwise distance."""
+    """Class to compute the pairwise distance. For more details see :class:`torch.nn.PairwiseDistance`."""
 
     def __init__(self, *args, **kwargs):
 
@@ -294,10 +294,10 @@ class PairwiseDistanceMetric(Metric):
 
         Args:
             input1: tensor of shape ``[a x E]``
-            input2: tensor of shape ``[b x E]``
+            input2: tensor of shape ``[a x E]``, has to have the same shape as input1.
 
         Returns:
-            tensor of shape ``[a x b]`` containing the distances.
+            tensor of shape ``[a (x 1)]`` containing the distances.
         """
         _validate_metric_inputs(input1, input2)
         return self.dist(input1, input2)

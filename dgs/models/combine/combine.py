@@ -130,7 +130,7 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
         self.register_buffer("alpha_const", alpha)
         self.len_alpha: int = len(alpha)
 
-        if not torch.allclose(a_sum := torch.sum(torch.abs(alpha)), torch.tensor(1.0)):
+        if not torch.allclose(a_sum := torch.sum(torch.abs(alpha)), torch.tensor(1.0)):  # pragma: no cover  # redundant
             raise ValueError(f"alpha should sum to 1.0, but got {a_sum:.8f}")
 
     def forward(self, *tensors, **_kwargs) -> torch.Tensor:
@@ -149,18 +149,22 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
             ValueError: If the ``tensors`` argument has the wrong shape
             TypeError: If the ``tensors`` argument contains an object that is not a `torch.tensor`.
         """
-        if isinstance(tensors, tuple):
-            if any(not isinstance(t, torch.Tensor) for t in tensors):
-                raise TypeError("All the values in args should be tensors.")
+        if not isinstance(tensors, tuple):
+            raise NotImplementedError(
+                f"Unknown type for tensors, expected tuple of torch.Tensor but got {type(tensors)}"
+            )
 
-            if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
-                raise ValueError("The shapes of every tensor should match.")
+        if any(not isinstance(t, torch.Tensor) for t in tensors):
+            raise TypeError("All the values in args should be tensors.")
 
-            if len(tensors) == 1:
-                # given a single already stacked tensor
-                tensors = tensors[0]
-            else:
-                tensors = torch.stack(tensors)
+        if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
+            raise ValueError("The shapes of every tensor should match.")
+
+        if len(tensors) == 1:
+            # given a single already stacked tensor
+            tensors = tensors[0]
+        else:
+            tensors = torch.stack(tensors)
 
         if len(tensors) != self.len_alpha:
             raise ValueError(

@@ -1,9 +1,10 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import torch
 
-from dgs.models.combine import get_combine_module
+from dgs.models.combine import COMBINE_MODULES, get_combine_module, register_combine_module
 from dgs.models.combine.combine import CombineSimilaritiesModule, DynamicallyGatedSimilarities, StaticAlphaCombine
 from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults
@@ -12,7 +13,7 @@ from dgs.utils.types import Device
 from helper import get_test_config, test_multiple_devices
 
 
-class TestDGS(unittest.TestCase):
+class TestDGSCombine(unittest.TestCase):
     default_cfg = get_test_config()
 
     def test_dgs_modules_class(self):
@@ -113,6 +114,23 @@ class TestDGS(unittest.TestCase):
                     dgs.forward(*sn, alpha=alpha)
                 self.assertTrue(msg in str(e.exception), msg=e.exception)
 
+    def test_register_combine(self):
+        with patch.dict(COMBINE_MODULES):
+            for name, func, exception in [
+                ("dummy", StaticAlphaCombine, False),
+                ("dummy", StaticAlphaCombine, KeyError),
+                ("new_dummy", StaticAlphaCombine, False),
+            ]:
+                with self.subTest(msg="name: {}, func: {}, except: {}".format(name, func, exception)):
+                    if exception is not False:
+                        with self.assertRaises(exception):
+                            register_combine_module(name, func)
+                    else:
+                        register_combine_module(name, func)
+                        self.assertTrue("dummy" in COMBINE_MODULES)
+        self.assertTrue("dummy" not in COMBINE_MODULES)
+        self.assertTrue("new_dummy" not in COMBINE_MODULES)
+
 
 class TestConstantAlpha(unittest.TestCase):
     default_cfg = get_test_config()
@@ -168,6 +186,37 @@ class TestConstantAlpha(unittest.TestCase):
                     path=["weighted_similarity"],
                 )
                 self.assertTrue(torch.allclose(m.forward(*sn), result))
+
+    def test_constant_alpha_forward_single_tensor_input(self):
+        N = 5
+        T = 23
+
+        inp = torch.stack(([torch.ones((N, T)), torch.zeros((N, T))]))
+        alpha = [0.5, 0.5]
+
+        m = StaticAlphaCombine(
+            config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
+            path=["weighted_similarity"],
+        )
+        r = m(inp)
+
+        self.assertEqual(list(r.shape), [N, T])
+        self.assertTrue(torch.allclose(r, 0.5 * torch.ones((N, T))))
+
+    def test_constant_alpha_forward_single_tensor_with_wrong_shape(self):
+        N = 5
+        T = 23
+
+        inp = torch.stack(([torch.ones((N, T)), torch.zeros((N, T))]))  # size 2
+        alpha = [0.4, 0.4, 0.2]  # size 3
+
+        m = StaticAlphaCombine(
+            config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
+            path=["weighted_similarity"],
+        )
+        with self.assertRaises(ValueError) as e:
+            _ = m(inp)
+        self.assertTrue("of the tensors 2 should equal the length of alpha 3" in str(e.exception), msg=e.exception)
 
     def test_constant_alpha_forward_exceptions(self):
         N = 7

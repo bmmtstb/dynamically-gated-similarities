@@ -20,8 +20,8 @@ class TestPoseSimilarities(unittest.TestCase):
 
         J = 17
         bbox1 = BoundingBoxes([1, 1, 2, 2], canvas_size=(1, 1), format="xyxy")
-        bbox2 = BoundingBoxes([[1, 1, 1, 1]], canvas_size=(1, 1), format="xywh")
-        bbox3 = BoundingBoxes([[0, 0, 1, 1], [0, 0, 1, 1]], canvas_size=(1, 1), format="xyxy")
+        bbox2 = BoundingBoxes([[1.5, 1.5, 1, 1]], canvas_size=(1, 1), format="CXCYWH")
+        bbox3 = BoundingBoxes([[0, 0, 1, 1], [0, 0, 1, 1]], canvas_size=(1, 1), format="xywh")
         bbox4 = BoundingBoxes([[0, 0, 1, 1], [0, 0, 1, 1], [0, 0, 1, 1]], canvas_size=(1, 1), format="xyxy")
 
         ds1 = DataSample(

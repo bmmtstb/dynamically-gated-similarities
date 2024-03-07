@@ -1,7 +1,10 @@
 import unittest
+from unittest.mock import patch
 
 from dgs.models.module import BaseModule
-from dgs.models.similarity import get_similarity_module, SimilarityModule, TorchreidSimilarity
+from dgs.models.similarity import get_similarity_module, register_similarity_module, SIMILARITIES
+from dgs.models.similarity.similarity import SimilarityModule
+from dgs.models.similarity.torchreid import TorchreidSimilarity
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.utils import HidePrint
 from helper import get_test_config
@@ -33,6 +36,23 @@ class TestSimilarity(unittest.TestCase):
         with self.assertRaises(KeyError) as e:
             _ = get_similarity_module("dummy")
         self.assertTrue("Instance 'dummy' is not defined in" in str(e.exception), msg=e.exception)
+
+    def test_register_similarity(self):
+        with patch.dict(SIMILARITIES):
+            for name, func, exception in [
+                ("dummy", TorchreidSimilarity, False),
+                ("dummy", TorchreidSimilarity, KeyError),
+                ("new_dummy", TorchreidSimilarity, False),
+            ]:
+                with self.subTest(msg="name: {}, func: {}, except: {}".format(name, func, exception)):
+                    if exception is not False:
+                        with self.assertRaises(exception):
+                            register_similarity_module(name, func)
+                    else:
+                        register_similarity_module(name, func)
+                        self.assertTrue("dummy" in SIMILARITIES)
+        self.assertTrue("dummy" not in SIMILARITIES)
+        self.assertTrue("new_dummy" not in SIMILARITIES)
 
 
 if __name__ == "__main__":

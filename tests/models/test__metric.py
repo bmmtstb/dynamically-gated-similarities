@@ -210,6 +210,15 @@ class TestMetrics(unittest.TestCase):
                 self.assertTrue(torch.allclose(sim, res), (sim, res))
                 self.assertTrue(torch.allclose(sim_inv, res_inv), (sim_inv, res_inv))
 
+    def test_pairwise_distance(self):
+        m = PairwiseDistanceMetric(p=2, eps=1e-4, keepdim=True)
+        t1 = torch.ones((4, 10))
+        t2 = torch.ones((4, 10))
+        r = m(t1, t2)
+        self.assertTrue(isinstance(r, torch.Tensor))
+        self.assertEqual(list(r.shape), [4, 1])
+        self.assertEqual(m.dist.eps, 1e-4)
+
 
 class TestMetricCMC(unittest.TestCase):
     @test_multiple_devices
