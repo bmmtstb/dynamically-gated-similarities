@@ -1,12 +1,18 @@
 """
-definitions and helpers for pose-state(s)
+Definitions and helpers for a state.
+
+Contains the custom collate functions to combine a list of States into a single one,
+keeping custom tensor subtypes intact.
 """
 
-from collections import deque, UserDict
-from collections.abc import Iterable
-from typing import Union
+from __future__ import annotations
+
+from collections import UserDict
+from copy import deepcopy
+from typing import Callable, Type, Union
 
 import torch
+from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from torchvision import tv_tensors
 
 from dgs.utils.image import load_image
@@ -20,223 +26,18 @@ from dgs.utils.validation import (
 )
 
 
-class Queue:
-    """A single queue containing the last states of a specific torch.Tensor up to a limit N."""
+class State(UserDict):
+    """Class for storing one or multiple samples of data as a 'State'.
 
-    _shape: torch.Size
-
-    def __init__(self, N: int, states: list[torch.Tensor] = None, shape: torch.Size = None) -> None:
-        if N <= 0:
-            raise ValueError(f"N must be greater than 0 but got {N}")
-        self._N: int = N
-
-        self._states = deque(iterable=states if states else [], maxlen=N)
-
-        if states is not None and len(states):
-            first_shape = states[0].shape
-            if shape is not None and first_shape != shape:
-                raise ValueError(
-                    f"First shape of the values in states {first_shape} "
-                    f"must have the same shape as the given shape {shape}"
-                )
-            self._shape = first_shape
-        else:
-            self._shape = shape
-
-    def to(self, *args, **kwargs) -> "Queue":
-        """Call ``.to()`` like you do with any other ``torch.Tensor``."""
-        for i, state in enumerate(self._states):
-            self._states[i] = state.to(*args, **kwargs)
-        return self
-
-    def __getitem__(self, index: int) -> torch.Tensor:
-        return self._states[index]
-
-    def append(self, state: torch.Tensor) -> None:
-        """Append a new state to the Queue. Set shape if not set and make sure new states have the correct shape."""
-        if self._shape:
-            if state.shape != self._shape:
-                raise ValueError(
-                    f"The shape of the new state {state.shape} "
-                    f"does not match the shape of previous states {self._shape}."
-                )
-        else:
-            self._shape = state.shape
-        self._states.append(state)
-
-    def __len__(self) -> int:
-        return len(self._states)
-
-    def get_all(self) -> torch.Tensor:
-        """Get all the states from the Queue and stack them into a single torch.Tensor."""
-        if len(self) == 0:
-            raise ValueError("Can not stack the items of an empty Queue.")
-        return torch.stack(list(self._states))
-
-    @property
-    def shape(self) -> torch.Size:
-        """Get the shape of every tensor in this Queue."""
-        if self._shape is None:
-            raise ValueError("Can not get the shape of an empty Queue.")
-        return self._shape
-
-    @property
-    def device(self) -> torch.device:
-        """Get the device of every tensor in this Queue."""
-        if len(self) == 0:
-            raise ValueError("Can not get the device of an empty Queue.")
-        device = self._states[-1].device
-        assert all(state.device == device for state in self._states), "Not all tensors are on the same device"
-        return device
-
-    @property
-    def N(self) -> int:
-        return self._N
-
-    def clear(self) -> None:
-        """Clear all the states from the Queue."""
-        self._states.clear()
-
-    def copy(self) -> "Queue":
-        """Return a (deep) copy of self."""
-        return Queue(N=self._N, states=[state.detach().clone() for state in self._states], shape=self._shape)
-
-    def __eq__(self, other: "Queue") -> bool:
-        """Return whether another Queue is equal to self."""
-        return self._N == other._N and self._states == other._states and self._shape == other._shape
-
-
-TrackState = dict[str, torch.Tensor]
-TrackStates = dict[str, Queue]
-
-
-class Track:
-    """A single track containing one or multiple states that are tracked as a dictionary of Queues with a max length."""
-
-    _states: TrackStates = {}
-
-    def __init__(self, N: int, states: TrackStates = None) -> None:
-        """
-        Initialize an empty track.
-
-        Args:
-            N: The maximum number of states contained in every Queue.
-                Should equal the working memory size.
-            states: A dict containing an initial state.
-        """
-        if N <= 0:
-            raise ValueError(f"N must be greater than 0 but got {N}")
-        self._N: int = N
-
-        if states is not None:
-            if any(q._states.maxlen != N for q in states.values()):
-                raise ValueError(f"Provided states must have max_length {N} but got {states}")
-            self._states = states
-
-    def __getitem__(self, index: int) -> TrackState:
-        """Get the i-th tensor of every Query."""
-        return {name: q[index] for name, q in self._states.items()}
-
-    def __len__(self) -> int:
-        """get length of this state"""
-        if not self.size():
-            return 0
-
-        l: int = len(iter(self._states.values()).__next__())
-        if len(self._states) > 1 and any(len(q) != l for q in self._states.values()):
-            raise IndexError("Queues have different length.")
-        return l
-
-    def __eq__(self, other: "Track") -> bool:
-        """Compare two tracks."""
-        if not isinstance(other, Track):
-            return False
-        return (
-            self._N == other._N
-            and self._states.keys() == other._states.keys()
-            and all(other.get_queue(name) == q for name, q in self._states.items())
-        )
-
-    def get_states(self) -> TrackStates:
-        return self._states
-
-    def get_state(self, index: int) -> TrackState:
-        """Get the i-th state of every Query."""
-        if index >= self._N:
-            raise IndexError(f"Index {index} is larger than the maximum number of items in a queue {self.N}")
-        if index < -self._N:
-            raise IndexError(f"Index {index} is smaller than the maximum number of items in a queue {self.N}")
-        if any(index >= len(q) or index < -len(q) for q in self._states.values()):
-            raise IndexError(f"Index {index} is out of bounds for at least one query.")
-        return {name: q[index] for name, q in self._states.items()}
-
-    def get_queue(self, name: str) -> Queue:
-        """Get the Queue with the given name."""
-        if name not in self._states:
-            raise KeyError(f"Queue with name {name} does not exist in the current states.")
-        return self._states[name]
-
-    def get_queues(self, names: Iterable[str]) -> TrackStates:
-        """Get all the Queues given a list of their names."""
-        if not names:
-            return {}
-        if any(name not in self._states for name in names):
-            raise IndexError(f"One of the provided names does not exist in the current states {self._states.keys()}.")
-        return {name: self._states[name] for name in names}
-
-    def size(self) -> int:
-        """Get the number of Queues in states"""
-        return len(self._states)
-
-    def append(self, new_state: TrackState) -> None:
-        """
-        Right-Append new_state to the current states, but make sure that states have max length
-
-        Args:
-            new_state: pose, jcs and bbox to append to current state
-        """
-        if not new_state:
-            raise ValueError("Can not append an empty state")
-        # append new state
-        for name, t in new_state.items():
-            if name in self._states:
-                self._states[name].append(t)
-            else:
-                self._states[name] = Queue(N=self._N, states=[t])
-
-    def to(self, *args, **kwargs) -> "Track":
-        """Call ``.to()`` like you do with any other ``torch.Tensor``."""
-
-        for name, queue in self._states.items():
-            self._states[name] = queue.to(*args, **kwargs)
-        return self
-
-    @property
-    def names(self) -> list[str]:
-        """Get all the keys of this track."""
-        return [str(state) for state in self._states]
-
-    @property
-    def N(self) -> int:
-        return self._N
-
-    def copy(self) -> "Track":
-        """Create a (deep) copy of this track."""
-        return Track(N=self._N, states={name: q.copy() for name, q in self._states.items()})
-
-
-class DataSample(UserDict):
-    """Class for storing one or multiple samples of data.
-
-    By default, the DataSample validates all new inputs.
+    By default, this object validates all new inputs.
     If you validate elsewhere, use an existing dataset,
-    or you don't want validation for performance reasons, it can be turned off.
+    or you don't want validation for performance reasons, validation can be turned off.
 
     The model might be given additional values during initialization,
-    or at any time using the underlying dict or given setters.
+    or at any time using the given setters or the get_item call.
     Additionally, the object can compute / load further values.
 
-    All args and keyword args can be accessed using the DataSamples' properties.
+    All args and keyword args can be accessed using the States' properties.
     Additionally, the underlying dict structure can be used,
     but this does not allow validation nor on the fly computation of additional values.
 
@@ -274,6 +75,12 @@ class DataSample(UserDict):
     # there a many attributes and they can get used, so please the linter
     # pylint: disable=too-many-instance-attributes
 
+    validate: bool
+    """Whether to validate the inputs into this state."""
+    data: dict[str, any]
+    """All the data in this state as a dict.
+    Can be accessed to set its values, but as long as possible you should use the property setters."""
+
     def __init__(
         self,
         *args,
@@ -283,7 +90,7 @@ class DataSample(UserDict):
     ) -> None:
         super().__init__()
 
-        self._validate = validate
+        self.validate = validate
 
         if validate:
             bbox = validate_bboxes(bbox)
@@ -293,7 +100,7 @@ class DataSample(UserDict):
         self.data["bbox"]: tv_tensors.BoundingBoxes = bbox.to(device=kwargs.get("device", bbox.device))
 
         for k, v in kwargs.items():
-            if hasattr(DataSample, k) and getattr(DataSample, k).fset is not None:
+            if hasattr(State, k) and getattr(State, k).fset is not None:
                 setattr(self, k, v)
             else:
                 self.data[k] = v
@@ -302,20 +109,42 @@ class DataSample(UserDict):
         """Override length to be the batch-length of the bounding-boxes."""
         return self.bbox.size(-2)
 
+    def copy(self) -> "State":
+        """Obtain a copy of this state. No validation, either it was done already or it is not wanted."""
+        data = {k: v.detach().clone() if isinstance(v, torch.Tensor) else deepcopy(v) for k, v in self.data.items()}
+        data["validate"] = False
+        state = State(**data)
+        state.validate = self.validate
+        return state
+
+    def __eq__(self, other: "State") -> bool:
+        """Override State equality."""
+        if not isinstance(other, State):
+            return False
+        return (
+            self.validate == other.validate
+            and self.data.keys() == other.data.keys()
+            and all(
+                torch.allclose(v, other.data[k]) if isinstance(v, torch.Tensor) else v == other.data[k]
+                for k, v in self.data.items()
+            )
+        )
+
     @property
     def bbox(self) -> tv_tensors.BoundingBoxes:
+        """Get this States bounding-box."""
         return self.data["bbox"]
 
     @bbox.setter
     def bbox(self, bbox: tv_tensors) -> None:
         raise NotImplementedError(
-            "It is not allowed to change the bounding box of an already existing DataSample object. "
+            "It is not allowed to change the bounding box of an already existing State object. "
             "Create a new object instead!"
         )
 
     @property
     def device(self):
-        """Get the device of this DataSample. Defaults to the device of self.bbox if nothing is given."""
+        """Get the device of this State. Defaults to the device of self.bbox if nothing is given."""
         if "device" not in self.data:
             self.data["device"] = self.bbox.device
         return self.data["device"]
@@ -390,7 +219,7 @@ class DataSample(UserDict):
                 raise ValueError(
                     f"filepath must have the same number of entries as bounding-boxes. Got {len(fp)}, expected {self.B}"
                 )
-            self.data["filepath"] = validate_filepath(file_paths=fp, length=self.B) if self._validate else fp
+            self.data["filepath"] = validate_filepath(file_paths=fp, length=self.B) if self.validate else fp
             return
         if isinstance(fp, str):
             if self.B != 1:
@@ -398,7 +227,7 @@ class DataSample(UserDict):
                     f"filepath must have the same number of entries as bounding-boxes. "
                     f"Got a single path, expected {self.B}"
                 )
-            self.data["filepath"] = validate_filepath(file_paths=fp, length=self.B) if self._validate else (fp,)
+            self.data["filepath"] = validate_filepath(file_paths=fp, length=self.B) if self.validate else (fp,)
             return
         raise NotImplementedError(f"Unknown filepath format: {type(fp)}, path: {fp}")
 
@@ -415,19 +244,19 @@ class DataSample(UserDict):
             J = None
             j_dim = None
         self.data["keypoints"] = (
-            validate_key_points(key_points=value, joint_dim=j_dim, nof_joints=J) if self._validate else value
+            validate_key_points(key_points=value, joint_dim=j_dim, nof_joints=J) if self.validate else value
         ).to(device=self.device)
 
     @property
     def heatmap(self) -> Heatmap:  # pragma: no cover
-        """Get the heatmaps of this sample."""
+        """Get the heatmaps of this State."""
         return self.data["heatmap"]
 
     @heatmap.setter
     def heatmap(self, value: Heatmap) -> None:  # pragma: no cover
         """Set heatmap with a little bit of validation"""
         # make sure that heatmap has shape [B x J x h x w]
-        self.data["heatmap"] = (validate_heatmaps(value) if self._validate else value).to(device=self.device)
+        self.data["heatmap"] = (validate_heatmaps(value) if self.validate else value).to(device=self.device)
 
     @property
     def keypoints_local(self) -> torch.Tensor:
@@ -446,12 +275,12 @@ class DataSample(UserDict):
 
         # use validate_key_points to make sure local key points have the correct shape [1 x J x 2|3]
         self.data["keypoints_local"] = (
-            validate_key_points(value, nof_joints=J, joint_dim=j_dim) if self._validate else value
+            validate_key_points(value, nof_joints=J, joint_dim=j_dim) if self.validate else value
         ).to(device=self.device)
 
     @property
     def image(self) -> Image:
-        """Get the original image(s) of this sample.
+        """Get the original image(s) of this State.
         If the images are not available, try to load them using :func:`load_image` and :attr:`filepath`.
         """
         if "image" not in self.data:
@@ -460,11 +289,11 @@ class DataSample(UserDict):
 
     @image.setter
     def image(self, value: Image) -> None:
-        self.data["image"]: Image = (validate_images(value) if self._validate else value).to(device=self.device)
+        self.data["image"]: Image = (validate_images(value) if self.validate else value).to(device=self.device)
 
     @property
     def image_crop(self) -> Image:
-        """Get the image crop(s) of this sample.
+        """Get the image crop(s) of this State.
         If the crops are not available, try to load them using :func:`load_image_crop` and :attr:`crop_path`.
         """
         if "image_crop" not in self.data:
@@ -473,7 +302,7 @@ class DataSample(UserDict):
 
     @image_crop.setter
     def image_crop(self, value: Image) -> None:
-        self.data["image_crop"]: Image = (validate_images(value) if self._validate else value).to(device=self.device)
+        self.data["image_crop"]: Image = (validate_images(value) if self.validate else value).to(device=self.device)
 
     @property
     def crop_path(self):
@@ -481,7 +310,7 @@ class DataSample(UserDict):
 
     @crop_path.setter
     def crop_path(self, value: FilePaths):
-        self.data["crop_path"]: FilePaths = validate_filepath(value) if self._validate else value
+        self.data["crop_path"]: FilePaths = validate_filepath(value) if self.validate else value
 
     @property
     def joint_weight(self) -> torch.Tensor:
@@ -513,7 +342,7 @@ class DataSample(UserDict):
         self.image = load_image(filepath=self.filepath, device=self.device, *kwargs)
         return self.image
 
-    def to(self, *args, **kwargs) -> "DataSample":
+    def to(self, *args, **kwargs) -> "State":
         """Override torch.Tensor.to() for the whole object."""
 
         for attr_key, attr_value in self.items():
@@ -577,11 +406,88 @@ class DataSample(UserDict):
 
 def get_ds_data_getter(attributes: list[str]) -> DataGetter:
     """Given a list of attribute names,
-    return a function, that gets those attributes from a given :class:`DataSample`.
+    return a function, that gets those attributes from a given :class:`State`.
     """
 
-    def getter(ds: DataSample) -> Union[torch.Tensor, tuple[torch.Tensor, ...]]:
+    def getter(ds: State) -> Union[torch.Tensor, tuple[torch.Tensor, ...]]:
         """The getter function."""
         return tuple(ds[str(attrib)] for attrib in attributes)
 
     return getter
+
+
+def collate_devices(batch: list[torch.device], *_args, **_kwargs) -> torch.device:
+    """Collate a batch of devices into a single device."""
+    return batch[0]
+
+
+def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tensor:
+    """Collate a batch of tensors into a single one.
+
+    Will use torch.cat() if the first dimension has a shape of one, otherwise torch.stack()
+    """
+    if len(batch[0].shape) > 0 and batch[0].shape[0] == 1:
+        return torch.cat(batch)
+    return torch.stack(batch)
+
+
+def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> tv_tensors.BoundingBoxes:
+    """Collate a batch of bounding boxes into a single one.
+    It is expected that all bounding boxes have the same canvas size and format.
+    """
+    bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
+    canvas_size = batch[0].canvas_size
+
+    return tv_tensors.BoundingBoxes(
+        torch.cat(batch),
+        canvas_size=canvas_size,
+        format=bb_format,
+    )
+
+
+def collate_tvt_tensors(
+    batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
+) -> Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
+    """Collate a batch of tv_tensors into a batched version of it."""
+    if len(batch[0].shape) > 0 and batch[0].size(0) == 1:
+        return tv_tensors.wrap(torch.cat(batch), like=batch[0])
+
+    return tv_tensors.wrap(torch.stack(batch), like=batch[0])
+
+
+CUSTOM_COLLATE_MAP: dict[Type, Callable] = default_collate_fn_map.copy()
+CUSTOM_COLLATE_MAP.update(
+    {
+        str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
+        tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
+        tv_tensors.BoundingBoxes: collate_bboxes,
+        (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
+        torch.device: collate_devices,
+        torch.Tensor: collate_tensors,  # override regular tensor collate to *not* add another dimension
+    }
+)
+
+
+def collate_states(batch: Union[list["State"], "State"]) -> "State":
+    """Collate function for multiple States, to flatten / squeeze the shapes and keep the tv_tensors classes.
+
+    The default collate function messes up a few of the dimensions and removes custom tv_tensor classes.
+    Therefore, add custom collate functions for the tv_tensors classes.
+    Additionally, custom torch tensor collate, which stacks tensors only if first dimension != 1, cat otherwise.
+
+    Args:
+        batch: A list of `State`, each `State` containing the data belonging to a single bounding-box.
+
+    Returns:
+        One single `State` object, containing a batch of data belonging to the bounding-boxes.
+    """
+    if isinstance(batch, State):
+        return batch
+
+    c_batch: dict[str, any] = collate(batch, collate_fn_map=CUSTOM_COLLATE_MAP)
+
+    # skip validation, because either every State has been validated before or validation is not required.
+    s = State(**c_batch, validate=False)
+    # then set the validation to the correct value
+    s.validate = batch[0].validate
+    return s

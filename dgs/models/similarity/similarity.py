@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from dgs.models.module import BaseModule
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
 similarity_validations: Validations = {
@@ -28,16 +28,16 @@ class SimilarityModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def get_data(self, ds: DataSample) -> any:
+    def get_data(self, ds: State) -> any:
         """Get the data used in this similarity module."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_target(self, ds: DataSample) -> any:
+    def get_target(self, ds: State) -> any:
         """Get the data used in this similarity module."""
         raise NotImplementedError
 
     @abstractmethod
-    def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> torch.Tensor:
         """Compute the similarity between two input tensors."""
         raise NotImplementedError

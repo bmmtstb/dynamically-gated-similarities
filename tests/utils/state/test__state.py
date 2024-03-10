@@ -6,22 +6,22 @@ import torch
 from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
-from dgs.utils.states import DataSample, get_ds_data_getter
+from dgs.utils.state import get_ds_data_getter, State
 from dgs.utils.types import Device, FilePaths
 from tests.helper import load_test_image, test_multiple_devices
 
 J = 20
-J_dim = 2
+J_DIM = 2
 B = 10
 PID = 13
 
 IMG_NAME = "866-200x300.jpg"
 DUMMY_IMG = load_test_image(IMG_NAME)
 
-DUMMY_KP_TENSOR: torch.Tensor = torch.rand((1, J, J_dim))
+DUMMY_KP_TENSOR: torch.Tensor = torch.rand((1, J, J_DIM))
 DUMMY_KP = DUMMY_KP_TENSOR.detach().clone()
 DUMMY_KP_BATCH: torch.Tensor = torch.cat(
-    [DUMMY_KP.clone().detach()] + [torch.rand((1, J, J_dim)) for _ in range(B - 1)]
+    [DUMMY_KP.clone().detach()] + [torch.rand((1, J, J_DIM)) for _ in range(B - 1)]
 )
 
 DUMMY_BBOX_TENSOR: torch.Tensor = torch.ones((1, 4))
@@ -56,23 +56,23 @@ DUMMY_DATA: dict[str, any] = {
 }
 
 
-class TestDataSample(unittest.TestCase):
+class TestState(unittest.TestCase):
 
     def test_init_regular(self):
         for validate in [True, False]:
             with self.subTest(msg="validate: {}".format(validate)):
-                ds = DataSample(bbox=DUMMY_BBOX, validate=validate)
+                ds = State(bbox=DUMMY_BBOX, validate=validate)
                 self.assertTrue(torch.allclose(ds.bbox, DUMMY_BBOX))
                 self.assertEqual(len(ds), 1)
                 self.assertEqual(ds.B, 1)
 
-                multi_ds = DataSample(bbox=DUMMY_BBOXES, validate=validate)
+                multi_ds = State(bbox=DUMMY_BBOXES, validate=validate)
                 self.assertTrue(torch.allclose(multi_ds.bbox, DUMMY_BBOXES))
                 self.assertEqual(len(multi_ds), B)
                 self.assertEqual(multi_ds.B, B)
 
     def test_init_with_unknown_kwarg(self):
-        ds = DataSample(bbox=DUMMY_BBOX, dummy="dummy")
+        ds = State(bbox=DUMMY_BBOX, dummy="dummy")
         self.assertEqual(ds["dummy"], "dummy")
 
     def test_init_with_multiple_values(self):
@@ -99,23 +99,26 @@ class TestDataSample(unittest.TestCase):
             (DUMMY_FP_BATCH, DUMMY_BBOXES, DUMMY_KP_BATCH, DUMMY_FP_BATCH, DUMMY_BBOXES, DUMMY_KP_BATCH, True),
         ]:
             with self.subTest(msg=f"v: {validate}, len: {len(bbox)} fp: {fp}, bbox: {bbox}, kp: {kp}"):
-                ds = DataSample(filepath=fp, bbox=bbox, keypoints=kp, validate=validate)
+                ds = State(filepath=fp, bbox=bbox, keypoints=kp, validate=validate)
                 self.assertEqual(ds.filepath, out_fp)
                 self.assertTrue(torch.allclose(ds.bbox, out_bbox))
                 self.assertTrue(torch.allclose(ds.keypoints, out_kp))
                 self.assertEqual(ds.J, J)
-                self.assertEqual(ds.joint_dim, J_dim)
+                self.assertEqual(ds.joint_dim, J_DIM)
 
     def test_args_raises(self):
         with self.assertRaises(NotImplementedError) as e:
-            _ = DataSample("dummy", bbox=DUMMY_BBOX)
+            _ = State("dummy", bbox=DUMMY_BBOX)
         self.assertTrue("Unknown arguments" in str(e.exception), msg=e.exception)
+
+
+class TestStateAttributes(unittest.TestCase):
 
     def test_J(self):
         for validate in [True, False]:
             with self.subTest(msg="validate: {}".format(validate)):
 
-                faulty_ds = DataSample(bbox=DUMMY_BBOX, validate=validate)
+                faulty_ds = State(bbox=DUMMY_BBOX, validate=validate)
                 with self.assertRaises(NotImplementedError) as e:
                     _ = faulty_ds.J
                 self.assertTrue("no global or local key-points in this object" in str(e.exception), msg=e.exception)
@@ -123,17 +126,29 @@ class TestDataSample(unittest.TestCase):
             for scope in ["keypoints", "keypoints_local"]:
                 with self.subTest(msg="scope: {}, validate: {}".format(scope, validate)):
 
-                    ds = DataSample(bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=validate)
+                    ds = State(bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=validate)
                     self.assertEqual(ds.J, J)
 
-                    multi_ds = DataSample(bbox=DUMMY_BBOXES, keypoints=DUMMY_KP_BATCH, validate=validate)
+                    multi_ds = State(bbox=DUMMY_BBOXES, keypoints=DUMMY_KP_BATCH, validate=validate)
                     self.assertEqual(multi_ds.J, J)
+
+    def test_J_value_later(self):
+        for validate in [True, False]:
+            with self.subTest(msg="validate: {}".format(validate)):
+
+                s = State(bbox=DUMMY_BBOX, validate=validate)
+                with self.assertRaises(NotImplementedError) as e:
+                    _ = s.J
+                self.assertTrue("no global or local key-points in this object" in str(e.exception), msg=e.exception)
+
+                s.keypoints = DUMMY_KP
+                self.assertEqual(s.J, J)
 
     def test_joint_dim(self):
         for validate in [True, False]:
             with self.subTest(msg="validate: {}".format(validate)):
 
-                faulty_ds = DataSample(bbox=DUMMY_BBOX, validate=validate)
+                faulty_ds = State(bbox=DUMMY_BBOX, validate=validate)
                 with self.assertRaises(NotImplementedError) as e:
                     _ = faulty_ds.joint_dim
                 self.assertTrue("no global or local key-points in this object" in str(e.exception), msg=e.exception)
@@ -141,22 +156,34 @@ class TestDataSample(unittest.TestCase):
             for scope in ["keypoints", "keypoints_local"]:
                 with self.subTest(msg="scope: {}, validate: {}".format(scope, validate)):
 
-                    ds = DataSample(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
-                    self.assertEqual(ds.joint_dim, J_dim)
+                    ds = State(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
+                    self.assertEqual(ds.joint_dim, J_DIM)
 
-                    multi_ds = DataSample(**{"bbox": DUMMY_BBOXES, scope: DUMMY_KP_BATCH, "validate": validate})
-                    self.assertEqual(multi_ds.joint_dim, J_dim)
+                    multi_ds = State(**{"bbox": DUMMY_BBOXES, scope: DUMMY_KP_BATCH, "validate": validate})
+                    self.assertEqual(multi_ds.joint_dim, J_DIM)
+
+    def test_joint_dim_later(self):
+        for validate in [True, False]:
+            with self.subTest(msg="validate: {}".format(validate)):
+
+                s = State(bbox=DUMMY_BBOX, validate=validate)
+                with self.assertRaises(NotImplementedError) as e:
+                    _ = s.joint_dim
+                self.assertTrue("no global or local key-points in this object" in str(e.exception), msg=e.exception)
+
+                s.keypoints = DUMMY_KP
+                self.assertEqual(s.joint_dim, J_DIM)
 
     def test_keypoints(self):
         scopes = ["keypoints", "keypoints_local"]
         for validate in [True, False]:
             for i, scope in enumerate(scopes):
                 with self.subTest(msg="scope: {}, validate: {}".format(scope, validate)):
-                    ds = DataSample(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
+                    ds = State(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
                     setattr(ds, scopes[(i + 1) % 2], DUMMY_KP)
 
     def test_setting_bbox_fails(self):
-        ds = DataSample(**DUMMY_DATA)
+        ds = State(**DUMMY_DATA)
         with self.assertRaises(NotImplementedError) as e:
             ds.bbox = DUMMY_BBOX
         self.assertTrue("not allowed to change the bounding box of an already" in str(e.exception), msg=e.exception)
@@ -164,58 +191,33 @@ class TestDataSample(unittest.TestCase):
     def test_filepath_exceptions(self):
         # tuple
         with self.assertRaises(ValueError) as e:
-            _ = DataSample(bbox=DUMMY_BBOX, filepath=DUMMY_FP + DUMMY_FP)
+            _ = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP + DUMMY_FP)
         self.assertTrue(
             "filepath must have the same number of entries as bounding-boxes. Got 2, expected 1" in str(e.exception),
             msg=e.exception,
         )
         # string
         with self.assertRaises(ValueError) as e:
-            _ = DataSample(bbox=DUMMY_BBOXES, filepath=DUMMY_FP_STRING)
+            _ = State(bbox=DUMMY_BBOXES, filepath=DUMMY_FP_STRING)
         self.assertTrue(f"Got a single path, expected {B}" in str(e.exception), msg=e.exception)
 
     def test_get_filepath_fails_as_string(self):
-        ds = DataSample(bbox=DUMMY_BBOX)
+        ds = State(bbox=DUMMY_BBOX)
         ds.data["filepath"] = DUMMY_FP_STRING
         with self.assertRaises(AssertionError) as e:
             _ = ds.filepath
         self.assertTrue("filepath must be a tuple but got" in str(e.exception), msg=e.exception)
 
     def test_class_id(self):
-        ds = DataSample(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, class_id=1)
+        ds = State(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, class_id=1)
         self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
 
-        ds = DataSample(
-            filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, class_id=torch.ones(1)
-        )
+        ds = State(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, class_id=torch.ones(1))
         self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
 
     def test_crop_path(self):
-        ds = DataSample(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, crop_path=("dummy",))
+        ds = State(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, crop_path=("dummy",))
         self.assertEqual(ds.crop_path, ("dummy",))
-
-    def test_len(self):
-
-        for fps, length in [
-            (os.path.join(PROJECT_ROOT, DUMMY_FP_STRING), 1),
-            ((os.path.join(PROJECT_ROOT, DUMMY_FP_STRING),), 1),
-        ]:
-            with self.subTest(msg="fps: {}, length: {}".format(fps, length)):
-                ds = DataSample(filepath=fps, bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False)
-                self.assertEqual(len(ds), length)
-
-        multi_ds = DataSample(bbox=DUMMY_BBOXES, filepath=DUMMY_FP_BATCH)
-        self.assertEqual(len(multi_ds), B)
-
-    @test_multiple_devices
-    def test_to(self, device: torch.device):
-        fp = DUMMY_FP
-        bbox = tv_tensors.wrap(DUMMY_BBOX.cpu(), like=DUMMY_BBOX)
-        kp = DUMMY_KP.cpu()
-        ds = DataSample(filepath=fp, bbox=bbox, keypoints=kp, validate=False)
-        ds.to(device=device)
-        self.assertEqual(ds.bbox.device, device)
-        self.assertEqual(ds.keypoints.device, device)
 
     @test_multiple_devices
     def test_init_with_device(self, device: Device):
@@ -240,7 +242,7 @@ class TestDataSample(unittest.TestCase):
                         data_dict["keypoints"] = data_dict["keypoints"].to(device=device)
                     data_dict["validate"] = validate
 
-                    ds: DataSample = DataSample(**data_dict)
+                    ds: State = State(**data_dict)
                     self.assertEqual(ds.device, torch.device(device))
                     self.assertTrue(torch.allclose(ds.person_id, out_id))
                     self.assertTrue(torch.allclose(ds.image, out_image))
@@ -250,7 +252,57 @@ class TestDataSample(unittest.TestCase):
                     self.assertTrue(torch.allclose(ds.bbox, out_bbox))
                     self.assertTrue(torch.allclose(ds.joint_weight, out_joint_weight))
                     self.assertEqual(ds.J, J)
-                    self.assertEqual(ds.joint_dim, J_dim)
+                    self.assertEqual(ds.joint_dim, J_DIM)
+
+
+class TestStateFunctions(unittest.TestCase):
+
+    def test_len(self):
+        for fps, length in [
+            (os.path.join(PROJECT_ROOT, DUMMY_FP_STRING), 1),
+            ((os.path.join(PROJECT_ROOT, DUMMY_FP_STRING),), 1),
+        ]:
+            with self.subTest(msg="fps: {}, length: {}".format(fps, length)):
+                ds = State(filepath=fps, bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False)
+                self.assertEqual(len(ds), length)
+
+        multi_ds = State(bbox=DUMMY_BBOXES, filepath=DUMMY_FP_BATCH)
+        self.assertEqual(len(multi_ds), B)
+
+    def test_equality(self):
+        for d1, d2, eq in [
+            ({"bbox": DUMMY_BBOX}, {"bbox": DUMMY_BBOX}, True),
+            ({"bbox": DUMMY_BBOX, "validate": True}, {"bbox": DUMMY_BBOX, "validate": False}, False),
+            (DUMMY_DATA, DUMMY_DATA, True),
+        ]:
+            with self.subTest(msg="d1: {}, d2: {}, eq: {}".format(d1, d2, eq)):
+                s1 = State(**d1)
+                s2 = State(**d2)
+                self.assertEqual(s1 == s2, eq)
+        self.assertFalse(State(**DUMMY_DATA) == "dummy")
+
+    def test_copy(self):
+        kp = DUMMY_KP
+        s1 = State(bbox=DUMMY_BBOX, keypoints=kp)
+        s2 = s1.copy()
+
+        self.assertTrue(isinstance(s2, State))
+        self.assertTrue(torch.allclose(s2.keypoints, s1.keypoints))
+
+        s2.keypoints += torch.ones_like(DUMMY_KP)
+
+        self.assertTrue(torch.allclose(s2.keypoints, DUMMY_KP + torch.ones_like(DUMMY_KP)))
+        self.assertTrue(torch.allclose(s1.keypoints, DUMMY_KP))
+
+    @test_multiple_devices
+    def test_to(self, device: torch.device):
+        fp = DUMMY_FP
+        bbox = tv_tensors.wrap(DUMMY_BBOX.cpu(), like=DUMMY_BBOX)
+        kp = DUMMY_KP.cpu()
+        ds = State(filepath=fp, bbox=bbox, keypoints=kp, validate=False)
+        ds.to(device=device)
+        self.assertEqual(ds.bbox.device, device)
+        self.assertEqual(ds.keypoints.device, device)
 
     def test_cast_joint_weight(self):
         for weights, decimals, dtype, result in [
@@ -289,7 +341,7 @@ class TestDataSample(unittest.TestCase):
                 ):
                     data = DUMMY_DATA.copy()
                     data["joint_weight"] = weights
-                    ds = DataSample(**data)
+                    ds = State(**data)
                     dsi = deepcopy(ds)
                     r = dsi.cast_joint_weight(dtype=dtype, decimals=decimals, overwrite=overwrite)
                     self.assertEqual(r.dtype, dtype)
@@ -301,10 +353,10 @@ class TestDataSample(unittest.TestCase):
 
     def test_load_image(self):
         orig_img = load_test_image(IMG_NAME)
-        ds = DataSample(filepath=(DUMMY_FP,), bbox=DUMMY_BBOX, validate=False)
-        multi_ds = DataSample(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOXES, validate=False)
-        no_fps = DataSample(bbox=DUMMY_BBOX, validate=False)
-        img_ds = DataSample(bbox=DUMMY_BBOX, image=orig_img.clone(), validate=False)
+        ds = State(filepath=(DUMMY_FP,), bbox=DUMMY_BBOX, validate=False)
+        multi_ds = State(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOXES, validate=False)
+        no_fps = State(bbox=DUMMY_BBOX, validate=False)
+        img_ds = State(bbox=DUMMY_BBOX, image=orig_img.clone(), validate=False)
 
         # get using data -> fails if not present yet
         for obj in [ds, multi_ds, no_fps]:
@@ -337,10 +389,10 @@ class TestDataSample(unittest.TestCase):
 
     def test_load_image_crop(self):
         orig_img = load_test_image(IMG_NAME)
-        ds = DataSample(bbox=DUMMY_BBOX, crop_path=(DUMMY_FP,), validate=False)
-        multi_ds = DataSample(bbox=DUMMY_BBOXES, crop_path=DUMMY_FP_BATCH, validate=False)
-        no_fps = DataSample(bbox=DUMMY_BBOX, validate=False)
-        img_ds = DataSample(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), validate=False)
+        ds = State(bbox=DUMMY_BBOX, crop_path=(DUMMY_FP,), validate=False)
+        multi_ds = State(bbox=DUMMY_BBOXES, crop_path=DUMMY_FP_BATCH, validate=False)
+        no_fps = State(bbox=DUMMY_BBOX, validate=False)
+        img_ds = State(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), validate=False)
 
         # get using data -> fails if not present yet
         for obj in [ds, multi_ds, no_fps]:
@@ -374,12 +426,12 @@ class TestDataSample(unittest.TestCase):
         )
 
     def test_get_image_and_load(self):
-        ds = DataSample(bbox=DUMMY_BBOX, filepath=DUMMY_FP)
+        ds = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP)
         img = ds.image
         self.assertTrue(torch.allclose(img, load_test_image(IMG_NAME)))
 
     def test_get_image_crop_and_load(self):
-        ds = DataSample(bbox=DUMMY_BBOX, crop_path=DUMMY_FP)
+        ds = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP)
         crop = ds.image_crop
         self.assertTrue(torch.allclose(crop, load_test_image(IMG_NAME)))
 
@@ -388,7 +440,7 @@ class TestDataGetter(unittest.TestCase):
     def test_get_ds_data_getter(self):
         getter = get_ds_data_getter(["image", "filepath"])
         self.assertTrue(callable(getter))
-        ds = DataSample(**DUMMY_DATA.copy())
+        ds = State(**DUMMY_DATA.copy())
         self.assertTrue(torch.allclose(getter(ds)[0], ds.image))
 
 

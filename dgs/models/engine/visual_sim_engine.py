@@ -13,7 +13,7 @@ from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.similarity.torchreid import TorchreidSimilarity
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
 
@@ -111,16 +111,16 @@ class VisualSimilarityEngine(EngineModule):
 
             self.topk_acc: list[int] = self.params_train.get("topk_acc", [1])
 
-    def get_target(self, ds: DataSample) -> torch.Tensor:
+    def get_target(self, ds: State) -> torch.Tensor:
         """Get the target pIDs from the data."""
         return ds["class_id"].long()
 
-    def get_data(self, ds: DataSample) -> torch.Tensor:
+    def get_data(self, ds: State) -> torch.Tensor:
         """Get the image crop from the data."""
         return ds["image_crop"]
 
     @enable_keyboard_interrupt
-    def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:
+    def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:
 
         target_ids = self.get_target(data)
 
@@ -162,7 +162,7 @@ class VisualSimilarityEngine(EngineModule):
         imgs_l: list[torch.Tensor] = []
 
         batch_t: DifferenceTimer = DifferenceTimer()
-        batch: DataSample
+        batch: State
 
         for batch_idx, batch in tqdm(enumerate(dl), desc=f"Extract {desc}", total=len(dl)):
 

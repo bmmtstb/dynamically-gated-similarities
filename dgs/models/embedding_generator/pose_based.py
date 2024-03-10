@@ -10,7 +10,7 @@ from torchvision import tv_tensors
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -184,11 +184,11 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             nn.Softmax(dim=-1),
         )
 
-    def forward(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the custom key point convolution model.
 
         Params:
-            ds: A :class:`DataSample` containing the key-points and the corresponding bounding boxes.
+            ds: A :class:`State` containing the key-points and the corresponding bounding boxes.
 
         Returns:
             This modules' prediction.
@@ -296,7 +296,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             )
         )
 
-    def forward(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the linear pose-based embedding generator.
 
         Params:

@@ -10,7 +10,7 @@ from torch import nn
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.utils.config import get_sub_config, insert_into_config
 from dgs.utils.files import to_abspath
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
 from dgs.utils.types import Config
 
@@ -105,7 +105,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         # send model to the device
         return self.configure_torch_module(m, train=False)
 
-    def forward(self, ds: DataSample) -> torch.Tensor:
+    def forward(self, ds: State) -> torch.Tensor:
         """Predict embeddings given some input.
 
         Notes:
@@ -113,7 +113,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             Make sure forward is only called in the evaluation mode.
 
         Args:
-            ds: A :class:`DataSample` containing the cropped image as input for the model.
+            ds: A :class:`State` containing the cropped image as input for the model.
                 :class:`Image` or FloatTensor of shape ``[B x C x w x h]``.
 
         Returns:

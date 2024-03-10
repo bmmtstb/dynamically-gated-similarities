@@ -7,7 +7,7 @@ from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.models.embedding_generator.torchreid import TorchreidEmbeddingGenerator
 from dgs.utils.config import fill_in_defaults
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.utils import HidePrint
 from helper import get_test_config, load_test_image, load_test_images
 
@@ -39,7 +39,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         file_name = "866-256x256.jpg"
         fp = os.path.join("./tests/test_data/", file_name)
         img = load_test_image(file_name)
-        ds = DataSample(
+        ds = State(
             filepath=(fp,),
             validate=False,
             keypoints=torch.ones(1, J, 2),
@@ -75,7 +75,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         file_names = ["866-256x256.jpg" for _ in range(B)]
         fps = tuple(os.path.join("./tests/test_data/", fn) for fn in file_names)
         img = load_test_images(file_names)
-        ds = DataSample(
+        ds = State(
             filepath=fps,
             validate=False,
             keypoints=torch.ones(1, J, 2),

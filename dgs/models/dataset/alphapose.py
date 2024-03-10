@@ -34,7 +34,7 @@ from torchvision import tv_tensors
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.utils.files import read_json
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, ImgShape, NodePath, Validations
 
 ap_load_validations: Validations = {"path": [str, "file exists in project", ("endswith", ".json")]}
@@ -67,7 +67,7 @@ class AlphaPoseLoader(BaseDataset):
             raise ValueError(f"Expected all images to have the same shape, but found {canvas_sizes}")
         self.canvas_size: ImgShape = canvas_sizes.pop()
 
-    def arbitrary_to_ds(self, a, idx: int) -> DataSample:
+    def arbitrary_to_ds(self, a, idx: int) -> State:
         """Here `a` is one dict of the AP-JSON containing image_id, category_id, keypoints, score, box, and idx."""
         keypoints, visibility = (
             torch.tensor(a["keypoints"], dtype=torch.float32, device=self.device)
@@ -75,7 +75,7 @@ class AlphaPoseLoader(BaseDataset):
             .split([2, 1], dim=-1)
         )
 
-        return DataSample(
+        return State(
             filepath=a["full_img_path"],
             bbox=tv_tensors.BoundingBoxes(a["bboxes"], format="XYWH", canvas_size=self.canvas_size),
             keypoints=keypoints,
@@ -86,7 +86,7 @@ class AlphaPoseLoader(BaseDataset):
             person_score=a["score"],  # fixme divide by 6 for COCO, by 1 for MPII...?
         )
 
-    def __getitems__(self, indices: list[int]) -> DataSample:
+    def __getitems__(self, indices: list[int]) -> State:
         def stack_key(key: str) -> torch.Tensor:
             return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
 
@@ -97,7 +97,7 @@ class AlphaPoseLoader(BaseDataset):
             .to(device=self.device, dtype=torch.float32)
             .split([2, 1], dim=-1)
         )
-        ds = DataSample(
+        ds = State(
             validate=False,
             filepath=tuple(self.data[i]["full_img_path"] for i in indices),
             bbox=tv_tensors.BoundingBoxes(stack_key("bboxes"), format="XYWH", canvas_size=self.canvas_size),

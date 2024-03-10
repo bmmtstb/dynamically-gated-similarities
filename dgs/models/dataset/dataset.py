@@ -13,7 +13,7 @@ from torchvision import tv_tensors
 from dgs.models.module import BaseModule
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {
@@ -31,12 +31,12 @@ class BaseDataset(BaseModule, TorchDataset):
     Using the Bounding Box as Index
     -------------------------------
 
-    The BaseDataset assumes that one sample of dataset (one :meth:`self.__getitem__` call)
-    contains one single bounding box.
-    Therefore, a batch of this dataset contains ``B`` bounding boxes,
+    The BaseDataset assumes that one sample of dataset (one :meth:`__getitem__` call)
+    contains the data of one single bounding-box.
+    Therefore, a batch of this dataset contains ``B`` bounding-boxes,
     with the same amount of filepaths, images, key-points, ... .
     It should be possible to work with a plain dict,
-    but to have a few quality-of-life features, the :class:`DataSample` class was implemented.
+    but to have a few quality-of-life features, the :class:`State` class was implemented.
 
     Why not use the Image ID as Index?
     ----------------------------------
@@ -105,7 +105,7 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> DataSample:
+    def __getitem__(self, idx: int) -> State:
         """Retrieve data at index from given dataset.
         Should load / precompute the images from given filepaths if not done already.
 
@@ -116,30 +116,30 @@ class BaseDataset(BaseModule, TorchDataset):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A :class:`DataSample` containing all the data of this index.
+            A :class:`State` containing all the data of this index.
         """
         # don't call .to(self.device), the DS should be created on the correct device!
-        sample: DataSample = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
-        if "image_crop" not in sample:
-            self.get_image_crops(sample)
-        return sample
+        s: State = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
+        if "image_crop" not in s:
+            self.get_image_crops(s)
+        return s
 
     @abstractmethod
-    def __getitems__(self, indices: list[int]) -> DataSample:
-        """Given a list of indices, return a single :class:`DataSample` object containing them all."""
+    def __getitems__(self, indices: list[int]) -> State:
+        """Given a list of indices, return a single :class:`State` object containing them all."""
         raise NotImplementedError
 
     @abstractmethod
-    def arbitrary_to_ds(self, a: any, idx: int) -> DataSample:
-        """Given a single sample of arbitrary data, convert it to a :class:`DataSample` object.
-        The index ``idx`` is given additionally, though might not be used by other datasets.
+    def arbitrary_to_ds(self, a: any, idx: int) -> State:
+        """Given a single sample of arbitrary data, convert it to a :class:`State` object.
+        The index ``idx`` is given additionally, though it might not be used by other datasets.
         """
         raise NotImplementedError
 
-    def get_image_crops(self, ds: DataSample) -> None:
-        """Add the image crops and local key points to a given sample.
-        Works for single or batched :class:`DataSample` objects.
-        This function modifies the given DataSample in place.
+    def get_image_crops(self, ds: State) -> None:
+        """Add the image crops and local key-points to a given state.
+        Works for single or batched :class:`State` objects.
+        This function modifies the given State in place.
 
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """
@@ -190,10 +190,10 @@ class BaseDataset(BaseModule, TorchDataset):
             "output_size": self.params.get("crop_size", (256, 256)),
             "mode": self.params.get("crop_mode", "zero-pad"),
         }
-        new_sample = self.transform_crop_resize()(structured_input)
+        new_state = self.transform_crop_resize()(structured_input)
 
-        ds.image_crop = new_sample["image"].to(dtype=torch.float32, device=self.device)
-        ds.keypoints_local = new_sample["keypoints"].to(dtype=torch.float32, device=self.device)
+        ds.image_crop = new_state["image"].to(dtype=torch.float32, device=self.device)
+        ds.keypoints_local = new_state["keypoints"].to(dtype=torch.float32, device=self.device)
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:

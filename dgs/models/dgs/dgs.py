@@ -9,7 +9,7 @@ from dgs.models.combine import CombineSimilaritiesModule, get_combine_module
 from dgs.models.module import BaseModule
 from dgs.models.similarity import get_similarity_module
 from dgs.utils.config import get_sub_config
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
 dgs_validations: Validations = {
@@ -72,8 +72,8 @@ class DGSModule(BaseModule, nn.Module):
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
 
-    def forward(self, ds: DataSample, target: DataSample) -> torch.Tensor:
-        """Given a DataSample containing the current detections and a target, compute the similarity between every pair.
+    def forward(self, ds: State, target: State) -> torch.Tensor:
+        """Given a State containing the current detections and a target, compute the similarity between every pair.
 
         Returns:
             The combined similarity matrix as tensor of shape ``[nof_detections x (nof_tracks + 1)]``.

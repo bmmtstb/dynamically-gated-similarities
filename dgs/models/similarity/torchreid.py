@@ -10,7 +10,7 @@ from torch import nn
 from dgs.models.metric import get_metric, METRICS
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.files import to_abspath
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
 from dgs.utils.types import Config
 
@@ -180,19 +180,19 @@ class TorchreidSimilarity(SimilarityModule):
         results = self.model(data)
         return _get_torchreid_embeds(results)
 
-    def get_data(self, ds: DataSample) -> torch.Tensor:
-        """Given a :class:`DataSample` get the current embedding or compute it using the image crop."""
+    def get_data(self, ds: State) -> torch.Tensor:
+        """Given a :class:`State` get the current embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
         return self.model(ds.image_crop)
 
-    def get_target(self, ds: DataSample) -> torch.Tensor:
-        """Given a :class:`DataSample` get the target embedding or compute it using the image crop."""
+    def get_target(self, ds: State) -> torch.Tensor:
+        """Given a :class:`State` get the target embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
         return self.model(ds.image_crop)
 
-    def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> torch.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.
 
         Either load or compute the visual embeddings for the data and target using the model.
@@ -203,11 +203,11 @@ class TorchreidSimilarity(SimilarityModule):
             Torchreid expects images to have float values.
 
         Args:
-            data: A :class:`DataSample` containing the predicted embedding or the image crop.
-                If a predicted embedding exists, it should be stored as 'embedding' in the DataSample.
+            data: A :class:`State` containing the predicted embedding or the image crop.
+                If a predicted embedding exists, it should be stored as 'embedding' in the State.
                 ``self.get_data()`` will then extract the embedding as tensor of shape: ``[a x E]``.
-            target: A :class:`DataSample` containing either the target embedding or the image crop.
-                If a predicted embedding exists, it should be stored as 'embedding' in the DataSample.
+            target: A :class:`State` containing either the target embedding or the image crop.
+                If a predicted embedding exists, it should be stored as 'embedding' in the State.
                 ``self.get_target()`` is then used to extract embedding as tensor of shape ``[b x E]``.
 
         Returns:

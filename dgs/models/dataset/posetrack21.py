@@ -27,7 +27,7 @@ from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.dataset.pose_dataset import TorchreidPoseDataset
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 
@@ -419,10 +419,10 @@ class PoseTrack21(BaseDataset):
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
-    def __getitems__(self, indices: list[int]) -> DataSample:
+    def __getitems__(self, indices: list[int]) -> State:
         raise NotImplementedError
 
-    def arbitrary_to_ds(self, a, idx: int) -> DataSample:
+    def arbitrary_to_ds(self, a, idx: int) -> State:
         raise NotImplementedError
 
 
@@ -523,17 +523,17 @@ class PoseTrack21JSON(BaseDataset):
     def __len__(self) -> int:
         return self.len
 
-    def __getitems__(self, indices: list[int]) -> DataSample:
-        """Given list of indices, return a :class:`DataSample` object.
+    def __getitems__(self, indices: list[int]) -> State:
+        """Given list of indices, return a :class:`State` object.
 
-        Batching might be faster if we do not have to create DataSample twice.
+        Batching might be faster if we do not have to create State twice.
         Once for every single object, once for the batch.
 
         Args:
             indices: List of indices.
 
         Returns:
-            A single :class:`DataSample` object containing a batch of data.
+            A single :class:`State` object containing a batch of data.
         """
 
         def stack_key(key: str) -> torch.Tensor:
@@ -549,7 +549,7 @@ class PoseTrack21JSON(BaseDataset):
                 for i in indices
             ]
         ).split(split_size=[2, 1], dim=-1)
-        ds = DataSample(
+        ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             filepath=tuple(self.data[i]["img_path"] for i in indices),
             bbox=tv_tensors.BoundingBoxes(
@@ -572,8 +572,8 @@ class PoseTrack21JSON(BaseDataset):
         self.get_image_crops(ds)
         return ds
 
-    def arbitrary_to_ds(self, a: dict, idx: int) -> DataSample:
-        """Convert raw PoseTrack21 annotations to a :class:`DataSample` object."""
+    def arbitrary_to_ds(self, a: dict, idx: int) -> State:
+        """Convert raw PoseTrack21 annotations to a :class:`State` object."""
         keypoints, _visibility = (
             (
                 torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32)
@@ -583,7 +583,7 @@ class PoseTrack21JSON(BaseDataset):
             .reshape((1, 17, 3))
             .split([2, 1], dim=-1)
         )
-        ds = DataSample(
+        ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             filepath=(a["img_path"],),
@@ -603,7 +603,7 @@ class PoseTrack21JSON(BaseDataset):
             # joint_weight=visibility,
             image_id=self.img_ids[idx],
         )
-        # make sure to get the image crop for this sample
+        # make sure to get the image crop for this State
         self.get_image_crops(ds)
         return ds
 

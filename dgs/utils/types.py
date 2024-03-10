@@ -30,8 +30,8 @@ Validations = dict[str, list[Union[str, type, tuple[str, any], Validator]]]
 """A dictionary of validations, mapping a value of a given Config to some sort of validation."""
 
 # Data Handling
-DataGetter = Callable[["DataSample"], tuple[Union[torch.Tensor, any], ...]]
-"""Function to extract specific data from a :class:`DataSample`."""
+DataGetter = Callable[["State"], tuple[Union[torch.Tensor, any], ...]]
+"""Function to extract specific data from a :class:`State`."""
 
 # Modules
 Instance = Union[str, type]

@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from dgs.models.module import BaseModule
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
 embedding_validations: Validations = {
@@ -24,8 +24,8 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
     Description
     -----------
 
-    Given some model-specific data, child models will predict one embedding,
-    per single sample of data, describing it.
+    Given some model-specific data through the State, child models of this class will predict one embedding
+    per single sample (detection) of data, describing it.
     The child models should also work for batched input data.
 
     Params
@@ -59,8 +59,8 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, ds: DataSample) -> torch.Tensor:
-        """Predict next outputs, given any data in a DataSample object, using this Re-ID model.
+    def forward(self, ds: State) -> torch.Tensor:
+        """Predict next outputs, given any data in a State object, using this Re-ID model.
 
         Returns:
             The generated embeddings as tensor of shape ``[N x embedding_size]``.

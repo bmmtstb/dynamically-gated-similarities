@@ -5,7 +5,7 @@ from torchvision import tv_tensors as tvte
 
 from dgs.models.embedding_generator.pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from dgs.utils.config import fill_in_defaults
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Device
 from helper import get_test_config, test_multiple_devices
 
@@ -53,7 +53,7 @@ class TestPoseBased(unittest.TestCase):
                 bbox = tvte.BoundingBoxes(
                     torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100), device=device
                 )
-                ds = DataSample(filepath=tuple("" for _ in range(batch_size)), validate=False, bbox=bbox, keypoints=kp)
+                ds = State(filepath=tuple("" for _ in range(batch_size)), validate=False, bbox=bbox, keypoints=kp)
                 emb, ids = m.forward(ds)
                 self.assertEqual(emb.device.type, device.type)
                 self.assertEqual(ids.device.type, device.type)
@@ -124,7 +124,7 @@ class TestPoseBased(unittest.TestCase):
                 bbox = tvte.BoundingBoxes(
                     torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100), device=device
                 )
-                ds = DataSample(filepath=tuple("" for _ in range(batch_size)), validate=False, bbox=bbox, keypoints=kp)
+                ds = State(filepath=tuple("" for _ in range(batch_size)), validate=False, bbox=bbox, keypoints=kp)
                 emb, ids = m.forward(ds)
                 self.assertEqual(emb.device.type, device.type)
                 self.assertEqual(ids.device.type, device.type)

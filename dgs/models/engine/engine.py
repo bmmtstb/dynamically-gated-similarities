@@ -24,7 +24,7 @@ from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
 from dgs.utils.config import get_sub_config, save_config
 from dgs.utils.exceptions import InvalidConfigException
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Validations
@@ -219,12 +219,12 @@ class EngineModule(BaseModule):
         return self.run(*args, **kwargs)
 
     @abstractmethod
-    def get_data(self, ds: DataSample) -> any:
+    def get_data(self, ds: State) -> any:
         """Function to retrieve the data used in the model's prediction from the train- and test- DataLoaders."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_target(self, ds: DataSample) -> any:
+    def get_target(self, ds: State) -> any:
         """Function to retrieve the evaluation targets from the train- and test- DataLoaders."""
         raise NotImplementedError
 
@@ -268,7 +268,7 @@ class EngineModule(BaseModule):
         epoch_t: DifferenceTimer = DifferenceTimer()
         batch_t: DifferenceTimer = DifferenceTimer()
         data_t: DifferenceTimer = DifferenceTimer()
-        data: DataSample
+        data: State
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
             self.logger.info(f"#### Training - Epoch {self.curr_epoch} ####")
@@ -411,7 +411,7 @@ class EngineModule(BaseModule):
         return tensor
 
     @abstractmethod
-    def _get_train_loss(self, data: DataSample, _curr_iter: int) -> torch.Tensor:  # pragma: no cover
+    def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:  # pragma: no cover
         """Compute the loss during training given the data.
 
         Different models can have different outputs and a different number of targets.

@@ -7,7 +7,7 @@ from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.models.dgs.dgs import DGSModule
 from dgs.utils.config import fill_in_defaults, load_config
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.utils import HidePrint
 from helper import load_test_image, load_test_images
 
@@ -50,7 +50,7 @@ class TestDGSModule(unittest.TestCase):
         with HidePrint():
             m = DGSModule(config=cfg, path=PATH)
 
-        ds_input = DataSample(
+        ds_input = State(
             filepath=img_crop_path,
             bbox=BoundingBoxes([0, 0, 100, 100], canvas_size=(256, 256), format="XYXY"),
             keypoints=torch.ones((J, 2)),
@@ -73,14 +73,14 @@ class TestDGSModule(unittest.TestCase):
 
         for ds_input, ds_target, out_values, inv_out in [
             (  # image differs
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((5, J, 2)),
                     joint_weight=torch.ones((5, J, 1)),
                     validate=False,
                 ),
-                DataSample(
+                State(
                     filepath=("file_example_PNG_500kB.png", "866-256x256.jpg"),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((2, J, 2)),
@@ -91,14 +91,14 @@ class TestDGSModule(unittest.TestCase):
                 0.2 * torch.ones((2, 5)),
             ),
             (  # bbox differs
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((5, J, 2)),
                     joint_weight=torch.ones((5, J, 1)),
                     validate=False,
                 ),
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(2)),
                     bbox=BoundingBoxes(torch.tensor([[0, 0, 5, 5], [1, 1, 6, 6]]), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((2, J, 2)),
@@ -110,14 +110,14 @@ class TestDGSModule(unittest.TestCase):
                 0.2 * torch.ones((2, 5)),
             ),
             (  # pose differs
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((5, J, 2)),
                     joint_weight=torch.ones((5, J, 1)),
                     validate=False,
                 ),
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(2)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.stack([-1 * torch.ones((1, J, 2)), torch.ones(1, J, 2)]),
@@ -129,14 +129,14 @@ class TestDGSModule(unittest.TestCase):
                 0.2 * torch.ones((2, 5)),
             ),
             (  # joint weight differs
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((5, J, 2)),
                     joint_weight=torch.ones((5, J, 1)),
                     validate=False,
                 ),
-                DataSample(
+                State(
                     filepath=tuple("866-256x256.jpg" for _ in range(2)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
                     keypoints=torch.ones((2, J, 2)),

@@ -9,7 +9,7 @@ from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 from torchvision.tv_tensors import BoundingBoxes, BoundingBoxFormat
 
 from dgs.utils.constants import OKS_SIGMAS
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 from .similarity import SimilarityModule
 
@@ -54,8 +54,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
         if self.params.get("softmax", False):
             self.softmax.append(nn.Softmax(dim=-1))
 
-    def get_data(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
-        """Given a :class:`DataSample`, compute the detected / predicted key points with shape ``[B1 x J x 2]``
+    def get_data(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
+        """Given a :class:`State`, compute the detected / predicted key points with shape ``[B1 x J x 2]``
         and the areas of the respective ground-truth bounding-boxes with shape ``[B1]``.
 
         Notes:
@@ -76,8 +76,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         return kps, area
 
-    def get_target(self, ds: DataSample) -> tuple[torch.Tensor, torch.Tensor]:
-        """Given a :class:`DataSample` obtain the ground truth key points and the key-point-visibility.
+    def get_target(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
+        """Given a :class:`State` obtain the ground truth key points and the key-point-visibility.
         Both are tensors, the key points are a FloatTensor of shape ``[B2 x J x 2]``
         and the visibility is a BoolTensor of shape ``[B2 x J]``.
         """
@@ -85,7 +85,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
         vis = ds.cast_joint_weight(dtype=torch.bool).squeeze(-1).view(ds.B, -1)
         return kps, vis
 
-    def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> torch.Tensor:
         r"""Compute the object key-point similarity between a ground truth label and detected key points.
 
         There has to be one key point of the label for any detection. (Batch sizes have to match)
@@ -114,8 +114,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
         Fixme: exclude ignore regions from image_shape ?
 
         Args:
-            data: A :class:`DataSample` object containing at least the key points and the bounding box.
-            target: A :class:`DataSample` containing at least the target key points.
+            data: A :class:`State` object containing at least the key points and the bounding box.
+            target: A :class:`State` containing at least the target key points.
         """
         # get predicted key-points as [B1 x J x 2] and bbox area as [B1]
         pred_kps, bbox_area = self.get_data(ds=data)
@@ -166,8 +166,8 @@ class IntersectionOverUnion(SimilarityModule):
         if self.params.get("softmax", False):
             self.softmax.append(nn.Softmax(dim=-1))
 
-    def get_data(self, ds: DataSample) -> BoundingBoxes:
-        """Given a :class:`DataSample` obtain the ground-truth bounding-boxes as
+    def get_data(self, ds: State) -> BoundingBoxes:
+        """Given a :class:`State` obtain the ground-truth bounding-boxes as
         :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[B1 x 4]``.
 
         Notes:
@@ -178,8 +178,8 @@ class IntersectionOverUnion(SimilarityModule):
             bboxes = self.transform(bboxes)
         return bboxes
 
-    def get_target(self, ds: DataSample) -> BoundingBoxes:
-        """Given a :class:`DataSample` obtain the ground-truth bounding-boxes as
+    def get_target(self, ds: State) -> BoundingBoxes:
+        """Given a :class:`State` obtain the ground-truth bounding-boxes as
         :class:`torchvision.tv_etnsors.BoundingBoxes` object of size ``[B2 x 4]``.
 
         Notes:
@@ -190,5 +190,5 @@ class IntersectionOverUnion(SimilarityModule):
             bboxes = self.transform(bboxes)
         return bboxes
 
-    def forward(self, data: DataSample, target: DataSample) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> torch.Tensor:
         return self.softmax(box_iou(self.get_data(ds=data), self.get_target(ds=target)))

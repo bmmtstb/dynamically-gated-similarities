@@ -6,7 +6,7 @@ from torchvision.tv_tensors import BoundingBoxes
 from dgs.models.similarity import SimilarityModule
 from dgs.models.similarity.pose_similarity import IntersectionOverUnion, ObjectKeypointSimilarity
 from dgs.utils.config import fill_in_defaults
-from dgs.utils.states import DataSample
+from dgs.utils.state import State
 from helper import get_test_config
 
 
@@ -24,28 +24,28 @@ class TestPoseSimilarities(unittest.TestCase):
         bbox3 = BoundingBoxes([[0, 0, 1, 1], [0, 0, 1, 1]], canvas_size=(1, 1), format="xywh")
         bbox4 = BoundingBoxes([[0, 0, 1, 1], [0, 0, 1, 1], [0, 0, 1, 1]], canvas_size=(1, 1), format="xyxy")
 
-        ds1 = DataSample(
+        ds1 = State(
             filepath=("",),
             bbox=bbox1,
             keypoints=torch.ones((J, 2)),
             validate=False,
             joint_weight=torch.ones(J),
         )
-        ds2 = DataSample(
+        ds2 = State(
             filepath=("",),
             bbox=bbox2,
             keypoints=torch.ones((1, J, 2)),
             validate=False,
             joint_weight=torch.ones((1, J, 1)),
         )
-        ds3 = DataSample(
+        ds3 = State(
             filepath=("", ""),
             bbox=bbox3,
             keypoints=torch.zeros((2, J, 2)),
             validate=False,
             joint_weight=torch.stack([torch.zeros(J), torch.ones(J)]),
         )
-        ds4 = DataSample(
+        ds4 = State(
             filepath=("", "", ""),
             bbox=bbox4,
             keypoints=torch.ones((3, J, 2)),
@@ -86,25 +86,25 @@ class TestPoseSimilarities(unittest.TestCase):
 
         J = 17
 
-        ds1 = DataSample(
+        ds1 = State(
             filepath=("",),
             bbox=bbox1,
             keypoints=torch.ones((J, 2)),
             validate=False,
         )
-        ds2 = DataSample(
+        ds2 = State(
             filepath=("",),
             bbox=bbox2,
             keypoints=torch.ones((J, 2)),
             validate=False,
         )
-        ds3 = DataSample(
+        ds3 = State(
             filepath=("",),
             bbox=bbox3,
             keypoints=torch.zeros((1, J, 2)),
             validate=False,
         )
-        ds4 = DataSample(
+        ds4 = State(
             filepath=("", "", ""),
             bbox=bbox4,
             keypoints=torch.ones((3, J, 2)),

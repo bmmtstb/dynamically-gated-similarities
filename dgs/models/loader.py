@@ -8,8 +8,8 @@ from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchData
 
 from dgs.models.module import BaseModule
 from dgs.utils.config import get_sub_config
-from dgs.utils.data import collate_data_samples
 from dgs.utils.exceptions import InvalidConfigException
+from dgs.utils.state import collate_states
 from dgs.utils.types import Config, NodePath
 
 M = TypeVar("M", bound=BaseModule)
@@ -161,7 +161,7 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
         batch_size=params.get("batch_size", 16),
         num_workers=params.get("workers", 0),
         shuffle=params.get("shuffle", False),
-        collate_fn=collate_data_samples,
+        collate_fn=collate_states,
     )
     # https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
     # By default, num_workers is set to 0.
