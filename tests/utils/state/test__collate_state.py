@@ -60,6 +60,7 @@ class TestCollate(unittest.TestCase):
         s = State(bbox=bbox, keypoints=torch.ones(1, J, j_dim), image=Image(torch.ones(1, C, H, W)))
         for states, result in [
             ([s], s),
+            (s, s),
             (
                 [s for _ in range(N)],
                 State(

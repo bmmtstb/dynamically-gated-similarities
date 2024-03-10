@@ -456,7 +456,7 @@ def collate_tvt_tensors(
 
 
 CUSTOM_COLLATE_MAP: dict[Type, Callable] = default_collate_fn_map.copy()
-CUSTOM_COLLATE_MAP.update(
+CUSTOM_COLLATE_MAP.update(  # pragma: no cover
     {
         str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
         tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
