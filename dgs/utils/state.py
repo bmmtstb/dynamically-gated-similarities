@@ -207,6 +207,16 @@ class State(UserDict):
         )
 
     @property
+    def track_id(self) -> torch.Tensor:
+        return self.data["track_id"].long()
+
+    @track_id.setter
+    def track_id(self, value: Union[int, torch.Tensor]) -> None:
+        self.data["track_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
+            device=self.device, dtype=torch.long
+        )
+
+    @property
     def filepath(self) -> FilePaths:
         """If data filepath has a single entry, return the filepath as a string, otherwise return the list."""
         assert isinstance(self.data["filepath"], tuple), f"filepath must be a tuple but got {self.data['filepath']}"

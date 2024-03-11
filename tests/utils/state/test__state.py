@@ -209,14 +209,21 @@ class TestStateAttributes(unittest.TestCase):
         self.assertTrue("filepath must be a tuple but got" in str(e.exception), msg=e.exception)
 
     def test_class_id(self):
-        ds = State(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, class_id=1)
+        ds = State(bbox=DUMMY_BBOX, validate=False, class_id=1)
         self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
 
-        ds = State(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, class_id=torch.ones(1))
+        ds = State(bbox=DUMMY_BBOX, validate=False, class_id=torch.ones(1))
         self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
+
+    def test_track_id(self):
+        ds = State(bbox=DUMMY_BBOX, validate=False, track_id=1)
+        self.assertEqual(ds.track_id, torch.ones(1, dtype=torch.long))
+
+        ds = State(bbox=DUMMY_BBOX, validate=False, track_id=torch.ones(1))
+        self.assertEqual(ds.track_id, torch.ones(1, dtype=torch.long))
 
     def test_crop_path(self):
-        ds = State(filepath=("dummy",), bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False, crop_path=("dummy",))
+        ds = State(bbox=DUMMY_BBOX, validate=False, crop_path=("dummy",))
         self.assertEqual(ds.crop_path, ("dummy",))
 
     @test_multiple_devices
@@ -263,10 +270,10 @@ class TestStateFunctions(unittest.TestCase):
             ((os.path.join(PROJECT_ROOT, DUMMY_FP_STRING),), 1),
         ]:
             with self.subTest(msg="fps: {}, length: {}".format(fps, length)):
-                ds = State(filepath=fps, bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=False)
+                ds = State(bbox=DUMMY_BBOX, validate=False)
                 self.assertEqual(len(ds), length)
 
-        multi_ds = State(bbox=DUMMY_BBOXES, filepath=DUMMY_FP_BATCH)
+        multi_ds = State(bbox=DUMMY_BBOXES)
         self.assertEqual(len(multi_ds), B)
 
     def test_equality(self):
@@ -296,13 +303,14 @@ class TestStateFunctions(unittest.TestCase):
 
     @test_multiple_devices
     def test_to(self, device: torch.device):
-        fp = DUMMY_FP
         bbox = tv_tensors.wrap(DUMMY_BBOX.cpu(), like=DUMMY_BBOX)
         kp = DUMMY_KP.cpu()
-        ds = State(filepath=fp, bbox=bbox, keypoints=kp, validate=False)
+        cid = torch.ones(1, dtype=torch.long).cpu()
+        ds = State(bbox=bbox, keypoints=kp, class_id=cid, validate=False)
         ds.to(device=device)
         self.assertEqual(ds.bbox.device, device)
         self.assertEqual(ds.keypoints.device, device)
+        self.assertEqual(ds.class_id.device, device)
 
     def test_cast_joint_weight(self):
         for weights, decimals, dtype, result in [
