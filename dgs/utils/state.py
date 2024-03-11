@@ -73,7 +73,7 @@ class State(UserDict):
     """
 
     # there a many attributes and they can get used, so please the linter
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes, too-many-public-methods
 
     validate: bool
     """Whether to validate the inputs into this state."""

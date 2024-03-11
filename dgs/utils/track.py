@@ -204,24 +204,18 @@ class Tracks(UserDict):
 
         return added_ids
 
-    def get_states(self, keys: list[str] = None) -> State:
-        """Get the last state of every track in this object as a State.
+    def get_states(self) -> State:
+        """Get the last state of every track in this object as a :class:`State`."""
+        states: list[State] = []
+        tids: list[int] = []
 
-        Will always compute the bounding boxes, to obtain a "real" State object.
-        """
-        raise NotImplementedError
-        # if keys is None:
-        #     keys = ["bbox"]
-        # elif "bbox" not in keys:
-        #     keys.append("bbox")
-        #
-        # states: list[State] = []
-        # tids: list[int] = []
-        #
-        #
-        # for tid, track in self.data.items():
-        #     states.append(track.get_state(-1))
-        #     tids.append(tid)
+        for tid, track in self.data.items():
+            states.append(track[-1])
+            tids.append(tid)
+
+        state = collate_states(states)
+        state.track_id = torch.tensor(tids, device=state.device, dtype=torch.long)
+        return state
 
     def _add_track(self, t: Track) -> int:
         """Given a Track, compute the next track-ID, and save this track in data using this ID.

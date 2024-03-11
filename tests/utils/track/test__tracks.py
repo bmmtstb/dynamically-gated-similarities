@@ -171,6 +171,19 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), set())
 
+    def test_get_state(self):
+        t1 = ONE_TRACKS.copy()
+        r1 = t1.get_states()
+        self.assertTrue(isinstance(r1, State))
+        self.assertEqual(len(r1), 1)
+        self.assertTrue(torch.allclose(r1.track_id, torch.tensor(OT_O_ID, dtype=torch.long)))
+
+        t2 = MULTI_TRACKS.copy()
+        r2 = t2.get_states()
+        self.assertTrue(isinstance(r2, State))
+        self.assertEqual(len(r2), 2)
+        self.assertTrue(torch.allclose(r2.track_id, torch.tensor([MT_O_ID, MT_F_ID], dtype=torch.long)))
+
     def setUp(self):
         self.assertEqual(len(ONE_TRACK), 1)
         self.assertEqual(len(FULL_TRACK), MAX_LENGTH)
