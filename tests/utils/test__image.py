@@ -125,7 +125,7 @@ class TestImage(unittest.TestCase):
                 (torch.uint8, 0, 255),
             ]:
                 with self.subTest(msg=f"image name: {file_name}, dtype: {dtype}, device: {device}"):
-                    fp = to_abspath(os.path.join("./tests/test_data/", file_name))
+                    fp = to_abspath(os.path.join("./tests/test_data/images/", file_name))
                     img = load_image(fp, dtype=dtype, device=device)
 
                     self.assertEqual(img.shape[-3:], shape)
@@ -137,7 +137,7 @@ class TestImage(unittest.TestCase):
 
     @test_multiple_devices
     def test_load_multiple_images_resized(self, device: torch.device):
-        fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
+        fps = tuple(to_abspath(os.path.join("./tests/test_data/images/", fn)) for fn in TEST_IMAGES)
         size: ImgShape = (300, 500)
         for dtype in [torch.float32, torch.uint8]:
             with self.subTest(msg=f"dtype: {dtype}, device: {device}"):
@@ -147,7 +147,7 @@ class TestImage(unittest.TestCase):
                 self.assertEqual(imgs.device, device)
 
     def test_load_multiple_images_exception(self):
-        fps = tuple(to_abspath(os.path.join("./tests/test_data/", fn)) for fn in TEST_IMAGES)
+        fps = tuple(to_abspath(os.path.join("./tests/test_data/images/", fn)) for fn in TEST_IMAGES)
         with self.assertRaises(ValueError):
             load_image(fps)
 

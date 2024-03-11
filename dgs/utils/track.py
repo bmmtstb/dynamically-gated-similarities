@@ -239,8 +239,7 @@ class Tracks(UserDict):
             raise KeyError(f"Track-ID {tid} not present in Tracks.")
         self.data[tid].append(state=add_state)
         # update inactive
-        if tid in self.inactive.keys():
-            del self.inactive[tid]
+        self.inactive.pop(tid, None)
 
     def _handle_inactive(self, tids: set[int]) -> None:
         """Given the Track-IDs of the Tracks that haven't been seen this step, update the inactivity tracker.

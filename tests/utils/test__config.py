@@ -199,18 +199,18 @@ class TestFillInConfig(unittest.TestCase):
 
 class TestLoadConfig(unittest.TestCase):
     def test_load_config_easydict(self):
-        cfg = load_config("./tests/test_data/test_config.yaml")  # easydict=True
+        cfg = load_config("./tests/test_data/configs/test_config.yaml")  # easydict=True
         self.assertIsInstance(cfg, EasyDict)
         self.assertEqual(cfg.device, "cpu")
-        self.assertTrue(cfg.dataset.kwargs.more_data, "Is not a nested EasyDict")
-        self.assertListEqual(cfg.dataset.kwargs.even_more_data, [1, 2, 3, 4])
+        self.assertTrue(cfg.test_config.kwargs.more_data, "Is not a nested EasyDict")
+        self.assertListEqual(cfg.test_config.kwargs.even_more_data, [1, 2, 3, 4])
 
     def test_load_config_dict(self):
-        cfg = load_config("./tests/test_data/test_config.yaml", easydict=False)
+        cfg = load_config("./tests/test_data/configs/test_config.yaml", easydict=False)
         self.assertIsInstance(cfg, dict)
         self.assertEqual(cfg["device"], "cpu")
-        self.assertTrue(cfg["dataset"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
-        self.assertListEqual(cfg["dataset"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
+        self.assertTrue(cfg["test_config"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
+        self.assertListEqual(cfg["test_config"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_configs_dir(self):
@@ -233,10 +233,32 @@ class TestLoadConfig(unittest.TestCase):
                     self.assertIsInstance(b, BaseModule)
                     self.assertEqual(b.name, name)
 
+    @patch.multiple(BaseModule, __abstractmethods__=set())
+    def test_load_all_yaml_in_test_data(self):
+        default_cfg = get_test_config()
+        for is_easydict in [True, False]:
+            abs_path = "./tests/test_data/configs/"
+            paths = [
+                os.path.normpath(os.path.join(abs_path, child_path))
+                for child_path in os.listdir(abs_path)
+                if child_path.endswith(".yaml") or child_path.endswith(".yml")
+            ]
+            self.assertTrue(len(paths) > 2)
+            for path in paths:
+                with self.subTest(msg=f"path: {path}"):
+                    cfg = load_config(path, easydict=is_easydict)
+                    self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
+                    self.assertIn("name", cfg)
+                    name = cfg["name"]
+                    cfg_w_def = fill_in_defaults(cfg, default_cfg=default_cfg)
+                    b = BaseModule(cfg_w_def, [])
+                    self.assertIsInstance(b, BaseModule)
+                    self.assertEqual(b.name, name)
+
     def test_load_config_exception(self):
         for fp in [
             "./tests/test_data/other_config.yaml",
-            "./test_data/test_config.yaml",
+            "./test_data/configs/test_config.yaml",
         ]:
             with self.assertRaises(InvalidPathException):
                 _ = load_config(fp)

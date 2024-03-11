@@ -25,7 +25,7 @@ class TestUtils(unittest.TestCase):
     @test_multiple_devices
     def test_extract_crops_from_images(self, device: Device):
         base_path = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/"))
-        img_src = os.path.normpath(os.path.join(base_path, "./test_data/"))
+        img_src = os.path.normpath(os.path.join(base_path, "./test_data/images/"))
         crop_target = os.path.normpath(os.path.join(base_path, "./test_crops"))
         for img_shapes, crop_fps, bbox_format, kp, kwargs in [
             ([(300, 200)], ["1.jpg"], "xywh", None, {"device": device}),

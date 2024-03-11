@@ -25,11 +25,11 @@ class TestFiles(unittest.TestCase):
     def test_is_proj_file(self):
         for fp, is_pf in [
             (r"./tests/utils/test__files.py", True),  # this file
-            (r"./tests/test_data/866-200x300.jpg", True),
-            (r"./tests/test_data/866-201x301.jpg", False),  # wrong shape
+            (r"./tests/test_data/images/866-200x300.jpg", True),
+            (r"./tests/test_data/images/866-201x301.jpg", False),  # wrong shape
             (r"./tests/test_data/", False),  # directory not path
             (r"", False),  # empty string
-            (r"./test_data/866-200x300.jpg", False),  # missing tests folder
+            (r"./test_data/images/866-200x300.jpg", False),  # missing tests folder
             (prepend_base(r"./tests/utils/test__files.py"), True),  # valid abspath which join somehow ignores
         ]:
             with self.subTest(msg=f"fp: {fp}, is: {is_pf}"):
@@ -43,7 +43,7 @@ class TestFiles(unittest.TestCase):
             (prepend_base(r"./tests/dummy/"), False),  # invalid directory
             (r"", True),  # empty string is a valid local path
             (r".", True),  # this is a valid local path
-            (r"./test_data/866-200x300.jpg", False),  # missing tests folder
+            (r"./test_data/images/866-200x300.jpg", False),  # missing tests folder
         ]:
             with self.subTest(msg=f"fp: {fp}, is: {is_pd}"):
                 self.assertEqual(is_project_dir(fp), is_pd)
@@ -53,8 +53,8 @@ class TestFiles(unittest.TestCase):
         for fp, root, is_pf in [
             (r"./tests/utils/test__files.py", PROJECT_ROOT, True),  # this file
             (r"./test__files.py", os.path.dirname(os.path.realpath(__file__)), True),
-            (r"./test_data/866-200x300.jpg", tests_folder, True),
-            (r"./test_data/866-201x301.jpg", tests_folder, False),  # wrong shape
+            (r"./test_data/images/866-200x300.jpg", tests_folder, True),
+            (r"./test_data/images/866-201x301.jpg", tests_folder, False),  # wrong shape
             (r"./test_data/", tests_folder, False),  # directory not path
             (r"", tests_folder, False),  # empty string and directory
             (r"./866-200x300.jpg", tests_folder, False),  # missing test_data folder
@@ -90,11 +90,11 @@ class TestFiles(unittest.TestCase):
     def test_is_abs_file(self):
         for fp, is_af in [
             (r"./tests/utils/test__files.py", False),  # this files local path
-            (r"./tests/test_data/866-200x300.jpg", False),
+            (r"./tests/test_data/images/866-200x300.jpg", False),
             (prepend_base(r"./tests/utils/test__files.py"), True),  # this files local path
-            (prepend_base(r"./tests/test_data/866-200x300.jpg"), True),
+            (prepend_base(r"./tests/test_data/images/866-200x300.jpg"), True),
             (prepend_base(r"./tests/test_data/"), False),  # directory not path
-            (prepend_base(r"./test_data/866-200x300.jpg"), False),  # missing tests folder
+            (prepend_base(r"./test_data/images/866-200x300.jpg"), False),  # missing tests folder
             (r"", False),  # empty string
         ]:
             with self.subTest(msg=f"fp: {fp}, is: {is_af}"):
@@ -117,11 +117,11 @@ class TestFiles(unittest.TestCase):
     def test_is_file(self):
         for fp, is_f in [
             (r"./tests/utils/test__files.py", True),  # this files local path
-            (r"./tests/test_data/866-200x300.jpg", True),
+            (r"./tests/test_data/images/866-200x300.jpg", True),
             (prepend_base(r"./tests/utils/test__files.py"), True),  # this files local path
-            (prepend_base(r"./tests/test_data/866-200x300.jpg"), True),
+            (prepend_base(r"./tests/test_data/images/866-200x300.jpg"), True),
             (prepend_base(r"./tests/test_data/"), False),  # directory not path
-            (prepend_base(r"./test_data/866-200x300.jpg"), False),  # missing tests folder
+            (prepend_base(r"./test_data/images/866-200x300.jpg"), False),  # missing tests folder
             (r"", False),  # empty string
         ]:
             with self.subTest(msg=f"fp: {fp}, is: {is_f}"):
@@ -130,7 +130,7 @@ class TestFiles(unittest.TestCase):
     def test_is_dir(self):
         for fp, is_d in [
             (r"./tests/utils/test__files.py", False),  # this is a file
-            (prepend_base(r"./tests/test_data/866-200x300.jpg"), False),  # absolute file
+            (prepend_base(r"./tests/test_data/images/866-200x300.jpg"), False),  # absolute file
             (prepend_base(r"./tests/test_data/"), True),  # absolute directory
             (r"./tests/test_data/", True),  # local directory
             (prepend_base(r"./test_data/"), False),  # absolute but missing tests folder

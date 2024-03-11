@@ -37,7 +37,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         self.assertFalse(m.model.training)
 
         file_name = "866-256x256.jpg"
-        fp = os.path.join("./tests/test_data/", file_name)
+        fp = os.path.join("./tests/test_data/images/", file_name)
         img = load_test_image(file_name)
         ds = State(
             filepath=(fp,),
@@ -73,7 +73,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
 
         B = 3
         file_names = ["866-256x256.jpg" for _ in range(B)]
-        fps = tuple(os.path.join("./tests/test_data/", fn) for fn in file_names)
+        fps = tuple(os.path.join("./tests/test_data/images/", fn) for fn in file_names)
         img = load_test_images(file_names)
         ds = State(
             filepath=fps,

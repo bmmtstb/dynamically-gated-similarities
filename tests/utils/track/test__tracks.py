@@ -136,6 +136,25 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(r1, 1)
         self.assertTrue(t0.data[r1] == FULL_TRACK)
 
+    def test_update_track(self):
+        tracks = ONE_TRACKS.copy()
+        self.assertEqual(len(tracks[OT_O_ID]), 1)
+        tracks._update_track(OT_O_ID, DUMMY_STATE)
+        self.assertEqual(len(tracks[OT_O_ID]), 2)
+
+        with self.assertRaises(KeyError) as e:
+            tracks._update_track(5, DUMMY_STATE)
+        self.assertTrue("Track-ID 5 not present in Tracks" in str(e.exception), msg=e.exception)
+
+        multi_tracks = MULTI_TRACKS.copy()
+        self.assertEqual(multi_tracks.ids_inactive(), {MT_F_ID})
+        self.assertEqual(len(multi_tracks[MT_F_ID]), MAX_LENGTH)
+        self.assertEqual(multi_tracks.ids_active(), {MT_O_ID})
+        multi_tracks._update_track(MT_F_ID, DUMMY_STATE)
+        self.assertEqual(multi_tracks.ids_inactive(), set())
+        self.assertEqual(multi_tracks.ids_active(), {MT_O_ID, MT_F_ID})
+        self.assertEqual(len(multi_tracks[MT_F_ID]), MAX_LENGTH)
+
     def test_get_item(self):
         empty = EMPTY_TRACKS.copy()
         with self.assertRaises(KeyError) as e:

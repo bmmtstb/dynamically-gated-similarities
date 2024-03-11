@@ -47,7 +47,6 @@ with warnings.catch_warnings():
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
 
 pt21_json_validations: Validations = {
-    "json_path": [("instance", FilePath)],
     "crops_folder": [("instance", FilePath)],
 }
 
@@ -375,24 +374,32 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
         An instance of TorchDataset, containing the requested dataset(s) as concatenated torch dataset.
     """
     ds = PoseTrack21(config, path)
-
-    ds_path = ds.params["dataset_path"]
     ds.validate_params(pt21_json_validations)
 
-    paths: list[FilePath]
-    if isinstance(ds_path, (list, tuple)):
-        paths = ds_path
-    else:
-        # path is either directory or single json file
-        abs_path: FilePath = ds.get_path_in_dataset(ds.params["json_path"])
-        if os.path.isfile(abs_path):
-            paths = [abs_path]
-        else:
-            paths = [
-                os.path.normpath(os.path.join(abs_path, child_path))
-                for child_path in os.listdir(abs_path)
-                if child_path.endswith(".json")
+    if isinstance(json_path := ds.params["json_path"], (list, tuple)):
+        print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {json_path}")
+        return ConcatDataset(
+            [
+                PoseTrack21JSON(config=config, path=path, json_path=ds.get_path_in_dataset(path=p))
+                for p in tqdm(
+                    json_path,
+                    position=1,
+                    leave=False,
+                )
             ]
+        )
+
+    # path is either directory or single json file
+    paths: list[FilePath]
+    abs_path: FilePath = ds.get_path_in_dataset(ds.params["json_path"])
+    if os.path.isfile(abs_path):
+        paths = [abs_path]
+    else:
+        paths = [
+            os.path.normpath(os.path.join(abs_path, child_path))
+            for child_path in os.listdir(abs_path)
+            if child_path.endswith(".json")
+        ]
 
     if len(paths) == 1:
         print(f"Loading dataset: {paths[0]}")
@@ -403,7 +410,7 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
             PoseTrack21JSON(config=config, path=path, json_path=p)
             for p in tqdm(
                 paths,
-                desc=f"Loading datasets: {os.path.normpath(os.path.join(ds_path, ds.params.get('json_path', '')))}",
+                desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}",
                 position=1,
             )
         ]

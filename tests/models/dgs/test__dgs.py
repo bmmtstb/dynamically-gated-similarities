@@ -18,7 +18,7 @@ PATH = ["dgs"]
 class TestDGSModule(unittest.TestCase):
 
     def test_init(self):
-        cfg = load_config("./tests/test_data/test_config_dgs.yaml")
+        cfg = load_config("./tests/test_data/configs/test_config_dgs.yaml")
 
         with HidePrint():
             m = DGSModule(config=cfg, path=PATH)
@@ -32,7 +32,7 @@ class TestDGSModule(unittest.TestCase):
 
         cfg = fill_in_defaults(
             {PATH[0]: {"similarity_softmax": True, "combined_softmax": True}},
-            load_config("./tests/test_data/test_config_dgs.yaml"),
+            load_config("./tests/test_data/configs/test_config_dgs.yaml"),
         )
 
         with HidePrint():
@@ -42,10 +42,10 @@ class TestDGSModule(unittest.TestCase):
         self.assertTrue(len(m.similarity_softmax) == 1)
 
     def test_forward_equal_inputs(self):
-        cfg = load_config("./tests/test_data/test_config_dgs.yaml")
+        cfg = load_config("./tests/test_data/configs/test_config_dgs.yaml")
 
         img_name = "866-256x256.jpg"
-        img_crop_path = ("./tests/test_data/" + img_name,)
+        img_crop_path = ("./tests/test_data/images/" + img_name,)
 
         with HidePrint():
             m = DGSModule(config=cfg, path=PATH)
@@ -64,7 +64,7 @@ class TestDGSModule(unittest.TestCase):
         self.assertTrue(torch.allclose(r, torch.tensor([1.0, 0], dtype=torch.float32)))
 
     def test_forward(self):
-        cfg = load_config("./tests/test_data/test_config_dgs.yaml")
+        cfg = load_config("./tests/test_data/configs/test_config_dgs.yaml")
 
         vis_mod, pose_mod, box_mod = cfg["combine_sims"]["alpha"]
 

@@ -144,7 +144,7 @@ class BaseDataset(BaseModule, TorchDataset):
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """
         if "crop_path" in ds:
-            ds.image_crop = load_image(ds.crop_path, dtype=torch.float32, device=self.device)
+            ds.image_crop = load_image(ds.crop_path, device=self.device)
             ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
                 device=self.device
             )
@@ -162,7 +162,7 @@ class BaseDataset(BaseModule, TorchDataset):
                     )
                     for i in range(len(ds))
                 )
-            ds.image_crop = load_image(ds.crop_path, dtype=torch.float32, device=self.device)
+            ds.image_crop = load_image(ds.crop_path, device=self.device)
             ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
                 device=self.device
             )

@@ -4,6 +4,7 @@ Load and register modules.
 
 from typing import Type, TypeVar, Union
 
+import torch.nn
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
 from dgs.models.module import BaseModule
@@ -78,7 +79,7 @@ def module_loader(
     return m(config=config, path=path, **kwargs)
 
 
-def register_module(name, new_module: Type[BaseModule], inst_class_name: str) -> None:
+def register_module(name, new_module: Union[Type[M], Type[torch.nn.Module]], inst_class_name: str) -> None:
     r"""Register a new module.
 
     Args:
@@ -162,6 +163,7 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
         num_workers=params.get("workers", 0),
         shuffle=params.get("shuffle", False),
         collate_fn=collate_states,
+        prefetch_factor=1,
     )
     # https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
     # By default, num_workers is set to 0.

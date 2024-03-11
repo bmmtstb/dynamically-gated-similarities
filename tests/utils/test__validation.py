@@ -40,8 +40,8 @@ DUMMY_ID: torch.Tensor = torch.ones(1).long()
 DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
 DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32)
 
-DUMMY_FP_STRING: str = f"./tests/test_data/{IMG_NAME}"
-DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/" + IMG_NAME)),)
+DUMMY_FP_STRING: str = f"./tests/test_data/images/{IMG_NAME}"
+DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/images/" + IMG_NAME)),)
 DUMMY_FP_BATCH: FilePaths = tuple(DUMMY_FP_STRING for _ in range(B))
 
 
@@ -268,13 +268,15 @@ class TestValidateFilePaths(unittest.TestCase):
     def test_validate_filepath_with_wrong_size(self):
         with self.assertRaises(ValidationException) as e:
             _ = validate_filepath(
-                file_paths=tuple([os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/866-200x300.jpg"))]),
+                file_paths=tuple(
+                    [os.path.normpath(os.path.join(PROJECT_ROOT, "tests/test_data/images/866-200x300.jpg"))]
+                ),
                 length=2,
             )
         self.assertTrue("Expected 2 paths but got 1" in str(e.exception), msg=e.exception)
 
         with self.assertRaises(ValidationException) as e:
-            _ = validate_filepath(file_paths="tests/test_data/866-200x300.jpg", length=2)
+            _ = validate_filepath(file_paths="tests/test_data/images/866-200x300.jpg", length=2)
         self.assertTrue("Expected 2 paths but got a single path" in str(e.exception), msg=e.exception)
 
 

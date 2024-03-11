@@ -41,13 +41,13 @@ def test_multiple_devices(func: callable) -> callable:
 
 def load_test_image(filename: str) -> Image:
     """Given the filename of an image in tests/test_data folder, load, validate and return it."""
-    return validate_images(load_image(os.path.join("./tests/test_data/", filename)))
+    return validate_images(load_image(os.path.join("./tests/test_data/images/", filename)))
 
 
 def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kwargs) -> Image:
     """Given the filename of an image in tests/test_data folder, load, validate and return it."""
     return load_image(
-        tuple(os.path.join("./tests/test_data/", fn) for fn in filenames), force_reshape=force_reshape, **kwargs
+        tuple(os.path.join("./tests/test_data/images/", fn) for fn in filenames), force_reshape=force_reshape, **kwargs
     )
 
 

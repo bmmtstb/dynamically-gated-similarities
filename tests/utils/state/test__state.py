@@ -34,8 +34,8 @@ DUMMY_BBOXES: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     canvas_size=(1000, 1000),
 )
 
-DUMMY_FP_STRING: str = f"./tests/test_data/{IMG_NAME}"
-DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/" + IMG_NAME)),)
+DUMMY_FP_STRING: str = f"./tests/test_data/images/{IMG_NAME}"
+DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/images/" + IMG_NAME)),)
 DUMMY_FP_BATCH: FilePaths = tuple(os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING)) for _ in range(B))
 
 DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, B, 20))).float()
