@@ -26,7 +26,7 @@ base_dataset_validations: Validations = {
 
 
 class BaseDataset(BaseModule, TorchDataset):
-    """Base class for custom datasets.
+    r"""Base class for custom datasets.
 
     Using the Bounding Box as Index
     -------------------------------
@@ -83,9 +83,31 @@ class BaseDataset(BaseModule, TorchDataset):
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
         Default (256, 256).
+
+    Additional Params for the DataLoader
+    ------------------------------------
+
     batch_size (int, optional):
         The batch size to use while creating the DataLoader for this Dataset.
-        Default 16.
+    drop_last (bool, optional):
+        Whether to drop the last batch if its size is unequal to the target batch size.
+    shuffle (bool, optional):
+        Whether to shuffle the dataset.
+    workers (int, optional):
+        The number of workers for Multi Device data loading.
+        Not fully supported!
+        Therefore, default 0, no multi-device.
+
+    Default Values
+    --------------
+
+    .. datatemplate:yaml::
+        :source: ../../dgs/default_values.yaml
+
+        {% for param in data['dataloader'] %}
+        - {{param}}: {{data['dataloader'][param]}}
+        {% endfor %}
+
     """
 
     data: list

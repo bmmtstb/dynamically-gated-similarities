@@ -41,6 +41,7 @@ pyyaml==6.0.*
 scipy
 # # sphinx is used to build the docs
 sphinx
+sphinxcontrib.datatemplates
 # # use tb nightly, due to torchreid installing it and it being incompatible with the regular tensorboard
 tb-nightly
 # torcheval

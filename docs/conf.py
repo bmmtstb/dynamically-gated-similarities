@@ -41,6 +41,7 @@ extensions = [
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.autodoc",  # Core library for html generation from docstrings
     "sphinx.ext.coverage",
+    "sphinxcontrib.datatemplates",  # load default parameters from yaml
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
 ]

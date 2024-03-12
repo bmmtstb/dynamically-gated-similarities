@@ -67,11 +67,12 @@ class TestPoseTrack21Dataset(unittest.TestCase):
 
     def test_get_items(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
+
         with HidePrint():
             dl = get_data_loader(config=cfg, path=["test_dataloader"])
         for batch in dl:
             self.assertTrue(isinstance(batch, State))
-            self.assertEqual(len(batch), 2)
+            self.assertEqual(len(batch), int(cfg["test_dataloader"]["batch_size"]))
 
 
 if __name__ == "__main__":

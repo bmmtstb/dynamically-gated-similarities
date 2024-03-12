@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import torch
 
-from dgs.default_values import DEF_VAL
+from dgs.utils.config import DEF_CONF
 from dgs.utils.state import collate_states, State
 
 
@@ -127,7 +127,7 @@ class Tracks(UserDict):
 
         # set the inactivity threshold
         if thresh is None:
-            self.inactivity_threshold = DEF_VAL.tracks.inactivity_threshold
+            self.inactivity_threshold = DEF_CONF.tracks.inactivity_threshold
         elif thresh < 0:
             raise ValueError(f"Threshold must be positive, got {thresh}.")
         else:

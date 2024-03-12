@@ -5,10 +5,13 @@ Load and register modules.
 from typing import Type, TypeVar, Union
 
 import torch.nn
-from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
+from torch.utils.data import (
+    DataLoader as TorchDataLoader,
+)
 
+from dgs.models.dataset import BaseDataset
 from dgs.models.module import BaseModule
-from dgs.utils.config import get_sub_config
+from dgs.utils.config import DEF_CONF, get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import collate_states
 from dgs.utils.types import Config, NodePath
@@ -154,19 +157,27 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
         A `~.DataLoader` object for the given dataset.
     """
     params = get_sub_config(config, path)
+    batch_size: int = params.get("batch_size", DEF_CONF.dataloader.batch_size)
+    drop_last: bool = params.get("drop_last", DEF_CONF.dataloader.drop_last)
+    shuffle: bool = params.get("shuffle", DEF_CONF.dataloader.shuffle)
 
-    ds: TorchDataset = module_loader(config=config, module_class="dataset", key=path)
+    ds: BaseDataset = module_loader(config=config, module_class="dataset", key=path)
+
+    # if shuffle:
+    #     sampler = TorchSequentialSampler(ds)
+    # else:
+    #     sampler = TorchRandomSampler(ds)
+    #
+    # batch_sampler = TorchBatchSampler(sampler=sampler, batch_size=batch_size, drop_last=drop_last)
 
     data_loader = TorchDataLoader(
         dataset=ds,
-        batch_size=params.get("batch_size", 16),
-        num_workers=params.get("workers", 0),
-        shuffle=params.get("shuffle", False),
+        # sampler=batch_sampler,
+        # batch_size=None,
+        batch_size=batch_size,
+        drop_last=drop_last,
+        num_workers=params.get("workers", DEF_CONF.dataloader.workers),
+        shuffle=shuffle,
         collate_fn=collate_states,
-        prefetch_factor=1,
     )
-    # https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
-    # By default, num_workers is set to 0.
-    # Setting num_workers to a positive integer turns on multiprocess data loading in which data will be loaded using
-    # the specified number of loader worker processes.
     return data_loader

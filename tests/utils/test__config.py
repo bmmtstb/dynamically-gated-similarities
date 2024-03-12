@@ -7,7 +7,14 @@ from easydict import EasyDict
 
 from dgs.default_config import cfg as DEFAULT_CFG
 from dgs.models.module import BaseModule
-from dgs.utils.config import easydict_to_dict, fill_in_defaults, get_sub_config, insert_into_config, load_config
+from dgs.utils.config import (
+    DEF_CONF,
+    easydict_to_dict,
+    fill_in_defaults,
+    get_sub_config,
+    insert_into_config,
+    load_config,
+)
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 from helper import get_test_config
 
@@ -31,6 +38,10 @@ NESTED_CONFIG = EasyDict(
 
 
 class TestGetSubConfig(unittest.TestCase):
+    def test_default_config_yaml(self):
+        self.assertTrue(isinstance(DEF_CONF, EasyDict))
+        self.assertTrue(len(DEF_CONF.keys()) > 1)
+
     def test_sub_config_still_correct_type(self):
         for cfg, path, new_type in [
             (NESTED_CONFIG, ["bar"], EasyDict),

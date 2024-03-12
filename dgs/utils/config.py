@@ -190,7 +190,7 @@ def insert_into_config(path: NodePath, value: Config, original: Config = None, c
     return fill_in_defaults(value, original, copy=copy)
 
 
-def easydict_to_dict(ed: EasyDict) -> dict:
+def easydict_to_dict(ed: Union[dict, EasyDict]) -> dict:
     """Given an :class:`EasyDict` convert it to a regular dict recursively"""
     if isinstance(ed, EasyDict):
         ed = dict(ed)
@@ -201,3 +201,6 @@ def easydict_to_dict(ed: EasyDict) -> dict:
         ed = [easydict_to_dict(val) for val in ed]
 
     return ed
+
+
+DEF_CONF: Config = load_config("./dgs/default_values.yaml")

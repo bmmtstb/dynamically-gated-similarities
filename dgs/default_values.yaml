@@ -1,0 +1,21 @@
+# ###### #
+# TRACKS #
+# ###### #
+tracks:
+    inactivity_threshold: 30
+
+
+# ###################### #
+# Dataset and DataLoader #
+# ###################### #
+dataloader:
+    batch_size: 16
+    drop_last: False
+    shuffle: False
+    workers: 0
+
+dataset:
+    image_mode: "zero-pad"
+    image_size: [1024, 1024]
+    crop_mode: "zero-pad"
+    crop_size: [256, 256]

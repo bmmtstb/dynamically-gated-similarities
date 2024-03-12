@@ -12,6 +12,7 @@ numpy
 pyyaml
 scipy
 sphinx
+sphinxcontrib.datatemplates
 terminaltables
 tqdm
 
