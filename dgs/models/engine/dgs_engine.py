@@ -14,7 +14,7 @@ from dgs.utils.config import DEF_CONF
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import close_all_layers
-from dgs.utils.track import Tracks
+from dgs.utils.track import Track, Tracks
 from dgs.utils.types import Config, Validations
 
 dgs_engine_validations: Validations = {
@@ -91,40 +91,49 @@ class DGSEngine(EngineModule):
         for batch_idx, detections in enumerate(self.test_dl):
             N = len(detections)
 
-            # Get the current state from the Tracks and use it to compute the similarity to the current detections.
-            track_state: State = self.tracks.get_states()
+            updated_tracks: dict[int, State] = {}
+            new_tracks: list[Track] = []
 
-            data_t.add(time_batch_start)
-            time_sim_start = time.time()
+            if N > 0:
+                # Get the current state from the Tracks and use it to compute the similarity to the current detections.
+                track_state: State = self.tracks.get_states()
 
-            similarity = self.model.forward(ds=detections, target=track_state)
+                data_t.add(time_batch_start)
+                time_sim_start = time.time()
 
-            similarity_t.add(time_sim_start)
-            time_match_start = time.time()
+                similarity = self.model.forward(ds=detections, target=track_state)
 
-            # munkres / hungarian matching to obtain track-id probabilities
-            _ = (similarity,)
+                similarity_t.add(time_sim_start)
+                time_match_start = time.time()
 
-            match_t.add(time_match_start)
+                # munkres / hungarian matching to obtain track-id probabilities
+                _ = (similarity,)
+
+                match_t.add(time_match_start)
 
             # update tracks
-            self.tracks.add(tracks={}, new_tracks=[])
+            self.tracks.add(tracks=updated_tracks, new_tracks=new_tracks)
 
             batch_t.add(time_batch_start)
-
-            self.writer.add_scalars(
-                main_tag="Test/time",
-                tag_scalar_dict={
-                    "data": data_t[-1],
-                    "similarity": similarity_t[-1],
-                    "matching": match_t[-1],
-                    "batch": batch_t[-1],
-                    "indiv": batch_t[-1] / N,
-                },
-                global_step=batch_idx,
-            )
             self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=batch_idx)
 
+            if N > 0:
+                self.writer.add_scalars(
+                    main_tag="Test/time",
+                    tag_scalar_dict={
+                        "data": data_t[-1],
+                        "similarity": similarity_t[-1],
+                        "matching": match_t[-1],
+                        "batch": batch_t[-1],
+                        "indiv": batch_t[-1] / N,
+                    },
+                    global_step=batch_idx,
+                )
+            else:
+                self.writer.add_scalars(
+                    main_tag="Test/time", tag_scalar_dict={"batch": batch_t[-1]}, global_step=batch_idx
+                )
+            # reset timer for next batch
             time_batch_start = time.time()
 
         return results

@@ -27,7 +27,7 @@ from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.dataset.pose_dataset import TorchreidPoseDataset
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
-from dgs.utils.state import State
+from dgs.utils.state import collate_bboxes, collate_tensors, State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 
@@ -44,7 +44,7 @@ with warnings.catch_warnings():
 
 
 # Do not allow import of 'PoseTrack21' base dataset
-__all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21JSON", "PoseTrack21Torchreid"]
+__all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21_BBox", "PoseTrack21Torchreid"]
 
 pt21_json_validations: Validations = {
     "crops_folder": [("instance", FilePath)],
@@ -380,7 +380,7 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
         print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {json_path}")
         return ConcatDataset(
             [
-                PoseTrack21JSON(config=config, path=path, json_path=ds.get_path_in_dataset(path=p))
+                PoseTrack21_BBox(config=config, path=path, json_path=ds.get_path_in_dataset(path=p))
                 for p in tqdm(
                     json_path,
                     position=1,
@@ -403,11 +403,11 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
 
     if len(paths) == 1:
         print(f"Loading dataset: {paths[0]}")
-        return PoseTrack21JSON(config=config, path=path, json_path=paths[0])
+        return PoseTrack21_BBox(config=config, path=path, json_path=paths[0])
 
     return ConcatDataset(
         [
-            PoseTrack21JSON(config=config, path=path, json_path=p)
+            PoseTrack21_BBox(config=config, path=path, json_path=p)
             for p in tqdm(
                 paths,
                 desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}",
@@ -433,7 +433,7 @@ class PoseTrack21(BaseDataset):
         raise NotImplementedError
 
 
-class PoseTrack21JSON(BaseDataset):
+class PoseTrack21_BBox(BaseDataset):
     """Load a single precomputed json file from the |PT21| dataset.
 
     Params
@@ -613,6 +613,168 @@ class PoseTrack21JSON(BaseDataset):
         # make sure to get the image crop for this State
         self.get_image_crops(ds)
         return ds
+
+
+class PoseTrack21_Image(BaseDataset):
+    """Load a single precomputed json file from the |PT21| dataset where every index represents one image.
+    Every getitem call therefore returns a :class:`.State` object,
+    containing zero or more bounding-boxes of people detected on this image.
+
+    Params
+    ------
+
+    json_path (FilePath):
+        The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
+    id_map (FilePath, optional):
+        The (local or absolute) path to a json file containing a mapping from person ID to classifier ID.
+        Both IDs are python integers, the IDs of the classifier should be continuous and zero-indexed.
+        If the number of classes is required for other parameters, e.g., the size of a classifier,
+        the length of this ID map should have the correct value.
+        By default, this value is not set or None.
+        In case this value is not present, the mapping will be created from scratch as the enumerated sorted person IDs.
+
+
+    Important Inherited Params
+    --------------------------
+
+    dataset_path (FilePath):
+        Path to the directory of the dataset.
+        The value has to either be a local project path, or a valid absolute path.
+    force_img_reshape (bool, optional):
+        Whether to accept that images in one folder might have different shapes.
+        Default False.
+    """
+
+    def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
+        super().__init__(config=config, path=path)
+
+        self.validate_params(pt21_json_validations)
+
+        # validate and get the path to the json
+        if json_path is None:
+            json_path: FilePath = self.get_path_in_dataset(self.params["json_path"])
+
+        # validate and get json data
+        json: dict[str, list[dict[str, any]]] = read_json(json_path)
+        validate_pt21_json(json)
+        self.len = len(json["images"])
+
+        # create a mapping from image id to full filepath
+        self.map_img_id_to_path: dict[int, FilePath] = {
+            img["id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
+            for img in json["images"]
+        }
+
+        # imagesize.get() output = (w,h) and our own format = (h, w)
+        img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in self.map_img_id_to_path.values()}
+        if self.params.get("force_img_reshape", False):
+            # take the biggest value of every dimension
+            self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
+        else:
+            if len(img_sizes) > 1:
+                raise ValueError(
+                    f"The images within a single dataset should have equal shapes. "
+                    f"json_path: {json_path}, shapes: {img_sizes}"
+                )
+            self.img_shape: ImgShape = img_sizes.pop()
+
+        # precomputed image crops in a specific folder
+        crops_dir: FilePath = self.get_path_in_dataset(self.params.get("crops_folder"))
+
+        # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
+        map_pid_to_cid: dict[int, int] = (
+            {int(i): int(j) for i, j in read_json(self.params["id_map"]).items()}
+            if "id_map" in self.params and self.params["id_map"] is not None
+            else {int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in json["annotations"])))}
+        )
+
+        # create a mapping from image id to a list of all annotations
+        self.map_img_id_to_anno_ids: dict[int, list[int]] = {int(img["id"]): [] for img in json["images"]}
+
+        img_id_list: list[int] = []
+        pid_list: list[int] = []
+        cid_list: list[int] = []
+
+        for anno_id, anno in enumerate(json["annotations"]):
+            img_id = int(anno["image_id"])
+            pid = int(anno["person_id"])
+            # append the ID of the current annotation to the annotation-list of the respective image
+            self.map_img_id_to_anno_ids[img_id].append(anno_id)
+            # save the image-, person-, and class-ids for later use as torch tensors
+            img_id_list.append(img_id)
+            pid_list.append(pid)
+            cid_list.append(map_pid_to_cid[pid])
+            # add the crop path to annotation
+            anno["crop_path"] = os.path.join(
+                crops_dir,
+                self.map_img_id_to_path[img_id].split("/")[-2],  # dataset name
+                f"{str(anno['image_id'])}_{str(anno['person_id'])}.jpg",  # int() might remove leading zeros
+            )
+
+        self.img_ids: torch.Tensor = torch.tensor(img_id_list, dtype=torch.long, device=self.device)
+        self.pids: torch.Tensor = torch.tensor(pid_list, dtype=torch.long, device=self.device)
+        self.cids: torch.Tensor = torch.tensor(cid_list, dtype=torch.long, device=self.device)
+
+        # store as np.ndarray to not store large python objects
+        self.data: np.ndarray[dict[str, any]] = np.asarray(json["images"])
+        self.annos: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
+
+    def __len__(self) -> int:
+        return self.len
+
+    def arbitrary_to_ds(self, a: dict, idx: int) -> State:
+        """Convert raw PoseTrack21 annotations to a :class:`State` object."""
+        idx: int = int(a["id"])
+        anno_ids: list[int] = self.map_img_id_to_anno_ids[idx]
+        N: int = len(anno_ids)
+
+        keypoints = []
+        visibilities = []
+        bboxes = []
+        crop_paths = []
+
+        for anno_id in anno_ids:
+            anno = self.annos[anno_id]
+
+            kps, visibility = (
+                torch.tensor(anno["keypoints"], device=self.device, dtype=torch.float32).reshape((1, 17, 3))
+                if len(anno["keypoints"])
+                else torch.zeros((1, 17, 3), device=self.device, dtype=torch.float32)
+            ).split([2, 1], dim=-1)
+            keypoints.append(kps)
+            visibilities.append(visibility)
+
+            bboxes.append(
+                tv_tensors.BoundingBoxes(
+                    torch.tensor(anno["bbox"]).float(),
+                    format="XYWH",
+                    dtype=torch.float32,
+                    canvas_size=self.img_shape,
+                    device=self.device,
+                )
+            )
+            crop_paths.append(anno["crop_path"])
+        crop_paths = tuple(crop_paths)
+
+        ds = State(
+            validate=False,  # This is given PT21 data, no need to validate...
+            device=self.device,
+            filepath=tuple(self.map_img_id_to_path[idx] for _ in range(N)),
+            bbox=collate_bboxes(bboxes),
+            keypoints=collate_tensors(keypoints),
+            person_id=self.pids[anno_ids],
+            # custom values
+            class_id=self.cids[anno_ids],
+            crop_path=crop_paths,
+            joint_weight=collate_tensors(visibilities),
+        )
+        # make sure to get the image crop for this State
+        if N > 0:
+            self.get_image_crops(ds)
+        return ds
+
+    def __getitems__(self, indices: list[int]) -> State:
+        raise NotImplementedError
 
 
 class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):

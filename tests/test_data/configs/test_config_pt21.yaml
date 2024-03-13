@@ -6,10 +6,16 @@ print_prio: "DEBUG"
 is_training: off
 
 
-test_single_dataset:
+test_single_dataset_1:
     dataset_path: "./tests/test_data/"
     json_path: "./pt21/pt21_dummy.json"
     force_img_reshape: false
+    crops_folder: "./tests/test_data/"
+
+test_single_dataset_2:
+    dataset_path: "./tests/test_data/"
+    json_path: "./pt21/pt21_dummy_2.json"
+    force_img_reshape: true
     crops_folder: "./tests/test_data/"
 
 test_multi_dataset:

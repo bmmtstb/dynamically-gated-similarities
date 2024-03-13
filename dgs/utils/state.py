@@ -164,9 +164,9 @@ class State(UserDict):
     @property
     def J(self) -> int:
         """Get the number of joints in every skeleton."""
-        if "keypoints" in self.data:
+        if "keypoints" in self.data and self.data["keypoints"].ndim > 2:
             return self.data["keypoints"].shape[-2]
-        if "keypoints_local" in self.data:
+        if "keypoints_local" in self.data and self.data["keypoints_local"].ndim > 2:
             return self.data["keypoints_local"].shape[-2]
         raise NotImplementedError("There are no global or local key-points in this object.")
 
@@ -334,7 +334,7 @@ class State(UserDict):
 
     @joint_weight.setter
     def joint_weight(self, value: torch.Tensor) -> None:
-        self.data["joint_weight"] = value.view(self.B, self.J, 1).to(device=self.device)
+        self.data["joint_weight"] = (value.view(self.B, self.J, 1) if self.validate else value).to(device=self.device)
 
     # ######### #
     # FUNCTIONS #

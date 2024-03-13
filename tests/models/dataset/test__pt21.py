@@ -1,6 +1,6 @@
 import unittest
 
-from dgs.models.dataset.posetrack21 import get_pose_track_21, PoseTrack21JSON, validate_pt21_json
+from dgs.models.dataset.posetrack21 import get_pose_track_21, PoseTrack21_BBox, PoseTrack21_Image, validate_pt21_json
 from dgs.models.loader import get_data_loader
 from dgs.utils.config import load_config
 from dgs.utils.state import State
@@ -23,30 +23,30 @@ class TestPT21Helpers(unittest.TestCase):
         self.assertTrue("PoseTrack21 .json file has an annotations key" in str(e.exception), msg=e.exception)
 
 
-class TestPoseTrack21Dataset(unittest.TestCase):
+class TestPoseTrack21BBoxDataset(unittest.TestCase):
     def test_init_directly(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = PoseTrack21JSON(config=cfg, path=["test_single_dataset"])
+            ds = PoseTrack21_BBox(config=cfg, path=["test_single_dataset_1"])
         self.assertEqual(len(ds), 1)
 
     def test_init_single(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_pose_track_21(config=cfg, path=["test_single_dataset"])
+            ds = get_pose_track_21(config=cfg, path=["test_single_dataset_1"])
         self.assertEqual(len(ds), 1)
 
     def test_init_multi(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
             ds = get_pose_track_21(config=cfg, path=["test_multi_dataset"])
-        self.assertEqual(len(ds), 7)
+        self.assertEqual(len(ds), 5 + 5 + 1)
 
     def test_init_folder(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
             ds = get_pose_track_21(config=cfg, path=["test_directory_dataset"])
-        self.assertEqual(len(ds), 4)
+        self.assertEqual(len(ds), 5 + 1)
 
     def test_init_folder_reshape_exception(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
@@ -60,7 +60,7 @@ class TestPoseTrack21Dataset(unittest.TestCase):
     def test_get_item(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = PoseTrack21JSON(config=cfg, path=["test_single_dataset"])
+            ds = PoseTrack21_BBox(config=cfg, path=["test_single_dataset_1"])
         r = ds[0]
         self.assertTrue(isinstance(r, State))
         self.assertEqual(len(r), 1)
@@ -73,6 +73,22 @@ class TestPoseTrack21Dataset(unittest.TestCase):
         for batch in dl:
             self.assertTrue(isinstance(batch, State))
             self.assertEqual(len(batch), int(cfg["test_dataloader"]["batch_size"]))
+
+
+class TestPoseTrack21ImageDataset(unittest.TestCase):
+    def test_init_single(self):
+        cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
+        for path, lengths in [
+            ("test_single_dataset_1", [1]),
+            ("test_single_dataset_2", [2, 0, 3]),
+        ]:
+            with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
+                with HidePrint():
+                    ds = PoseTrack21_Image(config=cfg, path=[path])
+                for i, length in enumerate(lengths):
+                    r = ds[i]
+                    self.assertTrue(isinstance(r, State))
+                    self.assertEqual(len(r), length)
 
 
 if __name__ == "__main__":

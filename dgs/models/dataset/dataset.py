@@ -157,8 +157,8 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         s: State = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
-        if "image_crop" not in s:
-            self.get_image_crops(s)
+        # if len(s) and "image_crop" not in s:
+        #     self.get_image_crops(s)
         return s
 
     @abstractmethod
