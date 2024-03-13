@@ -5,8 +5,6 @@ Contains the custom collate functions to combine a list of States into a single 
 keeping custom tensor subtypes intact.
 """
 
-from __future__ import annotations
-
 from collections import UserDict
 from copy import deepcopy
 from typing import Callable, Type, Union
@@ -444,6 +442,8 @@ def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tenso
 
     Will use torch.cat() if the first dimension has a shape of one, otherwise torch.stack()
     """
+    if len(batch) == 0:
+        return torch.empty(0)
     if len(batch[0].shape) > 0 and batch[0].shape[0] == 1:
         return torch.cat(batch)
     return torch.stack(batch)
@@ -453,6 +453,8 @@ def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> 
     """Collate a batch of bounding boxes into a single one.
     It is expected that all bounding boxes have the same canvas size and format.
     """
+    if len(batch) == 0:
+        return tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY")
     bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
     canvas_size = batch[0].canvas_size
 
@@ -465,11 +467,12 @@ def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> 
 
 def collate_tvt_tensors(
     batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
-) -> Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
+) -> Union[tv_tensors.TVTensor, tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
     """Collate a batch of tv_tensors into a batched version of it."""
+    if len(batch) == 0:
+        return tv_tensors.TVTensor([])
     if len(batch[0].shape) > 0 and batch[0].size(0) == 1:
         return tv_tensors.wrap(torch.cat(batch), like=batch[0])
-
     return tv_tensors.wrap(torch.stack(batch), like=batch[0])
 
 
@@ -494,7 +497,7 @@ def collate_states(batch: Union[list["State"], "State"]) -> "State":
     Additionally, custom torch tensor collate, which stacks tensors only if first dimension != 1, cat otherwise.
 
     Args:
-        batch: A list of `State`, each `State` containing the data belonging to a single bounding-box.
+        batch: A list of :class:`.State`, each State contains the data belonging to a single bounding-box.
 
     Returns:
         One single `State` object, containing a batch of data belonging to the bounding-boxes.
