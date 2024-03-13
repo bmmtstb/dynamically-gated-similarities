@@ -188,6 +188,7 @@ class State(UserDict):
 
     @property
     def person_id(self) -> torch.Tensor:
+        """Get the ID of the respective person shown on the bounding-box."""
         return self.data["person_id"].long()
 
     @person_id.setter
@@ -198,6 +199,7 @@ class State(UserDict):
 
     @property
     def class_id(self) -> torch.Tensor:
+        """Get the class-ID of the bounding-boxes."""
         return self.data["class_id"].long()
 
     @class_id.setter
@@ -208,6 +210,7 @@ class State(UserDict):
 
     @property
     def track_id(self) -> torch.Tensor:
+        """Get the ID of the tracks associated with the respective bounding-boxes."""
         return self.data["track_id"].long()
 
     @track_id.setter
@@ -243,6 +246,7 @@ class State(UserDict):
 
     @property
     def keypoints(self) -> torch.Tensor:
+        """Get the key-points. The coordinates are based on the coordinate-frame of the full-image."""
         return self.data["keypoints"]
 
     @keypoints.setter
@@ -270,7 +274,9 @@ class State(UserDict):
 
     @property
     def keypoints_local(self) -> torch.Tensor:
-        """Get local keypoints."""
+        """Get the local key-points.
+        The local coordinates are based on the coordinate-frame of the image crops, within the bounding-box.
+        """
         return self.data["keypoints_local"]
 
     @keypoints_local.setter
@@ -316,6 +322,7 @@ class State(UserDict):
 
     @property
     def crop_path(self):
+        """Get the path to the image crops. Only necessary if the image crops are saved and not computed live."""
         return self.data["crop_path"]
 
     @crop_path.setter
@@ -324,6 +331,7 @@ class State(UserDict):
 
     @property
     def joint_weight(self) -> torch.Tensor:
+        """Get the weight of the joints. Either represents the visibility or an importance score of this joint."""
         return self.data["joint_weight"]
 
     @joint_weight.setter

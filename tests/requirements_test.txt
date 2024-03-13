@@ -17,7 +17,7 @@ opencv-python
 pylint
 pyyaml
 scipy
-tensorboard
+tb-nightly
 terminaltables
 torcheval
 torchreid==0.2.5

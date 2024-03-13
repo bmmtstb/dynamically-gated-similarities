@@ -13,6 +13,7 @@ pyyaml
 scipy
 sphinx
 sphinxcontrib.datatemplates
+tb-nightly
 terminaltables
 tqdm
 

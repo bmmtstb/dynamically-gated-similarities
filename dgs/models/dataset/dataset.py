@@ -26,33 +26,48 @@ base_dataset_validations: Validations = {
 
 
 class BaseDataset(BaseModule, TorchDataset):
-    r"""Base class for custom datasets.
+    """Base class for custom datasets.
+
+    Every dataset is based around the :class:`.State` object,
+    which is just a fancy dict containing all the data of the current step.
+    But there are two different approaches when thinking about "one sample".
+    They have different use-cases and therefore different advantages and disadvantages.
 
     Using the Bounding Box as Index
     -------------------------------
 
-    The BaseDataset assumes that one sample of dataset (one :meth:`__getitem__` call)
+    One sample of the dataset (one :meth:`.__getitem__` call)
     contains the data of one single bounding-box.
     Therefore, a batch of this dataset contains ``B`` bounding-boxes,
     with the same amount of filepaths, images, key-points, ... .
-    It should be possible to work with a plain dict,
-    but to have a few quality-of-life features, the :class:`State` class was implemented.
+    The bounding-boxes can be sampled randomly from the dataset, because there is no time-based information.
+    This method can be used for generating and training the visual Re-ID embeddings, because the model
+    does not care when or in which order the bounding-boxes representing the Person-ID (class labels) are perceived.
 
-    Why not use the Image ID as Index?
-    ----------------------------------
+    Using the Image ID as Index
+    ---------------------------
 
-    This is **not** chosen since the batch-size might vary when using the image index to create batches,
-    because every image can have a different number of detections.
-    With a batch size of B, we obtain B original images.
-    Every one of those has a specific number of detections N, ranging from zero to an arbitrary number.
+    One sample of the dataset contains the data of all people / bounding-boxes detected on one single image.
+    Because now we can be sure that all detections of this image are in the current sample,
+    it is possible to move through the dataset in a frame-by-frame manner, keeping time-based information.
+    This is especially useful when working with tracks because the tracks of the current frame
+    depend on the tracks of the previous frame(s), at least in most scenarios.
 
-    This means that for obtaining batches of a constant size, it is necessary to 'flatten' the inputs.
-    Thus creating a mapping from image name and bounding box to the respective dataset.
-    With that in place, the DataLoader can retrieve batches with the same batch size.
-    The detections of one image might be split into different batches.
+    Due to the time-dependencies, it is not (really) possible to use batches without precomputing part of the tracks,
+    which might result in a worse performance during training.
+    During evaluation, it is possible to use the ground-truth track-information,
+    even though this might change the results of the model,
+    and it has to be shown how grave this influences the results.
 
-    The other option is to have batches with slightly different sizes.
-    The DataLoader loads a fixed batch of images, the Dataset computes the resulting detections and returns those.
+    When batches are used, the batch-size will vary because every image can have a different number of detections.
+    Every image has a specific number of detections ``N``, ranging from zero to an arbitrary number.
+    This means that with a batch size of ``B``, we obtain ``B`` original images,
+    but the length of the resulting :class:`.State` will most likely be larger.
+    Constant batches are possible when trimming overflowing detections, but this is not recommended.
+    The other option is to keep the batches with differing sizes.
+    The :class:`~torch.utils.data.DataLoader` loads a fixed batch of images,
+    the :meth:`~BaseDataset.__getitem__` call of the Dataset then computes the resulting detections
+    and returns those as a :class:`.State`.
 
     Params
     ------
@@ -65,8 +80,8 @@ class BaseDataset(BaseModule, TorchDataset):
         Default False.
     image_mode (str, optional):
         Only applicable if ``force_img_reshape`` is True.
-        The cropping mode used for loading the full images when calling :func:`self.get_image_crop`.
-        Value has to be in CustomToAspect.modes.
+        The cropping mode used for loading the full images when calling :meth:`.get_image_crops`.
+        Value has to be in :attr:`.CustomToAspect.modes`.
         Default "zero-pad".
     image_size (tuple[int, int], optional):
         Only applicable if ``force_img_reshape`` is True.
@@ -77,8 +92,8 @@ class BaseDataset(BaseModule, TorchDataset):
         The structure is dataset-dependent, and might not be necessary for some datasets.
         Default is not set, and the crops are generated live.
     crop_mode (str, optional):
-        The mode for image cropping used when calling :func:`self.get_image_crop`.
-        Value has to be in CustomToAspect.modes.
+        The mode for image cropping used when calling :meth:`.get_image_crops`.
+        Value has to be in :attr:`.CustomToAspect.modes`.
         Default "zero-pad".
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
@@ -94,7 +109,7 @@ class BaseDataset(BaseModule, TorchDataset):
     shuffle (bool, optional):
         Whether to shuffle the dataset.
     workers (int, optional):
-        The number of workers for Multi Device data loading.
+        The number of workers for multi-device data-loading.
         Not fully supported!
         Therefore, default 0, no multi-device.
 
