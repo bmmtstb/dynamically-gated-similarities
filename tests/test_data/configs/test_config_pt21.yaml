@@ -8,7 +8,7 @@ is_training: off
 
 test_single_dataset_1:
     dataset_path: "./tests/test_data/"
-    json_path: "./pt21/pt21_dummy.json"
+    json_path: "./pt21/pt21_dummy_1.json"
     force_img_reshape: false
     crops_folder: "./tests/test_data/"
 
@@ -20,7 +20,7 @@ test_single_dataset_2:
 
 test_multi_dataset:
     dataset_path: "./tests/test_data/"
-    json_path: ["./pt21/pt21_dummy.json", "./pt21/pt21_dummy_2.json", "./pt21/pt21_dummy_2.json"]
+    json_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"
 
@@ -37,10 +37,18 @@ test_json_dataset_multi_images_without_reshape:
     crops_folder: "./tests/test_data/"
 
 
-test_dataloader:
+test_dataloader_bbox:
     module_name: "PoseTrack21"
     dataset_path: "./tests/test_data/"
-    json_path: ["./pt21/pt21_dummy.json", "./pt21/pt21_dummy_2.json"]
+    json_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
+    force_img_reshape: true
+    crops_folder: "./tests/test_data/"
+    batch_size: 2
+
+test_dataloader_img:
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./tests/test_data/"
+    json_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"
     batch_size: 2

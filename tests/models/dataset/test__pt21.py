@@ -69,10 +69,10 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
 
         with HidePrint():
-            dl = get_data_loader(config=cfg, path=["test_dataloader"])
+            dl = get_data_loader(config=cfg, path=["test_dataloader_bbox"])
         for batch in dl:
             self.assertTrue(isinstance(batch, State))
-            self.assertEqual(len(batch), int(cfg["test_dataloader"]["batch_size"]))
+            self.assertEqual(len(batch), int(cfg["test_dataloader_bbox"]["batch_size"]))
 
 
 class TestPoseTrack21ImageDataset(unittest.TestCase):
@@ -85,6 +85,22 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
             with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
                 with HidePrint():
                     ds = PoseTrack21_Image(config=cfg, path=[path])
+                for i, length in enumerate(lengths):
+                    r = ds[i]
+                    self.assertTrue(isinstance(r, State))
+                    self.assertEqual(len(r), length)
+
+    def test_init_multiple(self):
+        cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
+        for path, lengths in [
+            ("test_multi_dataset", [1, 2, 0, 3, 2, 0, 3]),
+            ("test_directory_dataset", [1, 2, 0, 3]),
+        ]:
+            with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
+                with HidePrint():
+                    ds = get_pose_track_21(config=cfg, path=[path], ds_name="image")
+                self.assertEqual(len(ds), len(lengths))
+
                 for i, length in enumerate(lengths):
                     r = ds[i]
                     self.assertTrue(isinstance(r, State))

@@ -12,7 +12,8 @@ from .dataset import BaseDataset
 from .posetrack21 import PoseTrack21_BBox
 
 DATASETS: dict[str, Type[BaseDataset]] = {
-    "PoseTrack21JSON": PoseTrack21_BBox,
+    "PoseTrack21_BBox": PoseTrack21_BBox,
+    "PoseTrack21_Image": PoseTrack21_BBox,
     "AlphaPoseLoader": AlphaPoseLoader,
 }
 

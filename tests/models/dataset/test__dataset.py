@@ -9,7 +9,7 @@ from dgs.models.dataset.posetrack21 import PoseTrack21_BBox
 class TestBaseDataset(unittest.TestCase):
 
     def test_get(self):
-        ds = get_dataset("PoseTrack21JSON")
+        ds = get_dataset("PoseTrack21_BBox")
 
         self.assertTrue(isinstance(ds, type))
         self.assertTrue(issubclass(ds, BaseDataset))

@@ -14,7 +14,7 @@ import glob
 import os
 import shutil
 import warnings
-from typing import Union
+from typing import Type, Union
 
 import imagesize
 import numpy as np
@@ -44,7 +44,7 @@ with warnings.catch_warnings():
 
 
 # Do not allow import of 'PoseTrack21' base dataset
-__all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21_BBox", "PoseTrack21Torchreid"]
+__all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21_BBox", "PoseTrack21_Image", "PoseTrack21Torchreid"]
 
 pt21_json_validations: Validations = {
     "crops_folder": [("instance", FilePath)],
@@ -352,7 +352,7 @@ def generate_pt21_submission(outfile: FilePath) -> None:
     raise NotImplementedError(f"Not implemented {outfile}")
 
 
-def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, TorchDataset]:
+def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> Union[BaseDataset, TorchDataset]:
     """Load PoseTrack JSON files.
 
     The path parameter can be one of the following:
@@ -369,18 +369,23 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
     Args:
         config (Config): The overall configuration for the tracker.
         path (NodePath): The path to the dataset-specific parameters.
+        ds_name (str): Name of the dataset type to use.
+            Either "image" for :class:`.PoseTrack21_Image` or "bbox" for :class:`.PoseTrack21_BBox` .
 
     Returns:
         An instance of TorchDataset, containing the requested dataset(s) as concatenated torch dataset.
     """
     ds = PoseTrack21(config, path)
     ds.validate_params(pt21_json_validations)
+    ds_type: Union[Type[PoseTrack21_Image], Type[PoseTrack21_BBox]] = (
+        PoseTrack21_Image if ds_name == "image" else PoseTrack21_BBox
+    )
 
     if isinstance(json_path := ds.params["json_path"], (list, tuple)):
         print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {json_path}")
         return ConcatDataset(
             [
-                PoseTrack21_BBox(config=config, path=path, json_path=ds.get_path_in_dataset(path=p))
+                ds_type(config=config, path=path, json_path=ds.get_path_in_dataset(path=p))
                 for p in tqdm(
                     json_path,
                     position=1,
@@ -403,11 +408,11 @@ def get_pose_track_21(config: Config, path: NodePath) -> Union[BaseDataset, Torc
 
     if len(paths) == 1:
         print(f"Loading dataset: {paths[0]}")
-        return PoseTrack21_BBox(config=config, path=path, json_path=paths[0])
+        return ds_type(config=config, path=path, json_path=paths[0])
 
     return ConcatDataset(
         [
-            PoseTrack21_BBox(config=config, path=path, json_path=p)
+            ds_type(config=config, path=path, json_path=p)
             for p in tqdm(
                 paths,
                 desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}",

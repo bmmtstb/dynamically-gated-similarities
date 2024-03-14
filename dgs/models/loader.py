@@ -53,10 +53,12 @@ def module_loader(
         return get_data_loader(config=config, path=path)
     elif module_class == "dataset":
         # special case: the concatenated PT21 dataset is loaded via function not class
-        if module_name == "PoseTrack21":
+        if module_name.startswith("PoseTrack21"):
             from dgs.models.dataset.posetrack21 import get_pose_track_21
 
-            return get_pose_track_21(config=config, path=path)
+            return get_pose_track_21(
+                config=config, path=path, ds_name="image" if module_name.endswith("Image") else "bbox"
+            )
         from dgs.models.dataset import get_dataset
 
         m = get_dataset(module_name)
