@@ -7,29 +7,30 @@ from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.state import get_ds_data_getter, State
-from dgs.utils.types import Device, FilePaths
+from dgs.utils.types import Device, FilePaths, Heatmap, Image
 from tests.helper import load_test_image, test_multiple_devices
 
 J = 20
 J_DIM = 2
 B = 10
+
 PID = 13
+PIDS = torch.ones(B, dtype=torch.long) * PID
 
 IMG_NAME = "866-200x300.jpg"
-DUMMY_IMG = load_test_image(IMG_NAME)
+DUMMY_IMG: Image = load_test_image(IMG_NAME)
+DUMMY_IMG_BATCH: Image = tv_tensors.Image(torch.cat([DUMMY_IMG.detach().clone() for _ in range(B)]))
 
 DUMMY_KP_TENSOR: torch.Tensor = torch.rand((1, J, J_DIM))
 DUMMY_KP = DUMMY_KP_TENSOR.detach().clone()
-DUMMY_KP_BATCH: torch.Tensor = torch.cat(
-    [DUMMY_KP.clone().detach()] + [torch.rand((1, J, J_DIM)) for _ in range(B - 1)]
-)
+DUMMY_KP_BATCH: torch.Tensor = torch.cat([DUMMY_KP_TENSOR.detach().clone() for _ in range(B)])
 
 DUMMY_BBOX_TENSOR: torch.Tensor = torch.ones((1, 4))
 DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     DUMMY_BBOX_TENSOR, format=tv_tensors.BoundingBoxFormat.XYWH, canvas_size=(1000, 1000)
 )
-DUMMY_BBOXES: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
-    torch.cat([DUMMY_BBOX_TENSOR for _ in range(B)]),
+DUMMY_BBOX_BATCH: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
+    torch.cat([DUMMY_BBOX_TENSOR.detach().clone() for _ in range(B)]),
     format=tv_tensors.BoundingBoxFormat.XYWH,
     canvas_size=(1000, 1000),
 )
@@ -39,20 +40,36 @@ DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test
 DUMMY_FP_BATCH: FilePaths = tuple(os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING)) for _ in range(B))
 
 DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, B, 20))).float()
-DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32)
+DUMMY_HM: Heatmap = tv_tensors.Mask(DUMMY_HM_TENSOR.detach().clone(), dtype=torch.float32)
+DUMMY_HM_BATCH: Heatmap = tv_tensors.Mask(
+    torch.cat([DUMMY_HM_TENSOR.detach().clone() for _ in range(B)]), dtype=torch.float32
+)
 
 DUMMY_WEIGHT: torch.Tensor = torch.tensor([i / J for i in range(J)]).view((1, J, 1)).float()
+DUMMY_WEIGHT_BATCH: torch.Tensor = torch.cat([DUMMY_WEIGHT.detach().clone() for _ in range(B)]).float()
 
 DUMMY_DATA: dict[str, any] = {
     "filepath": DUMMY_FP,
-    "bbox": DUMMY_BBOX,
-    "keypoints": DUMMY_KP_TENSOR,
-    "keypoints_local": DUMMY_KP_TENSOR,
-    "heatmap": DUMMY_HM_TENSOR,
-    "image": load_test_image(IMG_NAME),
-    "image_crop": DUMMY_IMG,
+    "bbox": DUMMY_BBOX.detach().clone(),
+    "keypoints": DUMMY_KP.detach().clone(),
+    "keypoints_local": DUMMY_KP.detach().clone(),
+    "heatmap": DUMMY_HM.detach().clone(),
+    "image": DUMMY_IMG.detach().clone(),
+    "image_crop": DUMMY_IMG.detach().clone(),
     "person_id": PID,
-    "joint_weight": DUMMY_WEIGHT,
+    "joint_weight": DUMMY_WEIGHT.detach().clone(),
+}
+
+DUMMY_DATA_BATCH: dict[str, any] = {
+    "filepath": DUMMY_FP_BATCH,
+    "bbox": DUMMY_BBOX_BATCH.detach().clone(),
+    "keypoints": DUMMY_KP_BATCH.detach().clone(),
+    "keypoints_local": DUMMY_KP_BATCH.detach().clone(),
+    "heatmap": DUMMY_HM_BATCH.detach().clone(),
+    "image": DUMMY_IMG_BATCH.detach().clone(),
+    "image_crop": DUMMY_IMG_BATCH.detach().clone(),
+    "person_id": PIDS.detach().clone(),
+    "joint_weight": DUMMY_WEIGHT_BATCH.detach().clone(),
 }
 
 
@@ -66,8 +83,8 @@ class TestState(unittest.TestCase):
                 self.assertEqual(len(ds), 1)
                 self.assertEqual(ds.B, 1)
 
-                multi_ds = State(bbox=DUMMY_BBOXES, validate=validate)
-                self.assertTrue(torch.allclose(multi_ds.bbox, DUMMY_BBOXES))
+                multi_ds = State(bbox=DUMMY_BBOX_BATCH, validate=validate)
+                self.assertTrue(torch.allclose(multi_ds.bbox, DUMMY_BBOX_BATCH))
                 self.assertEqual(len(multi_ds), B)
                 self.assertEqual(multi_ds.B, B)
 
@@ -89,14 +106,14 @@ class TestState(unittest.TestCase):
             ),
             (
                 tuple([DUMMY_FP_STRING for _ in range(B)]),
-                DUMMY_BBOXES,
+                DUMMY_BBOX_BATCH,
                 DUMMY_KP_BATCH,
                 DUMMY_FP_BATCH,
-                DUMMY_BBOXES,
+                DUMMY_BBOX_BATCH,
                 DUMMY_KP_BATCH,
                 True,
             ),
-            (DUMMY_FP_BATCH, DUMMY_BBOXES, DUMMY_KP_BATCH, DUMMY_FP_BATCH, DUMMY_BBOXES, DUMMY_KP_BATCH, True),
+            (DUMMY_FP_BATCH, DUMMY_BBOX_BATCH, DUMMY_KP_BATCH, DUMMY_FP_BATCH, DUMMY_BBOX_BATCH, DUMMY_KP_BATCH, True),
         ]:
             with self.subTest(msg=f"v: {validate}, len: {len(bbox)} fp: {fp}, bbox: {bbox}, kp: {kp}"):
                 ds = State(filepath=fp, bbox=bbox, keypoints=kp, validate=validate)
@@ -129,7 +146,7 @@ class TestStateAttributes(unittest.TestCase):
                     ds = State(bbox=DUMMY_BBOX, keypoints=DUMMY_KP, validate=validate)
                     self.assertEqual(ds.J, J)
 
-                    multi_ds = State(bbox=DUMMY_BBOXES, keypoints=DUMMY_KP_BATCH, validate=validate)
+                    multi_ds = State(bbox=DUMMY_BBOX_BATCH, keypoints=DUMMY_KP_BATCH, validate=validate)
                     self.assertEqual(multi_ds.J, J)
 
     def test_J_value_later(self):
@@ -159,7 +176,7 @@ class TestStateAttributes(unittest.TestCase):
                     ds = State(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
                     self.assertEqual(ds.joint_dim, J_DIM)
 
-                    multi_ds = State(**{"bbox": DUMMY_BBOXES, scope: DUMMY_KP_BATCH, "validate": validate})
+                    multi_ds = State(**{"bbox": DUMMY_BBOX_BATCH, scope: DUMMY_KP_BATCH, "validate": validate})
                     self.assertEqual(multi_ds.joint_dim, J_DIM)
 
     def test_joint_dim_later(self):
@@ -198,7 +215,7 @@ class TestStateAttributes(unittest.TestCase):
         )
         # string
         with self.assertRaises(ValueError) as e:
-            _ = State(bbox=DUMMY_BBOXES, filepath=DUMMY_FP_STRING)
+            _ = State(bbox=DUMMY_BBOX_BATCH, filepath=DUMMY_FP_STRING)
         self.assertTrue(f"Got a single path, expected {B}" in str(e.exception), msg=e.exception)
 
     def test_get_filepath_fails_as_string(self):
@@ -273,7 +290,7 @@ class TestStateFunctions(unittest.TestCase):
                 ds = State(bbox=DUMMY_BBOX, validate=False)
                 self.assertEqual(len(ds), length)
 
-        multi_ds = State(bbox=DUMMY_BBOXES)
+        multi_ds = State(bbox=DUMMY_BBOX_BATCH)
         self.assertEqual(len(multi_ds), B)
 
     def test_equality(self):
@@ -311,6 +328,43 @@ class TestStateFunctions(unittest.TestCase):
         self.assertEqual(ds.bbox.device, device)
         self.assertEqual(ds.keypoints.device, device)
         self.assertEqual(ds.class_id.device, device)
+
+    @test_multiple_devices
+    def test_extract(self, device: torch.device):
+        for states, res_states in [
+            (
+                State(**DUMMY_DATA_BATCH, device=device, validate=False),
+                [State(**DUMMY_DATA, device=device, validate=False) for _ in range(B)],
+            ),
+            (
+                State(
+                    bbox=tv_tensors.BoundingBoxes(
+                        torch.stack([torch.tensor([i, i, 7, 9]) for i in range(B)]), canvas_size=(10, 10), format="XYWH"
+                    )
+                ),
+                [
+                    State(
+                        bbox=tv_tensors.BoundingBoxes(torch.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH")
+                    )
+                    for i in range(B)
+                ],
+            ),
+            (
+                State(bbox=DUMMY_BBOX_BATCH, filepath=tuple(f"{i}" for i in range(B)), validate=False),
+                [State(bbox=DUMMY_BBOX, filepath=(f"{i}",), validate=False) for i in range(B)],
+            ),
+        ]:
+            B_ = len(states)
+            for i in range(-B_, B_):
+                with self.subTest(
+                    msg="device: {}, B_: {}, states-keys: {}, res_states: {}".format(
+                        device, B_, list(states.keys()), res_states
+                    )
+                ):
+                    res = states.extract(i)
+                    s_i = res_states[i]
+                    self.assertTrue(isinstance(res, State))
+                    self.assertEqual(res, s_i)
 
     def test_cast_joint_weight(self):
         for weights, decimals, dtype, result in [
@@ -362,7 +416,7 @@ class TestStateFunctions(unittest.TestCase):
     def test_load_image(self):
         orig_img = load_test_image(IMG_NAME)
         ds = State(filepath=(DUMMY_FP,), bbox=DUMMY_BBOX, validate=False)
-        multi_ds = State(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOXES, validate=False)
+        multi_ds = State(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOX_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
         img_ds = State(bbox=DUMMY_BBOX, image=orig_img.clone(), validate=False)
 
@@ -398,7 +452,7 @@ class TestStateFunctions(unittest.TestCase):
     def test_load_image_crop(self):
         orig_img = load_test_image(IMG_NAME)
         ds = State(bbox=DUMMY_BBOX, crop_path=(DUMMY_FP,), validate=False)
-        multi_ds = State(bbox=DUMMY_BBOXES, crop_path=DUMMY_FP_BATCH, validate=False)
+        multi_ds = State(bbox=DUMMY_BBOX_BATCH, crop_path=DUMMY_FP_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
         img_ds = State(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), validate=False)
 

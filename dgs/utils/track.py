@@ -138,7 +138,7 @@ class Tracks(UserDict):
     def __len__(self) -> int:
         """Get the length of data.
         If you want the number of active or inactive Tracks,
-        use :func:`ids_active` and :func:`ids_inactive` respectively.
+        use :meth:`.nof_active` and :meth:`.nof_inactive` respectively.
         """
         return len(self.data)
 

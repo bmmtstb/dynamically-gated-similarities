@@ -340,6 +340,39 @@ class State(UserDict):
     # FUNCTIONS #
     # ######### #
 
+    def extract(self, idx: Union[int]) -> "State":
+        r"""Extract the i-th State from a batch B of states.
+
+        Args:
+            idx: The index of the State to retrieve.
+                It is expected that :math:`-B \lte idx \lt B`.
+
+        Returns:
+            The extracted State.
+        """
+        if idx >= self.B or idx < -self.B:
+            raise IndexError(f"Expected index to lie within ({-self.B}, {self.B - 1}), but got: {idx}")
+
+        new_data = {"validate": self.validate}
+        for k, v in self.data.items():
+            if hasattr(v, "__getitem__"):
+                if isinstance(v, tv_tensors.TVTensor):
+                    # make sure tv_tensors stay, especially for bboxes
+                    new_data[k] = tv_tensors.wrap(v[idx], like=v)
+                elif isinstance(v, list):
+                    # lists stay list
+                    new_data[k] = [v[idx]]
+                elif isinstance(v, tuple):
+                    # tuples stay tuple
+                    new_data[k] = (v[idx],)
+                else:
+                    # every other iterable data -> regular tensors, ...
+                    new_data[k] = v[idx]
+            else:
+                new_data[k] = v
+        assert "bbox" in new_data, "No Bounding box given while creating the state."
+        return State(**new_data)  # pylint: disable=missing-kwoa
+
     def load_image_crop(self, **kwargs) -> Image:
         """Load the images crops using the crop_paths of this object. Does nothing if the crops are already present."""
         if "image_crop" in self.data and self.data["image_crop"] is not None and len(self.data["image_crop"]) == self.B:

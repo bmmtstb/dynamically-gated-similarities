@@ -60,6 +60,7 @@ class DGSEngine(EngineModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
 
+        self.max_track_len: int = self.params_test.get("max_track_length", DEF_CONF.track.N)
         self.tracks = Tracks(thresh=self.params_test.get("inactivity_threshold", DEF_CONF.tracks.inactivity_threshold))
 
     def get_data(self, ds: State) -> any:
