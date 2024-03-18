@@ -340,7 +340,7 @@ class State(UserDict):
     # FUNCTIONS #
     # ######### #
 
-    def extract(self, idx: Union[int]) -> "State":
+    def extract(self, idx: int) -> "State":
         r"""Extract the i-th State from a batch B of states.
 
         Args:
@@ -355,23 +355,50 @@ class State(UserDict):
 
         new_data = {"validate": self.validate}
         for k, v in self.data.items():
-            if hasattr(v, "__getitem__"):
-                if isinstance(v, tv_tensors.TVTensor):
-                    # make sure tv_tensors stay, especially for bboxes
-                    new_data[k] = tv_tensors.wrap(v[idx], like=v)
-                elif isinstance(v, list):
-                    # lists stay list
-                    new_data[k] = [v[idx]]
-                elif isinstance(v, tuple):
-                    # tuples stay tuple
-                    new_data[k] = (v[idx],)
-                else:
-                    # every other iterable data -> regular tensors, ...
-                    new_data[k] = v[idx]
+            ks = str(k)
+            if isinstance(v, tv_tensors.TVTensor):
+                # make sure tv_tensors stay, especially for bboxes
+                new_data[ks] = tv_tensors.wrap(v[idx], like=v)
+            elif isinstance(v, list):
+                # lists stay list
+                new_data[ks] = [v[idx]]
+            elif isinstance(v, tuple):
+                # tuples stay tuple
+                new_data[ks] = (v[idx],)
+            elif isinstance(v, torch.Tensor) and v.ndim == 0:
+                new_data[ks] = v
+            elif hasattr(v, "__getitem__"):
+                # every other iterable data -> regular tensors, ...
+                new_data[ks] = v[idx]
             else:
-                new_data[k] = v
+                new_data[ks] = v
         assert "bbox" in new_data, "No Bounding box given while creating the state."
         return State(**new_data)  # pylint: disable=missing-kwoa
+
+    def split(self) -> list["State"]:
+        """Given a batched State object, split it into a list of single State objects."""
+        if self.B == 1:
+            return [self]
+        new_data = [{"validate": self.validate} for _ in range(self.B)]
+        for k, v in self.data.items():
+            ks = str(k)
+            for idx in range(self.B):
+                if isinstance(v, tv_tensors.TVTensor):
+                    # make sure tv_tensors stay, especially for bboxes
+                    new_data[idx][ks] = tv_tensors.wrap(v[idx], like=v)
+                elif isinstance(v, list):
+                    # lists stay list
+                    new_data[idx][ks] = [v[idx]]
+                elif isinstance(v, tuple):
+                    # tuples stay tuple
+                    new_data[idx][ks] = (v[idx],)
+                elif hasattr(v, "__getitem__"):
+                    # every other iterable data -> regular tensors, ...
+                    new_data[idx][ks] = v[idx]
+                else:
+                    new_data[idx][ks] = v
+        assert all("bbox" in d for d in new_data), "No Bounding box given while creating the state."
+        return [State(**d) for d in new_data]  # pylint: disable=missing-kwoa
 
     def load_image_crop(self, **kwargs) -> Image:
         """Load the images crops using the crop_paths of this object. Does nothing if the crops are already present."""

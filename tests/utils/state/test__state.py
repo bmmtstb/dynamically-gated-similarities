@@ -14,7 +14,7 @@ J = 20
 J_DIM = 2
 B = 10
 
-PID = 13
+PID = torch.tensor(13, dtype=torch.long)
 PIDS = torch.ones(B, dtype=torch.long) * PID
 
 IMG_NAME = "866-200x300.jpg"
@@ -50,26 +50,26 @@ DUMMY_WEIGHT_BATCH: torch.Tensor = torch.cat([DUMMY_WEIGHT.detach().clone() for 
 
 DUMMY_DATA: dict[str, any] = {
     "filepath": DUMMY_FP,
-    "bbox": DUMMY_BBOX.detach().clone(),
-    "keypoints": DUMMY_KP.detach().clone(),
-    "keypoints_local": DUMMY_KP.detach().clone(),
-    "heatmap": DUMMY_HM.detach().clone(),
-    "image": DUMMY_IMG.detach().clone(),
-    "image_crop": DUMMY_IMG.detach().clone(),
+    "bbox": DUMMY_BBOX,
+    "keypoints": DUMMY_KP,
+    "keypoints_local": DUMMY_KP,
+    "heatmap": DUMMY_HM,
+    "image": DUMMY_IMG,
+    "image_crop": DUMMY_IMG,
     "person_id": PID,
-    "joint_weight": DUMMY_WEIGHT.detach().clone(),
+    "joint_weight": DUMMY_WEIGHT,
 }
 
 DUMMY_DATA_BATCH: dict[str, any] = {
     "filepath": DUMMY_FP_BATCH,
-    "bbox": DUMMY_BBOX_BATCH.detach().clone(),
-    "keypoints": DUMMY_KP_BATCH.detach().clone(),
-    "keypoints_local": DUMMY_KP_BATCH.detach().clone(),
-    "heatmap": DUMMY_HM_BATCH.detach().clone(),
-    "image": DUMMY_IMG_BATCH.detach().clone(),
-    "image_crop": DUMMY_IMG_BATCH.detach().clone(),
-    "person_id": PIDS.detach().clone(),
-    "joint_weight": DUMMY_WEIGHT_BATCH.detach().clone(),
+    "bbox": DUMMY_BBOX_BATCH,
+    "keypoints": DUMMY_KP_BATCH,
+    "keypoints_local": DUMMY_KP_BATCH,
+    "heatmap": DUMMY_HM_BATCH,
+    "image": DUMMY_IMG_BATCH,
+    "image_crop": DUMMY_IMG_BATCH,
+    "person_id": PIDS,
+    "joint_weight": DUMMY_WEIGHT_BATCH,
 }
 
 
@@ -245,13 +245,13 @@ class TestStateAttributes(unittest.TestCase):
 
     @test_multiple_devices
     def test_init_with_device(self, device: Device):
-        out_id = torch.tensor(PID).long().to(device=device)
-        out_image = DUMMY_IMG.to(device=device)
-        out_imgcrop = DUMMY_IMG.to(device=device)
-        out_kp = DUMMY_KP.to(device=device)
-        out_loc_kp = DUMMY_KP.to(device=device)
-        out_bbox = DUMMY_BBOX.to(device=device)
-        out_joint_weight = DUMMY_WEIGHT.to(device=device)
+        out_id = PID.detach().clone().to(device=device)
+        out_image = DUMMY_IMG.detach().clone().to(device=device)
+        out_imgcrop = DUMMY_IMG.detach().clone().to(device=device)
+        out_kp = DUMMY_KP.detach().clone().to(device=device)
+        out_loc_kp = DUMMY_KP.detach().clone().to(device=device)
+        out_bbox = DUMMY_BBOX.detach().clone().to(device=device)
+        out_joint_weight = DUMMY_WEIGHT.detach().clone().to(device=device)
 
         # set the device as kwarg vs get it from bbox
         for set_dev_init in [True, False]:
@@ -330,8 +330,9 @@ class TestStateFunctions(unittest.TestCase):
         self.assertEqual(ds.class_id.device, device)
 
     @test_multiple_devices
-    def test_extract(self, device: torch.device):
+    def test_extract_and_split(self, device: torch.device):
         for states, res_states in [
+            (State(**DUMMY_DATA, device=device, validate=False), [State(**DUMMY_DATA, device=device, validate=False)]),
             (
                 State(**DUMMY_DATA_BATCH, device=device, validate=False),
                 [State(**DUMMY_DATA, device=device, validate=False) for _ in range(B)],
@@ -340,31 +341,46 @@ class TestStateFunctions(unittest.TestCase):
                 State(
                     bbox=tv_tensors.BoundingBoxes(
                         torch.stack([torch.tensor([i, i, 7, 9]) for i in range(B)]), canvas_size=(10, 10), format="XYWH"
-                    )
+                    ),
+                    device=device,
                 ),
                 [
                     State(
-                        bbox=tv_tensors.BoundingBoxes(torch.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH")
+                        bbox=tv_tensors.BoundingBoxes(torch.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"),
+                        device=device,
                     )
                     for i in range(B)
                 ],
             ),
             (
-                State(bbox=DUMMY_BBOX_BATCH, filepath=tuple(f"{i}" for i in range(B)), validate=False),
-                [State(bbox=DUMMY_BBOX, filepath=(f"{i}",), validate=False) for i in range(B)],
+                State(bbox=DUMMY_BBOX_BATCH, filepath=tuple(str(i) for i in range(B)), validate=False, device=device),
+                [State(bbox=DUMMY_BBOX, filepath=(str(i),), validate=False, device=device) for i in range(B)],
+            ),
+            (
+                State(bbox=DUMMY_BBOX_BATCH, dummy=[str(i) for i in range(B)], validate=False, device=device),
+                [State(bbox=DUMMY_BBOX, dummy=[str(i)], validate=False, device=device) for i in range(B)],
             ),
         ]:
+            keys = list(states.keys())
+
+            split = states.split()
+            self.assertEqual(split, res_states, "test split")
+
             B_ = len(states)
             for i in range(-B_, B_):
-                with self.subTest(
-                    msg="device: {}, B_: {}, states-keys: {}, res_states: {}".format(
-                        device, B_, list(states.keys()), res_states
-                    )
-                ):
+                with self.subTest(msg="i: {}, B_: {}, device: {}, states-keys: {}".format(i, B_, device, keys)):
                     res = states.extract(i)
                     s_i = res_states[i]
                     self.assertTrue(isinstance(res, State))
-                    self.assertEqual(res, s_i)
+                    self.assertEqual(res, s_i, "extracted equals result")
+                    self.assertEqual(res.device, device, "test extracted device")
+                    self.assertEqual(s_i.device, device, "test result device")
+
+    def test_extract_errors(self):
+        s = State(**DUMMY_DATA)
+        with self.assertRaises(IndexError) as e:
+            _ = s.extract(1)
+        self.assertTrue("Expected index to lie within (-1, 0), but got: 1" in str(e.exception), msg=e.exception)
 
     def test_cast_joint_weight(self):
         for weights, decimals, dtype, result in [
