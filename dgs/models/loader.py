@@ -63,7 +63,9 @@ def module_loader(
 
         m = get_dataset(module_name)
     elif module_class == "dgs":
-        raise NotImplementedError
+        from dgs.models.dgs import get_dgs_module
+
+        m = get_dgs_module(module_name)
     elif module_class == "embedding_generator":
         from dgs.models.embedding_generator import get_embedding_generator
 

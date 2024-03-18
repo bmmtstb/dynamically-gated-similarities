@@ -18,7 +18,7 @@ from torchvision import tv_tensors
 from tqdm import tqdm
 
 from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
-from dgs.models.metric import get_metric
+from dgs.models.metric import get_metric, METRICS
 from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
@@ -35,18 +35,19 @@ engine_validations: Validations = {
 }
 
 train_validations: Validations = {
-    "loss": [("any", ["callable", ("in", LOSS_FUNCTIONS.keys())])],
-    "optimizer": [("any", ["callable", ("in", OPTIMIZERS.keys())])],
+    "loss": [("any", ["callable", ("in", LOSS_FUNCTIONS)])],
+    "optimizer": [("any", ["callable", ("in", OPTIMIZERS)])],
     # optional
     "epochs": ["optional", int, ("gte", 1)],
     "loss_kwargs": ["optional", dict],
     "optimizer_kwargs": ["optional", dict],
     "save_interval": ["optional", int, ("gte", 1)],
-    "scheduler": ["optional", ("any", ["callable", ("in", SCHEDULERS.keys())])],
+    "scheduler": ["optional", ("any", ["callable", ("in", SCHEDULERS)])],
     "scheduler_kwargs": ["optional", dict],
 }
 
 test_validations: Validations = {
+    "metric": [("any", ["callable", ("in", METRICS)])],
     # optional
     "normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
@@ -72,6 +73,7 @@ class EngineModule(BaseModule):
     Test Params
     -----------
 
+    metric ():
 
 
     Train Params
@@ -176,7 +178,7 @@ class EngineModule(BaseModule):
             **self.params_test.get("writer_kwargs", {}),
         )
         self.writer.add_scalar("Test/batch_size", self.test_dl.batch_size)
-        # save config in the out-folder to make sure values haven't changed
+        # save config in the out-folder to make sure values haven't changed when validating those files
         save_config(
             filepath=os.path.join(self.log_dir, f"config-{self.name_safe}-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
             config=config,

@@ -203,6 +203,11 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(len(r2), 2)
         self.assertTrue(torch.allclose(r2.track_id, torch.tensor([MT_O_ID, MT_F_ID], dtype=torch.long)))
 
+        t0 = Tracks()
+        r0 = t0.get_states()
+        self.assertTrue(isinstance(r2, State))
+        self.assertEqual(len(r0), 0)
+
     def setUp(self):
         self.assertEqual(len(ONE_TRACK), 1)
         self.assertEqual(len(FULL_TRACK), MAX_LENGTH)

@@ -27,6 +27,7 @@ h5py
 imageio
 imagesize
 jinja2
+lapsolver
 matplotlib
 # # munkres is a package for the hungarian (matching) algorithm
 munkres

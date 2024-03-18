@@ -70,6 +70,7 @@ autodoc_mock_imports = [
     "detector",
     "halpecocotools",
     "opencv-python",
+    "lapsolver",
     # "matplotlib",
     "natsort",
     # "numpy",

@@ -9,28 +9,37 @@ print_prio: "DEBUG"
 is_training: off
 log_dir: "./results/own/dgs/"
 
+test:
+    inactivity_threshold: 30
+    metric: "CosineDistance"  # fixme not really useful?
 
 # #### #
 # DATA #
 # #### #
 
 dataloader_test:
-    module_name: "PoseTrack21"
+    module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_data/val/"
-    force_img_reshape: true
+#    json_path: "./posetrack_data/val/000342_mpii_test.json"
+    force_img_reshape: false
     crops_folder: "./crops/val/"
-    batch_size: 256
+    batch_size: 1  # fixme
 
 # ####### #
 # MODULES #
 # ####### #
 
+dgs:
+    module_name: "DGS"
+    combine: "combine_similarities"
+    names: ["visual_similarity", "pose_similarity", "box_similarity"]
+
 combine_similarities:
     module_name: "constant_alpha"
     alpha: [0.5, 0.25, 0.25]
 
-similarity_visual:
+visual_similarity:
     module_name: "torchreid"  # see `dgs.models.similarity.__init__`
     model_name: "osnet_x1_0"
     similarity: "EuclideanSquare"

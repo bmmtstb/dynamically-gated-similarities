@@ -6,6 +6,7 @@ from collections import deque, UserDict
 from copy import deepcopy
 
 import torch
+from torchvision import tv_tensors
 
 from dgs.utils.config import DEF_CONF
 from dgs.utils.state import collate_states, State
@@ -213,6 +214,12 @@ class Tracks(UserDict):
             states.append(track[-1])
             tids.append(tid)
 
+        if len(states) == 0:
+            return State(
+                bbox=tv_tensors.BoundingBoxes(
+                    torch.zeros((0, 4)), canvas_size=(0, 0), format="XYWH", dtype=torch.float32, requires_grad=False
+                )
+            )
         state = collate_states(states)
         state.track_id = torch.tensor(tids, device=state.device, dtype=torch.long)
         return state

@@ -18,9 +18,9 @@ from typing import Type, Union
 
 import imagesize
 import numpy as np
-import torch
+import torch as t
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
@@ -99,7 +99,7 @@ def extract_crops_from_json_annotation(
         The name of the image crops is: ``{image_id}_{person_id}.jpg``.
         The name of the file containing the local keypoints is: ``{image_id}_{person_id}.pt``.
     """
-    device: Device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+    device: Device = kwargs.get("device", "cuda" if t.cuda.is_available() else "cpu")
 
     base_dataset_path = to_abspath(base_dataset_path)
 
@@ -131,16 +131,16 @@ def extract_crops_from_json_annotation(
     }
 
     for anno in json["annotations"]:
-        d["boxes"].append(torch.tensor(anno["bbox"], dtype=torch.float32, device=device))
+        d["boxes"].append(t.tensor(anno["bbox"], dtype=t.float32, device=device))
         img_fp: FilePath = os.path.normpath(os.path.join(base_dataset_path, map_id_to_path[anno["image_id"]]))
         d["img_fps"].append(img_fp)
         # imagesize.get() output = (w,h) and our own format = (h, w)
         d["sizes"].append(imagesize.get(img_fp)[::-1])
-        kp: torch.Tensor = torch.tensor(anno["keypoints"])
+        kp: t.Tensor = t.tensor(anno["keypoints"])
         if kp.shape[0] == 51:
-            d["key_points"].append(kp.reshape((17, 3)).to(device=device, dtype=torch.float32))
+            d["key_points"].append(kp.reshape((17, 3)).to(device=device, dtype=t.float32))
         else:  # empty key points
-            d["key_points"].append(torch.zeros((17, 3)).to(device=device, dtype=torch.float32))
+            d["key_points"].append(t.zeros((17, 3)).to(device=device, dtype=t.float32))
 
         # There will be multiple detections per image.
         # Therefore, the new image crop name has to include the image id and person id.
@@ -169,7 +169,7 @@ def extract_crops_from_json_annotation(
             extract_crops_from_images(
                 img_fps=[img_fp],
                 new_fps=[new_fp],
-                boxes=tv_tensors.BoundingBoxes(bbox, format="XYWH", canvas_size=size, device=device),
+                boxes=tvte.BoundingBoxes(bbox, format="XYWH", canvas_size=size, device=device),
                 key_points=kp.unsqueeze(0),
                 **kwargs,
             )
@@ -177,10 +177,10 @@ def extract_crops_from_json_annotation(
         extract_crops_from_images(
             img_fps=d["img_fps"],
             new_fps=d["new_img_fps"],
-            boxes=tv_tensors.BoundingBoxes(
-                torch.stack(d["boxes"]), format="XYWH", canvas_size=max(set(d["sizes"])), device=device
+            boxes=tvte.BoundingBoxes(
+                t.stack(d["boxes"]), format="XYWH", canvas_size=max(set(d["sizes"])), device=device
             ),
-            key_points=torch.stack(d["key_points"]).to(device=device),
+            key_points=t.stack(d["key_points"]).to(device=device),
             **kwargs,
         )
 
@@ -525,9 +525,9 @@ class PoseTrack21_BBox(BaseDataset):
                 f"{anno['image_id']}_{str(anno['person_id'])}.jpg",
             )
 
-        self.img_ids: torch.Tensor = torch.tensor(img_id_list, dtype=torch.long, device=self.device)
-        self.pids: torch.Tensor = torch.tensor(pid_list, dtype=torch.long, device=self.device)
-        self.cids: torch.Tensor = torch.tensor(cid_list, dtype=torch.long, device=self.device)
+        self.img_ids: t.Tensor = t.tensor(img_id_list, dtype=t.long, device=self.device)
+        self.pids: t.Tensor = t.tensor(pid_list, dtype=t.long, device=self.device)
+        self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
 
         # as np.ndarray to not store large python objects
         self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
@@ -548,15 +548,15 @@ class PoseTrack21_BBox(BaseDataset):
             A single :class:`State` object containing a batch of data.
         """
 
-        def stack_key(key: str) -> torch.Tensor:
-            return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
+        def stack_key(key: str) -> t.Tensor:
+            return t.stack([t.tensor(self.data[i][key], device=self.device) for i in indices])
 
-        keypoints, _visibility = torch.stack(
+        keypoints, _visibility = t.stack(
             [
                 (
-                    torch.tensor(self.data[i]["keypoints"], device=self.device, dtype=torch.float32).reshape((17, 3))
+                    t.tensor(self.data[i]["keypoints"], device=self.device, dtype=t.float32).reshape((17, 3))
                     if len(self.data[i]["keypoints"])
-                    else torch.zeros((17, 3), device=self.device, dtype=torch.float32)
+                    else t.zeros((17, 3), device=self.device, dtype=t.float32)
                 )  # if there are no values present, use zeros
                 for i in indices
             ]
@@ -564,11 +564,11 @@ class PoseTrack21_BBox(BaseDataset):
         ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             filepath=tuple(self.data[i]["img_path"] for i in indices),
-            bbox=tv_tensors.BoundingBoxes(
+            bbox=tvte.BoundingBoxes(
                 stack_key("bbox").float(),
                 format="XYWH",
                 canvas_size=self.img_shape,
-                dtype=torch.float32,
+                dtype=t.float32,
                 device=self.device,
             ),
             keypoints=keypoints,
@@ -588,9 +588,9 @@ class PoseTrack21_BBox(BaseDataset):
         """Convert raw PoseTrack21 annotations to a :class:`State` object."""
         keypoints, _visibility = (
             (
-                torch.tensor(a["keypoints"], device=self.device, dtype=torch.float32)
+                t.tensor(a["keypoints"], device=self.device, dtype=t.float32)
                 if len(a["keypoints"])
-                else torch.zeros((17, 3), device=self.device, dtype=torch.float32)
+                else t.zeros((17, 3), device=self.device, dtype=t.float32)
             )
             .reshape((1, 17, 3))
             .split([2, 1], dim=-1)
@@ -599,10 +599,10 @@ class PoseTrack21_BBox(BaseDataset):
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             filepath=(a["img_path"],),
-            bbox=tv_tensors.BoundingBoxes(
-                torch.tensor(a["bbox"]).float(),
+            bbox=tvte.BoundingBoxes(
+                t.tensor(a["bbox"]).float(),
                 format="XYWH",
-                dtype=torch.float32,
+                dtype=t.float32,
                 canvas_size=self.img_shape,
                 device=self.device,
             ),
@@ -716,9 +716,9 @@ class PoseTrack21_Image(BaseDataset):
                 f"{str(anno['image_id'])}_{str(anno['person_id'])}.jpg",  # int() might remove leading zeros
             )
 
-        self.img_ids: torch.Tensor = torch.tensor(img_id_list, dtype=torch.long, device=self.device)
-        self.pids: torch.Tensor = torch.tensor(pid_list, dtype=torch.long, device=self.device)
-        self.cids: torch.Tensor = torch.tensor(cid_list, dtype=torch.long, device=self.device)
+        self.img_ids: t.Tensor = t.tensor(img_id_list, dtype=t.long, device=self.device)
+        self.pids: t.Tensor = t.tensor(pid_list, dtype=t.long, device=self.device)
+        self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
 
         # store as np.ndarray to not store large python objects
         self.data: np.ndarray[dict[str, any]] = np.asarray(json["images"])
@@ -733,45 +733,19 @@ class PoseTrack21_Image(BaseDataset):
         anno_ids: list[int] = self.map_img_id_to_anno_ids[idx]
         N: int = len(anno_ids)
 
-        keypoints = []
-        visibilities = []
-        bboxes = []
-        crop_paths = []
-
-        for anno_id in anno_ids:
-            anno = self.annos[anno_id]
-
-            kps, visibility = (
-                torch.tensor(anno["keypoints"], device=self.device, dtype=torch.float32).reshape((1, 17, 3))
-                if len(anno["keypoints"])
-                else torch.zeros((1, 17, 3), device=self.device, dtype=torch.float32)
-            ).split([2, 1], dim=-1)
-            keypoints.append(kps)
-            visibilities.append(visibility)
-
-            bboxes.append(
-                tv_tensors.BoundingBoxes(
-                    torch.tensor(anno["bbox"]).float(),
-                    format="XYWH",
-                    dtype=torch.float32,
-                    canvas_size=self.img_shape,
-                    device=self.device,
-                )
-            )
-            crop_paths.append(anno["crop_path"])
-        crop_paths = tuple(crop_paths)
+        keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
 
         ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             filepath=tuple(self.map_img_id_to_path[idx] for _ in range(N)),
-            bbox=collate_bboxes(bboxes),
-            keypoints=collate_tensors(keypoints),
+            bbox=bboxes,
+            keypoints=keypoints,
             person_id=self.pids[anno_ids],
             # custom values
             class_id=self.cids[anno_ids],
             crop_path=crop_paths,
-            joint_weight=collate_tensors(visibilities),
+            joint_weight=visibilities,
         )
         # make sure to get the image crop for this State
         if N > 0:
@@ -779,7 +753,65 @@ class PoseTrack21_Image(BaseDataset):
         return ds
 
     def __getitems__(self, indices: list[int]) -> State:
-        raise NotImplementedError
+        """Convert multiple raw PoseTrack21 annotations to a :class:`State` object."""
+        img_indices: list[int] = []
+        anno_ids: list[int] = []
+        file_paths = []
+        for i in indices:
+            img_id = int(self.data[i]["id"])
+            img_indices.append(img_id)
+            annos = self.map_img_id_to_anno_ids[img_id]
+            anno_ids += annos
+            file_paths += [self.data[i]["file_name"] for _ in range(len(annos))]
+        file_paths = tuple(file_paths)
+        N: int = len(anno_ids)
+
+        keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
+
+        ds = State(
+            validate=False,  # This is given PT21 data, no need to validate...
+            device=self.device,
+            filepath=file_paths,
+            bbox=bboxes,
+            keypoints=keypoints,
+            person_id=self.pids[anno_ids],
+            # custom values
+            class_id=self.cids[anno_ids],
+            crop_path=crop_paths,
+            joint_weight=visibilities,
+        )
+        # make sure to get the image crop for this State
+        if N > 0:
+            self.get_image_crops(ds)
+        return ds
+
+    def _get_anno_data(
+        self, anno_ids: list[int]
+    ) -> tuple[t.Tensor, t.Tensor, tvte.BoundingBoxes, tuple[FilePath, ...]]:
+        """Helper for getting the key-points, visibilities, bboxes, and crop paths from a list of annotation IDs."""
+        keypoints: list[t.Tensor] = []
+        visibilities: list[t.Tensor] = []
+        bboxes: list[tvte.BoundingBoxes] = []
+        crop_paths: list[FilePath] = []
+
+        for anno_id in anno_ids:
+            anno = self.annos[anno_id]
+
+            kps, visibility = (
+                t.tensor(anno["keypoints"], device=self.device, dtype=t.float32).reshape((1, 17, 3))
+                if len(anno["keypoints"])
+                else t.zeros((1, 17, 3), device=self.device, dtype=t.float32)
+            ).split([2, 1], dim=-1)
+            box = tvte.BoundingBoxes(
+                t.tensor(anno["bbox"]), format="XYWH", dtype=t.float32, canvas_size=self.img_shape, device=self.device
+            )
+
+            keypoints.append(kps)
+            visibilities.append(visibility)
+            bboxes.append(box)
+            crop_paths.append(anno["crop_path"])
+
+        return collate_tensors(keypoints), collate_tensors(visibilities), collate_bboxes(bboxes), tuple(crop_paths)
 
 
 class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):

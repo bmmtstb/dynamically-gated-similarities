@@ -5,6 +5,7 @@ Engine for a full model of the dynamically gated similarity tracker.
 import time
 
 import torch
+from lapsolver import solve_dense
 from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 
@@ -16,6 +17,7 @@ from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Track, Tracks
 from dgs.utils.types import Config, Validations
+from dgs.utils.utils import torch_to_numpy
 
 dgs_engine_validations: Validations = {
     "inactivity_threshold": ["optional", int, ("gt", 0)],
@@ -86,54 +88,79 @@ class DGSEngine(EngineModule):
         batch_t: DifferenceTimer = DifferenceTimer()
         similarity_t: DifferenceTimer = DifferenceTimer()
         match_t: DifferenceTimer = DifferenceTimer()
+        track_t: DifferenceTimer = DifferenceTimer()
 
         time_batch_start: float = time.time()
 
         for batch_idx, detections in enumerate(self.test_dl):
-            N = len(detections)
+            # fixme reset tracks at the end of every sub-dataset
+            N: int = len(detections)
+            T: int = len(self.tracks)
+            batch_times: dict[str, float] = {}
 
             updated_tracks: dict[int, State] = {}
             new_tracks: list[Track] = []
 
-            if N > 0:
-                # Get the current state from the Tracks and use it to compute the similarity to the current detections.
-                track_state: State = self.tracks.get_states()
+            # Get the current state from the Tracks and use it to compute the similarity to the current detections.
+            track_state: State = self.tracks.get_states()
+            data_t.add(time_batch_start)
+            batch_times["data"] = data_t[-1]
 
-                data_t.add(time_batch_start)
-                time_sim_start = time.time()
-
-                similarity = self.model.forward(ds=detections, target=track_state)
-
-                similarity_t.add(time_sim_start)
+            if len(track_state) == 0:
+                # No Tracks yet - every detection will be a new track!
                 time_match_start = time.time()
-
-                # munkres / hungarian matching to obtain track-id probabilities
-                _ = (similarity,)
-
+                states: list[State] = detections.split()
+                for state in states:
+                    t = Track(N=self.max_track_len, states=[state])
+                    new_tracks.append(t)
                 match_t.add(time_match_start)
+                batch_times["match"] = match_t[-1]
+            elif N > 0:
+                time_sim_start = time.time()
+                similarity = self.model.forward(ds=detections, target=track_state)
+                similarity_t.add(time_sim_start)
+                batch_times["similarity"] = similarity_t[-1]
+
+                # Solve Linear sum Assignment Problem (LAP) using py-lapsolver.
+                # The goal is to obtain the best combination of Track-IDs and detection-IDs given the probabilities of
+                # a similarity-matrix with a shape of [N x T].
+                # Because the algorithm returns the lowest scores, we need to compute 1-sim as cost matrix.
+                # The result is a list of N 2-tuples containing the position
+                time_match_start = time.time()
+                cost_matrix = torch.ones_like(similarity) - similarity
+                # lapsolver uses numpy arrays instead of torch, therefore, convert but loose computational graph
+                cost_matrix = torch_to_numpy(cost_matrix)
+                rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
+
+                states: list[State] = detections.split()
+                assert len(states) == len(rids) == len(cids), "expected shapes to match"
+
+                for rid, cid in zip(rids, cids):
+                    if cid < T:
+                        updated_tracks[cid] = states[rid]
+                    else:
+                        t = Track(N=self.max_track_len, states=[states[rid]])
+                        new_tracks.append(t)
+                match_t.add(time_match_start)
+                batch_times["matching"] = match_t[-1]
 
             # update tracks
+            time_track_update_start = time.time()
             self.tracks.add(tracks=updated_tracks, new_tracks=new_tracks)
+            track_t.add(time_track_update_start)
+            batch_times["track"] = track_t[-1]
 
             batch_t.add(time_batch_start)
+            batch_times["batch"] = batch_t[-1]
+            if N > 0:
+                batch_times["indiv"] = batch_t[-1] / N
             self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=batch_idx)
 
-            if N > 0:
-                self.writer.add_scalars(
-                    main_tag="Test/time",
-                    tag_scalar_dict={
-                        "data": data_t[-1],
-                        "similarity": similarity_t[-1],
-                        "matching": match_t[-1],
-                        "batch": batch_t[-1],
-                        "indiv": batch_t[-1] / N,
-                    },
-                    global_step=batch_idx,
-                )
-            else:
-                self.writer.add_scalars(
-                    main_tag="Test/time", tag_scalar_dict={"batch": batch_t[-1]}, global_step=batch_idx
-                )
+            self.writer.add_scalars(
+                main_tag="Test/time",
+                tag_scalar_dict={**batch_times},
+                global_step=batch_idx,
+            )
             # reset timer for next batch
             time_batch_start = time.time()
 
