@@ -73,6 +73,8 @@ class DGSEngine(EngineModule):
 
     def test(self) -> dict[str, any]:
         """Test the DGS Tracker"""
+        # pylint: disable=too-many-statements
+
         results: dict[str, any] = {}
         detections: State
 
@@ -106,7 +108,7 @@ class DGSEngine(EngineModule):
             data_t.add(time_batch_start)
             batch_times["data"] = data_t[-1]
 
-            if len(track_state) == 0:
+            if len(track_state) == 0 and N > 0:
                 # No Tracks yet - every detection will be a new track!
                 time_match_start = time.time()
                 states: list[State] = detections.split()

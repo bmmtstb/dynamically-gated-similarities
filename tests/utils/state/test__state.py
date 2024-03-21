@@ -434,6 +434,11 @@ class TestStateFunctions(unittest.TestCase):
         ds = State(filepath=(DUMMY_FP,), bbox=DUMMY_BBOX, validate=False)
         multi_ds = State(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOX_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
+        empty_fps = State(
+            bbox=tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            filepath=tuple(),
+            validate=False,
+        )
         img_ds = State(bbox=DUMMY_BBOX, image=orig_img.clone(), validate=False)
 
         # get using data -> fails if not present yet
@@ -465,11 +470,20 @@ class TestStateFunctions(unittest.TestCase):
             _ = no_fps.load_image()
         self.assertTrue("Could not load images without proper filepaths given" in str(e.exception), msg=e.exception)
 
+        # call load image with zero-length image data
+        empty_img = empty_fps.load_image()
+        self.assertTrue(torch.allclose(empty_img, tv_tensors.Image(torch.empty((0, 0, 1, 1)))))
+
     def test_load_image_crop(self):
         orig_img = load_test_image(IMG_NAME)
         ds = State(bbox=DUMMY_BBOX, crop_path=(DUMMY_FP,), validate=False)
         multi_ds = State(bbox=DUMMY_BBOX_BATCH, crop_path=DUMMY_FP_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
+        empty_fps = State(
+            bbox=tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            crop_path=tuple(),
+            validate=False,
+        )
         img_ds = State(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), validate=False)
 
         # get using data -> fails if not present yet
@@ -502,6 +516,10 @@ class TestStateFunctions(unittest.TestCase):
         self.assertTrue(
             "Could not load image crops without proper filepaths given" in str(e.exception), msg=e.exception
         )
+
+        # call load image with zero-length image data
+        empty_crop = empty_fps.load_image_crop()
+        self.assertTrue(torch.allclose(empty_crop, tv_tensors.Image(torch.empty((0, 0, 1, 1)))))
 
     def test_get_image_and_load(self):
         ds = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP)

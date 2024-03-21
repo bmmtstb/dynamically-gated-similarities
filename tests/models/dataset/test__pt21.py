@@ -65,14 +65,28 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
         self.assertTrue(isinstance(r, State))
         self.assertEqual(len(r), 1)
 
-    def test_get_items(self):
+    def test_dataloader(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
-
+        B = int(cfg["test_dataloader_bbox"]["batch_size"])
         with HidePrint():
             dl = get_data_loader(config=cfg, path=["test_dataloader_bbox"])
+
+        batch: State
         for batch in dl:
             self.assertTrue(isinstance(batch, State))
-            self.assertEqual(len(batch), int(cfg["test_dataloader_bbox"]["batch_size"]))
+            self.assertEqual(len(batch), B)
+
+            # check the number of dimensions
+            self.assertEqual(batch.class_id.ndim, 1)
+            self.assertEqual(batch.image_crop.ndim, 4)
+            self.assertEqual(batch.joint_weight.ndim, 3)
+            self.assertEqual(batch.keypoints.ndim, 3)
+
+            # check that the first dimension is B
+            self.assertEqual(batch.class_id.size(0), B)
+            self.assertEqual(batch.image_crop.size(0), B)
+            self.assertEqual(batch.joint_weight.size(0), B)
+            self.assertEqual(batch.keypoints.size(0), B)
 
 
 class TestPoseTrack21ImageDataset(unittest.TestCase):
@@ -89,6 +103,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
                     r = ds[i]
                     self.assertTrue(isinstance(r, State))
                     self.assertEqual(len(r), length)
+                    self.assertEqual(r.image_crop.size(0), length)
 
     def test_init_multiple(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
@@ -105,6 +120,36 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
                     r = ds[i]
                     self.assertTrue(isinstance(r, State))
                     self.assertEqual(len(r), length)
+                    self.assertEqual(r.image_crop.size(0), length)
+
+    def test_dataloader(self):
+        cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
+        lengths = [1, 2, 0, 3]
+        with HidePrint():
+            dl = get_data_loader(config=cfg, path=["test_dataloader_img"])
+        self.assertEqual(len(dl), len(lengths))
+
+        batch: State
+
+        for i, batch in enumerate(dl):
+            B = lengths[i]
+            self.assertTrue(isinstance(batch, State))
+            self.assertEqual(len(batch), B)
+
+            if B != 0:
+                # check the number of dimensions
+                self.assertEqual(batch.class_id.ndim, 1)
+                self.assertEqual(batch.image.ndim, 4)
+                self.assertEqual(batch.image_crop.ndim, 4)
+                self.assertEqual(batch.joint_weight.ndim, 3)
+                self.assertEqual(batch.keypoints.ndim, 3)
+
+            # check that the first dimension is B
+            self.assertEqual(batch.class_id.size(0), B)
+            self.assertEqual(batch.image.size(0), B)
+            self.assertEqual(batch.image_crop.size(0), B)
+            self.assertEqual(batch.joint_weight.size(0), B)
+            self.assertEqual(batch.keypoints.size(0), B)
 
 
 if __name__ == "__main__":

@@ -213,15 +213,15 @@ class TestLoadConfig(unittest.TestCase):
         cfg = load_config("./tests/test_data/configs/test_config.yaml")  # easydict=True
         self.assertIsInstance(cfg, EasyDict)
         self.assertEqual(cfg.device, "cpu")
-        self.assertTrue(cfg.test_config.kwargs.more_data, "Is not a nested EasyDict")
-        self.assertListEqual(cfg.test_config.kwargs.even_more_data, [1, 2, 3, 4])
+        self.assertTrue(cfg.dummy_config.kwargs.more_data, "Is not a nested EasyDict")
+        self.assertListEqual(cfg.dummy_config.kwargs.even_more_data, [1, 2, 3, 4])
 
     def test_load_config_dict(self):
         cfg = load_config("./tests/test_data/configs/test_config.yaml", easydict=False)
         self.assertIsInstance(cfg, dict)
         self.assertEqual(cfg["device"], "cpu")
-        self.assertTrue(cfg["test_config"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
-        self.assertListEqual(cfg["test_config"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
+        self.assertTrue(cfg["dummy_config"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
+        self.assertListEqual(cfg["dummy_config"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_configs_dir(self):

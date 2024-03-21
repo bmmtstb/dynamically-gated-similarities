@@ -431,9 +431,6 @@ class PoseTrack21(BaseDataset):
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
-    def __getitems__(self, indices: list[int]) -> State:
-        raise NotImplementedError
-
     def arbitrary_to_ds(self, a, idx: int) -> State:
         raise NotImplementedError
 
@@ -535,62 +532,13 @@ class PoseTrack21_BBox(BaseDataset):
     def __len__(self) -> int:
         return self.len
 
-    def __getitems__(self, indices: list[int]) -> State:
-        """Given list of indices, return a :class:`State` object.
-
-        Batching might be faster if we do not have to create State twice.
-        Once for every single object, once for the batch.
-
-        Args:
-            indices: List of indices.
-
-        Returns:
-            A single :class:`State` object containing a batch of data.
-        """
-
-        def stack_key(key: str) -> t.Tensor:
-            return t.stack([t.tensor(self.data[i][key], device=self.device) for i in indices])
-
-        keypoints, _visibility = t.stack(
-            [
-                (
-                    t.tensor(self.data[i]["keypoints"], device=self.device, dtype=t.float32).reshape((17, 3))
-                    if len(self.data[i]["keypoints"])
-                    else t.zeros((17, 3), device=self.device, dtype=t.float32)
-                )  # if there are no values present, use zeros
-                for i in indices
-            ]
-        ).split(split_size=[2, 1], dim=-1)
-        ds = State(
-            validate=False,  # This is given PT21 data, no need to validate...
-            filepath=tuple(self.data[i]["img_path"] for i in indices),
-            bbox=tvte.BoundingBoxes(
-                stack_key("bbox").float(),
-                format="XYWH",
-                canvas_size=self.img_shape,
-                dtype=t.float32,
-                device=self.device,
-            ),
-            keypoints=keypoints,
-            person_id=self.pids[indices],
-            # custom values
-            class_id=self.cids[indices],
-            crop_path=tuple(self.data[i]["crop_path"] for i in indices),
-            # additional values which are not required
-            # joint_weight=visibility,
-            image_id=self.img_ids[indices],
-        )
-        # make sure to get the image crops for this batch
-        self.get_image_crops(ds)
-        return ds
-
     def arbitrary_to_ds(self, a: dict, idx: int) -> State:
         """Convert raw PoseTrack21 annotations to a :class:`State` object."""
-        keypoints, _visibility = (
+        keypoints, visibility = (
             (
                 t.tensor(a["keypoints"], device=self.device, dtype=t.float32)
                 if len(a["keypoints"])
-                else t.zeros((17, 3), device=self.device, dtype=t.float32)
+                else t.zeros((1, 17, 3), device=self.device, dtype=t.float32)
             )
             .reshape((1, 17, 3))
             .split([2, 1], dim=-1)
@@ -612,7 +560,7 @@ class PoseTrack21_BBox(BaseDataset):
             class_id=self.cids[idx],
             crop_path=(a["crop_path"],),
             # additional values which are not required
-            # joint_weight=visibility,
+            joint_weight=visibility,
             image_id=self.img_ids[idx],
         )
         # make sure to get the image crop for this State
@@ -739,39 +687,6 @@ class PoseTrack21_Image(BaseDataset):
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             filepath=tuple(self.map_img_id_to_path[idx] for _ in range(N)),
-            bbox=bboxes,
-            keypoints=keypoints,
-            person_id=self.pids[anno_ids],
-            # custom values
-            class_id=self.cids[anno_ids],
-            crop_path=crop_paths,
-            joint_weight=visibilities,
-        )
-        # make sure to get the image crop for this State
-        if N > 0:
-            self.get_image_crops(ds)
-        return ds
-
-    def __getitems__(self, indices: list[int]) -> State:
-        """Convert multiple raw PoseTrack21 annotations to a :class:`State` object."""
-        img_indices: list[int] = []
-        anno_ids: list[int] = []
-        file_paths = []
-        for i in indices:
-            img_id = int(self.data[i]["id"])
-            img_indices.append(img_id)
-            annos = self.map_img_id_to_anno_ids[img_id]
-            anno_ids += annos
-            file_paths += [self.data[i]["file_name"] for _ in range(len(annos))]
-        file_paths = tuple(file_paths)
-        N: int = len(anno_ids)
-
-        keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
-
-        ds = State(
-            validate=False,  # This is given PT21 data, no need to validate...
-            device=self.device,
-            filepath=file_paths,
             bbox=bboxes,
             keypoints=keypoints,
             person_id=self.pids[anno_ids],

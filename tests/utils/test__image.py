@@ -146,6 +146,21 @@ class TestImage(unittest.TestCase):
                 self.assertEqual(imgs.dtype, dtype)
                 self.assertEqual(imgs.device, device)
 
+    def test_load_multiple_images(self):
+        for img_paths, res_shape in [
+            (
+                tuple("tests/test_data/images/866-200x300.jpg" for _ in range(10)),
+                torch.Size((10, 3, 300, 200)),
+            ),
+            (
+                ("tests/test_data/images/866-256x256.jpg", "tests/test_data/images/866-256x256.jpg"),
+                torch.Size((2, 3, 256, 256)),
+            ),
+        ]:
+            with self.subTest(msg="img_paths: {}, res_shape: {}".format(img_paths, res_shape)):
+                imgs = load_image(img_paths)
+                self.assertEqual(res_shape, imgs.shape)
+
     def test_load_multiple_images_exception(self):
         fps = tuple(to_abspath(os.path.join("./tests/test_data/images/", fn)) for fn in TEST_IMAGES)
         with self.assertRaises(ValueError):

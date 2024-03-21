@@ -162,11 +162,6 @@ class BaseDataset(BaseModule, TorchDataset):
         return s
 
     @abstractmethod
-    def __getitems__(self, indices: list[int]) -> State:
-        """Given a list of indices, return a single :class:`State` object containing them all."""
-        raise NotImplementedError
-
-    @abstractmethod
     def arbitrary_to_ds(self, a: any, idx: int) -> State:
         """Given a single sample of arbitrary data, convert it to a :class:`State` object.
         The index ``idx`` is given additionally, though it might not be used by other datasets.
@@ -180,8 +175,12 @@ class BaseDataset(BaseModule, TorchDataset):
 
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """
-        if "crop_path" in ds:
-            ds.image_crop = load_image(ds.crop_path, device=self.device)
+        # image crop is already present
+        if "image_crop" in ds.data:
+            return
+        # crop path is present, load the image crop
+        if "crop_path" in ds.data:
+            ds.load_image_crop()
             ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
                 device=self.device
             )

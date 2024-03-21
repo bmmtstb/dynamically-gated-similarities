@@ -51,4 +51,4 @@ test_dataloader_img:
     json_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"
-    batch_size: 2
+    batch_size: 1

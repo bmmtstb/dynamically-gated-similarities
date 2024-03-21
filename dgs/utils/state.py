@@ -406,7 +406,10 @@ class State(UserDict):
             return self.image_crop
         if "crop_path" not in self.data:
             raise AttributeError("Could not load image crops without proper filepaths given.")
-        self.image_crop = load_image(filepath=self.crop_path, device=self.device, *kwargs)
+        if len(self.crop_path) == 0:
+            self.data["image_crop"] = tv_tensors.Image(torch.empty((0, 0, 1, 1)))
+            return self.image_crop
+        self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
         return self.image_crop
 
     def load_image(self, **kwargs) -> Image:
@@ -415,6 +418,9 @@ class State(UserDict):
             return self.image
         if "filepath" not in self.data:
             raise AttributeError("Could not load images without proper filepaths given.")
+        if len(self.filepath) == 0:
+            self.data["image"] = tv_tensors.Image(torch.empty((0, 0, 1, 1)))
+            return self.image
         self.image = load_image(filepath=self.filepath, device=self.device, *kwargs)
         return self.image
 
@@ -504,7 +510,7 @@ def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tenso
     """
     if len(batch) == 0:
         return torch.empty(0)
-    if len(batch[0].shape) > 0 and batch[0].shape[0] == 1:
+    if batch[0].ndim > 0 and batch[0].shape[0] == 1:
         return torch.cat(batch)
     return torch.stack(batch)
 
@@ -531,7 +537,7 @@ def collate_tvt_tensors(
     """Collate a batch of tv_tensors into a batched version of it."""
     if len(batch) == 0:
         return tv_tensors.TVTensor([])
-    if len(batch[0].shape) > 0 and batch[0].size(0) == 1:
+    if batch[0].ndim > 0 and batch[0].size(0) == 1:
         return tv_tensors.wrap(torch.cat(batch), like=batch[0])
     return tv_tensors.wrap(torch.stack(batch), like=batch[0])
 
@@ -564,6 +570,9 @@ def collate_states(batch: Union[list["State"], "State"]) -> "State":
     """
     if isinstance(batch, State):
         return batch
+
+    if len(batch) == 1:
+        return batch[0]
 
     c_batch: dict[str, any] = collate(batch, collate_fn_map=CUSTOM_COLLATE_MAP)
 
