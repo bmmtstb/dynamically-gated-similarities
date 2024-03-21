@@ -5,10 +5,53 @@ device: "cpu"
 print_prio: "DEBUG"
 is_training: off
 
-test_config:
+test:
+    metric: "EuclideanSquare"
+
+train:
+    nof_classes: 10
+
+dummy_config:
     module_name: "Dummy"
     kwargs:
         more_data: true
         even_more_data: [1,2,3,4]
 
 # Modules
+
+invalid:
+    dummy: "no module_name"
+
+dgs:
+    module_name: "DGS"
+    names: ["pose_similarity", "box_similarity"]
+    combine: "combine_sims"
+
+combine_sims:
+    module_name: "constant_alpha"
+    alpha: [0.5, 0.30, 0.20]
+
+box_similarity:
+    module_name: "iou"
+    softmax: true
+
+pose_similarity:
+    module_name: "oks"
+    format: "coco"
+
+vis_emb_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x0_25"
+    weights: "pretrained"
+    nof_classes: 10
+
+dataloader:
+    module_name: "PoseTrack21"
+    dataset_path: "./tests/test_data/"
+    json_path: "./pt21/"
+    force_img_reshape: true
+    crops_folder: "./tests/test_data/"
+    batch_size: 2
+
+engine:
+    module_name: "VisualSimilarityEngine"

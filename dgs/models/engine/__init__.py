@@ -6,11 +6,13 @@ from typing import Type
 
 from dgs.utils.loader import get_instance, register_instance
 from dgs.utils.types import Instance
+from .dgs_engine import DGSEngine
 from .engine import EngineModule
 from .visual_sim_engine import VisualSimilarityEngine
 
 ENGINES: dict[str, Type[EngineModule]] = {
     "VisualSimilarityEngine": VisualSimilarityEngine,
+    "DGSEngine": DGSEngine,
 }
 
 

@@ -15,10 +15,12 @@ from typing import Type
 from dgs.utils.loader import get_instance, register_instance
 from .embedding_generator import EmbeddingGeneratorModule
 from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
+from .torchreid import TorchreidEmbeddingGenerator
 
 EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
     "LinearPBEG": LinearPBEG,
     "KeyPointConvolutionPBEG": KeyPointConvolutionPBEG,
+    "torchreid": TorchreidEmbeddingGenerator,
 }
 
 

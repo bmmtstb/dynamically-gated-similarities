@@ -10,7 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 
 from dgs.models.dgs.dgs import DGSModule
-from dgs.models.engine import EngineModule
+from dgs.models.engine.engine import EngineModule
 from dgs.utils.config import DEF_CONF
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer

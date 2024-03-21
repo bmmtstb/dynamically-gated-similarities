@@ -120,7 +120,9 @@ def register_module(name, new_module: Union[Type[M], Type[torch.nn.Module]], ins
 
         register_dataset(name=name, new_ds=new_module)
     elif inst_class_name == "dgs":
-        raise NotImplementedError
+        from dgs.models.dgs import register_dgs_module
+
+        register_dgs_module(name=name, new_dgs=new_module)
     elif inst_class_name == "embedding_generator":
         from dgs.models.embedding_generator import register_embedding_generator
 
