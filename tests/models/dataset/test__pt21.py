@@ -72,21 +72,29 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
             dl = get_data_loader(config=cfg, path=["test_dataloader_bbox"])
 
         batch: State
-        for batch in dl:
-            self.assertTrue(isinstance(batch, State))
-            self.assertEqual(len(batch), B)
+        for i, batch in enumerate(dl):
+            with self.subTest(msg=f"i: {i}, batch: {batch}"):
 
-            # check the number of dimensions
-            self.assertEqual(batch.class_id.ndim, 1)
-            self.assertEqual(batch.image_crop.ndim, 4)
-            self.assertEqual(batch.joint_weight.ndim, 3)
-            self.assertEqual(batch.keypoints.ndim, 3)
+                self.assertTrue(isinstance(batch, State))
+                self.assertEqual(len(batch), B)
 
-            # check that the first dimension is B
-            self.assertEqual(batch.class_id.size(0), B)
-            self.assertEqual(batch.image_crop.size(0), B)
-            self.assertEqual(batch.joint_weight.size(0), B)
-            self.assertEqual(batch.keypoints.size(0), B)
+                # check the number of dimensions
+                self.assertEqual(batch.class_id.ndim, 1)
+                self.assertEqual(batch.image_crop.ndim, 4)
+                self.assertEqual(batch.joint_weight.ndim, 3)
+                self.assertEqual(batch.keypoints.ndim, 3)
+                self.assertEqual(batch.keypoints_local.ndim, 3)
+                self.assertEqual(batch.person_id.ndim, 1)
+                self.assertEqual(batch.class_id.ndim, 1)
+
+                # check that the first dimension is B
+                self.assertEqual(batch.class_id.size(0), B)
+                self.assertEqual(batch.image_crop.size(0), B)
+                self.assertEqual(batch.joint_weight.size(0), B)
+                self.assertEqual(batch.keypoints.size(0), B)
+                self.assertEqual(batch.keypoints_local.size(0), B)
+                self.assertEqual(batch.person_id.size(0), B)
+                self.assertEqual(batch.class_id.size(0), B)
 
 
 class TestPoseTrack21ImageDataset(unittest.TestCase):
@@ -132,24 +140,32 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
         batch: State
 
         for i, batch in enumerate(dl):
-            B = lengths[i]
-            self.assertTrue(isinstance(batch, State))
-            self.assertEqual(len(batch), B)
+            with self.subTest(msg=f"i: {i}, batch: {batch}"):
 
-            if B != 0:
-                # check the number of dimensions
-                self.assertEqual(batch.class_id.ndim, 1)
-                self.assertEqual(batch.image.ndim, 4)
-                self.assertEqual(batch.image_crop.ndim, 4)
-                self.assertEqual(batch.joint_weight.ndim, 3)
-                self.assertEqual(batch.keypoints.ndim, 3)
+                B = lengths[i]
+                self.assertTrue(isinstance(batch, State))
+                self.assertEqual(len(batch), B)
 
-            # check that the first dimension is B
-            self.assertEqual(batch.class_id.size(0), B)
-            self.assertEqual(batch.image.size(0), B)
-            self.assertEqual(batch.image_crop.size(0), B)
-            self.assertEqual(batch.joint_weight.size(0), B)
-            self.assertEqual(batch.keypoints.size(0), B)
+                if B != 0:
+                    # check the number of dimensions
+                    self.assertEqual(batch.class_id.ndim, 1)
+                    self.assertEqual(batch.image.ndim, 4)
+                    self.assertEqual(batch.image_crop.ndim, 4)
+                    self.assertEqual(batch.joint_weight.ndim, 3)
+                    self.assertEqual(batch.keypoints.ndim, 3)
+                    self.assertEqual(batch.keypoints_local.ndim, 3)
+                    self.assertEqual(batch.person_id.ndim, 1)
+                    self.assertEqual(batch.class_id.ndim, 1)
+
+                # check that the first dimension is B
+                self.assertEqual(batch.class_id.size(0), B)
+                self.assertEqual(batch.image.size(0), B)
+                self.assertEqual(batch.image_crop.size(0), B)
+                self.assertEqual(batch.joint_weight.size(0), B)
+                self.assertEqual(batch.keypoints.size(0), B)
+                self.assertEqual(batch.keypoints_local.size(0), B)
+                self.assertEqual(batch.person_id.size(0), B)
+                self.assertEqual(batch.class_id.size(0), B)
 
 
 if __name__ == "__main__":

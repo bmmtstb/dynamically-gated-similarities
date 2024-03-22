@@ -21,6 +21,7 @@ import numpy as np
 import torch as t
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors as tvte
+from torchvision.tv_tensors import BoundingBoxes
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
@@ -669,25 +670,24 @@ class PoseTrack21_Image(BaseDataset):
         """Convert raw PoseTrack21 annotations to a :class:`State` object."""
         idx: int = int(a["id"])
         anno_ids: list[int] = self.map_img_id_to_anno_ids[idx]
-        N: int = len(anno_ids)
 
         keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
 
         ds = State(
-            validate=False,  # This is given PT21 data, no need to validate...
+            validate=True,  # FIXME remove
+            # validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
-            filepath=tuple(self.map_img_id_to_path[idx] for _ in range(N)),
+            filepath=tuple(self.map_img_id_to_path[idx] for _ in range(len(anno_ids))),
             bbox=bboxes,
             keypoints=keypoints,
-            person_id=self.pids[anno_ids],
+            person_id=self.pids[anno_ids].flatten(),
             # custom values
-            class_id=self.cids[anno_ids],
+            class_id=self.cids[anno_ids].flatten(),
             crop_path=crop_paths,
             joint_weight=visibilities,
         )
         # make sure to get the image crop for this State
-        if N > 0:
-            self.get_image_crops(ds)
+        self.get_image_crops(ds)
         return ds
 
     def _get_anno_data(
@@ -716,6 +716,14 @@ class PoseTrack21_Image(BaseDataset):
             bboxes.append(box)
             crop_paths.append(anno["crop_path"])
 
+        if len(bboxes) == 0:
+            # return empty objects
+            return (
+                t.empty((0, 17, 2)),
+                t.empty((0, 17, 1)),
+                BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+                (),
+            )
         return collate_tensors(keypoints), collate_tensors(visibilities), collate_bboxes(bboxes), tuple(crop_paths)
 
 

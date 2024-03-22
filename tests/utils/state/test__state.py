@@ -14,7 +14,7 @@ J = 20
 J_DIM = 2
 B = 10
 
-PID = torch.tensor(13, dtype=torch.long)
+PID = torch.tensor([13], dtype=torch.long)
 PIDS = torch.ones(B, dtype=torch.long) * PID
 
 IMG_NAME = "866-200x300.jpg"
@@ -50,6 +50,7 @@ DUMMY_WEIGHT_BATCH: torch.Tensor = torch.cat([DUMMY_WEIGHT.detach().clone() for 
 
 DUMMY_DATA: dict[str, any] = {
     "filepath": DUMMY_FP,
+    "crop_path": DUMMY_FP,
     "bbox": DUMMY_BBOX,
     "keypoints": DUMMY_KP,
     "keypoints_local": DUMMY_KP,
@@ -57,11 +58,14 @@ DUMMY_DATA: dict[str, any] = {
     "image": DUMMY_IMG,
     "image_crop": DUMMY_IMG,
     "person_id": PID,
+    "class_id": PID,
+    "track_id": PID,
     "joint_weight": DUMMY_WEIGHT,
 }
 
 DUMMY_DATA_BATCH: dict[str, any] = {
     "filepath": DUMMY_FP_BATCH,
+    "crop_path": DUMMY_FP_BATCH,
     "bbox": DUMMY_BBOX_BATCH,
     "keypoints": DUMMY_KP_BATCH,
     "keypoints_local": DUMMY_KP_BATCH,
@@ -69,6 +73,8 @@ DUMMY_DATA_BATCH: dict[str, any] = {
     "image": DUMMY_IMG_BATCH,
     "image_crop": DUMMY_IMG_BATCH,
     "person_id": PIDS,
+    "class_id": PIDS,
+    "track_id": PIDS,
     "joint_weight": DUMMY_WEIGHT_BATCH,
 }
 
@@ -227,16 +233,29 @@ class TestStateAttributes(unittest.TestCase):
 
     def test_class_id(self):
         ds = State(bbox=DUMMY_BBOX, validate=False, class_id=1)
+        self.assertEqual(ds.class_id.ndim, 1)
         self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
 
         ds = State(bbox=DUMMY_BBOX, validate=False, class_id=torch.ones(1))
+        self.assertEqual(ds.class_id.ndim, 1)
         self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
+
+    def test_person_id(self):
+        ds = State(bbox=DUMMY_BBOX, validate=False, person_id=1)
+        self.assertEqual(ds.person_id.ndim, 1)
+        self.assertEqual(ds.person_id, torch.ones(1, dtype=torch.long))
+
+        ds = State(bbox=DUMMY_BBOX, validate=False, person_id=torch.ones(1))
+        self.assertEqual(ds.person_id, torch.ones(1, dtype=torch.long))
+        self.assertEqual(ds.person_id, torch.ones(1, dtype=torch.long))
 
     def test_track_id(self):
         ds = State(bbox=DUMMY_BBOX, validate=False, track_id=1)
+        self.assertEqual(ds.track_id.ndim, 1)
         self.assertEqual(ds.track_id, torch.ones(1, dtype=torch.long))
 
         ds = State(bbox=DUMMY_BBOX, validate=False, track_id=torch.ones(1))
+        self.assertEqual(ds.track_id.ndim, 1)
         self.assertEqual(ds.track_id, torch.ones(1, dtype=torch.long))
 
     def test_crop_path(self):
@@ -332,10 +351,10 @@ class TestStateFunctions(unittest.TestCase):
     @test_multiple_devices
     def test_extract_and_split(self, device: torch.device):
         for states, res_states in [
-            (State(**DUMMY_DATA, device=device, validate=False), [State(**DUMMY_DATA, device=device, validate=False)]),
+            (State(**DUMMY_DATA, device=device), [State(**DUMMY_DATA, device=device)]),
             (
-                State(**DUMMY_DATA_BATCH, device=device, validate=False),
-                [State(**DUMMY_DATA, device=device, validate=False) for _ in range(B)],
+                State(**DUMMY_DATA_BATCH, device=device),
+                [State(**DUMMY_DATA, device=device) for _ in range(B)],
             ),
             (
                 State(
@@ -353,12 +372,12 @@ class TestStateFunctions(unittest.TestCase):
                 ],
             ),
             (
-                State(bbox=DUMMY_BBOX_BATCH, filepath=tuple(str(i) for i in range(B)), validate=False, device=device),
-                [State(bbox=DUMMY_BBOX, filepath=(str(i),), validate=False, device=device) for i in range(B)],
+                State(bbox=DUMMY_BBOX_BATCH, filepath=tuple(DUMMY_FP_STRING for _ in range(B)), device=device),
+                [State(bbox=DUMMY_BBOX, filepath=(DUMMY_FP_STRING,), device=device) for _ in range(B)],
             ),
             (
-                State(bbox=DUMMY_BBOX_BATCH, dummy=[str(i) for i in range(B)], validate=False, device=device),
-                [State(bbox=DUMMY_BBOX, dummy=[str(i)], validate=False, device=device) for i in range(B)],
+                State(bbox=DUMMY_BBOX_BATCH, dummy=[str(i) for i in range(B)], device=device),
+                [State(bbox=DUMMY_BBOX, dummy=[str(i)], device=device) for i in range(B)],
             ),
         ]:
             keys = list(states.keys())
@@ -375,6 +394,33 @@ class TestStateFunctions(unittest.TestCase):
                     self.assertEqual(res, s_i, "extracted equals result")
                     self.assertEqual(res.device, device, "test extracted device")
                     self.assertEqual(s_i.device, device, "test result device")
+
+    def test_split_resulting_sizes(self):
+        s = State(**DUMMY_DATA_BATCH)
+        res = s.split()
+        for r in res:
+            # check the number of dimensions
+            self.assertEqual(r.image.ndim, 4)
+            self.assertEqual(r.image_crop.ndim, 4)
+            self.assertEqual(r.joint_weight.ndim, 3)
+            self.assertEqual(r.keypoints.ndim, 3)
+            self.assertEqual(r.keypoints_local.ndim, 3)
+            self.assertEqual(r.person_id.ndim, 1)
+            self.assertEqual(r.class_id.ndim, 1)
+            self.assertEqual(r.track_id.ndim, 1)
+
+            # check that the first dimension is B
+            self.assertEqual(r.image_crop.size(0), 1)
+            self.assertEqual(r.joint_weight.size(0), 1)
+            self.assertEqual(r.keypoints.size(0), 1)
+            self.assertEqual(r.keypoints_local.size(0), 1)
+            self.assertEqual(r.person_id.size(0), 1)
+            self.assertEqual(r.class_id.size(0), 1)
+            self.assertEqual(r.track_id.size(0), 1)
+
+            # check non torch objects
+            self.assertEqual(len(r.filepath), 1)
+            self.assertEqual(len(r.crop_path), 1)
 
     def test_extract_errors(self):
         s = State(**DUMMY_DATA)

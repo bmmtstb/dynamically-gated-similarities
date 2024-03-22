@@ -191,7 +191,7 @@ class State(UserDict):
 
     @person_id.setter
     def person_id(self, value: Union[int, torch.Tensor]) -> None:
-        self.data["person_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
+        self.data["person_id"] = (torch.tensor(value).flatten().long() if isinstance(value, int) else value).to(
             device=self.device, dtype=torch.long
         )
 
@@ -202,7 +202,7 @@ class State(UserDict):
 
     @class_id.setter
     def class_id(self, value: Union[int, torch.Tensor]) -> None:
-        self.data["class_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
+        self.data["class_id"] = (torch.tensor(value).flatten().long() if isinstance(value, int) else value).to(
             device=self.device, dtype=torch.long
         )
 
@@ -213,7 +213,7 @@ class State(UserDict):
 
     @track_id.setter
     def track_id(self, value: Union[int, torch.Tensor]) -> None:
-        self.data["track_id"] = (torch.tensor(value).long() if isinstance(value, int) else value).to(
+        self.data["track_id"] = (torch.tensor(value).flatten().long() if isinstance(value, int) else value).to(
             device=self.device, dtype=torch.long
         )
 
@@ -256,7 +256,9 @@ class State(UserDict):
             J = None
             j_dim = None
         self.data["keypoints"] = (
-            validate_key_points(key_points=value, joint_dim=j_dim, nof_joints=J) if self.validate else value
+            validate_key_points(key_points=value, length=self.B, joint_dim=j_dim, nof_joints=J)
+            if self.validate
+            else value
         ).to(device=self.device)
 
     @property
@@ -286,10 +288,11 @@ class State(UserDict):
         except NotImplementedError:
             J = None
             j_dim = None
-
         # use validate_key_points to make sure local key points have the correct shape [1 x J x 2|3]
         self.data["keypoints_local"] = (
-            validate_key_points(value, nof_joints=J, joint_dim=j_dim) if self.validate else value
+            validate_key_points(key_points=value, length=self.B, nof_joints=J, joint_dim=j_dim)
+            if self.validate
+            else value
         ).to(device=self.device)
 
     @property
@@ -392,6 +395,8 @@ class State(UserDict):
                 elif isinstance(v, tuple):
                     # tuples stay tuple
                     new_data[idx][ks] = (v[idx],)
+                elif isinstance(v, torch.Tensor) and v.ndim == 1:
+                    new_data[idx][ks] = v[idx].flatten()
                 elif hasattr(v, "__getitem__"):
                     # every other iterable data -> regular tensors, ...
                     new_data[idx][ks] = v[idx]
@@ -508,18 +513,18 @@ def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tenso
 
     Will use torch.cat() if the first dimension has a shape of one, otherwise torch.stack()
     """
-    if len(batch) == 0:
+    if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
         return torch.empty(0)
     if batch[0].ndim > 0 and batch[0].shape[0] == 1:
         return torch.cat(batch)
-    return torch.stack(batch)
+    return torch.stack([b for b in batch if (not b.shape) or (b.shape and len(b))])
 
 
 def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> tv_tensors.BoundingBoxes:
     """Collate a batch of bounding boxes into a single one.
     It is expected that all bounding boxes have the same canvas size and format.
     """
-    if len(batch) == 0:
+    if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
         return tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY")
     bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
     canvas_size = batch[0].canvas_size
@@ -535,11 +540,11 @@ def collate_tvt_tensors(
     batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
 ) -> Union[tv_tensors.TVTensor, tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
     """Collate a batch of tv_tensors into a batched version of it."""
-    if len(batch) == 0:
+    if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
         return tv_tensors.TVTensor([])
     if batch[0].ndim > 0 and batch[0].size(0) == 1:
         return tv_tensors.wrap(torch.cat(batch), like=batch[0])
-    return tv_tensors.wrap(torch.stack(batch), like=batch[0])
+    return tv_tensors.wrap(torch.stack([b for b in batch if (not b.shape) or (b.shape and len(b))]), like=batch[0])
 
 
 CUSTOM_COLLATE_MAP: dict[Type, Callable] = default_collate_fn_map.copy()
@@ -577,7 +582,8 @@ def collate_states(batch: Union[list["State"], "State"]) -> "State":
     c_batch: dict[str, any] = collate(batch, collate_fn_map=CUSTOM_COLLATE_MAP)
 
     # skip validation, because either every State has been validated before or validation is not required.
-    s = State(**c_batch, validate=False)
+    s = State(**c_batch, validate=True)  # FIXME remove
+    # s = State(**c_batch, validate=False)
     # then set the validation to the correct value
     s.validate = batch[0].validate
     return s

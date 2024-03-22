@@ -179,6 +179,12 @@ class BaseDataset(BaseModule, TorchDataset):
         if "image_crop" in ds.data and "keypoints_local" in ds.data:
             return
 
+        # State has length zero and image and local key points are just placeholders
+        if len(ds) == 0:
+            ds.image_crop = tv_tensors.Image(torch.empty((0, 3, 1, 1)), device=ds.device)
+            ds.keypoints_local = torch.empty((0, ds.J, ds.joint_dim), device=ds.device)
+            return
+
         # check whether precomputed image crops exist
         if "crops_folder" in self.params:
             if "crop_path" not in ds:

@@ -21,13 +21,6 @@ class TestCollate(unittest.TestCase):
                 self.assertTrue(isinstance(r, torch.Tensor))
                 self.assertEqual(len(r), 0)
 
-    def test_collate_empty_with_nonempty(self):
-        for data, length, func in []:
-            with self.subTest(msg="data: {}, length: {}, func: {}".format(data, length, func)):
-                r = func(data)
-                self.assertTrue(isinstance(r, torch.Tensor))
-                self.assertEqual(len(r), length)
-
     def test_bbox(self):
         bbox = BoundingBoxes(torch.ones((1, 4)), format="XYWH", canvas_size=(100, 100))
         other = BoundingBoxes(torch.ones((2, 4)), format="XYXY", canvas_size=(50, 50))
@@ -37,6 +30,7 @@ class TestCollate(unittest.TestCase):
             ([], BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY")),
             ([bbox], bbox),
             ([bbox_empty], bbox_empty),
+            ([bbox_empty, bbox_empty], bbox_empty),
             (
                 [bbox for _ in range(N)],
                 BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
@@ -61,12 +55,18 @@ class TestCollate(unittest.TestCase):
     def test_tvt_tensors(self):
         img = Image(torch.ones((C, H, W)))
         img_ = Image(torch.ones((1, C, H, W)))
+        empty_img = Image(torch.ones((0, C, H, W)))
         imgs = Image(torch.ones((N, C, H, W)))
 
         for tensors, result in [
             ([], TVTensor([])),
+            ([TVTensor(torch.tensor(1))], TVTensor(torch.tensor(1))),
+            ([TVTensor(torch.tensor(1)), TVTensor(torch.tensor(1))], TVTensor(torch.tensor(1))),
+            ([empty_img], TVTensor([])),
+            ([empty_img, empty_img], TVTensor([])),
             ([img], img_),
             ([img_], img_),
+            ([empty_img, img_, empty_img], img_),
             ([img_], Image(torch.ones((1, C, H, W)))),
             ([img for _ in range(N)], imgs),
             ([img_ for _ in range(N)], imgs),
@@ -79,11 +79,37 @@ class TestCollate(unittest.TestCase):
                 self.assertTrue(torch.allclose(collate_tvt_tensors(tensors), result), tensors)
 
     def test_tensors(self):
+        empty_res = torch.empty(0)
+        empty_t = torch.ones(0)
+        empty_l = torch.tensor([])
+        t_0d = torch.tensor(1)
+        t_1d = torch.ones(1)
+        t_2d = torch.ones((1, 11))
+
         for tensors, result in [
-            ([], torch.empty(0)),
-            ([torch.ones((1, 11))], torch.ones((1, 11))),
+            # different stages of empty
+            ([], empty_res),
+            ([empty_l], empty_res),
+            ([empty_l, empty_l], empty_res),
+            ([empty_t, torch.ones(0), empty_l], empty_res),
+            # regular plus empty
+            ([empty_l, t_0d, empty_l], t_0d),
+            ([empty_l, t_1d, empty_l], t_1d),
+            ([empty_l, t_2d, empty_l], t_2d),
+            ([empty_t, t_0d, empty_t], t_0d),
+            ([empty_t, t_1d, empty_t], t_1d),
+            ([empty_t, t_2d, empty_t], t_2d),
+            ([torch.empty((0, 11)), torch.ones((1, 11)), torch.ones((0, 11))], torch.ones((1, 11))),
+            # regular
+            ([t_0d], t_0d),
+            ([t_1d], t_1d),
+            ([t_2d], t_2d),
+            ([t_0d, t_0d], torch.stack([t_0d, t_0d])),
+            ([t_1d, t_1d], torch.ones(2, 1)),
+            ([t_2d, t_2d], torch.ones(2, 11)),
+            ([torch.ones((3, 11)), torch.ones((3, 11))], torch.ones(2, 3, 11)),
             ([torch.ones((1, 11)) for _ in range(N)], torch.ones((N, 11))),
-            ([torch.ones((2, 11)) for _ in range(N)], torch.ones((N, 2, 11))),
+            ([torch.ones((3, 11)) for _ in range(N)], torch.ones((N, 3, 11))),
         ]:
             with self.subTest(msg="tensors: {}, result: {}".format(len(tensors), result.shape)):
                 self.assertTrue(torch.allclose(collate_tensors(tensors), result), tensors)

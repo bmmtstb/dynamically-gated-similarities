@@ -199,6 +199,10 @@ class Tracks(UserDict):
         # get the next free ID and create track
         for new_track in new_tracks:
             new_id = self._add_track(new_track)
+
+            # add track ID to State
+            for s in self.data[new_id]:
+                s.track_id = torch.tensor([new_id])
             added_ids.append(new_id)
 
         self._handle_inactive(tids=newly_inactive_ids)
@@ -218,7 +222,8 @@ class Tracks(UserDict):
             return State(
                 bbox=tv_tensors.BoundingBoxes(
                     torch.zeros((0, 4)), canvas_size=(0, 0), format="XYWH", dtype=torch.float32, requires_grad=False
-                )
+                ),
+                validate=False,
             )
         state = collate_states(states)
         state.track_id = torch.tensor(tids, device=state.device, dtype=torch.long)
@@ -244,7 +249,11 @@ class Tracks(UserDict):
         """
         if tid not in self.data.keys():
             raise KeyError(f"Track-ID {tid} not present in Tracks.")
+
+        # set track ID in state and append state to track
+        add_state.track_id = torch.tensor([tid])
         self.data[tid].append(state=add_state)
+
         # update inactive
         self.inactive.pop(tid, None)
 

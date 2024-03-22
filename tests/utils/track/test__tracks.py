@@ -36,6 +36,13 @@ MT_F_ID = MULTI_TRACKS.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[FULL_TRAC
 MULTI_TRACKS.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[])  # now 1 is inactive !
 
 
+def _track_w_tid(track: Track, tid: int) -> Track:
+    t = track.copy()
+    for s in t:
+        s.track_id = tid
+    return t
+
+
 class TestTracks(unittest.TestCase):
     def test_init(self):
         t = Tracks(thresh=THRESH)
@@ -163,7 +170,7 @@ class TestTracks(unittest.TestCase):
 
         one = ONE_TRACKS.copy()
         track = one[OT_O_ID]
-        self.assertTrue(track == ONE_TRACK.copy())
+        self.assertTrue(track == _track_w_tid(ONE_TRACK, OT_O_ID))
 
     def test_add(self):
         t = Tracks(thresh=2)
@@ -172,23 +179,36 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(len(t), 1)
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), set())
+        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
 
         second_tid = t.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[FULL_TRACK.copy()])[0]
         self.assertEqual(len(t), 2)
         self.assertEqual(t.ids_active(), {first_tid, second_tid})
         self.assertEqual(t.ids_inactive(), set())
+        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
+        self.assertTrue(all(s.track_id.item() == second_tid for s in t[second_tid]))
 
         t.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[])
         self.assertTrue(d == MULTI_TRACKS.data[k] for k, d in t.data.items())
         self.assertEqual(len(t), 2)
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), {second_tid})
+        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
+        self.assertTrue(all(s.track_id.item() == second_tid for s in t[second_tid]))
 
         t.add(tracks={first_tid: DUMMY_STATE.copy()}, new_tracks=[])  # second time 1 was not found -> remove
         self.assertEqual(len(t.inactive), 0)
         self.assertEqual(len(t), 1)
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), set())
+        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
+
+        t.add(tracks={}, new_tracks=[])  # add nothing
+        self.assertEqual(len(t.inactive), 1)
+        self.assertEqual(len(t), 1)
+        self.assertEqual(t.ids_active(), set())
+        self.assertEqual(t.ids_inactive(), {first_tid})
+        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
 
     def test_get_state(self):
         t1 = ONE_TRACKS.copy()
@@ -227,8 +247,8 @@ class TestTracks(unittest.TestCase):
             self.assertEqual(tracks.nof_inactive(), len(inact))
             self.assertEqual(tracks.ids_inactive(), inact)
 
-        self.assertTrue(ONE_TRACKS.copy()[OT_O_ID] == ONE_TRACK.copy())
-        self.assertTrue(MULTI_TRACKS.copy()[MT_F_ID] == FULL_TRACK.copy())
+        self.assertTrue(ONE_TRACKS.copy()[OT_O_ID] == _track_w_tid(ONE_TRACK, OT_O_ID))
+        self.assertTrue(MULTI_TRACKS.copy()[MT_F_ID] == _track_w_tid(FULL_TRACK, MT_F_ID))
 
     def tearDown(self):
         self.assertEqual(len(ONE_TRACK), 1)
@@ -249,8 +269,8 @@ class TestTracks(unittest.TestCase):
             self.assertEqual(tracks.nof_inactive(), len(inact))
             self.assertEqual(tracks.ids_inactive(), inact)
 
-        self.assertTrue(ONE_TRACKS.copy()[OT_O_ID] == ONE_TRACK.copy())
-        self.assertTrue(MULTI_TRACKS.copy()[MT_F_ID] == FULL_TRACK.copy())
+        self.assertTrue(ONE_TRACKS.copy()[OT_O_ID] == _track_w_tid(ONE_TRACK, OT_O_ID))
+        self.assertTrue(MULTI_TRACKS.copy()[MT_F_ID] == _track_w_tid(FULL_TRACK, MT_F_ID))
 
 
 if __name__ == "__main__":

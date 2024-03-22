@@ -21,7 +21,7 @@ dataloader_test:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     json_path: "./posetrack_data/val/"
-#    json_path: "./posetrack_data/val/000342_mpii_test.json"
+#    json_path: "./posetrack_data/val/014102_mpii_test.json"
     force_img_reshape: false
     crops_folder: "./crops/val/"
     batch_size: 1  # fixme
