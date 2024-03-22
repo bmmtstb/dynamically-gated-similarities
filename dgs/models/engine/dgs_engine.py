@@ -8,6 +8,7 @@ import torch
 from lapsolver import solve_dense
 from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
+from tqdm import tqdm
 
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
@@ -94,7 +95,7 @@ class DGSEngine(EngineModule):
 
         time_batch_start: float = time.time()
 
-        for batch_idx, detections in enumerate(self.test_dl):
+        for batch_idx, detections in tqdm(enumerate(self.test_dl), desc="Tracking", total=len(self.test_dl)):
             # fixme reset tracks at the end of every sub-dataset
             N: int = len(detections)
             T: int = len(self.tracks)
@@ -137,8 +138,9 @@ class DGSEngine(EngineModule):
                 states: list[State] = detections.split()
                 assert len(states) == len(rids) == len(cids), "expected shapes to match"
 
+                tids = self.tracks.ids()
                 for rid, cid in zip(rids, cids):
-                    if cid < T:
+                    if cid < T and cid in tids:
                         updated_tracks[cid] = states[rid]
                     else:
                         t = Track(N=self.max_track_len, states=[states[rid]])

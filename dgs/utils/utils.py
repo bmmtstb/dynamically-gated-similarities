@@ -107,6 +107,8 @@ def extract_crops_from_images(
     crops: torch.Tensor = res["image"].cpu()
     kps: torch.Tensor = res["keypoints"].cpu()
 
+    assert kps.shape[-1] == 2, "Key-points should be two dimensional"
+
     for fp, crop, kp in zip(new_fps, crops, kps):
         mkdir_if_missing(os.path.dirname(fp))
         write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))

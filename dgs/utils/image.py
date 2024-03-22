@@ -526,6 +526,63 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         }
 
 
+class CustomResize(Torch_NN_Module, CustomTransformValidator):
+    """
+    Resize image, bbox and key points with this custom transform.
+
+    The image and bbox are resized using regular torch resize transforms.
+    """
+
+    H: int
+    W: int
+
+    h: int
+    w: int
+
+    def forward(self, *args, **kwargs) -> dict[str, any]:
+        """Resize image, bbox and key points in one go.
+
+        Keyword Args:
+            image: One single image as tv_tensor.Image of shape ``[B x C x H x W]``
+            box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
+            keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
+            output_size: (h, w) as target height and width of the image
+
+        Returns:
+            Will overwrite the image, bbox, and key points with the newly computed values.
+            Key Points will be in local image coordinates.
+
+            The new shape of the images is ``[B x C x h x w]``.
+        """
+        image, bboxes, coordinates, output_size, kwargs, *_ = self._validate_inputs(
+            necessary_keys=["image", "box", "keypoints", "output_size"], *args, **kwargs
+        )
+
+        # extract shapes for padding
+        self.H, self.W = image.shape[-2:]
+        self.h, self.w = output_size
+
+        image = tv_tensors.wrap(tvt_resize(image, size=list(output_size), antialias=True), like=image)
+        bboxes = tv_tensors.wrap(tvt_resize(bboxes, size=list(output_size), antialias=True), like=bboxes)
+        if coordinates.shape[-1] == 2:
+            coordinates *= torch.tensor(
+                [self.w / self.W, self.h / self.H], dtype=torch.float32, device=coordinates.device
+            )
+        else:
+            # fixme: 3d coordinates have 0 in the third dimension ?
+            coordinates *= torch.tensor(
+                [self.w / self.W, self.h / self.H, 0], dtype=torch.float32, device=coordinates.device
+            )
+
+        return {
+            "image": image,
+            "box": bboxes,
+            "keypoints": coordinates,
+            "output_size": output_size,
+            **kwargs,
+        }
+
+
 class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
     """Extract all bounding boxes of a single torch tensor image as new image crops
     then resize the result to the given output shape, which makes the results stackable again.
@@ -537,6 +594,8 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
     h: int
     w: int
+
+    transform = tvt.Compose([CustomToAspect(), CustomResize()])
 
     def forward(self, *args, **kwargs) -> dict[str, any]:
         """Extract bounding boxes out of one or multiple images and resize the crops to the target shape.
@@ -578,8 +637,6 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         """
         # pylint: disable=too-many-locals,too-many-arguments
         image, bboxes, coordinates, output_size, mode, kwargs, *_ = self._validate_inputs(*args, **kwargs)
-
-        transform = tvt.Compose([CustomToAspect(), CustomResize()])
 
         # extract shapes for padding
         self.H, self.W = image.shape[-2:]
@@ -625,7 +682,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             # Resize the image and coord crops to make them stackable again.
             # Use CustomToAspect to make the image the correct aspect ratio.
             # Mostly redundant for outside-crop mode, but even there are a few edge cases.
-            modified_data: dict[str, any] = transform(
+            modified_data: dict[str, any] = self.transform(
                 {
                     "image": img_crop,
                     "box": validate_bboxes(tv_tensors.wrap(bboxes[i], like=bboxes)),
@@ -690,60 +747,3 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             )
 
         return image_crop, coord_crop
-
-
-class CustomResize(Torch_NN_Module, CustomTransformValidator):
-    """
-    Resize image, bbox and key points with this custom transform.
-
-    The image and bbox are resized using regular torch resize transforms.
-    """
-
-    H: int
-    W: int
-
-    h: int
-    w: int
-
-    def forward(self, *args, **kwargs) -> dict[str, any]:
-        """Resize image, bbox and key points in one go.
-
-        Keyword Args:
-            image: One single image as tv_tensor.Image of shape ``[B x C x H x W]``
-            box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
-            keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
-            output_size: (h, w) as target height and width of the image
-
-        Returns:
-            Will overwrite the image, bbox, and key points with the newly computed values.
-            Key Points will be in local image coordinates.
-
-            The new shape of the images is ``[B x C x h x w]``.
-        """
-        image, bboxes, coordinates, output_size, kwargs, *_ = self._validate_inputs(
-            necessary_keys=["image", "box", "keypoints", "output_size"], *args, **kwargs
-        )
-
-        # extract shapes for padding
-        self.H, self.W = image.shape[-2:]
-        self.h, self.w = output_size
-
-        image = tv_tensors.wrap(tvt_resize(image, size=list(output_size), antialias=True), like=image)
-        bboxes = tv_tensors.wrap(tvt_resize(bboxes, size=list(output_size), antialias=True), like=bboxes)
-        if coordinates.shape[-1] == 2:
-            coordinates *= torch.tensor(
-                [self.w / self.W, self.h / self.H], dtype=torch.float32, device=coordinates.device
-            )
-        else:
-            # fixme: 3d coordinates have 0 in the third dimension ?
-            coordinates *= torch.tensor(
-                [self.w / self.W, self.h / self.H, 0], dtype=torch.float32, device=coordinates.device
-            )
-
-        return {
-            "image": image,
-            "box": bboxes,
-            "keypoints": coordinates,
-            "output_size": output_size,
-            **kwargs,
-        }

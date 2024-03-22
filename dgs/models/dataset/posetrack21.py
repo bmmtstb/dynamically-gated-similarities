@@ -75,7 +75,7 @@ def extract_crops_from_json_annotation(
     base_dataset_path: FilePath, json_file: FilePath, crops_dir: FilePath, individually: bool = False, **kwargs
 ) -> None:
     """
-    Given the path to
+    Given the path to a json file containing images and annotations in the PT21 style, extract all the bbox image crops.
 
     Args:
         base_dataset_path (FilePath): The absolute path to the base of the dataset.
@@ -138,9 +138,10 @@ def extract_crops_from_json_annotation(
         d["sizes"].append(imagesize.get(img_fp)[::-1])
         kp: t.Tensor = t.tensor(anno["keypoints"])
         if kp.shape[0] == 51:
-            d["key_points"].append(kp.reshape((17, 3)).to(device=device, dtype=t.float32))
+            kp, _ = kp.reshape((17, 3)).to(device=device, dtype=t.float32).split([2, 1], dim=-1)
+            d["key_points"].append(kp)
         else:  # empty key points
-            d["key_points"].append(t.zeros((17, 3)).to(device=device, dtype=t.float32))
+            d["key_points"].append(t.zeros((17, 2)).to(device=device, dtype=t.float32))
 
         # There will be multiple detections per image.
         # Therefore, the new image crop name has to include the image id and person id.
@@ -384,14 +385,7 @@ def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> 
     if isinstance(json_path := ds.params["json_path"], (list, tuple)):
         print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {json_path}")
         return ConcatDataset(
-            [
-                ds_type(config=config, path=path, json_path=ds.get_path_in_dataset(path=p))
-                for p in tqdm(
-                    json_path,
-                    position=1,
-                    leave=False,
-                )
-            ]
+            [ds_type(config=config, path=path, json_path=ds.get_path_in_dataset(path=p)) for p in tqdm(json_path)]
         )
 
     # path is either directory or single json file
@@ -413,11 +407,7 @@ def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> 
     return ConcatDataset(
         [
             ds_type(config=config, path=path, json_path=p)
-            for p in tqdm(
-                paths,
-                desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}",
-                position=1,
-            )
+            for p in tqdm(paths, desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}")
         ]
     )
 
@@ -721,8 +711,8 @@ class PoseTrack21_Image(BaseDataset):
                 t.tensor(anno["bbox"]), format="XYWH", dtype=t.float32, canvas_size=self.img_shape, device=self.device
             )
 
-            keypoints.append(kps)
-            visibilities.append(visibility)
+            keypoints.append(kps.reshape((1, 17, 2)))
+            visibilities.append(visibility.reshape((1, 17, 1)))
             bboxes.append(box)
             crop_paths.append(anno["crop_path"])
 

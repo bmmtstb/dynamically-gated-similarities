@@ -176,14 +176,7 @@ class BaseDataset(BaseModule, TorchDataset):
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
         """
         # image crop is already present
-        if "image_crop" in ds.data:
-            return
-        # crop path is present, load the image crop
-        if "crop_path" in ds.data:
-            ds.load_image_crop()
-            ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
-                device=self.device
-            )
+        if "image_crop" in ds.data and "keypoints_local" in ds.data:
             return
 
         # check whether precomputed image crops exist
@@ -198,7 +191,7 @@ class BaseDataset(BaseModule, TorchDataset):
                     )
                     for i in range(len(ds))
                 )
-            ds.image_crop = load_image(ds.crop_path, device=self.device)
+            ds.load_image_crop()
             ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
                 device=self.device
             )
@@ -230,6 +223,7 @@ class BaseDataset(BaseModule, TorchDataset):
 
         ds.image_crop = new_state["image"].to(dtype=torch.float32, device=self.device)
         ds.keypoints_local = new_state["keypoints"].to(dtype=torch.float32, device=self.device)
+        assert "joint_weights" in ds.data, "visibility should be given"
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:

@@ -40,9 +40,9 @@ combine_similarities:
     alpha: [0.5, 0.25, 0.25]
 
 visual_similarity:
-    module_name: "torchreid"  # see `dgs.models.similarity.__init__`
+    module_name: "torchreid"
     model_name: "osnet_x1_0"
-    similarity: "EuclideanSquare"
+    similarity: "NegSoftmaxEuclideanDist"
     weights: "pretrained"
     nof_classes: 5474
 

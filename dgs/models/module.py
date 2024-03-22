@@ -15,7 +15,7 @@ from torch.nn import Module
 from dgs.utils.config import get_sub_config
 from dgs.utils.constants import PRECISION_MAP, PRINT_PRIORITY
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
-from dgs.utils.files import mkdir_if_missing
+from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import Config, FilePath, NodePath, Validations
 from dgs.utils.validation import validate_value
 
@@ -112,8 +112,9 @@ class BaseModule(ABC):
         self.validate_params(module_validations, "config")
 
         # set up (file) logger
-        self.log_dir: FilePath = os.path.join(self.config.get("log_dir", "./results/"), date.today().strftime("%Y%m%d"))
-        mkdir_if_missing(self.log_dir)
+        log_dir = os.path.join(self.config.get("log_dir", "./results/"), f"{date.today().strftime('%Y%m%d')}")
+        mkdir_if_missing(log_dir)
+        self.log_dir: FilePath = to_abspath(log_dir)
         self.logger: logging.Logger = self._init_logger()
 
     def validate_params(self, validations: Validations, attrib_name: str = "params") -> None:
