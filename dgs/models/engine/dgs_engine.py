@@ -136,7 +136,9 @@ class DGSEngine(EngineModule):
                 rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
 
                 states: list[State] = detections.split()
-                assert len(states) == len(rids) == len(cids), "expected shapes to match"
+                assert (
+                    N == len(states) == len(rids) == len(cids)
+                ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
 
                 tids = self.tracks.ids()
                 for rid, cid in zip(rids, cids):

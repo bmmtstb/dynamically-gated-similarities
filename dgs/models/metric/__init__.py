@@ -13,6 +13,7 @@ from .metric import (
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
     EuclideanSquareMetric,
+    IOUDistance,
     NegativeSoftmaxEuclideanDistance,
     NegativeSoftmaxEuclideanSquaredDistance,
     PairwiseDistanceMetric,
@@ -35,6 +36,8 @@ METRICS: dict[str, Type[Metric]] = {
     "NegativeSoftmaxEuclideanDistance": NegativeSoftmaxEuclideanDistance,
     "NegSoftmaxEuclideanSqDist": NegativeSoftmaxEuclideanSquaredDistance,  # alias
     "NegativeSoftmaxEuclideanSquaredDistance": NegativeSoftmaxEuclideanSquaredDistance,
+    "IoUDistance": IOUDistance,
+    "IOUDistance": IOUDistance,
     "TorchPairwiseDistance": nn.PairwiseDistance,
     "TorchCosineSimilarity": nn.CosineSimilarity,
     "TorchreidEuclideanSquaredDistance": TorchreidEuclideanSquaredDistance,

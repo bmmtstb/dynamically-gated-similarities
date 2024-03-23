@@ -8,6 +8,9 @@ import torch
 from torch import nn
 from torch.linalg import vector_norm
 from torch.nn import PairwiseDistance
+from torchvision import tv_tensors as tv_te
+from torchvision.ops import box_iou
+from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 
 from dgs.utils.types import Metric
 
@@ -362,6 +365,50 @@ class NegativeSoftmaxEuclideanSquaredDistance(Metric):
         _validate_metric_inputs(input1, input2)
         d = self.dist(input1, input2)
         return self.softmax(torch.neg(d))
+
+
+class IOUDistance(Metric):
+    """Class to compute the intersection-over-union distance.
+
+    Defined as :math:`d=1-IoU`
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.transform = ConvertBoundingBoxFormat("XYXY")
+
+    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+        """Compute the intersection-over-union between two input tensors.
+
+        The inputs should be :class:`tv_tensors.BoundingBoxes`.
+        This function will transform given bounding boxes to 'XYXY' if they have a different format.
+
+        Args:
+            input1: bbox of shape ``[a x 4]``
+            input2: bbox of shape ``[b x 4]``
+
+        Returns:
+            A tensor of shape ``[a x b]`` containing the distances between the inputs.
+
+        Raises:
+            TypeError: If input1 or input2 is not a :class:`tv_tensors.BoundingBoxes` object.
+        """
+        if isinstance(input1, tv_te.BoundingBoxes):
+            if input1.format != tv_te.BoundingBoxFormat.XYXY:
+                input1 = self.transform(input1)
+        else:
+            raise TypeError(f"input1 should be an instance of tv_tensors.BoundingBoxes, but got {type(input1)}.")
+
+        if isinstance(input2, tv_te.BoundingBoxes):
+            if input2.format != tv_te.BoundingBoxFormat.XYXY:
+                input2 = self.transform(input2)
+        else:
+            raise TypeError(f"input2 should be an instance of tv_tensors.BoundingBoxes, but got {type(input2)}.")
+
+        iou: torch.Tensor = box_iou(input1, input2)
+
+        return torch.ones_like(iou) - iou
 
 
 class TorchreidEuclideanSquaredDistance(Metric):

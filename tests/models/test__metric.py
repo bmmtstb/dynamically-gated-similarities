@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import torch
 from torch import nn
+from torchvision import tv_tensors as tv_te
 
 from dgs.models.metric import get_metric, METRICS, register_metric
 from dgs.models.metric.metric import (
@@ -15,6 +16,7 @@ from dgs.models.metric.metric import (
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
     EuclideanSquareMetric,
+    IOUDistance,
     NegativeSoftmaxEuclideanDistance,
     NegativeSoftmaxEuclideanSquaredDistance,
     PairwiseDistanceMetric,
@@ -218,6 +220,24 @@ class TestMetrics(unittest.TestCase):
         self.assertTrue(isinstance(r, torch.Tensor))
         self.assertEqual(list(r.shape), [4, 1])
         self.assertEqual(m.dist.eps, 1e-4)
+
+    def test_iou_distance(self):
+        m = IOUDistance()
+        b1 = tv_te.BoundingBoxes([0, 0, 5, 5], canvas_size=(10, 10), format="xyxy")
+        b2 = tv_te.BoundingBoxes([1, 1, 5, 5], canvas_size=(10, 10), format="xywh")
+        r = m(b1, b2)
+
+        self.assertTrue(isinstance(r, torch.Tensor))
+        self.assertEqual(list(r.shape), [1, 1])
+        self.assertTrue(torch.allclose(r, torch.tensor(1 - (16 / 34))))
+
+        with self.assertRaises(TypeError) as e:
+            _ = m(torch.ones((1, 4)), b2)
+        self.assertTrue("input1 should be an instance of tv_tensors.BoundingBoxes" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(TypeError) as e:
+            _ = m(b1, torch.ones((1, 4)))
+        self.assertTrue("input2 should be an instance of tv_tensors.BoundingBoxes" in str(e.exception), msg=e.exception)
 
 
 class TestMetricCMC(unittest.TestCase):
