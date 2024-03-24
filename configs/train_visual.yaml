@@ -11,10 +11,10 @@ log_dir: "./results/own/visual_sim/"
 
 train:
     epochs: 5
-#    loss: "CrossEntropyLoss"
-    loss: "TorchreidCrossEntropyLoss"
-    loss_kwargs:
-        num_classes: 5474
+    loss: "CrossEntropyLoss"
+#    loss: "TorchreidCrossEntropyLoss"
+#    loss_kwargs:
+#        num_classes: 5474
     optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0003

@@ -24,11 +24,11 @@ if __name__ == "__main__":
 
     ds_start_time = time.time()
     # validation / query
-    val_dl = module_loader(config=config, module_class="dataloader", key="val_dl")
+    val_dl = module_loader(config=config, module_class="dataloader", key="query_dl")
     # test / gallery
-    test_dl = module_loader(config=config, module_class="dataloader_gallery", key="test_dl")
+    test_dl = module_loader(config=config, module_class="dataloader", key="gallery_dl")
     # train
-    train_dl = module_loader(config=config, module_class="dataloader_train", key="train_dl")
+    train_dl = module_loader(config=config, module_class="dataloader", key="train_dl")
 
     print(f"Total dataset loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 

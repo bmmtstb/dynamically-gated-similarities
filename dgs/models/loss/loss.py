@@ -14,7 +14,9 @@ class CrossEntropyLoss(Loss):
     def __init__(self, **kwargs):
         super().__init__()
         # self.log_softmax = nn.LogSoftmax(dim=1)
-        self.cross_entropy_loss = nn.CrossEntropyLoss(**kwargs)
+        default_kwargs: dict[str, any] = {"label_smoothing": 0.1}
+        default_kwargs.update(kwargs)
+        self.cross_entropy_loss = nn.CrossEntropyLoss(**default_kwargs)
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Given predictions of shape ``[B x nof_classes]`` and targets of shape ``[B]``
