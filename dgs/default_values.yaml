@@ -21,3 +21,11 @@ dataset:
     image_size: [1024, 1024]
     crop_mode: "zero-pad"
     crop_size: [256, 256]
+
+
+# ############## #
+# LOSS FUNCTIONS #
+# ############## #
+
+cross_entropy_loss:
+    label_smoothing: 0.1

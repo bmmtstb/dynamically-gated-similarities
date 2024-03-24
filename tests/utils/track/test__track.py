@@ -29,11 +29,13 @@ class TestTrack(unittest.TestCase):
         self.assertEqual(len(t0), 0)
         self.assertEqual(t0.N, MAX_LENGTH)
         self.assertEqual(t0.B, 1)
+        self.assertEqual(t0.id, -1)
 
         t1 = ONE_TRACK.copy()
         self.assertEqual(len(t1), 1)
         self.assertEqual(t1.N, MAX_LENGTH)
         self.assertEqual(t1.B, 1)
+        self.assertEqual(t1.id, -1)
 
         with self.assertRaises(ValueError) as e:
             _ = Track(N=MAX_LENGTH, B=2, states=[DUMMY_STATE])
@@ -65,6 +67,8 @@ class TestTrack(unittest.TestCase):
             (ONE_TRACK, EMPTY_TRACK, False),
             (EMPTY_TRACK, "dummy", False),
             (Track(N=5, states=[DUMMY_STATE]), Track(N=5, states=[DUMMY_STATE, DUMMY_STATE]), False),
+            (Track(N=5, states=[], tid=1), Track(N=5, states=[], tid=1), True),
+            (Track(N=5, states=[], tid=1), Track(N=5, states=[], tid=2), False),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, eq: {}".format(t1, t2, eq)):
                 self.assertEqual(t1 == t2, eq)
@@ -109,6 +113,25 @@ class TestTrackProperties(unittest.TestCase):
         self.assertEqual(FULL_TRACK.N, MAX_LENGTH)
 
         self.assertEqual(Track(N=2).N, 2)
+
+    def test_id(self):
+        for val_id, res_id in [
+            (2, 2),
+            (torch.tensor(2), 2),
+            (torch.tensor([2]), 2),
+        ]:
+            with self.subTest(msg="val_id: {}, res_id: {}".format(val_id, res_id)):
+                t = ONE_TRACK.copy()
+                self.assertEqual(t.id, -1)
+                t.id = val_id
+                self.assertEqual(t.id, res_id)
+
+        t = ONE_TRACK.copy()
+        with self.assertRaises(NotImplementedError) as e:
+            t.id = "2"
+        self.assertTrue(
+            f"unknown type for ID, expected int but got '{type('2')}' - '2'" in str(e.exception), msg=e.exception
+        )
 
 
 class TestTrackFunctions(unittest.TestCase):

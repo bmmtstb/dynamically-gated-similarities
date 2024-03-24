@@ -225,11 +225,16 @@ class TestMetrics(unittest.TestCase):
         m = IOUDistance()
         b1 = tv_te.BoundingBoxes([0, 0, 5, 5], canvas_size=(10, 10), format="xyxy")
         b2 = tv_te.BoundingBoxes([1, 1, 5, 5], canvas_size=(10, 10), format="xywh")
+
         r = m(b1, b2)
+        r_inv = m(b2, b1)
 
         self.assertTrue(isinstance(r, torch.Tensor))
+        self.assertTrue(isinstance(r_inv, torch.Tensor))
         self.assertEqual(list(r.shape), [1, 1])
+        self.assertEqual(list(r_inv.shape), [1, 1])
         self.assertTrue(torch.allclose(r, torch.tensor(1 - (16 / 34))))
+        self.assertTrue(torch.allclose(r_inv, torch.tensor(1 - (16 / 34))))
 
         with self.assertRaises(TypeError) as e:
             _ = m(torch.ones((1, 4)), b2)

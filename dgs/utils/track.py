@@ -13,7 +13,17 @@ from dgs.utils.state import collate_states, State
 
 
 class Track:
-    """A Track is a single (de-)queue containing multiple :class:`State` s, keeping the last N states."""
+    """A Track is a single (de-)queue containing multiple :class:`.State` s, keeping the last N states.
+
+    Args:
+        N: The max length of this track.
+        states: A list of :class:`.State` objects, describing the initial values of this track.
+            Default None.
+        B: The batch size, every :class:`.State` object should have.
+            Default 1.
+        tid: The Track ID of this object.
+            Default -1.
+    """
 
     _B: int
     """The Batch size of every State object in this Track."""
@@ -21,9 +31,10 @@ class Track:
     """Maximum number of states in this Track."""
     _states: deque
     """The deque of the current states with a max length of _N."""
+    _id: int
+    """The Track-ID of this Track."""
 
-    def __init__(self, N: int, states: list[State] = None, B: int = 1) -> None:
-
+    def __init__(self, N: int, states: list[State] = None, B: int = 1, tid: int = -1) -> None:
         # max nof states
         if N <= 0:
             raise ValueError(f"N must be greater than 0 but got {N}")
@@ -34,6 +45,9 @@ class Track:
             raise ValueError(f"B must be greater than 0 but got {B}")
         self._B = B
 
+        # track-id
+        self.id = tid
+
         # already existing states
         if states is not None and len(states) and any(state.B != B for state in states):
             raise ValueError(
@@ -41,6 +55,9 @@ class Track:
                 f"must have the same shape as the given shape '{B}'."
             )
         self._states = deque(iterable=states if states else [], maxlen=N)
+
+    def __repr__(self) -> str:
+        return f"Track-{self.id}-{len(self)}"
 
     def __getitem__(self, index: int) -> State:
         return self._states[index]
@@ -53,13 +70,27 @@ class Track:
         if not isinstance(other, Track):
             return False
         if len(self) == 0 and len(other) == 0:
-            return self._N == other._N and self._B == other._B
+            return self.N == other.N and self.B == other.B and self.id == other.id
         return (
-            self._N == other._N
-            and self._B == other._B
+            self.N == other.N
+            and self.B == other.B
+            and self.id == other.id
             and len(self._states) == len(other._states)
             and all(s == other[i] for i, s in enumerate(self._states))
         )
+
+    @property
+    def id(self) -> int:
+        return self._id
+
+    @id.setter
+    def id(self, value: int):
+        if isinstance(value, torch.Tensor) and (value.ndim == 0 or (value.ndim == 1 and len(value) == 1)):
+            self._id = int(value.item())
+        elif isinstance(value, int):
+            self._id = value
+        else:
+            raise NotImplementedError(f"unknown type for ID, expected int but got '{type(value)}' - '{value}'")
 
     @property
     def N(self) -> int:
@@ -106,7 +137,7 @@ class Track:
 
     def copy(self) -> "Track":
         """Return a (deep) copy of self."""
-        return Track(N=self._N, states=[s.copy() for s in self._states], B=self._B)
+        return Track(N=self.N, states=[s.copy() for s in self._states], B=self.B, tid=self.id)
 
 
 class Tracks(UserDict):
@@ -199,10 +230,6 @@ class Tracks(UserDict):
         # get the next free ID and create track
         for new_track in new_tracks:
             new_id = self._add_track(new_track)
-
-            # add track ID to State
-            for s in self.data[new_id]:
-                s.track_id = torch.tensor([new_id])
             added_ids.append(new_id)
 
         self._handle_inactive(tids=newly_inactive_ids)
@@ -226,7 +253,6 @@ class Tracks(UserDict):
                 validate=False,
             )
         state = collate_states(states)
-        state.track_id = torch.tensor(tids, device=state.device, dtype=torch.long)
         return state
 
     def _add_track(self, t: Track) -> int:
@@ -240,6 +266,7 @@ class Tracks(UserDict):
 
         """
         tid = self._get_next_id()
+        t.id = tid  # set track ID in track
         self.data[tid] = t
         return tid
 
@@ -250,8 +277,7 @@ class Tracks(UserDict):
         if tid not in self.data.keys():
             raise KeyError(f"Track-ID {tid} not present in Tracks.")
 
-        # set track ID in state and append state to track
-        add_state.track_id = torch.tensor([tid])
+        # append state to track
         self.data[tid].append(state=add_state)
 
         # update inactive

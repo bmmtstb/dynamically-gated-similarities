@@ -22,7 +22,7 @@ from dgs.models.metric import get_metric, METRICS
 from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
-from dgs.utils.config import get_sub_config, save_config
+from dgs.utils.config import DEF_CONF, get_sub_config, save_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
@@ -183,6 +183,11 @@ class EngineModule(BaseModule):
             filepath=os.path.join(self.log_dir, f"config-{self.name_safe}-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
             config=config,
         )
+        # save default values
+        save_config(
+            filepath=os.path.join(self.log_dir, f"default-values-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
+            config=DEF_CONF,
+        )
 
         # Set up train attributes
         self.params_train: Config = {}
@@ -331,13 +336,26 @@ class EngineModule(BaseModule):
             self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2}")
             self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
 
-            # handle updating the learning rate scheduler
-            self.lr_sched.step()
-
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
                 metrics = self.test()
                 self.save_model(epoch=self.curr_epoch, metrics=metrics)
+                self.writer.add_hparams(
+                    hparam_dict={
+                        "lr": self.optimizer.param_groups[-1]["lr"],
+                        "batch_size": self.train_dl.batch_size,
+                        "loss_name": self.params_train["loss"],
+                        "loss_kwargs": self.params_train.get("loss_kwargs", {}),
+                        "optim_name": self.params_train["optimizer"],
+                        "optim_kwargs": self.params_train.get("optim_kwargs", {}),
+                        "scheduler": self.params_train.get("scheduler", ""),
+                        "scheduler_kwargs": self.params_train.get("scheduler_kwargs", {}),
+                    },
+                    metric_dict=metrics,
+                )
+
+            # handle updating the learning rate scheduler
+            self.lr_sched.step()
 
             self.writer.flush()
 

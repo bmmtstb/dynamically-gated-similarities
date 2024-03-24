@@ -38,8 +38,7 @@ MULTI_TRACKS.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[])  # now 1 is inac
 
 def _track_w_tid(track: Track, tid: int) -> Track:
     t = track.copy()
-    for s in t:
-        s.track_id = tid
+    t.id = tid
     return t
 
 
@@ -137,11 +136,11 @@ class TestTracks(unittest.TestCase):
         t0 = EMPTY_TRACKS.copy()
         r0 = t0._add_track(ONE_TRACK.copy())
         self.assertEqual(r0, 0)
-        self.assertTrue(t0.data[r0] == ONE_TRACK)
+        self.assertTrue(t0.data[r0] == _track_w_tid(ONE_TRACK, r0))
 
         r1 = t0._add_track(FULL_TRACK.copy())
         self.assertEqual(r1, 1)
-        self.assertTrue(t0.data[r1] == FULL_TRACK)
+        self.assertTrue(t0.data[r1] == _track_w_tid(FULL_TRACK, r1))
 
     def test_update_track(self):
         tracks = ONE_TRACKS.copy()
@@ -179,49 +178,47 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(len(t), 1)
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), set())
-        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
+        self.assertTrue(t[first_tid].id == first_tid)
 
         second_tid = t.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[FULL_TRACK.copy()])[0]
         self.assertEqual(len(t), 2)
         self.assertEqual(t.ids_active(), {first_tid, second_tid})
         self.assertEqual(t.ids_inactive(), set())
-        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
-        self.assertTrue(all(s.track_id.item() == second_tid for s in t[second_tid]))
+        self.assertTrue(t[first_tid].id == first_tid)
+        self.assertTrue(t[second_tid].id == second_tid)
 
         t.add(tracks={0: DUMMY_STATE.copy()}, new_tracks=[])
         self.assertTrue(d == MULTI_TRACKS.data[k] for k, d in t.data.items())
         self.assertEqual(len(t), 2)
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), {second_tid})
-        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
-        self.assertTrue(all(s.track_id.item() == second_tid for s in t[second_tid]))
+        self.assertTrue(t[first_tid].id == first_tid)
+        self.assertTrue(t[second_tid].id == second_tid)
 
         t.add(tracks={first_tid: DUMMY_STATE.copy()}, new_tracks=[])  # second time 1 was not found -> remove
         self.assertEqual(len(t.inactive), 0)
         self.assertEqual(len(t), 1)
         self.assertEqual(t.ids_active(), {first_tid})
         self.assertEqual(t.ids_inactive(), set())
-        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
+        self.assertTrue(t[first_tid].id == first_tid)
 
         t.add(tracks={}, new_tracks=[])  # add nothing
         self.assertEqual(len(t.inactive), 1)
         self.assertEqual(len(t), 1)
         self.assertEqual(t.ids_active(), set())
         self.assertEqual(t.ids_inactive(), {first_tid})
-        self.assertTrue(all(s.track_id.item() == first_tid for s in t[first_tid]))
+        self.assertTrue(t[first_tid].id == first_tid)
 
     def test_get_state(self):
         t1 = ONE_TRACKS.copy()
         r1 = t1.get_states()
         self.assertTrue(isinstance(r1, State))
         self.assertEqual(len(r1), 1)
-        self.assertTrue(torch.allclose(r1.track_id, torch.tensor(OT_O_ID, dtype=torch.long)))
 
         t2 = MULTI_TRACKS.copy()
         r2 = t2.get_states()
         self.assertTrue(isinstance(r2, State))
         self.assertEqual(len(r2), 2)
-        self.assertTrue(torch.allclose(r2.track_id, torch.tensor([MT_O_ID, MT_F_ID], dtype=torch.long)))
 
         t0 = Tracks()
         r0 = t0.get_states()
