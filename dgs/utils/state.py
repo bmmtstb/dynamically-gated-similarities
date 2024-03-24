@@ -397,6 +397,8 @@ class State(UserDict):
                     new_data[idx][ks] = (v[idx],)
                 elif isinstance(v, torch.Tensor) and v.ndim == 1:
                     new_data[idx][ks] = v[idx].flatten()
+                elif isinstance(v, torch.Tensor) and v.ndim == 0:
+                    new_data[idx][ks] = v
                 elif hasattr(v, "__getitem__"):
                     # every other iterable data -> regular tensors, ...
                     new_data[idx][ks] = v[idx]
