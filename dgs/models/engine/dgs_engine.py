@@ -16,7 +16,7 @@ from dgs.utils.config import DEF_CONF
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import close_all_layers
-from dgs.utils.track import Track, Tracks
+from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
 
@@ -41,12 +41,16 @@ class DGSEngine(EngineModule):
     Test Params
     -----------
 
-    inactivity_threshold (int):
-        The number of steps after which an inactive Track will be forgotten.
-        Default `DEF_CONF.tracks.inactivity_threshold`.
-
     Optional Test Params
     --------------------
+
+    max_track_length (int):
+        The maximum number of :class:`.State` objects per :class:`Track`.
+        Default `DEF_CONF.track.N`.
+    inactivity_threshold (int):
+        The number of steps after which an inactive :class:`Track` will be removed.
+        Removed tracks can be reactivated using :meth:`.Tracks.reactivate_track`.
+        Default `DEF_CONF.tracks.inactivity_threshold`.
 
     """
 
@@ -63,8 +67,10 @@ class DGSEngine(EngineModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
 
-        self.max_track_len: int = self.params_test.get("max_track_length", DEF_CONF.track.N)
-        self.tracks = Tracks(thresh=self.params_test.get("inactivity_threshold", DEF_CONF.tracks.inactivity_threshold))
+        self.tracks = Tracks(
+            N=self.params_test.get("max_track_length", DEF_CONF.track.N),
+            thresh=self.params_test.get("inactivity_threshold", DEF_CONF.tracks.inactivity_threshold),
+        )
 
     def get_data(self, ds: State) -> any:
         return ds
@@ -102,7 +108,7 @@ class DGSEngine(EngineModule):
             batch_times: dict[str, float] = {}
 
             updated_tracks: dict[int, State] = {}
-            new_tracks: list[Track] = []
+            new_tracks: list[State] = []
 
             # Get the current state from the Tracks and use it to compute the similarity to the current detections.
             track_state: State = self.tracks.get_states()
@@ -113,9 +119,7 @@ class DGSEngine(EngineModule):
                 # No Tracks yet - every detection will be a new track!
                 time_match_start = time.time()
                 states: list[State] = detections.split()
-                for state in states:
-                    t = Track(N=self.max_track_len, states=[state])
-                    new_tracks.append(t)
+                new_tracks += states
                 match_t.add(time_match_start)
                 batch_times["match"] = match_t[-1]
             elif N > 0:
@@ -136,17 +140,16 @@ class DGSEngine(EngineModule):
                 rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
 
                 states: list[State] = detections.split()
-                assert (
-                    N == len(states) == len(rids) == len(cids)
-                ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
+                # assert (
+                #     N == len(states) == len(rids) == len(cids)
+                # ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
 
-                tids = self.tracks.ids()
+                tids = self.tracks.ids
                 for rid, cid in zip(rids, cids):
                     if cid < T and cid in tids:
                         updated_tracks[cid] = states[rid]
                     else:
-                        t = Track(N=self.max_track_len, states=[states[rid]])
-                        new_tracks.append(t)
+                        new_tracks.append(states[rid])
                 match_t.add(time_match_start)
                 batch_times["matching"] = match_t[-1]
 
@@ -160,8 +163,8 @@ class DGSEngine(EngineModule):
             batch_times["batch"] = batch_t[-1]
             if N > 0:
                 batch_times["indiv"] = batch_t[-1] / N
-            self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=batch_idx)
 
+            self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=batch_idx)
             self.writer.add_scalars(
                 main_tag="Test/time",
                 tag_scalar_dict={**batch_times},

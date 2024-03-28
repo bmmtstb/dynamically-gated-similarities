@@ -38,7 +38,10 @@ class TestDGSModule(unittest.TestCase):
         with HidePrint():
             m = DGSModule(config=cfg, path=PATH)
 
+        self.assertTrue(isinstance(m.combine, nn.Module))
         self.assertTrue(len(m.combined_softmax) == 1)
+
+        self.assertTrue(isinstance(m.sim_mods, nn.Module))
         self.assertTrue(len(m.similarity_softmax) == 1)
 
     def test_forward_equal_inputs(self):
