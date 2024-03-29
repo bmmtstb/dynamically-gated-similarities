@@ -16,7 +16,7 @@ from dgs.utils.config import DEF_CONF
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import close_all_layers
-from dgs.utils.track import Tracks
+from dgs.utils.track import Tracks, TrackStatistics
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
 
@@ -101,7 +101,7 @@ class DGSEngine(EngineModule):
 
         time_batch_start: float = time.time()
 
-        for batch_idx, detections in tqdm(enumerate(self.test_dl), desc="Tracking", total=len(self.test_dl)):
+        for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Tracking", total=len(self.test_dl)):
             # fixme reset tracks at the end of every sub-dataset
             N: int = len(detections)
             T: int = len(self.tracks)
@@ -155,7 +155,8 @@ class DGSEngine(EngineModule):
 
             # update tracks
             time_track_update_start = time.time()
-            self.tracks.add(tracks=updated_tracks, new_tracks=new_tracks)
+            ts: TrackStatistics
+            _, ts = self.tracks.add(tracks=updated_tracks, new_tracks=new_tracks)
             track_t.add(time_track_update_start)
             batch_times["track"] = track_t[-1]
 
@@ -164,11 +165,14 @@ class DGSEngine(EngineModule):
             if N > 0:
                 batch_times["indiv"] = batch_t[-1] / N
 
-            self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=batch_idx)
+            # print debug info
+            ts.print(logger=self.logger)
+            # Add timings and other metrics to the writer
+            self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
             self.writer.add_scalars(
                 main_tag="Test/time",
                 tag_scalar_dict={**batch_times},
-                global_step=batch_idx,
+                global_step=frame_idx,
             )
             # reset timer for next batch
             time_batch_start = time.time()

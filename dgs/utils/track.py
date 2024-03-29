@@ -12,6 +12,9 @@ from torchvision import tv_tensors
 from dgs.utils.config import DEF_CONF
 from dgs.utils.state import collate_states, State
 
+TrackID = int
+"""The ID of any given track is a positive integer."""
+
 
 class TrackStatus(Enum):
     """Enumerate for handling the status of a :class:`.Track`.
@@ -27,6 +30,105 @@ class TrackStatus(Enum):
     Removed = 4
 
 
+class TrackStatistics:
+    """Data object to save and analyze the statistics of some tracks."""
+
+    # active
+    new: list[TrackID]
+    reactivated: list[TrackID]
+    found: list[TrackID]
+    still_active: list[TrackID]
+
+    # inactive
+    lost: list[TrackID]
+    still_inactive: list[TrackID]
+
+    # removed
+    removed: list[TrackID]
+
+    def __init__(self) -> None:
+        self.clear()
+
+    # ######### #
+    # Functions #
+    # ######### #
+
+    def print(self, logger, frame_idx: int) -> None:  # pragma: no cover
+        logger.debug(f"===========Frame{frame_idx}==========")
+        logger.debug(
+            f"Active: {self.active} of which {self.new} are new, "
+            f"{self.found} are re-found, and {self.reactivated} are reactivated."
+        )
+        logger.debug(f"Inactive: {self.inactive} of which {self.lost} are lost.")
+        logger.debug(f"Removed: {self.removed}")
+
+    def clear(self) -> None:
+        # active
+        self.new = []
+        self.reactivated = []
+        self.found = []
+        self.still_active = []
+
+        # inactive
+        self.lost = []
+        self.still_inactive = []
+
+        # removed
+        self.removed = []
+
+    # ########## #
+    # Properties #
+    # ########## #
+
+    @property
+    def active(self) -> set[TrackID]:
+        return set(self.new + self.reactivated + self.found + self.still_active)
+
+    @property
+    def inactive(self) -> set[TrackID]:
+        return set(self.lost + self.still_inactive)
+
+    # ######### #
+    # Number of #
+    # ######### #
+
+    @property
+    def nof_active(self) -> int:
+        return len(self.active)
+
+    @property
+    def nof_found(self) -> int:
+        return len(self.found)
+
+    @property
+    def nof_inactive(self) -> int:
+        return len(self.inactive)
+
+    @property
+    def nof_lost(self) -> int:
+        return len(self.lost)
+
+    @property
+    def nof_new(self) -> int:
+        return len(self.new)
+
+    @property
+    def nof_reactivated(self) -> int:
+        return len(self.reactivated)
+
+    @property
+    def nof_removed(self) -> int:
+        return len(self.removed)
+
+    @property
+    def nof_still_active(self) -> int:
+        return len(self.still_active)
+
+    @property
+    def nof_still_inactive(self) -> int:
+        return len(self.still_inactive)
+
+
 class Track:
     """A Track is a single (de-)queue containing multiple :class:`.State` s, keeping the last N states.
 
@@ -34,8 +136,6 @@ class Track:
         N: The max length of this track.
         states: A list of :class:`.State` objects, describing the initial values of this track.
             Default None.
-        B: The batch size, every :class:`.State` object should have.
-            Default 1.
         tid: The Track ID of this object.
             Default -1.
     """
@@ -44,7 +144,7 @@ class Track:
     """Maximum number of states in this Track."""
     _states: deque
     """The deque of the current states with a max length of _N."""
-    _id: int
+    _id: TrackID
     """The Track-ID of this Track."""
 
     _status: TrackStatus
@@ -76,7 +176,7 @@ class Track:
     def __repr__(self) -> str:
         return f"Track-{self.id}-{len(self)}-{self._start_frame}"
 
-    def __getitem__(self, index: int) -> State:
+    def __getitem__(self, index: TrackID) -> State:
         return self._states[index]
 
     def __len__(self) -> int:
@@ -118,11 +218,11 @@ class Track:
         self._nof_active = value
 
     @property
-    def id(self) -> int:
+    def id(self) -> TrackID:
         return self._id
 
     @id.setter
-    def id(self, value: int):
+    def id(self, value: TrackID):
         if isinstance(value, torch.Tensor) and (value.ndim == 0 or (value.ndim == 1 and len(value) == 1)):
             self._id = int(value.item())
         elif isinstance(value, int):
@@ -177,12 +277,12 @@ class Track:
         self._nof_active = 0
         self._id = -1  # unset tID
 
-    def set_reactivated(self, tid: int) -> None:
+    def set_reactivated(self, tid: TrackID) -> None:
         self._status = TrackStatus.Reactivated
         self._nof_active = 0
         self._id = tid
 
-    def set_status(self, status: TrackStatus, tid: int = 0) -> None:
+    def set_status(self, status: TrackStatus, tid: TrackID = 0) -> None:
         """Set the status of this Track."""
         if status == TrackStatus.Active:
             self.set_active()
@@ -240,16 +340,16 @@ class Tracks(UserDict):
     _N: int
     """The maximum number of frames in each track."""
 
-    data: dict[int, Track]
+    data: dict[TrackID, Track]
     """All the Tracks that are currently tracked, including inactive Tracks as mapping 'Track-ID -> Track'."""
 
-    inactive: dict[int, int]
+    inactive: dict[TrackID, int]
     """All the inactive Tracks as 'Track-ID -> number of inactive frames / steps'."""
 
     inactivity_threshold: int
     """The number of steps a Track can be inactive before deleting it."""
 
-    removed: dict[int, Track]
+    removed: dict[TrackID, Track]
     """All the Tracks that have been removed, to be able to reactivate them."""
 
     _curr_frame: int
@@ -299,7 +399,7 @@ class Tracks(UserDict):
             and all(t == other.data[k] for k, t in self.data.items())
         )
 
-    def __getitem__(self, key: int) -> Track:
+    def __getitem__(self, key: TrackID) -> Track:
         """Given the Track-ID return the Track."""
         return self.data[key]
 
@@ -324,22 +424,22 @@ class Tracks(UserDict):
         return {i: t.age(self._curr_frame) for i, t in self.data.items()}
 
     @property
-    def ids(self) -> set[int]:
+    def ids(self) -> set[TrackID]:
         """Get all the track-IDs in this object."""
         return set(int(k) for k in self.data.keys())
 
     @property
-    def ids_active(self) -> set[int]:
+    def ids_active(self) -> set[TrackID]:
         """Get all the track-IDs currently active."""
         return self.ids - self.ids_inactive
 
     @property
-    def ids_inactive(self) -> set[int]:
+    def ids_inactive(self) -> set[TrackID]:
         """Get all the track-IDs currently inactive."""
         return set(int(k) for k in self.inactive.keys())
 
     @property
-    def ids_removed(self) -> set[int]:
+    def ids_removed(self) -> set[TrackID]:
         """Get all the track-IDs that have been deleted."""
         return set(int(k) for k in self.removed.keys())
 
@@ -357,7 +457,7 @@ class Tracks(UserDict):
     # State and Track Handling #
     # ######################## #
 
-    def remove_tid(self, tid: int) -> None:
+    def remove_tid(self, tid: TrackID) -> None:
         """Given a Track-ID, remove the track associated with it from this object."""
         if tid not in self.data:
             raise KeyError(f"Track-ID {tid} can not be deleted, because it is not present in Tracks.")
@@ -367,11 +467,23 @@ class Tracks(UserDict):
 
         self.inactive.pop(tid, None)
 
-    def remove_tids(self, tids: list[int]) -> None:
+    def remove_tids(self, tids: list[TrackID]) -> None:
         for tid in tids:
             self.remove_tid(tid)
 
-    def add(self, tracks: dict[int, State], new_tracks: list[State]) -> list[int]:
+    def is_active(self, tid: TrackID) -> bool:
+        """Return whether the given Track-ID is active."""
+        return tid in self.data and tid not in self.inactive
+
+    def is_inactive(self, tid: TrackID) -> bool:
+        """Return whether the given Track-ID is inactive."""
+        return tid in self.data and tid in self.inactive
+
+    def is_removed(self, tid: TrackID) -> bool:
+        """Return whether the given Track-ID has been removed."""
+        return tid not in self.data and tid in self.removed
+
+    def add(self, tracks: dict[TrackID, State], new_tracks: list[State]) -> tuple[list[TrackID], TrackStatistics]:
         """Given tracks with existing Track-IDs update those and create new Tracks for States without Track-IDs.
         Additionally,
         mark Track-IDs that are not in either of the inputs as unseen and therefore as inactive for one more step.
@@ -379,23 +491,27 @@ class Tracks(UserDict):
         Returns:
             The Track-IDs of the new_tracks in the same order as provided.
         """
-        newly_inactive_ids = self.ids - set(int(k) for k in tracks.keys())
+        stats = TrackStatistics()
+
+        inactive_ids = self.ids - set(int(k) for k in tracks.keys())
 
         # get the next free ID and create track(s)
         new_tids = self.add_empty_tracks(len(new_tracks))
+
         # add the new state to the new tracks
         for tid, new_state in zip(new_tids, new_tracks):
-            self._update_track(tid=tid, add_state=new_state)
+            self._update_track(tid=tid, add_state=new_state, stats=stats)
+            stats.new.append(tid)
 
         # add state to Track and remove track from inactive if present
         for tid, new_state in tracks.items():
-            self._update_track(tid=tid, add_state=new_state)
+            self._update_track(tid=tid, add_state=new_state, stats=stats)
 
-        self._handle_inactive(tids=newly_inactive_ids)
+        self._handle_inactive(tids=inactive_ids, stats=stats)
 
+        # step to the next frame
         self._next_frame()
-
-        return new_tids
+        return new_tids, stats
 
     def _next_frame(self) -> None:
         self._curr_frame += 1
@@ -403,7 +519,7 @@ class Tracks(UserDict):
     def get_states(self) -> State:
         """Get the last state of every track in this object as a :class:`State`."""
         states: list[State] = []
-        tids: list[int] = []
+        tids: list[TrackID] = []
 
         for tid, track in self.data.items():
             states.append(track[-1])
@@ -419,7 +535,7 @@ class Tracks(UserDict):
         state = collate_states(states)
         return state
 
-    def add_empty_tracks(self, n: int = 1) -> list[int]:
+    def add_empty_tracks(self, n: int = 1) -> list[TrackID]:
         """Given a Track, compute the next track-ID, and save this track in data using this ID.
 
         Args:
@@ -436,7 +552,7 @@ class Tracks(UserDict):
             tids.append(tid)
         return tids
 
-    def reactivate_track(self, tid: int) -> None:
+    def reactivate_track(self, tid: TrackID) -> None:
         """Given the track-ID of a previously removed track, reactivate it."""
         if tid not in self.removed:
             raise KeyError(f"Track-ID {tid} not present in removed Tracks.")
@@ -445,22 +561,30 @@ class Tracks(UserDict):
 
         # todo should the states of the track be removed / cleared ?
 
-    def _update_track(self, tid: int, add_state: State) -> None:
+    def _update_track(self, tid: TrackID, add_state: State, stats: TrackStatistics) -> None:
         """Use the track-ID to update a track given an additional :class:`State` for the :class:`Track`.
         Will additionally remove the tid from the inactive Tracks.
+
+        Returns:
+            Whether this track has been reactivated with this update.
         """
         if tid not in self.data.keys():
             if tid not in self.removed.keys():
                 raise KeyError(f"Track-ID {tid} neither present in the current or previously removed Tracks.")
+            # reactivate previously removed track
             self.reactivate_track(tid)
+            stats.reactivated.append(tid)
+        elif tid in self.inactive:
+            # update inactive
+            self.inactive.pop(tid)
+            stats.found.append(tid)
+        else:
+            stats.still_active.append(tid)
 
         # append state to track
         self.data[tid].append(state=add_state)
 
-        # update inactive
-        self.inactive.pop(tid, None)
-
-    def _handle_inactive(self, tids: set[int]) -> None:
+    def _handle_inactive(self, tids: set[TrackID], stats: TrackStatistics) -> None:
         """Given the Track-IDs of the Tracks that haven't been seen this step, update the inactivity tracker.
         Create the counter for inactive Track-IDs and update existing counters.
         Additionally, remove tracks that have been inactive for too long.
@@ -468,13 +592,18 @@ class Tracks(UserDict):
         for tid in tids:
             if tid in self.inactive.keys():
                 self.inactive[tid] += 1
+
+                if self.inactive[tid] >= self.inactivity_threshold:
+                    self.remove_tid(tid)
+                    stats.removed.append(tid)
+                else:
+                    stats.still_inactive.append(tid)
             else:
                 self.inactive[tid] = 1
                 self.data[tid].set_inactive()
-            if self.inactive[tid] >= self.inactivity_threshold:
-                self.remove_tid(tid)
+                stats.lost.append(tid)
 
-    def _get_next_id(self) -> int:
+    def _get_next_id(self) -> TrackID:
         """Get the next free track-ID."""
         if len(self.data) == 0:
             return 0
