@@ -29,3 +29,13 @@ dataset:
 
 cross_entropy_loss:
     label_smoothing: 0.1
+
+
+# ####### #
+# MODULES #
+# ####### #
+
+dgs_engine:
+    save_images: true
+    show_keypoints: true
+    show_skeleton: true

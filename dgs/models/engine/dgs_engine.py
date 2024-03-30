@@ -2,6 +2,7 @@
 Engine for a full model of the dynamically gated similarity tracker.
 """
 
+import os.path
 import time
 
 import torch
@@ -51,6 +52,20 @@ class DGSEngine(EngineModule):
         The number of steps after which an inactive :class:`Track` will be removed.
         Removed tracks can be reactivated using :meth:`.Tracks.reactivate_track`.
         Default `DEF_CONF.tracks.inactivity_threshold`.
+    save_images (bool):
+        Whether to save the generated image-results.
+        Default `DEF_CONF.dgs_engine.save_images`.
+    show_keypoints (bool):
+        Whether to show the key-point-coordinates when generating the image-results.
+        Therefore, this will only have an influence, if `save_images` is `True`.
+        To be drawn correctly, the detections- :class:`State` has to contain the global key-point-coordinates as
+        'keypoints' and possibly the joint-visibility as 'joint_weight'.
+        Default `DEF_CONF.dgs_engine.show_skeleton`.
+    show_skeleton (bool):
+        Whether to connect the drawn key-point-coordinates with the human skeleton.
+        This will only have an influence, if `save_images` is `True` and `show_keypoints` is `True` as well.
+        To be drawn correctly, the detections- :class:`State` has to contain a valid 'skeleton_name' key.
+        Default `DEF_CONF.dgs_engine.show_skeleton`.
 
     """
 
@@ -66,6 +81,8 @@ class DGSEngine(EngineModule):
         if not isinstance(model, DGSModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
+
+        self.save_images: bool = self.params_test.get("save_images", DEF_CONF.dgs_engine.save_images)
 
         self.tracks = Tracks(
             N=self.params_test.get("max_track_length", DEF_CONF.track.N),
@@ -174,6 +191,13 @@ class DGSEngine(EngineModule):
                 tag_scalar_dict={**batch_times},
                 global_step=frame_idx,
             )
+            # print the resulting image if requested
+            if self.save_images and detections.B >= 1:
+                detections.draw(
+                    save_path=os.path.join(self.log_dir, f"./images/{frame_idx}.png"),
+                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
+                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
+                )
             # reset timer for next batch
             time_batch_start = time.time()
 

@@ -5,14 +5,20 @@ Contains the custom collate functions to combine a list of States into a single 
 keeping custom tensor subtypes intact.
 """
 
+import os
 from collections import UserDict
 from copy import deepcopy
 from typing import Callable, Type, Union
 
 import torch
+from matplotlib import pyplot as plt
 from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from torchvision import tv_tensors
+from torchvision.transforms.v2.functional import convert_image_dtype
+from torchvision.utils import save_image
 
+from dgs.utils.constants import COLORS, SKELETONS
+from dgs.utils.files import mkdir_if_missing
 from dgs.utils.image import load_image
 from dgs.utils.types import DataGetter, FilePath, FilePaths, Heatmap, Image
 from dgs.utils.validation import (
@@ -22,6 +28,7 @@ from dgs.utils.validation import (
     validate_images,
     validate_key_points,
 )
+from dgs.utils.visualization import show_image_with_additional
 
 
 class State(UserDict):
@@ -370,6 +377,10 @@ class State(UserDict):
                 new_data[ks] = (v[idx],)
             elif isinstance(v, torch.Tensor) and v.ndim == 0:
                 new_data[ks] = v
+            elif isinstance(v, dict):
+                new_data[ks] = v
+            elif isinstance(v, str):
+                new_data[ks] = v
             elif hasattr(v, "__getitem__"):
                 # every other iterable data -> regular tensors, ...
                 new_data[ks] = v[idx]
@@ -398,6 +409,10 @@ class State(UserDict):
                 elif isinstance(v, torch.Tensor) and v.ndim == 1:
                     new_data[idx][ks] = v[idx].flatten()
                 elif isinstance(v, torch.Tensor) and v.ndim == 0:
+                    new_data[idx][ks] = v
+                elif isinstance(v, dict):
+                    new_data[idx][ks] = v
+                elif isinstance(v, str):
                     new_data[idx][ks] = v
                 elif hasattr(v, "__getitem__"):
                     # every other iterable data -> regular tensors, ...
@@ -492,6 +507,87 @@ class State(UserDict):
             self.joint_weight = new_weights
         return new_weights
 
+    @torch.no_grad()
+    def draw(
+        self, save_path: FilePath, show_kp: bool = True, show_skeleton: bool = True, **kwargs
+    ) -> None:  # pragma: no cover
+        """Draw the bboxes and key points of this State on the first image."""
+        if self.B == 0:
+            return
+        if (
+            self.image.ndim > 3
+            and self.image.size(0) > 1
+            and not all(torch.allclose(self.image[i - 1], self.image[i]) for i in range(len(self.image)))
+        ):
+            raise ValueError(
+                "If the image of this state has a batch-size bigger than one, "
+                "it is expected, that all the images are equal."
+            )
+
+        save_dir = os.path.dirname(os.path.abspath(save_path))
+        mkdir_if_missing(save_dir)
+
+        orig_img = self.image[0].detach().clone() if self.image.ndim == 4 else self.image.detach().clone()
+
+        img_kwargs = {
+            "img": orig_img,
+            "bboxes": self.bbox,
+            "show": kwargs.pop("show", False),
+            **kwargs,
+        }
+
+        if show_kp and "keypoints" in self.data:
+            img_kwargs["key_points"] = self.keypoints
+        if show_kp and "joint_weight" in self.data:
+            img_kwargs["kp_visibility"] = self.joint_weight
+        if show_skeleton and "skeleton_name" in self.data:
+            img_kwargs["kp_connectivity"] = SKELETONS[self.data["skeleton_name"]]
+        if "person_id" in self.data:
+            # fixme should PID or T-ID be used?
+            img_kwargs["bbox_labels"] = [str(pid) for pid in self.person_id]
+
+            # make sure to map the same PID to the same color all the time
+            colors = [COLORS[int(i) % len(COLORS)] for i in self.person_id.tolist()]
+            img_kwargs["bbox_colors"] = colors
+            img_kwargs["kp_colors"] = colors
+
+        # draw bboxes and key points
+        int_img = show_image_with_additional(**img_kwargs)
+
+        # save the resulting image
+        # ('save_image' expects a float32 image and is immediately converting it back to byte...)
+        save_image(convert_image_dtype(int_img), fp=save_path)
+
+    @torch.no_grad()
+    def draw_individually(self, save_path: Union[FilePath, FilePaths], **kwargs) -> None:  # pragma: no cover
+        """Split the state and draw the detections of the image(s) independently.
+
+        Args:
+            save_path: Directory path to save the images to.
+        """
+        # validate save_path and create folders if necessary
+        if isinstance(save_path, str):
+            mkdir_if_missing(os.path.abspath(save_path))
+            save_path = tuple(os.path.join(os.path.abspath(save_path), f"{i}.jpg") for i in range(self.B))
+        elif isinstance(save_path, tuple):
+            if len(save_path) != self.B:
+                raise ValueError(
+                    f"When giving multiple paths, it is expected that exactly B={self.B} are given, "
+                    f"but got {len(save_path)}."
+                )
+            for path in save_path:
+                mkdir_if_missing(os.path.dirname(os.path.abspath(path)))
+        else:
+            raise ValueError(f"Expected either a single path or a tuple of paths, but got: {save_path}")
+
+        states = self.split()
+
+        show = kwargs.pop("show", False)
+
+        for i, (state, path) in enumerate(zip(states, save_path)):
+            state.draw(save_path=path, show=show, **kwargs)
+        plt.show()
+
 
 def get_ds_data_getter(attributes: list[str]) -> DataGetter:
     """Given a list of attribute names,
@@ -584,7 +680,7 @@ def collate_states(batch: Union[list["State"], "State"]) -> "State":
     c_batch: dict[str, any] = collate(batch, collate_fn_map=CUSTOM_COLLATE_MAP)
 
     # skip validation, because either every State has been validated before or validation is not required.
-    s = State(**c_batch, validate=True)  # FIXME remove
+    s = State(**c_batch)
     # s = State(**c_batch, validate=False)
     # then set the validation to the correct value
     s.validate = batch[0].validate

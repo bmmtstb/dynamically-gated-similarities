@@ -387,6 +387,14 @@ class TestStateFunctions(unittest.TestCase):
                 State(bbox=DUMMY_BBOX_BATCH, val_tensor=torch.tensor(2), device=device),
                 [State(bbox=DUMMY_BBOX, val_tensor=torch.tensor(2), device=device) for _ in range(B)],
             ),
+            (
+                State(bbox=DUMMY_BBOX_BATCH, dict={"a": 1}, device=device),
+                [State(bbox=DUMMY_BBOX, dict={"a": 1}, device=device) for _ in range(B)],
+            ),
+            (
+                State(bbox=DUMMY_BBOX_BATCH, str="dummy", device=device),
+                [State(bbox=DUMMY_BBOX, str="dummy", device=device) for _ in range(B)],
+            ),
         ]:
             keys = list(states.keys())
 

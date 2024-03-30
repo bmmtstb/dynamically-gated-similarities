@@ -1,3 +1,5 @@
+import os
+import shutil
 import unittest
 from unittest.mock import patch
 
@@ -24,7 +26,9 @@ from dgs.models.optimizer import OPTIMIZERS
 from dgs.models.similarity import SIMILARITIES
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.config import load_config
+from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidConfigException
+from dgs.utils.files import is_abs_dir, mkdir_if_missing
 from dgs.utils.utils import HidePrint
 
 
@@ -88,6 +92,14 @@ class TestLoader(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             register_module(name="faulty", new_module=CombineSimilaritiesModule, inst_class_name="dummy")
         self.assertTrue("The instance class name 'dummy' could not be found." in str(e.exception), msg=e.exception)
+
+    def setUp(self):
+        mkdir_if_missing(os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_loader/"))
+
+    def tearDown(self):
+        dir_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_loader/")
+        if is_abs_dir(dir_path):
+            shutil.rmtree(dir_path)
 
 
 if __name__ == "__main__":

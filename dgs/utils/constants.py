@@ -5,6 +5,7 @@ Predefined constants that will not change and might be used at different places.
 import logging
 import os
 
+import matplotlib.colors as mcolors
 import torch
 
 PRINT_PRIORITY: dict[str, int] = {
@@ -96,6 +97,8 @@ SKELETONS: dict[str, list[tuple[int, int]]] = {
         (14, 16),  # r_knee r_ankle
     ],
 }
+
+COLORS: list[str] = list(mcolors.CSS4_COLORS.keys())
 
 KEY_POINT_NAMES: dict[str, list[str]] = {
     "coco": [

@@ -3,7 +3,7 @@ name: "Test the DGS-Tracker"
 device: "cpu"
 print_prio: "DEBUG"
 is_training: off
-log_dir: "./tests/test_data/logs/"
+log_dir: "./tests/test_data/TEST_dgs/"
 
 # ####### #
 # MODULES #

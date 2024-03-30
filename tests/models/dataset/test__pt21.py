@@ -1,8 +1,12 @@
+import os.path
+import shutil
 import unittest
 
 from dgs.models.dataset.posetrack21 import get_pose_track_21, PoseTrack21_BBox, PoseTrack21_Image, validate_pt21_json
 from dgs.models.loader import get_data_loader
 from dgs.utils.config import load_config
+from dgs.utils.constants import PROJECT_ROOT
+from dgs.utils.files import is_abs_dir, mkdir_if_missing
 from dgs.utils.state import State
 from dgs.utils.utils import HidePrint
 
@@ -96,6 +100,14 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
                 self.assertEqual(batch.person_id.size(0), B)
                 self.assertEqual(batch.class_id.size(0), B)
 
+    def setUp(self):
+        mkdir_if_missing(os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_ds/"))
+
+    def tearDown(self):
+        dir_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_ds/")
+        if is_abs_dir(dir_path):
+            shutil.rmtree(dir_path)
+
 
 class TestPoseTrack21ImageDataset(unittest.TestCase):
     def test_init_single(self):
@@ -166,6 +178,14 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
                 self.assertEqual(batch.keypoints_local.size(0), B)
                 self.assertEqual(batch.person_id.size(0), B)
                 self.assertEqual(batch.class_id.size(0), B)
+
+    def setUp(self):
+        mkdir_if_missing(os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_ds/"))
+
+    def tearDown(self):
+        dir_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_ds/")
+        if is_abs_dir(dir_path):
+            shutil.rmtree(dir_path)
 
 
 if __name__ == "__main__":

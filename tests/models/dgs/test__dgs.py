@@ -1,3 +1,5 @@
+import os
+import shutil
 import unittest
 
 import torch
@@ -7,6 +9,8 @@ from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.models.dgs.dgs import DGSModule
 from dgs.utils.config import fill_in_defaults, load_config
+from dgs.utils.constants import PROJECT_ROOT
+from dgs.utils.files import is_abs_dir, mkdir_if_missing
 from dgs.utils.state import State
 from dgs.utils.utils import HidePrint
 from helper import load_test_image, load_test_images
@@ -174,6 +178,14 @@ class TestDGSModule(unittest.TestCase):
 
                 inv_out = torch.cat([inv_out, torch.zeros(len(ds_target), 1)], dim=-1)
                 self.assertTrue(torch.allclose(r_inv, inv_out, rtol=1e-3), (r_inv, inv_out))
+
+    def setUp(self):
+        mkdir_if_missing(os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_dgs/"))
+
+    def tearDown(self):
+        dir_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_dgs/")
+        if is_abs_dir(dir_path):
+            shutil.rmtree(dir_path)
 
 
 if __name__ == "__main__":

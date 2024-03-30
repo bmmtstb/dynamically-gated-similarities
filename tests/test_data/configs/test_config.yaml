@@ -4,6 +4,7 @@ description: "Do not use, will most likely not work"
 device: "cpu"
 print_prio: "DEBUG"
 is_training: off
+log_dir: "./tests/test_data/TEST_loader/"
 
 test:
     metric: "EuclideanSquare"

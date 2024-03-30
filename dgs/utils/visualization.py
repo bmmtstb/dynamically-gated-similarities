@@ -24,6 +24,7 @@ from dgs.utils.constants import SKELETONS
 from dgs.utils.types import Image
 
 
+@torch.no_grad()
 def torch_show_image(
     imgs: Union[Image, list[Image], torch.Tensor, list[torch.Tensor]], show: bool = True, **kwargs
 ) -> None:
@@ -55,16 +56,22 @@ def torch_show_image(
         plt.show()
 
 
+@torch.no_grad()
 def show_image_with_additional(
     img: Union[Image, torch.Tensor],
     key_points: torch.Tensor = None,
     bboxes: tv_tensors.BoundingBoxes = None,
     show: bool = True,
     kp_connectivity: Union[str, list[tuple[int, int]]] = None,
-    kp_visibility: torch.Tensor = None,
+    # kp_visibility: torch.Tensor = None,
     **kwargs,
 ) -> torch.Tensor:
     """Draw one torch tensor images, potentially adding key points and bounding boxes on top.
+
+    Notes:
+        Fixme: I implemented a key-point visibility flag for torchvision,
+            but it is not (yet) in the main / stable branch: https://github.com/pytorch/vision/pull/8225
+        When the flag is available, it should be safe to draw the key-points and skeletons again.
 
     Args:
         img: Some kind of torch image to be shown.
@@ -78,9 +85,9 @@ def show_image_with_additional(
         show: Whether to show the plot after drawing the image(s).
         kp_connectivity: If present the keypoint connectivity as a list of tuples (ID start -> ID end) or
             as string (key) value of ``dgs.utils.constants.SKELETONS``.
-        kp_visibility: (Bool) Tensor containing the visibility of every key point.
-            Default None means that all the key points are visible.
-            The shape has to be two-dimensional: ``[N x K]``
+        # kp_visibility: (Bool) Tensor containing the visibility of every key point.
+        #     Default None means that all the key points are visible.
+        #     The shape has to be two-dimensional: ``[N x K]``
 
     Keyword Args:
         bbox_labels: see value `labels` of function :func:`torchvision.utils.draw_bounding_boxes`
@@ -94,11 +101,11 @@ def show_image_with_additional(
         kp_width: see value `width` of function :func:`torchvision.utils.draw_keypoints`
 
     Returns:
-        int_img: The modified torch image for later usage.
+        int_img: The modified torch image with type of uint8 / byte for later usage.
 
     Raises:
         TypeError: If the image has the wrong type.
-        ValueError: If the image has the wrong shape.
+        ValueError: If the image has the wrong shape or the connectivity or given color is faulty.
     """
     if isinstance(img, (tv_tensors.Image, torch.Tensor)) and img.ndim == 3:
         pass
@@ -128,7 +135,7 @@ def show_image_with_additional(
             bbox_params["font_size"] = kwargs["bbox_font_size"]
         # draw bboxes
         int_img = draw_bounding_boxes(
-            image=img,
+            image=int_img,
             boxes=convert_bounding_box_format(inpt=bboxes, new_format=tv_tensors.BoundingBoxFormat.XYXY),
             **bbox_params,
         )
@@ -143,16 +150,25 @@ def show_image_with_additional(
                 kp_params["connectivity"] = kp_connectivity
             else:
                 raise ValueError(f"Did not recognize connectivity, got: {kp_connectivity}")
-        if kp_visibility is not None:
-            kp_params["visibility"] = kp_visibility
+        # if kp_visibility is not None:
+        #     kp_params["visibility"] = kp_visibility
         if "kp_colors" in kwargs:
             kp_params["colors"] = kwargs["kp_colors"]
         if "kp_radius" in kwargs:
             kp_params["radius"] = kwargs["kp_radius"]
         if "kp_width" in kwargs:
             kp_params["width"] = kwargs["kp_width"]
-        # draw key points
-        int_img = draw_keypoints(image=int_img, keypoints=key_points, **kp_params)
+
+        # draw the key points - draw them one-by-one, if colors is a list
+        if "colors" in kp_params and isinstance(kp_params["colors"], list):
+            colors = kp_params.pop("colors")
+            if len(colors) != len(key_points):
+                raise ValueError(f"There are {len(colors)} colors given but only {len(key_points)} key point tensors")
+
+            for i, color in enumerate(colors):
+                int_img = draw_keypoints(image=int_img, keypoints=key_points[i].unsqueeze(0), colors=color, **kp_params)
+        else:
+            int_img = draw_keypoints(image=int_img, keypoints=key_points, **kp_params)
 
     if show:
         # print and or show the image
@@ -161,6 +177,7 @@ def show_image_with_additional(
     return int_img
 
 
+@torch.no_grad()
 def show_images_with_additional(
     imgs: list[Union[Image, torch.Tensor]],
     key_points: list[torch.Tensor] = None,

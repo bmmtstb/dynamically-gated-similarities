@@ -519,6 +519,7 @@ class PoseTrack21_BBox(BaseDataset):
 
         # as np.ndarray to not store large python objects
         self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
+        self.skeleton_name = "coco"
 
     def __len__(self) -> int:
         return self.len
@@ -553,6 +554,7 @@ class PoseTrack21_BBox(BaseDataset):
             # additional values which are not required
             joint_weight=visibility,
             image_id=self.img_ids[idx],
+            skeleton_name=self.skeleton_name,
         )
         # make sure to get the image crop for this State
         self.get_image_crops(ds)
@@ -662,6 +664,7 @@ class PoseTrack21_Image(BaseDataset):
         # store as np.ndarray to not store large python objects
         self.data: np.ndarray[dict[str, any]] = np.asarray(json["images"])
         self.annos: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
+        self.skeleton_name = "coco"
 
     def __len__(self) -> int:
         return self.len
@@ -674,8 +677,7 @@ class PoseTrack21_Image(BaseDataset):
         keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
 
         ds = State(
-            validate=True,  # FIXME remove
-            # validate=False,  # This is given PT21 data, no need to validate...
+            validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             filepath=tuple(self.map_img_id_to_path[idx] for _ in range(len(anno_ids))),
             bbox=bboxes,
@@ -685,6 +687,7 @@ class PoseTrack21_Image(BaseDataset):
             class_id=self.cids[anno_ids].flatten(),
             crop_path=crop_paths,
             joint_weight=visibilities,
+            skeleton_name=self.skeleton_name,
         )
         # make sure to get the image crop for this State
         self.get_image_crops(ds)

@@ -54,6 +54,7 @@ class TrackStatistics:
     # ######### #
 
     def print(self, logger, frame_idx: int) -> None:  # pragma: no cover
+        """Print the current Track statistics. Debug only."""
         logger.debug(f"===========Frame{frame_idx}==========")
         logger.debug(
             f"Active: {self.active} of which {self.new} are new, "
@@ -63,6 +64,7 @@ class TrackStatistics:
         logger.debug(f"Removed: {self.removed}")
 
     def clear(self) -> None:
+        """Clear the current Track statistics. Mostly used for tests."""
         # active
         self.new = []
         self.reactivated = []
@@ -336,6 +338,8 @@ class Tracks(UserDict):
     """Multiple Track objects stored as a dictionary,
     where the Track is the value and the key is this tracks' unique ID.
     """
+
+    # pylint: disable=too-many-public-methods
 
     _N: int
     """The maximum number of frames in each track."""
