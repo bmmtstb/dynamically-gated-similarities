@@ -457,6 +457,11 @@ class Tracks(UserDict):
         """Get the number of inactive Tracks."""
         return len(self.inactive)
 
+    @property
+    def nof_removed(self) -> int:
+        """Get the number of Tracks that have been removed."""
+        return len(self.removed)
+
     # ######################## #
     # State and Track Handling #
     # ######################## #
@@ -623,6 +628,10 @@ class Tracks(UserDict):
         self.inactive = {}
         self.removed = {}
         self._curr_frame = 0
+
+    def reset_deleted(self) -> None:
+        """Fully remove the deleted Tracks."""
+        self.removed = {}
 
     def copy(self) -> "Tracks":
         """Return a (deep) copy of this object."""

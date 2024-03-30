@@ -120,6 +120,9 @@ class DGSEngine(EngineModule):
 
         for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Tracking", total=len(self.test_dl)):
             # fixme reset tracks at the end of every sub-dataset
+            if self.tracks.nof_removed > 50:
+                self.tracks.reset_deleted()
+
             N: int = len(detections)
             T: int = len(self.tracks)
             batch_times: dict[str, float] = {}
