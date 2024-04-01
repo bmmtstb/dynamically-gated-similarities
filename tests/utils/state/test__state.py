@@ -2,6 +2,7 @@ import os
 import unittest
 from copy import deepcopy
 
+import numpy as np
 import torch
 from torchvision import tv_tensors
 
@@ -10,9 +11,9 @@ from dgs.utils.state import get_ds_data_getter, State
 from dgs.utils.types import Device, FilePaths, Heatmap, Image
 from tests.helper import load_test_image, test_multiple_devices
 
-J = 20
+J = 17
 J_DIM = 2
-B = 10
+B = 3
 
 PID = torch.tensor([13], dtype=torch.long)
 PIDS = torch.ones(B, dtype=torch.long) * PID
@@ -21,7 +22,7 @@ IMG_NAME = "866-200x300.jpg"
 DUMMY_IMG: Image = load_test_image(IMG_NAME)
 DUMMY_IMG_BATCH: Image = tv_tensors.Image(torch.cat([DUMMY_IMG.detach().clone() for _ in range(B)]))
 
-DUMMY_KP_TENSOR: torch.Tensor = torch.rand((1, J, J_DIM))
+DUMMY_KP_TENSOR: torch.Tensor = torch.rand((1, J, J_DIM), dtype=torch.float32)
 DUMMY_KP = DUMMY_KP_TENSOR.detach().clone()
 DUMMY_KP_BATCH: torch.Tensor = torch.cat([DUMMY_KP_TENSOR.detach().clone() for _ in range(B)])
 
@@ -350,66 +351,76 @@ class TestStateFunctions(unittest.TestCase):
 
     @test_multiple_devices
     def test_extract_and_split(self, device: torch.device):
-        for states, res_states in [
-            (State(**DUMMY_DATA, device=device), [State(**DUMMY_DATA, device=device)]),
-            (
-                State(**DUMMY_DATA_BATCH, device=device),
-                [State(**DUMMY_DATA, device=device) for _ in range(B)],
-            ),
-            (
-                State(
-                    bbox=tv_tensors.BoundingBoxes(
-                        torch.stack([torch.tensor([i, i, 7, 9]) for i in range(B)]), canvas_size=(10, 10), format="XYWH"
-                    ),
-                    device=device,
+        for validate in [True, False]:
+            for states, res_states in [
+                (
+                    State(**DUMMY_DATA, device=device, validate=validate),
+                    [State(**DUMMY_DATA, device=device, validate=validate)],
                 ),
-                [
+                (
+                    State(**DUMMY_DATA_BATCH, device=device, validate=validate),
+                    [State(**DUMMY_DATA, device=device, validate=validate) for _ in range(B)],
+                ),
+                (
                     State(
-                        bbox=tv_tensors.BoundingBoxes(torch.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"),
+                        bbox=tv_tensors.BoundingBoxes(
+                            torch.stack([torch.tensor([i, i, 7, 9]) for i in range(B)]),
+                            canvas_size=(10, 10),
+                            format="XYWH",
+                        ),
+                        keypoints=DUMMY_KP_BATCH,
+                        filepath=tuple(DUMMY_FP_STRING for _ in range(B)),
+                        tensor=torch.ones(B),
+                        val_tensor=torch.tensor(2, device=device),
+                        tuple=tuple(str(i) for i in range(B)),
+                        list=[str(i) for i in range(B)],
+                        dict={"a": 1},
+                        set={1, 2, 3},
+                        str="dummy",
+                        int=1,
+                        numpy=np.ones(3),
                         device=device,
-                    )
-                    for i in range(B)
-                ],
-            ),
-            (
-                State(bbox=DUMMY_BBOX_BATCH, filepath=tuple(DUMMY_FP_STRING for _ in range(B)), device=device),
-                [State(bbox=DUMMY_BBOX, filepath=(DUMMY_FP_STRING,), device=device) for _ in range(B)],
-            ),
-            (
-                State(bbox=DUMMY_BBOX_BATCH, dummy=[str(i) for i in range(B)], device=device),
-                [State(bbox=DUMMY_BBOX, dummy=[str(i)], device=device) for i in range(B)],
-            ),
-            (
-                State(bbox=DUMMY_BBOX_BATCH, tensor=torch.ones(B), device=device),
-                [State(bbox=DUMMY_BBOX, tensor=torch.ones(1), device=device) for _ in range(B)],
-            ),
-            (
-                State(bbox=DUMMY_BBOX_BATCH, val_tensor=torch.tensor(2), device=device),
-                [State(bbox=DUMMY_BBOX, val_tensor=torch.tensor(2), device=device) for _ in range(B)],
-            ),
-            (
-                State(bbox=DUMMY_BBOX_BATCH, dict={"a": 1}, device=device),
-                [State(bbox=DUMMY_BBOX, dict={"a": 1}, device=device) for _ in range(B)],
-            ),
-            (
-                State(bbox=DUMMY_BBOX_BATCH, str="dummy", device=device),
-                [State(bbox=DUMMY_BBOX, str="dummy", device=device) for _ in range(B)],
-            ),
-        ]:
-            keys = list(states.keys())
+                        validate=validate,
+                    ),
+                    [
+                        State(
+                            bbox=tv_tensors.BoundingBoxes(
+                                torch.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"
+                            ),
+                            keypoints=DUMMY_KP,
+                            filepath=(DUMMY_FP_STRING,),
+                            tensor=torch.ones(1),
+                            val_tensor=torch.tensor(2, device=device),
+                            tuple=(str(i),),
+                            list=[str(i)],
+                            dict={"a": 1},
+                            set={1, 2, 3},
+                            str="dummy",
+                            int=1,
+                            numpy=np.asarray(1),
+                            device=device,
+                            validate=validate,
+                        )
+                        for i in range(B)
+                    ],
+                ),
+            ]:
+                keys = list(states.keys())
 
-            split = states.split()
-            self.assertEqual(split, res_states, "test split")
+                with self.subTest(msg="device: {}, val: {}, states-keys: {}".format(device, validate, keys)):
+                    split = states.split()
+                    self.assertEqual(split, res_states, "test split")
 
-            B_ = len(states)
-            for i in range(-B_, B_):
-                with self.subTest(msg="i: {}, B_: {}, device: {}, states-keys: {}".format(i, B_, device, keys)):
-                    res = states.extract(i)
-                    s_i = res_states[i]
-                    self.assertTrue(isinstance(res, State))
-                    self.assertEqual(res, s_i, "extracted equals result")
-                    self.assertEqual(res.device, device, "test extracted device")
-                    self.assertEqual(s_i.device, device, "test result device")
+                    B_ = len(states)
+                    for i in range(-B_, B_):
+                        res = states.extract(i)
+                        s_i = res_states[i]
+                        self.assertTrue(isinstance(res, State))
+                        self.assertEqual(res, s_i, "extracted equals result")
+                        self.assertEqual(res.device, device, "test extracted device")
+                        self.assertEqual(s_i.device, device, "test result device")
+                        self.assertEqual(res.keypoints.ndim, 3)
+                        self.assertEqual(s_i.keypoints.ndim, 3)
 
     def test_split_resulting_sizes(self):
         s = State(**DUMMY_DATA_BATCH)

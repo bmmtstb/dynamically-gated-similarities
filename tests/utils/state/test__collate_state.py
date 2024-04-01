@@ -68,7 +68,7 @@ class TestCollate(unittest.TestCase):
             ([img_], img_),
             ([empty_img, img_, empty_img], img_),
             ([img_], Image(torch.ones((1, C, H, W)))),
-            ([img for _ in range(N)], imgs),
+            ([img for _ in range(N)], img.repeat(N, 1, 1)),
             ([img_ for _ in range(N)], imgs),
         ]:
             with self.subTest(
@@ -80,36 +80,50 @@ class TestCollate(unittest.TestCase):
 
     def test_tensors(self):
         empty_res = torch.empty(0)
-        empty_t = torch.ones(0)
-        empty_l = torch.tensor([])
-        t_0d = torch.tensor(1)
-        t_1d = torch.ones(1)
-        t_2d = torch.ones((1, 11))
+        empty_t = torch.ones(0, dtype=torch.long)
+        empty_l = torch.tensor([], dtype=torch.long)
+        t_0d = torch.tensor(1, dtype=torch.long)
+        t_1d = torch.ones(1, dtype=torch.long)
+        t_2d = torch.ones((1, 11), dtype=torch.long)
 
         for tensors, result in [
             # different stages of empty
             ([], empty_res),
             ([empty_l], empty_res),
             ([empty_l, empty_l], empty_res),
-            ([empty_t, torch.ones(0), empty_l], empty_res),
+            ([empty_t, torch.ones(0, dtype=torch.long), empty_l], empty_res),
             # regular plus empty
-            ([empty_l, t_0d, empty_l], t_0d),
+            ([empty_l, t_0d, empty_l], t_1d),
             ([empty_l, t_1d, empty_l], t_1d),
             ([empty_l, t_2d, empty_l], t_2d),
-            ([empty_t, t_0d, empty_t], t_0d),
+            ([empty_t, t_0d, empty_t], t_1d),
             ([empty_t, t_1d, empty_t], t_1d),
             ([empty_t, t_2d, empty_t], t_2d),
-            ([torch.empty((0, 11)), torch.ones((1, 11)), torch.ones((0, 11))], torch.ones((1, 11))),
+            (
+                [
+                    torch.empty((0, 11), dtype=torch.long),
+                    torch.ones((1, 11), dtype=torch.long),
+                    torch.ones((0, 11), dtype=torch.long),
+                ],
+                torch.ones((1, 11), dtype=torch.long),
+            ),
             # regular
             ([t_0d], t_0d),
             ([t_1d], t_1d),
             ([t_2d], t_2d),
             ([t_0d, t_0d], torch.stack([t_0d, t_0d])),
-            ([t_1d, t_1d], torch.ones(2, 1)),
-            ([t_2d, t_2d], torch.ones(2, 11)),
-            ([torch.ones((3, 11)), torch.ones((3, 11))], torch.ones(2, 3, 11)),
-            ([torch.ones((1, 11)) for _ in range(N)], torch.ones((N, 11))),
-            ([torch.ones((3, 11)) for _ in range(N)], torch.ones((N, 3, 11))),
+            ([t_1d, t_1d], torch.ones((2, 1), dtype=torch.long)),
+            ([t_2d, t_2d], torch.ones((2, 11), dtype=torch.long)),
+            (
+                [torch.ones((3, 11), dtype=torch.long), torch.ones((3, 11), dtype=torch.long)],
+                torch.ones((6, 11), dtype=torch.long),
+            ),
+            (
+                [torch.ones((1, 3, 11), dtype=torch.long), torch.ones((1, 3, 11), dtype=torch.long)],
+                torch.ones((2, 3, 11), dtype=torch.long),
+            ),
+            ([torch.ones((1, 11), dtype=torch.long) for _ in range(N)], torch.ones((N, 11), dtype=torch.long)),
+            ([torch.ones((3, 11), dtype=torch.long) for _ in range(N)], torch.ones((N * 3, 11), dtype=torch.long)),
         ]:
             with self.subTest(msg="tensors: {}, result: {}".format(len(tensors), result.shape)):
                 self.assertTrue(torch.allclose(collate_tensors(tensors), result), tensors)
@@ -118,22 +132,38 @@ class TestCollate(unittest.TestCase):
 class TestCollateStates(unittest.TestCase):
 
     def test_states(self):
-        bbox = BoundingBoxes(torch.ones(4), format="XYWH", canvas_size=(100, 100))
-        s = State(bbox=bbox, keypoints=torch.ones(1, J, j_dim), image=Image(torch.ones(1, C, H, W)))
-        for states, result in [
-            ([s], s),
-            (s, s),
-            (
-                [s for _ in range(N)],
-                State(
-                    bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
-                    keypoints=torch.ones((N, J, j_dim)),
-                    image=Image(torch.ones(N, C, H, W)),
+        for validate in [True, False]:
+            bbox = BoundingBoxes(torch.ones(4), format="XYWH", canvas_size=(100, 100))
+
+            s = State(
+                bbox=bbox, keypoints=torch.ones(1, J, j_dim), image=Image(torch.ones(1, C, H, W)), validate=validate
+            )
+
+            for states, result in [
+                ([s], s),
+                (s, s),
+                (
+                    [s for _ in range(N)],
+                    State(
+                        bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
+                        keypoints=torch.ones((N, J, j_dim)),
+                        image=Image(torch.ones(N, C, H, W)),
+                        validate=validate,
+                    ),
                 ),
-            ),
-        ]:
-            with self.subTest(msg="states: {}, result: {}".format(len(states), result.B)):
-                self.assertTrue(collate_states(states) == result)
+                (
+                    [State(bbox=bbox, str="dummy", tuple=(1,), validate=validate) for _ in range(N)],
+                    State(
+                        bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
+                        str=tuple("dummy" for _ in range(N)),
+                        tuple=tuple(1 for _ in range(N)),
+                        validate=validate,
+                    ),
+                ),
+            ]:
+                with self.subTest(msg="s: {}, res: {}, val: {}".format(len(states), result.B, validate)):
+                    self.assertTrue(collate_states(states) == result)
+                    self.assertEqual(result.validate, validate)
 
 
 if __name__ == "__main__":

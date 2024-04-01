@@ -687,7 +687,7 @@ class PoseTrack21_Image(BaseDataset):
             class_id=self.cids[anno_ids].flatten(),
             crop_path=crop_paths,
             joint_weight=visibilities,
-            skeleton_name=self.skeleton_name,
+            skeleton_name=tuple(self.skeleton_name for _ in range(len(anno_ids))),
         )
         # make sure to get the image crop for this State
         self.get_image_crops(ds)

@@ -128,18 +128,17 @@ class DGSEngine(EngineModule):
             batch_times: dict[str, float] = {}
 
             updated_tracks: dict[int, State] = {}
-            new_tracks: list[State] = []
+            new_states: list[State] = []
 
             # Get the current state from the Tracks and use it to compute the similarity to the current detections.
             track_state: State = self.tracks.get_states()
             data_t.add(time_batch_start)
             batch_times["data"] = data_t[-1]
-
+            states: list[State] = detections.split()
             if len(track_state) == 0 and N > 0:
                 # No Tracks yet - every detection will be a new track!
                 time_match_start = time.time()
-                states: list[State] = detections.split()
-                new_tracks += states
+                new_states += states
                 match_t.add(time_match_start)
                 batch_times["match"] = match_t[-1]
             elif N > 0:
@@ -159,7 +158,6 @@ class DGSEngine(EngineModule):
                 cost_matrix = torch_to_numpy(cost_matrix)
                 rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
 
-                states: list[State] = detections.split()
                 # assert (
                 #     N == len(states) == len(rids) == len(cids)
                 # ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
@@ -169,14 +167,14 @@ class DGSEngine(EngineModule):
                     if cid < T and cid in tids:
                         updated_tracks[cid] = states[rid]
                     else:
-                        new_tracks.append(states[rid])
+                        new_states.append(states[rid])
                 match_t.add(time_match_start)
                 batch_times["matching"] = match_t[-1]
 
             # update tracks
             time_track_update_start = time.time()
             ts: TrackStatistics
-            _, ts = self.tracks.add(tracks=updated_tracks, new_tracks=new_tracks)
+            _, ts = self.tracks.add(tracks=updated_tracks, new=new_states)
             track_t.add(time_track_update_start)
             batch_times["track"] = track_t[-1]
 
@@ -186,7 +184,7 @@ class DGSEngine(EngineModule):
                 batch_times["indiv"] = batch_t[-1] / N
 
             # print debug info
-            ts.print(logger=self.logger, frame_idx=frame_idx)
+            # ts.print(logger=self.logger, frame_idx=frame_idx)
             # Add timings and other metrics to the writer
             self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
             self.writer.add_scalars(
@@ -196,7 +194,7 @@ class DGSEngine(EngineModule):
             )
             # print the resulting image if requested
             if self.save_images and detections.B >= 1:
-                detections.draw(
+                self.tracks.get_active_states().draw(
                     save_path=os.path.join(self.log_dir, f"./images/{frame_idx}.png"),
                     show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),

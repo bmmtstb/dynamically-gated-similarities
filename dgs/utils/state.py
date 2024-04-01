@@ -360,6 +360,7 @@ class State(UserDict):
         Returns:
             The extracted State.
         """
+        # pylint: disable=too-many-branches
         if idx >= self.B or idx < -self.B:
             raise IndexError(f"Expected index to lie within ({-self.B}, {self.B - 1}), but got: {idx}")
 
@@ -375,9 +376,13 @@ class State(UserDict):
             elif isinstance(v, tuple):
                 # tuples stay tuple
                 new_data[ks] = (v[idx],)
+            elif isinstance(v, torch.Tensor) and v.ndim > 1:
+                new_data[ks] = v[idx].unsqueeze(0)
+            elif isinstance(v, torch.Tensor) and v.ndim == 1:
+                new_data[ks] = v[idx].flatten()
             elif isinstance(v, torch.Tensor) and v.ndim == 0:
                 new_data[ks] = v
-            elif isinstance(v, dict):
+            elif isinstance(v, (dict, set)):  # dict and set stay the same
                 new_data[ks] = v
             elif isinstance(v, str):
                 new_data[ks] = v
@@ -391,6 +396,7 @@ class State(UserDict):
 
     def split(self) -> list["State"]:
         """Given a batched State object, split it into a list of single State objects."""
+        # pylint: disable=too-many-branches
         if self.B == 1:
             return [self]
         new_data = [{"validate": self.validate} for _ in range(self.B)]
@@ -406,11 +412,13 @@ class State(UserDict):
                 elif isinstance(v, tuple):
                     # tuples stay tuple
                     new_data[idx][ks] = (v[idx],)
+                elif isinstance(v, torch.Tensor) and v.ndim > 1:
+                    new_data[idx][ks] = v[idx].unsqueeze(0)
                 elif isinstance(v, torch.Tensor) and v.ndim == 1:
                     new_data[idx][ks] = v[idx].flatten()
                 elif isinstance(v, torch.Tensor) and v.ndim == 0:
                     new_data[idx][ks] = v
-                elif isinstance(v, dict):
+                elif isinstance(v, (dict, set)):  # dict and set stay the same
                     new_data[idx][ks] = v
                 elif isinstance(v, str):
                     new_data[idx][ks] = v
@@ -520,8 +528,8 @@ class State(UserDict):
             and not all(torch.allclose(self.image[i - 1], self.image[i]) for i in range(len(self.image)))
         ):
             raise ValueError(
-                "If the image of this state has a batch-size bigger than one, "
-                "it is expected, that all the images are equal."
+                f"If the image of this state has a batch-size bigger than one, "
+                f"it is expected, that all the images are equal. Image-shape: {self.image.shape}"
             )
 
         save_dir = os.path.dirname(os.path.abspath(save_path))
@@ -542,12 +550,12 @@ class State(UserDict):
             img_kwargs["kp_visibility"] = self.joint_weight
         if show_skeleton and "skeleton_name" in self.data:
             img_kwargs["kp_connectivity"] = SKELETONS[self.data["skeleton_name"]]
-        if "person_id" in self.data:
+        if "pred_tid" in self.data:
             # fixme should PID or T-ID be used?
-            img_kwargs["bbox_labels"] = [str(pid) for pid in self.person_id]
+            img_kwargs["bbox_labels"] = [str(tid) for tid in self["pred_tid"].tolist()]
 
             # make sure to map the same PID to the same color all the time
-            colors = [COLORS[int(i) % len(COLORS)] for i in self.person_id.tolist()]
+            colors = [COLORS[int(i) % len(COLORS)] for i in self["pred_tid"].tolist()]
             img_kwargs["bbox_colors"] = colors
             img_kwargs["kp_colors"] = colors
 
@@ -613,9 +621,19 @@ def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tenso
     """
     if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
         return torch.empty(0)
-    if batch[0].ndim > 0 and batch[0].shape[0] == 1:
-        return torch.cat(batch)
-    return torch.stack([b for b in batch if (not b.shape) or (b.shape and len(b))])
+    return torch.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))])
+
+
+def collate_tvt_tensors(
+    batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
+) -> Union[tv_tensors.TVTensor, tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
+    """Collate a batch of tv_tensors into a batched version of it."""
+    if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
+        return tv_tensors.TVTensor([])
+    return tv_tensors.wrap(
+        torch.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))]),
+        like=batch[0],
+    )
 
 
 def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> tv_tensors.BoundingBoxes:
@@ -634,21 +652,10 @@ def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> 
     )
 
 
-def collate_tvt_tensors(
-    batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
-) -> Union[tv_tensors.TVTensor, tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
-    """Collate a batch of tv_tensors into a batched version of it."""
-    if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
-        return tv_tensors.TVTensor([])
-    if batch[0].ndim > 0 and batch[0].size(0) == 1:
-        return tv_tensors.wrap(torch.cat(batch), like=batch[0])
-    return tv_tensors.wrap(torch.stack([b for b in batch if (not b.shape) or (b.shape and len(b))]), like=batch[0])
-
-
 CUSTOM_COLLATE_MAP: dict[Type, Callable] = default_collate_fn_map.copy()
 CUSTOM_COLLATE_MAP.update(  # pragma: no cover
     {
-        str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
+        str: lambda str_batch, *args, **kwargs: tuple([s for s in str_batch]),
         tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
         tv_tensors.BoundingBoxes: collate_bboxes,
         (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
@@ -674,14 +681,10 @@ def collate_states(batch: Union[list["State"], "State"]) -> "State":
     if isinstance(batch, State):
         return batch
 
-    if len(batch) == 1:
-        return batch[0]
-
     c_batch: dict[str, any] = collate(batch, collate_fn_map=CUSTOM_COLLATE_MAP)
 
     # skip validation, because either every State has been validated before or validation is not required.
-    s = State(**c_batch)
-    # s = State(**c_batch, validate=False)
+    s = State(**c_batch, validate=False)
     # then set the validation to the correct value
     s.validate = batch[0].validate
     return s

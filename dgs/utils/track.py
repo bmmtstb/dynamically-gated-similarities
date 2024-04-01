@@ -297,7 +297,7 @@ class Track:
         elif status == TrackStatus.New:
             self._status = TrackStatus.New
         else:
-            raise ValueError(f"Unknown TrackStatus {status}")
+            raise ValueError(f"Unknown TrackStatus {status}")  # pragma: no cover
 
     def age(self, curr_frame: int) -> int:
         """Get the age of this track (in frames).
@@ -492,7 +492,7 @@ class Tracks(UserDict):
         """Return whether the given Track-ID has been removed."""
         return tid not in self.data and tid in self.removed
 
-    def add(self, tracks: dict[TrackID, State], new_tracks: list[State]) -> tuple[list[TrackID], TrackStatistics]:
+    def add(self, tracks: dict[TrackID, State], new: list[State]) -> tuple[list[TrackID], TrackStatistics]:
         """Given tracks with existing Track-IDs update those and create new Tracks for States without Track-IDs.
         Additionally,
         mark Track-IDs that are not in either of the inputs as unseen and therefore as inactive for one more step.
@@ -505,10 +505,10 @@ class Tracks(UserDict):
         inactive_ids = self.ids - set(int(k) for k in tracks.keys())
 
         # get the next free ID and create track(s)
-        new_tids = self.add_empty_tracks(len(new_tracks))
+        new_tids = self.add_empty_tracks(len(new))
 
         # add the new state to the new tracks
-        for tid, new_state in zip(new_tids, new_tracks):
+        for tid, new_state in zip(new_tids, new):
             self._update_track(tid=tid, add_state=new_state, stats=stats)
             stats.new.append(tid)
 
@@ -526,11 +526,32 @@ class Tracks(UserDict):
         self._curr_frame += 1
 
     def get_states(self) -> State:
-        """Get the last state of every track in this object as a :class:`State`."""
+        """Get the last state of **every** track in this object as a :class:`State`."""
         states: list[State] = []
         tids: list[TrackID] = []
 
         for tid, track in self.data.items():
+            states.append(track[-1])
+            tids.append(tid)
+
+        if len(states) == 0:
+            return State(
+                bbox=tv_tensors.BoundingBoxes(
+                    torch.zeros((0, 4)), canvas_size=(0, 0), format="XYWH", dtype=torch.float32, requires_grad=False
+                ),
+                validate=False,
+            )
+        state = collate_states(states)
+        return state
+
+    def get_active_states(self) -> State:
+        """Get the last state of every **active** track in this object as a :class:`State`."""
+        states: list[State] = []
+        tids: list[TrackID] = []
+
+        for tid, track in self.data.items():
+            if tid in self.inactive:
+                continue
             states.append(track[-1])
             tids.append(tid)
 
@@ -592,6 +613,8 @@ class Tracks(UserDict):
 
         # append state to track
         self.data[tid].append(state=add_state)
+        # add track id to state
+        self.data[tid][-1]["pred_tid"] = torch.tensor(tid, dtype=torch.long, device=add_state.device).flatten()
 
     def _handle_inactive(self, tids: set[TrackID], stats: TrackStatistics) -> None:
         """Given the Track-IDs of the Tracks that haven't been seen this step, update the inactivity tracker.
