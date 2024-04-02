@@ -184,7 +184,7 @@ class DGSEngine(EngineModule):
                 batch_times["indiv"] = batch_t[-1] / N
 
             # print debug info
-            # ts.print(logger=self.logger, frame_idx=frame_idx)
+            ts.print(logger=self.logger, frame_idx=frame_idx)
             # Add timings and other metrics to the writer
             self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
             self.writer.add_scalars(
