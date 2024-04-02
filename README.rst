@@ -23,45 +23,70 @@ You can find a visual Pipeline on
 Folder Structure
 ~~~~~~~~~~~~~~~~
 
-.. rst-class:: monospace-block
+::
 
     dynamically_gated_similarities
     │
-    └───configs
-    │   │   configuration.yaml files for running different versions of DGS
-    └───docs
-    │   │   documentation via sphinx and autodoc
-    └───data
-    │   │   folder containing the datasets, for structure see :ref:`dataset_page`
-    └───dependencies
-    │   │   references to git submodules e.g. to my AlphaPose_Fork
-    └───dgs
-    │   │   source code of algorithm
-    │   └───dgs_api.py      - structure of tracker, calls sub methods and classes defined in utils
-    │   └───dgs_config.py   - default configuration if not overridden by config.yaml
-    │   │
-    │   └───utils
-    │           block-models, helpers, and other util
-    └───pre_trained_models
-    │       storage for downloaded or custom pre-trained models
-    └───tests
-    │       tests for dgs module
+    └─── configs
+    │        Multiple configuration.yaml files for running DGS or different submodules.
+    └─── docs
+    │        Source files for the documentation via sphinx and autodoc.
+    └─── data
+    │        folder containing the datasets, for structure see './data/dataset.rst' for more info.
+    └─── dependencies
+    │        References to git submodules e.g. to torchreid and my custom AlphaPose Fork.
+    └─── dgs
+    │    │    The source code of the algorithm.
+    │    │
+    │    └    dgs_config.py
+    │    │        Some default configuration if not overridden by config.yaml
+    │    │        This file will soon be replaced by 'dgs_values.yaml' .
+    │    └    dgs_values.yaml
+    │    │        Some default values if not overridden by config.yaml
+    │    │
+    │    └─── models
+    │    │        The building blocks for the DGS algorithm. Most models should be extendable fairly
+    │    │        straight-forward to implement custom sub-modules.
+    │    │
+    │    └─── utils
+    │             File-handling, IO, classes for State and Track handling, constants,
+    │             functions for torch module handling  visualization, and overall image handling
+    └─── pre_trained_models
+    │        storage for downloaded or custom pre-trained models
+    └─── tests
+    │        tests for dgs module
     │
     │
-    │   .gitmodules     - use git submodules to include different backends and libraries
-    │   .pylintrc       - linting with pylint
-    │   LICENSE         - MIT License
-    │   pyproject.toml  - information about this project, additional build parameters
+    └─── .gitmodules      - The project uses git submodules to include different libraries.
+    └─── .pylintrc        - Settings for the pylint linter.
+    └─── LICENSE          - MIT License
+    └─── pyproject.toml   - Information about this project and additional build parameters.
+    └─── requirements.txt - Use pip to install the requirements,
+    │                       see './docs/installation.rst' for more information.
 
 
 Abbreviations and Definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is expected that all joints have 2D coordinates, but 3D should be possible with minor adjustments.
+It is expected that all joints have 2D coordinates,
+but extending the code to 3D should be possible with minor adjustments.
 If joints have three-dimensions in the given code, it is expected, that the third dimension is the joint visibility.
 
-Images in PyTorch have shape: ``[B x C x H x W]`` and for plotting in matplotlib ``[B x H x W x C]``.
-Single images don't have the first dimension ``[C x H x W]``.
+Images in PyTorch and torchvision expect the dimensions as: ``[B x C x H x W]``.
+Matplotlib and PIL use another structure: ``[B x H x W x C]``.
+In which format the image tensor is, depends on the location in the code.
+Most general functions in torchvision expect uint8 (byte) tensors,
+while the torch Modules expect a float (float32) image, to be able to compute gradients over images.
+Some single images might not have the first dimension ``[C x H x W]``,
+even though most parts of the code expect a given Batch size.
+
+With the :class:`~.State` object, a general class for passing data between modules is created.
+Therefore, modules, where child-modules might have different outputs,
+generally use this State object instead of returning possibly non descriptive tensors.
+This can be seen in the :class:`~.SimilarityModule` class and its children.
+SimilarityModules can be quite different,
+the pose similarity (e.g. :class:`~.ObjectKeypointSimilarity` ) does need the key-point coordinates to compute the OKS,
+while the visual similarity (e.g. :class:`~.TorchreidSimilarity` ) needs the image crops to compute embeddings.
 
 +----------------------------+---------------------------------------------------------------+
 |  Name                      | Description                                                   |
@@ -70,7 +95,7 @@ Single images don't have the first dimension ``[C x H x W]``.
 +----------------------------+---------------------------------------------------------------+
 | C                          | Number of channels of the current image (e.g. RGB=3)          |
 +----------------------------+---------------------------------------------------------------+
-| B                          | Current batch-size                                            |
+| B                          | Current batch-size, can be 0 in some cases                    |
 +----------------------------+---------------------------------------------------------------+
 | N                          | Number of detections in the current frame                     |
 +----------------------------+---------------------------------------------------------------+
