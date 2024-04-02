@@ -49,3 +49,6 @@ jobs:
           link=$(echo "https://img.shields.io/badge/Coverage-$number%25-$color")
           (echo '![Coverage]('"$link"')';cat README.md) > README_dummy.md;
           mv README_dummy.md README.md;
+          git add README.md;
+          git commit -m "Auto-Update Coverage Badge";
+          git push;
