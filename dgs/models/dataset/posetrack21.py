@@ -400,6 +400,7 @@ def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> 
             for child_path in os.listdir(abs_path)
             if child_path.endswith(".json")
         ]
+        paths.sort()  # make sure systems behave similarly
 
     if len(paths) == 1:
         print(f"Loading dataset: {paths[0]}")

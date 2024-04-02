@@ -139,7 +139,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
                 for i, length in enumerate(lengths):
                     r = ds[i]
                     self.assertTrue(isinstance(r, State))
-                    self.assertEqual(len(r), length)
+                    self.assertEqual(len(r), length, f"r: {r}, i: {i}, len: {length}")
                     self.assertEqual(r.image_crop.size(0), length)
 
     def test_dataloader(self):
