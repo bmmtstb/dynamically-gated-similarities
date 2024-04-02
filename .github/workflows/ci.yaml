@@ -47,9 +47,5 @@ jobs:
           number=$(if [ $hundreds -eq 1 ]; then echo "$hundreds$percentage"; else echo "$percentage"; fi)
           color=$(if [ $number -gt 80 ]; then echo "lime";elif [ $number -gt 60 ]; then echo "yellow"; else echo "red";fi)
           link=$(echo "https://img.shields.io/badge/Coverage-$number%25-$color")
-          (
-            echo '![Coverage]('"$link"')';
-#            echo $'\n';
-            cat README.md
-          ) > README_dummy.md;
+          (echo '![Coverage]('"$link"')';cat README.md) > README_dummy.md;
           mv README_dummy.md README.md;
