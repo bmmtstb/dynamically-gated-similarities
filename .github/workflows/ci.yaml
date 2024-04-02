@@ -40,15 +40,19 @@ jobs:
           coverage xml --quiet
           coverage report
 
-      - name: Concat README.md and code-coverage-results.md
+      - name: Create Coverage Badge
         run: |
           hundreds=$(grep -oPm1 "(?<=line-rate=\")[^\.]+" <<< cat ./coverage/coverage.xml)
           percentage=$(grep -oPm1 "(?<=line-rate=\".\.)[^\"]+" <<< cat ./coverage/coverage.xml)
           number=$(if [ $hundreds -eq 1 ]; then echo "$hundreds$percentage"; else echo "$percentage"; fi)
           color=$(if [ $number -gt 80 ]; then echo "lime";elif [ $number -gt 60 ]; then echo "yellow"; else echo "red";fi)
           link=$(echo "https://img.shields.io/badge/Coverage-$number%25-$color")
-          (echo '![Coverage]('"$link"')';cat README.md) > README_dummy.md;
-          mv README_dummy.md README.md;
-          git add README.md;
-          git commit -m "Auto-Update Coverage Badge";
-          git push;
+          badge=$(echo '![Coverage]('"$link"')')
+          echo "badge=$badge" >> "$GITHUB_ENV"
+
+      - name: Modify README.md
+        uses: jaywcjlove/github-action-modify-file-content@v2.0.1
+        with:
+          path: README.md
+          body: ${{ env.badge }}
+          message: "Auto-Update Coverage in README.md"
