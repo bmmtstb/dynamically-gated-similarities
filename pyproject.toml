@@ -1,11 +1,11 @@
 [project]
 name = "dynamically_gated_similarities"
-version = "0.0.5"
+version = "0.0.6"
 authors = [
     { name = "Martin Steinborn", email = "martin.steinborn@stud.tu-darmstadt.de" },
 ]
 description = "Code for Paper \"Tracking with Dynamically Gated Similarities\""
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 classifiers = [
@@ -70,7 +70,7 @@ omit = [
 source = ["dgs", "tests"]
 
 [tool.coverage.report]
-fail_under = 50  # fixme target is 80
+fail_under = 60
 skip_covered = true
 skip_empty = true
 ignore_errors = true

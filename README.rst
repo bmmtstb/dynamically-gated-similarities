@@ -6,6 +6,7 @@
     :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml
     :alt: Linting and Testing
 
+# CARE: DUPLICATES IN README.md
 
 Dynamically Gated Similarities
 ==============================
