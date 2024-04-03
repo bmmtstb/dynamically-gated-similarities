@@ -45,7 +45,11 @@ def module_loader(
     m: Type[M]
 
     # Module import and initialization
-    if module_class == "combine":
+    if module_class == "backbone":
+        from dgs.models.backbone import get_backbone
+
+        m = get_backbone(module_name)
+    elif module_class == "combine":
         from dgs.models.combine import get_combine_module
 
         m = get_combine_module(module_name)
@@ -111,7 +115,11 @@ def register_module(name, new_module: Union[Type[M], Type[torch.nn.Module]], ins
     """
     # pylint: disable=too-many-branches,import-outside-toplevel
 
-    if inst_class_name == "combine":
+    if inst_class_name == "backbone":
+        from dgs.models.backbone import register_backbone
+
+        register_backbone(name=name, new_back=new_module)
+    elif inst_class_name == "combine":
         from dgs.models.combine import register_combine_module
 
         register_combine_module(name=name, new_combine=new_module)

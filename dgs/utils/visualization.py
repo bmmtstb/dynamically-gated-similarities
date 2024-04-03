@@ -112,7 +112,7 @@ def show_image_with_additional(
     elif isinstance(img, (tv_tensors.Image, torch.Tensor)) and img.ndim == 4:
         img = img.squeeze(0)
         if img.ndim != 3:
-            raise ValueError(f"image could not be squezed to correct shape, got: {img.shape}")
+            raise ValueError(f"image could not be squeezed to correct shape, got: {img.shape}")
     else:
         raise TypeError(f"image is neither tensor nor image. Got {type(img)}")
 
