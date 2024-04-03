@@ -63,6 +63,7 @@ def load_image(
         device: Device the image should be on.
             Default "cpu"
         read_mode: Which ImageReadMode to use while loading the images.
+            Default 'ImageReadMode.RGB'.
 
     Keyword Args:
         mode: If ``force_reshape`` is true, defines the resize mode, has to be in the modes of
@@ -124,6 +125,35 @@ def load_image(
     images = tv_tensors.Image(torch.stack(images), device=device)
 
     return transform_dtype(images)
+
+
+def load_image_list(
+    filepath: Union[FilePath, FilePaths],
+    dtype: torch.dtype = torch.float32,
+    device: torch.device = "cpu",
+    read_mode: ImageReadMode = ImageReadMode.RGB,
+) -> list[Image]:
+    """Load multiple images with possibly different sizes as a list of tv_tensor images.
+
+    Args:
+        filepath: Single string or list of absolute or local filepaths to the image.
+        dtype: The dtype of the image, most likely one of uint8, byte, or float32.
+            Default torch.float32.
+        device: Device the image should be on.
+            Default "cpu"
+        read_mode: Which ImageReadMode to use while loading the images.
+            Default 'ImageReadMode.RGB'.
+
+    Returns:
+        A list of tv_tensor images with the provided dtype on the device.
+    """
+    paths: FilePaths = validate_filepath(filepath)
+    transform_dtype = tvt.ToDtype(dtype, scale=True)
+
+    return [
+        tv_tensors.Image(transform_dtype(read_image(path, mode=read_mode)), dtype=dtype).to(device=device)
+        for path in paths
+    ]
 
 
 def load_video(filepath: FilePath, **kwargs) -> Video:  # pragma: no cover

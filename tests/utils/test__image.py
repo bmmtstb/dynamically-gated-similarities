@@ -18,6 +18,7 @@ from dgs.utils.image import (
     CustomToAspect,
     CustomTransformValidator,
     load_image,
+    load_image_list,
 )
 from dgs.utils.types import Image, ImgShape
 from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
@@ -96,6 +97,7 @@ def create_structured_data(
 
 
 class TestImageUtils(unittest.TestCase):
+
     def test_compute_padding(self):
         for width, height, target_aspect, paddings, msg in [
             # paddings is LTRB
@@ -166,8 +168,34 @@ class TestImage(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_image(fps)
 
+    @test_multiple_devices
+    def test_load_image_list(self, device: torch.device):
+        for filepaths, dtype, hw in [
+            ("tests/test_data/images/866-200x300.jpg", torch.float32, [torch.Size((3, 300, 200))]),
+            (
+                tuple("tests/test_data/images/866-200x300.jpg" for _ in range(3)),
+                torch.float32,
+                [torch.Size((3, 300, 200)) for _ in range(3)],
+            ),
+            (
+                tuple(os.path.join("./tests/test_data/images/", k) for k in TEST_IMAGES),
+                torch.uint8,
+                [torch.Size(v) for v in TEST_IMAGES.values()],
+            ),
+        ]:
+            with self.subTest(msg="filepaths: {}, dtype: {}, hw: {}".format(filepaths, dtype, hw)):
+                image_list = load_image_list(filepath=filepaths, dtype=dtype, device=device)
+                self.assertTrue(isinstance(image_list, list))
+                self.assertEqual(len(image_list), len(hw))
+                for image, shape in zip(image_list, hw):
+                    self.assertTrue(isinstance(image, tv_tensors.Image))
+                    self.assertEqual(image.shape, shape)
+                    self.assertEqual(image.device, device)
+                    self.assertEqual(image.dtype, dtype)
+
 
 class TestCustomTransformValidator(unittest.TestCase):
+
     def test_validate_inputs_exceptions(self):
         ctv_self = CustomTransformValidator()
         for args, n_keys, raised_exception in [
@@ -233,6 +261,7 @@ class TestCustomTransformValidator(unittest.TestCase):
 
 
 class TestCustomToAspect(unittest.TestCase):
+
     def test_distort_image(self):
         out_shapes: list[ImgShape] = [(100, 100), (200, 100), (100, 200)]
         mode = "distort"
@@ -455,6 +484,7 @@ class TestCustomToAspect(unittest.TestCase):
 
 
 class TestCustomResize(unittest.TestCase):
+
     def test_resize(self):
         out_shapes: list[ImgShape] = [(100, 100), (200, 100), (100, 200)]
         resize_transform = tvt.Compose([CustomResize()])
@@ -504,6 +534,7 @@ class TestCustomResize(unittest.TestCase):
 
 
 class TestCustomCropResize(unittest.TestCase):
+
     def test_outside_crop(self):
         out_shapes: list[ImgShape] = [(500, 500), (200, 100), (100, 200)]
         bbox_l, bbox_t, bbox_w, bbox_h = 20, 30, 50, 40
