@@ -36,6 +36,7 @@ TEST_IMAGES: dict[str, tuple[int, int, int]] = {
     "866-1000x500.jpg": (3, 500, 1000),
     "866-1000x1000.jpg": (3, 1000, 1000),
     "file_example_PNG_500kB.png": (3, 566, 850),
+    "torch_person.jpg": (3, 640, 480),
 }
 
 
@@ -144,7 +145,7 @@ class TestImage(unittest.TestCase):
         for dtype in [torch.float32, torch.uint8]:
             with self.subTest(msg=f"dtype: {dtype}, device: {device}"):
                 imgs = load_image(fps, force_reshape=True, output_size=size, device=device, dtype=dtype)
-                self.assertEqual(imgs.shape, torch.Size((9, 3, 300, 500)))
+                self.assertEqual(imgs.shape, torch.Size((len(TEST_IMAGES), 3, 300, 500)))
                 self.assertEqual(imgs.dtype, dtype)
                 self.assertEqual(imgs.device, device)
 

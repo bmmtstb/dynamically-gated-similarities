@@ -6,10 +6,11 @@ from typing import Type
 
 from dgs.utils.loader import get_instance, register_instance
 from .backbone import BaseBackboneModule
-from .yolo import YoloBackbone
+from .keypoint_rcnn import KeypointRCNNBackbone
 
 BACKBONES: dict[str, Type[BaseBackboneModule]] = {
-    "yolo-v7": YoloBackbone,
+    "KeypointRCNN": KeypointRCNNBackbone,
+    "KPRCNN": KeypointRCNNBackbone,
     # "alpha-pose": ...,
     # "AlphaPose": ...,
 }

@@ -665,7 +665,7 @@ CUSTOM_COLLATE_MAP.update(  # pragma: no cover
 )
 
 
-def collate_states(batch: Union[list["State"], "State"]) -> "State":
+def collate_states(batch: Union[list[State], State]) -> State:
     """Collate function for multiple States, to flatten / squeeze the shapes and keep the tv_tensors classes.
 
     The default collate function messes up a few of the dimensions and removes custom tv_tensor classes.

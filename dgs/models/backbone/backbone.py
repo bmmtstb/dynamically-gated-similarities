@@ -1,24 +1,24 @@
 """
 Base module for different backbone models.
 
+All backbone models have to predict values for:
+    - bbox coordinates
+
 Most backbone models will predict values for:
-    - bbox coordinates and using those, extract the image crop(s)
     - joint coordinates
+    - using the bbox coordinates to extract the image crop(s)
 
 Some models will additionally predict values for:
     - joint-heatmaps
     - joint confidence scores
     - joint visibility scores
-
-Every Model should have capabilities to choose between different operation-modes, which can be set through the config:
-    - compute the required values on the fly
-    - precompute and save the values, so the saved data can later be loaded, possibly speeding up the training process
 """
 
 from abc import abstractmethod
 
 from dgs.models.module import BaseModule
 from dgs.utils.state import State
+from dgs.utils.types import FilePaths
 
 
 class BaseBackboneModule(BaseModule):
@@ -29,11 +29,11 @@ class BaseBackboneModule(BaseModule):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, state: State, *args, **kwargs) -> State:
+    def forward(self, image_paths: FilePaths, *args, **kwargs) -> State:
         """Obtain the model outputs for the current iteration.
 
         Args:
-            state: A State containing at least the path or paths pointing to one or multiple images.
+            image_paths: A tuple containing the path or paths pointing to one or multiple images.
 
         Returns:
             A :class:`.State` obtained through this backbone module, containing more data than before.
