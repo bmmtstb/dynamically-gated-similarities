@@ -442,6 +442,17 @@ class State(UserDict):
         self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
         return self.image_crop
 
+        if "crop_path" in self.data:
+            if len(self.crop_path) == 0:
+                self.data["image_crop"] = tv_tensors.Image(torch.empty((0, 0, 1, 1)))
+                return self.image_crop
+            self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
+            return self.image_crop
+
+        raise AttributeError(
+            "Could not load image crops without either a proper filepath given or an image and bbox given."
+        )
+
     def load_image(self, **kwargs) -> Image:
         """Load the images using the filepaths of this object. Does nothing if the images are already present."""
         if "image" in self.data and self.data["image"] is not None and len(self.data["image"]) == self.B:

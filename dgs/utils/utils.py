@@ -9,11 +9,12 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from torchvision.io import write_jpeg
 from torchvision.transforms import v2 as tvt
 from torchvision.transforms.functional import convert_image_dtype
 
+from dgs.utils.config import DEF_CONF
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.image import CustomCropResize, load_image
 from dgs.utils.types import Device, FilePath, FilePaths, Image
@@ -34,14 +35,55 @@ def torch_to_numpy(t: torch.Tensor) -> np.ndarray:
 
 
 def extract_crops_from_images(
+    imgs: Image, bboxes: tvte.BoundingBoxes, kps: torch.Tensor = None, **kwargs
+) -> tuple[Image, Union[torch.Tensor, None]]:
+    """Given one or multiple images, use the bounding boxes to extract the respective image crops.
+    Additionally, compute the local keypoint-coordinates if global keypoints are given.
+
+    Args:
+        imgs: A tv_tensors.Image tensor containing at least one image.
+        bboxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
+        kps: The key points of the respective images.
+            The key points will be transformed with the images to obtain the local key point coordinates.
+            Default None just means that a placeholder is passed and returned.
+
+    Keyword Args:
+        crop_size (ImgShape): The target shape of the image crops.
+            Defaults to `DEF_CONF.images.crop_size`.
+        transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
+            Defaults to a version of CustomCropResize.
+        crop_mode (str): Defines the resize mode in the transform function.
+            Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`.
+            Default `DEF_CONF.images.mode`.
+    """
+    if len(imgs) == 0:
+        return imgs, None
+
+    transform = kwargs.get(
+        "transform",
+        tvt.Compose([tvt.ConvertBoundingBoxFormat(format="XYWH"), tvt.ClampBoundingBoxes(), CustomCropResize()]),
+    )
+    res = transform(
+        {
+            "image": imgs,
+            "box": bboxes,
+            "keypoints": kps if kps is not None else torch.zeros((imgs.shape[-4], 1, 2), device=imgs.device),
+            "mode": kwargs.get("crop_mode", DEF_CONF.images.crop_mode),
+            "output_size": kwargs.get("crop_size", DEF_CONF.images.crop_size),
+        }
+    )
+    return res["image"], None if kps is None else res["keypoints"]
+
+
+def extract_crops_and_save(
     img_fps: Union[list[FilePath], FilePaths],
-    new_fps: Union[list[FilePath], FilePaths],
-    boxes: tv_tensors.BoundingBoxes,
+    boxes: tvte.BoundingBoxes,
+    new_fps: Union[list[FilePath], FilePaths] = None,
     key_points: torch.Tensor = None,
     **kwargs,
 ) -> tuple[Image, torch.Tensor]:
-    """Given a list of original image paths and a list of target crops paths,
-    use the given bounding boxes to extract their content as image crops and save them as new images.
+    """Given a list of original image paths and a list of target image-crops paths,
+    use the given bounding boxes to extract the image content as image crops and save them as new images.
 
     Does only work if the images have the same size, because otherwise the bounding-boxes would not match anymore.
 
@@ -50,18 +92,20 @@ def extract_crops_from_images(
 
     Args:
         img_fps: An iterable of absolute paths pointing to the original images.
-        new_fps: An iterable of absolute paths pointing to the image crops.
         boxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
+        new_fps: An iterable of absolute paths pointing to the image crops.
+            Default None will not save the image_crops at all.
         key_points (torch.Tensor, optional): Key points of the respective images.
             The key points will be transformed with the images. Default None just means that a placeholder is passed.
 
     Keyword Args:
-        crop_size (ImgShape): The target shape of the image crops. Defaults to ``(256, 256)``.
-        device (Device): Device to run the cropping on. Defaults to "cuda" if available "cpu" otherwise.
+        crop_size (ImgShape): The target shape of the image crops.
+            Defaults to `DEF_CONF.images.crop_size`.
         transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
             Defaults to a version of CustomCropResize.
-        transform_mode (str): Defines the resize mode in the transform function.
-            Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
+        crop_mode (str): Defines the resize mode in the transform function.
+            Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`.
+            Default `DEF_CONF.images.mode`.
         quality (int): The quality to save the jpegs as. Default 90. Default of torchvision is 75.
 
     Returns:
@@ -78,44 +122,19 @@ def extract_crops_from_images(
 
     # extract kwargs
     device: Device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
-    transform = kwargs.get(
-        "transform",
-        tvt.Compose(  # default
-            [
-                tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
-                tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
-                CustomCropResize(),
-            ]
-        ),
-    )
 
-    imgs: Image = load_image(
-        filepath=tuple(img_fps),
-        device=device,
-    )
+    imgs: Image = load_image(filepath=tuple(img_fps), device=device)
 
-    # pass original images through CustomResizeCrop transform and get the resulting image crops on the cpu
-    res = transform(
-        {
-            "image": imgs,
-            "box": boxes,
-            "keypoints": key_points if key_points is not None else torch.zeros((imgs.shape[-4], 1, 2), device=device),
-            "mode": kwargs.get("transform_mode", "zero-pad"),
-            "output_size": kwargs.get("crop_size", (256, 256)),
-        }
-    )
-    crops: torch.Tensor = res["image"].cpu()
-    kps: torch.Tensor = res["keypoints"].cpu()
+    crops, loc_kps = extract_crops_from_images(imgs=imgs, bboxes=boxes, kps=key_points, **kwargs)
 
-    assert kps.shape[-1] == 2, "Key-points should be two dimensional"
+    if new_fps:
+        for i, (fp, crop) in enumerate(zip(new_fps, crops.cpu())):
+            mkdir_if_missing(os.path.dirname(fp))
+            write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))
+            if key_points is not None:
+                torch.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
 
-    for fp, crop, kp in zip(new_fps, crops, kps):
-        mkdir_if_missing(os.path.dirname(fp))
-        write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))
-        if key_points is not None:
-            torch.save(kp, str(fp).replace(".jpg", ".pt"))
-
-    return crops.to(device=device), res["keypoints"]
+    return crops.to(device=device), None if key_points is None else loc_kps
 
 
 class HidePrint:

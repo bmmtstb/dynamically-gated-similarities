@@ -29,6 +29,7 @@ from torchvision.transforms.v2.functional import (
     resize as tvt_resize,
 )
 
+from dgs.utils.config import DEF_CONF
 from dgs.utils.exceptions import ValidationException
 from dgs.utils.files import to_abspath
 from dgs.utils.types import FilePath, FilePaths, Image, ImgShape, Video
@@ -104,8 +105,8 @@ def load_image(
     if force_reshape:
         transform = tvt.Compose([CustomToAspect(), CustomResize(), transform_dtype])
         new_images: list[Image] = []
-        mode: str = kwargs.pop("mode", "zero-pad")
-        output_size: ImgShape = kwargs.pop("output_size", (512, 512))
+        mode: str = kwargs.pop("mode", DEF_CONF.images.image_mode)
+        output_size: ImgShape = kwargs.pop("output_size", DEF_CONF.images.image_size)
 
         for img in images:
             data = {

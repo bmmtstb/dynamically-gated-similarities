@@ -16,12 +16,11 @@ dataloader:
     shuffle: False
     workers: 0
 
-dataset:
+images:
+    image_size: !!python/tuple [1024, 1024]
     image_mode: "zero-pad"
-    image_size: [1024, 1024]
+    crop_size: !!python/tuple [256, 256]
     crop_mode: "zero-pad"
-    crop_size: [256, 256]
-
 
 # ############## #
 # LOSS FUNCTIONS #

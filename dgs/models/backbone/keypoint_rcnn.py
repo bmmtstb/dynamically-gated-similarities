@@ -8,6 +8,7 @@ References:
 from typing import Union
 
 import torch
+from torch.nn import Module as TorchModule
 from torchvision import tv_tensors as tvte
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
 
@@ -20,7 +21,7 @@ from dgs.utils.types import Config, FilePath, FilePaths, NodePath, Validations
 rcnn_validations: Validations = {"threshold": ["optional", float, ("within", (0.0, 1.0))]}
 
 
-class KeypointRCNNBackbone(BaseBackboneModule):
+class KeypointRCNNBackbone(BaseBackboneModule, TorchModule):
     """
     Predicts 17 key-points (like COCO).
 
@@ -36,7 +37,9 @@ class KeypointRCNNBackbone(BaseBackboneModule):
     """
 
     def __init__(self, config: Config, path: NodePath) -> None:
-        super().__init__(config, path)
+        BaseBackboneModule.__init__(self, config, path)
+        TorchModule.__init__(self)
+
         self.validate_params(rcnn_validations)
 
         self.threshold: float = self.params.get("threshold", DEF_CONF.backbone.kprcnn.threshold)
@@ -73,7 +76,6 @@ class KeypointRCNNBackbone(BaseBackboneModule):
             )
 
             # todo compute image crops
-            # todo skip if scores to low?
 
             data = {
                 "validate": False,

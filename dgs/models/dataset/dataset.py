@@ -11,6 +11,7 @@ from torch.utils.data import Dataset as TorchDataset
 from torchvision import tv_tensors
 
 from dgs.models.module import BaseModule
+from dgs.utils.config import DEF_CONF
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.state import State
@@ -211,8 +212,8 @@ class BaseDataset(BaseModule, TorchDataset):
             ds.image = load_image(
                 ds.filepath,
                 force_reshape=True,
-                mode=self.params.get("image_mode", "zero-pad"),
-                output_size=self.params.get("image_size", (1024, 1024)),
+                mode=self.params.get("image_mode", DEF_CONF.images.image_mode),
+                output_size=self.params.get("image_size", DEF_CONF.images.image_size),
                 device=ds.device,
             )
         else:
@@ -222,8 +223,8 @@ class BaseDataset(BaseModule, TorchDataset):
             "image": ds.image,
             "box": ds.bbox,
             "keypoints": ds.keypoints,
-            "output_size": self.params.get("crop_size", (256, 256)),
-            "mode": self.params.get("crop_mode", "zero-pad"),
+            "output_size": self.params.get("crop_size", DEF_CONF.images.crop_size),
+            "mode": self.params.get("crop_mode", DEF_CONF.images.crop_mode),
         }
         new_state = self.transform_crop_resize()(structured_input)
 

@@ -4,13 +4,16 @@ import unittest
 
 import numpy as np
 import torch
+from torchvision import tv_tensors as tvte
 from torchvision.tv_tensors import BoundingBoxes
 
+from dgs.utils.config import DEF_CONF
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import is_project_file
+from dgs.utils.image import CustomCropResize
 from dgs.utils.types import Device
-from dgs.utils.utils import extract_crops_from_images, HidePrint, ids_to_one_hot, torch_to_numpy
-from helper import capture_stdout, test_multiple_devices
+from dgs.utils.utils import extract_crops_and_save, extract_crops_from_images, HidePrint, ids_to_one_hot, torch_to_numpy
+from helper import capture_stdout, load_test_image, load_test_images, test_multiple_devices
 
 
 class TestUtils(unittest.TestCase):
@@ -22,8 +25,90 @@ class TestUtils(unittest.TestCase):
             with self.subTest(msg=f"torch_tensor: {torch_tensor}, numpy_array: {numpy_array}"):
                 self.assertTrue(np.array_equal(torch_to_numpy(torch_tensor), numpy_array))
 
+    def test_extract_crops_from_images(self):
+        dummy_kp = torch.ones((1, 3, 2))
+        dummy_box = BoundingBoxes(torch.tensor([0, 0, 200, 300]), format="XYWH", canvas_size=(300, 200))
+
+        r = CustomCropResize()(
+            {
+                "image": load_test_image("866-200x300.jpg"),
+                "box": dummy_box.detach().clone(),
+                "keypoints": dummy_kp.detach().clone(),
+                "output_size": DEF_CONF.images.crop_size,
+                "mode": DEF_CONF.images.crop_mode,
+            }
+        )
+
+        example_crop = r["image"]
+        example_kp = r["keypoints"]
+
+        quad = CustomCropResize()(
+            {
+                "image": load_test_images(["866-500x500.jpg", "866-500x500.jpg"]),
+                "box": BoundingBoxes(
+                    torch.tensor([[0, 0, 500, 500]]).repeat(2, 1), format="XYWH", canvas_size=(500, 500)
+                ),
+                "keypoints": torch.ones((2, 3, 2)),
+                "output_size": DEF_CONF.images.crop_size,
+                "mode": DEF_CONF.images.crop_mode,
+            }
+        )["image"]
+
+        for imgs, bboxes, kps, res_imgs, res_kps, kwargs in [
+            (
+                load_test_image("866-200x300.jpg"),
+                BoundingBoxes(torch.tensor([0, 0, 200, 300]), format="XYWH", canvas_size=(300, 200)),
+                dummy_kp,
+                example_crop,
+                example_kp,
+                {},
+            ),
+            (
+                load_test_image("866-200x300.jpg"),
+                BoundingBoxes(torch.tensor([0, 0, 200, 300]), format="XYWH", canvas_size=(300, 200)),
+                dummy_kp,
+                load_test_image("866-200x300.jpg"),
+                dummy_kp,
+                {"crop_size": (300, 200)},  # h w
+            ),
+            (
+                load_test_images(["866-200x300.jpg", "866-200x300.jpg"]),
+                BoundingBoxes(torch.tensor([[0, 0, 200, 300]]).repeat(2, 1), format="XYWH", canvas_size=(300, 200)),
+                torch.ones(2, 3, 2),
+                load_test_images(["866-200x300.jpg", "866-200x300.jpg"]),
+                torch.ones(2, 3, 2),
+                {"crop_size": (300, 200)},
+            ),
+            (
+                load_test_images(["866-500x500.jpg", "866-500x500.jpg"]),
+                BoundingBoxes(torch.tensor([[0, 0, 500, 500]]).repeat(2, 1), format="XYWH", canvas_size=(500, 500)),
+                None,
+                quad,
+                None,
+                {},
+            ),
+        ]:
+            with self.subTest(
+                msg="B: {}, out_size: {}, bboxes: {}, kps: {}".format(len(imgs), res_imgs.shape[-2:], bboxes, kps)
+            ):
+                crops, loc_kps = extract_crops_from_images(imgs=imgs, bboxes=bboxes, kps=kps, **kwargs)
+
+                self.assertEqual(
+                    crops.shape[-2:],
+                    torch.Size(kwargs["crop_size"] if "crop_size" in kwargs else DEF_CONF.images.crop_size),
+                )
+
+                self.assertTrue(isinstance(crops, tvte.Image))
+                self.assertTrue(torch.allclose(crops, res_imgs))
+                if loc_kps is None:
+                    self.assertTrue(res_kps is None)
+                else:
+                    self.assertTrue(torch.allclose(loc_kps, res_kps))
+
+        self.assertTrue(torch.allclose(dummy_kp, torch.ones((1, 3, 2))), "the key points were modified")
+
     @test_multiple_devices
-    def test_extract_crops_from_images(self, device: Device):
+    def test_extract_crops_and_save(self, device: Device):
         base_path = os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/"))
         img_src = os.path.normpath(os.path.join(base_path, "./test_data/images/"))
         crop_target = os.path.normpath(os.path.join(base_path, "./test_crops"))
@@ -36,7 +121,7 @@ class TestUtils(unittest.TestCase):
                 ["4.jpg"],
                 "xywh",
                 None,
-                {"transform_mode": "mean-pad", "crop_size": (128, 128), "quality": 50},
+                {"crop_mode": "mean-pad", "crop_size": (128, 128), "quality": 50},
             ),
             ([(300, 200)], ["5.jpg"], "xywh", torch.ones((1, 11, 2)), {"device": device}),
             ([(300, 200), (300, 200)], ["6_1.jpg", "6_2.jpg"], "xyxy", torch.ones((2, 11, 2)), {"device": device}),
@@ -48,12 +133,15 @@ class TestUtils(unittest.TestCase):
                 bboxes = BoundingBoxes(box_coords, canvas_size=max(img_shapes), format=bbox_format)
                 img_fps = [os.path.join(img_src, f"866-{shape[1]}x{shape[0]}.jpg") for shape in img_shapes]
                 crop_fps = [os.path.join(crop_target, c) for c in crop_fps]
-                crops, new_kp = extract_crops_from_images(
+                crops, new_kp = extract_crops_and_save(
                     img_fps=img_fps, new_fps=crop_fps, boxes=bboxes, key_points=kp, **kwargs
                 )
 
                 self.assertEqual(len(crops), len(img_shapes))
-                self.assertEqual(len(new_kp), len(img_shapes))
+                if kp is None:
+                    self.assertTrue(new_kp is None)
+                else:
+                    self.assertEqual(len(new_kp), len(img_shapes))
                 for fp in crop_fps:
                     self.assertTrue(is_project_file(fp))
                     self.assertEqual(is_project_file(str(fp).replace(".jpg", ".pt")), kp is not None)
@@ -61,7 +149,7 @@ class TestUtils(unittest.TestCase):
         shutil.rmtree(crop_target)
 
     @test_multiple_devices
-    def test_extract_crops_from_images_exceptions(self, device: Device):
+    def test_extract_crops_and_save_exceptions(self, device: Device):
         bbox = BoundingBoxes(torch.tensor([1, 2, 3, 4]), canvas_size=(100, 100), format="xywh")
         for img_fps, crop_fps, kp, bboxes in [
             (["dummy"], [], None, bbox),
@@ -79,7 +167,7 @@ class TestUtils(unittest.TestCase):
         ]:
             with self.subTest(msg=f"img_fps, crop_fps, bbox"):
                 with self.assertRaises(ValueError):
-                    extract_crops_from_images(
+                    extract_crops_and_save(
                         img_fps=img_fps, new_fps=crop_fps, boxes=bboxes, key_points=kp, device=device
                     )
 

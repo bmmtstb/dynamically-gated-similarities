@@ -587,7 +587,9 @@ class TestStateFunctions(unittest.TestCase):
         with self.assertRaises(AttributeError) as e:
             _ = no_fps.load_image_crop()
         self.assertTrue(
-            "Could not load image crops without proper filepaths given" in str(e.exception), msg=e.exception
+            "Could not load image crops without either a proper filepath given or an image and bbox given."
+            in str(e.exception),
+            msg=e.exception,
         )
 
         # call load image with zero-length image data

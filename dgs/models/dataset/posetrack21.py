@@ -30,7 +30,7 @@ from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.state import collate_bboxes, collate_tensors, State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
-from dgs.utils.utils import extract_crops_from_images
+from dgs.utils.utils import extract_crops_and_save
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
@@ -168,7 +168,7 @@ def extract_crops_from_json_annotation(
             total=len(d["sizes"]),
             leave=False,
         ):
-            extract_crops_from_images(
+            extract_crops_and_save(
                 img_fps=[img_fp],
                 new_fps=[new_fp],
                 boxes=tvte.BoundingBoxes(bbox, format="XYWH", canvas_size=size, device=device),
@@ -176,7 +176,7 @@ def extract_crops_from_json_annotation(
                 **kwargs,
             )
     else:
-        extract_crops_from_images(
+        extract_crops_and_save(
             img_fps=d["img_fps"],
             new_fps=d["new_img_fps"],
             boxes=tvte.BoundingBoxes(
@@ -260,7 +260,7 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
         device (Device): Device to run the cropping on. Defaults to "cuda" if available "cpu" otherwise.
         transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
             Defaults to a version of CustomCropResize.
-        transform_mode (str): Defines the resize mode in the transform function.
+        crop_mode (str): Defines the resize mode in the transform function.
             Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`. Default "zero-pad".
         quality (int): The quality to save the jpegs as. Default 90. The default of torchvision is 75.
 
