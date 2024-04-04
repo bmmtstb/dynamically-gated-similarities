@@ -39,3 +39,8 @@ dgs_engine:
     save_images: true
     show_keypoints: true
     show_skeleton: true
+
+
+backbone:
+    kprcnn:
+        threshold: 0.3
