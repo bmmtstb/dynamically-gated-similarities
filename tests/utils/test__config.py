@@ -215,6 +215,8 @@ class TestLoadConfig(unittest.TestCase):
         self.assertEqual(cfg.device, "cpu")
         self.assertTrue(cfg.dummy_config.kwargs.more_data, "Is not a nested EasyDict")
         self.assertListEqual(cfg.dummy_config.kwargs.even_more_data, [1, 2, 3, 4])
+        # no tuples in easydicts!
+        # self.assertEqual(cfg.dummy_config.kwargs.tuple_data, (1, 2, 3))
 
     def test_load_config_dict(self):
         cfg = load_config("./tests/test_data/configs/test_config.yaml", easydict=False)
@@ -222,6 +224,7 @@ class TestLoadConfig(unittest.TestCase):
         self.assertEqual(cfg["device"], "cpu")
         self.assertTrue(cfg["dummy_config"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
         self.assertListEqual(cfg["dummy_config"]["kwargs"]["even_more_data"], [1, 2, 3, 4])
+        self.assertTupleEqual(cfg["dummy_config"]["kwargs"]["tuple_data"], (1, 2, 3))
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_configs_dir(self):

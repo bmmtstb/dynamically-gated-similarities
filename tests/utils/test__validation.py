@@ -14,6 +14,7 @@ from dgs.utils.validation import (
     validate_filepath,
     validate_heatmaps,
     validate_ids,
+    validate_image,
     validate_images,
     validate_key_points,
     validate_value,
@@ -45,7 +46,7 @@ DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test
 DUMMY_FP_BATCH: FilePaths = tuple(DUMMY_FP_STRING for _ in range(B))
 
 
-class TestValidateImages(unittest.TestCase):
+class TestValidateImage(unittest.TestCase):
     def test_validate_image(self):
         for image, dims, output in [
             (DUMMY_IMAGE_TENSOR, 4, DUMMY_IMAGE),
@@ -64,14 +65,9 @@ class TestValidateImages(unittest.TestCase):
             ),
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
-                self.assertTrue(
-                    torch.allclose(
-                        validate_images(images=image, dims=dims),
-                        output,
-                    )
-                )
+                self.assertTrue(torch.allclose(validate_image(images=image, dims=dims), output))
 
-    def test_validate_images_exceptions(self):
+    def test_validate_image_exceptions(self):
         for image, dims, exception_type in [
             (np.ones((1, 3, 10, 20), dtype=int), None, TypeError),
             (torch.ones((1, 3, 10, 20)).bool(), None, TypeError),  # bool tensor
@@ -83,15 +79,40 @@ class TestValidateImages(unittest.TestCase):
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
                 with self.assertRaises(exception_type):
-                    validate_images(images=image, dims=dims)
+                    validate_image(images=image, dims=dims)
 
     def test_img_length(self):
-        self.assertTrue(torch.allclose(validate_images(DUMMY_IMAGE, length=1, dims=None), DUMMY_IMAGE))
+        self.assertTrue(torch.allclose(validate_image(DUMMY_IMAGE, length=1, dims=None), DUMMY_IMAGE))
 
     def test_img_length_exception(self):
         with self.assertRaises(ValidationException) as e:
-            _ = validate_images(DUMMY_IMAGE, length=4, dims=None)
+            _ = validate_image(DUMMY_IMAGE, length=4, dims=None)
         self.assertTrue("Image length is expected to be 4 but got 1" in str(e.exception), msg=e.exception)
+
+
+class TestValidateImages(unittest.TestCase):
+    def test_validate_images(self):
+        for images, output in [
+            ([], []),
+            ([DUMMY_IMAGE], [DUMMY_IMAGE]),
+            ([DUMMY_IMAGE_TENSOR], [DUMMY_IMAGE]),
+            ([DUMMY_IMAGE, DUMMY_IMAGE_TENSOR], [DUMMY_IMAGE, DUMMY_IMAGE]),
+        ]:
+            with self.subTest(msg=f"images: {images}"):
+                res_img = validate_images(images=images)
+                self.assertEqual(len(images), len(output))
+                self.assertEqual(len(images), len(res_img))
+                self.assertTrue(all(torch.allclose(res, out) for res, out in zip(res_img, output)))
+
+    def test_validate_images_exceptions(self):
+        for images, exception_type, err_msg in [
+            ({DUMMY_IMAGE}, TypeError, "Expected images to be a list, got"),
+            (DUMMY_IMAGE, TypeError, "Expected images to be a list, got"),
+        ]:
+            with self.subTest(msg=f"images: {images}"):
+                with self.assertRaises(exception_type):
+                    # noinspection PyTypeChecker
+                    validate_images(images=images)
 
 
 class TestValidateKeyPoints(unittest.TestCase):

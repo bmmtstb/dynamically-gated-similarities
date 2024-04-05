@@ -136,7 +136,7 @@ class TestCollateStates(unittest.TestCase):
             bbox = BoundingBoxes(torch.ones(4), format="XYWH", canvas_size=(100, 100))
 
             s = State(
-                bbox=bbox, keypoints=torch.ones(1, J, j_dim), image=Image(torch.ones(1, C, H, W)), validate=validate
+                bbox=bbox, keypoints=torch.ones(1, J, j_dim), image=[Image(torch.ones(1, C, H, W))], validate=validate
             )
 
             for states, result in [
@@ -147,7 +147,7 @@ class TestCollateStates(unittest.TestCase):
                     State(
                         bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
                         keypoints=torch.ones((N, J, j_dim)),
-                        image=Image(torch.ones(N, C, H, W)),
+                        image=[Image(torch.ones(1, C, H, W)) for _ in range(N)],
                         validate=validate,
                     ),
                 ),

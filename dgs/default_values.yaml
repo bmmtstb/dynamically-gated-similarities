@@ -3,6 +3,7 @@
 # ###### #
 track:
     N: 30
+
 tracks:
     inactivity_threshold: 30
 

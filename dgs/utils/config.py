@@ -10,10 +10,30 @@ from typing import Union
 
 import yaml
 from easydict import EasyDict
+from yaml.constructor import SafeConstructor
 
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import Config, FilePath, NodePath
+
+
+def construct_yaml_tuple(self, node):  # pragma: no cover
+    """PyYaml does not support tuples, change that!
+
+    References:
+        https://stackoverflow.com/a/39554610/5889825
+    """
+    seq = self.construct_sequence(node)
+    # only make "leaf sequences" into tuples, you can add dict
+    # and other types as necessary
+    if seq and isinstance(seq[0], tuple):
+        return seq
+    return tuple(seq)
+
+
+# pyyaml safe_load does not accept the !!python/tuple directive, therefore, add it now, because we will need it!
+# see: https://stackoverflow.com/a/39554610/5889825
+SafeConstructor.add_constructor("tag:yaml.org,2002:python/tuple", construct_yaml_tuple)
 
 
 def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
@@ -74,7 +94,7 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
         raise InvalidPathException(f"Could not load configuration from {filepath}, because no such path exists.") from e
 
     with open(fp, encoding="utf-8") as file:
-        config = yaml.load(file, Loader=yaml.FullLoader)
+        config = yaml.safe_load(file)
     if easydict:
         return EasyDict(config)
     return config
@@ -204,3 +224,4 @@ def easydict_to_dict(ed: Union[dict, EasyDict]) -> dict:
 
 
 DEF_CONF: Config = load_config("./dgs/default_values.yaml")
+"""Parameters of the default configuration."""

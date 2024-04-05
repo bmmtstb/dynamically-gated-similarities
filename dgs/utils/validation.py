@@ -12,7 +12,7 @@ from torchvision import tv_tensors
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException, ValidationException
 from dgs.utils.files import is_dir, is_file, is_project_dir, mkdir_if_missing, to_abspath
-from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, Validator
+from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, Images, Validator
 
 VALIDATIONS: dict[str, Validator] = {
     "optional": (lambda _x, _d: True),
@@ -315,8 +315,8 @@ def validate_ids(ids: Union[int, torch.Tensor], length: int = None) -> torch.Ten
     return ids.long()
 
 
-def validate_images(images: Union[Image, torch.Tensor], length: int = None, dims: Union[int, None] = 4) -> Image:
-    """Given one single or multiple images, validate them and return a torchvision-tensor image.
+def validate_image(images: Union[Image, torch.Tensor], length: int = None, dims: Union[int, None] = 4) -> Image:
+    """Given one single image or a stacked batch images, validate them and return a torchvision-tensor image.
 
     Args:
         images: torch tensor or tv_tensor.Image object
@@ -352,6 +352,24 @@ def validate_images(images: Union[Image, torch.Tensor], length: int = None, dims
         )
 
     return tv_tensors.Image(images)
+
+
+def validate_images(images: list[Union[Image, torch.Tensor]]) -> Images:
+    """Given one single or multiple images, validate them and return a torchvision-tensor image.
+
+    Args:
+        images: A list containing :class:`~torch.Tensor` or :class:`.tv_tensor.Image` objects.
+
+    Returns:
+        The images as a list containing :class:`.tv_tensor.Image` objects, each with exactly 4 dimensions.
+
+    Raises:
+        TypeError: If `images` is not a list.
+    """
+    if not isinstance(images, (list, tuple)):
+        raise TypeError(f"Expected images to be a list, got {type(images)}.")
+
+    return [validate_image(img, length=1, dims=4) for img in images]
 
 
 def validate_key_points(

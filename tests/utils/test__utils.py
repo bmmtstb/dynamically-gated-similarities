@@ -13,7 +13,7 @@ from dgs.utils.files import is_project_file
 from dgs.utils.image import CustomCropResize
 from dgs.utils.types import Device
 from dgs.utils.utils import extract_crops_and_save, extract_crops_from_images, HidePrint, ids_to_one_hot, torch_to_numpy
-from helper import capture_stdout, load_test_image, load_test_images, test_multiple_devices
+from helper import capture_stdout, load_test_image, load_test_images, load_test_images_list, test_multiple_devices
 
 
 class TestUtils(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestUtils(unittest.TestCase):
 
         r = CustomCropResize()(
             {
-                "image": load_test_image("866-200x300.jpg"),
+                "images": load_test_images_list(["866-200x300.jpg"]),
                 "box": dummy_box.detach().clone(),
                 "keypoints": dummy_kp.detach().clone(),
                 "output_size": DEF_CONF.images.crop_size,
@@ -44,7 +44,7 @@ class TestUtils(unittest.TestCase):
 
         quad = CustomCropResize()(
             {
-                "image": load_test_images(["866-500x500.jpg", "866-500x500.jpg"]),
+                "images": load_test_images_list(["866-500x500.jpg", "866-500x500.jpg"]),
                 "box": BoundingBoxes(
                     torch.tensor([[0, 0, 500, 500]]).repeat(2, 1), format="XYWH", canvas_size=(500, 500)
                 ),
@@ -56,7 +56,7 @@ class TestUtils(unittest.TestCase):
 
         for imgs, bboxes, kps, res_imgs, res_kps, kwargs in [
             (
-                load_test_image("866-200x300.jpg"),
+                load_test_images_list(["866-200x300.jpg"]),
                 BoundingBoxes(torch.tensor([0, 0, 200, 300]), format="XYWH", canvas_size=(300, 200)),
                 dummy_kp,
                 example_crop,
@@ -64,7 +64,7 @@ class TestUtils(unittest.TestCase):
                 {},
             ),
             (
-                load_test_image("866-200x300.jpg"),
+                load_test_images_list(["866-200x300.jpg"]),
                 BoundingBoxes(torch.tensor([0, 0, 200, 300]), format="XYWH", canvas_size=(300, 200)),
                 dummy_kp,
                 load_test_image("866-200x300.jpg"),
@@ -72,7 +72,7 @@ class TestUtils(unittest.TestCase):
                 {"crop_size": (300, 200)},  # h w
             ),
             (
-                load_test_images(["866-200x300.jpg", "866-200x300.jpg"]),
+                load_test_images_list(["866-200x300.jpg", "866-200x300.jpg"]),
                 BoundingBoxes(torch.tensor([[0, 0, 200, 300]]).repeat(2, 1), format="XYWH", canvas_size=(300, 200)),
                 torch.ones(2, 3, 2),
                 load_test_images(["866-200x300.jpg", "866-200x300.jpg"]),
@@ -80,7 +80,7 @@ class TestUtils(unittest.TestCase):
                 {"crop_size": (300, 200)},
             ),
             (
-                load_test_images(["866-500x500.jpg", "866-500x500.jpg"]),
+                load_test_images_list(["866-500x500.jpg", "866-500x500.jpg"]),
                 BoundingBoxes(torch.tensor([[0, 0, 500, 500]]).repeat(2, 1), format="XYWH", canvas_size=(500, 500)),
                 None,
                 quad,
@@ -106,6 +106,23 @@ class TestUtils(unittest.TestCase):
                     self.assertTrue(torch.allclose(loc_kps, res_kps))
 
         self.assertTrue(torch.allclose(dummy_kp, torch.ones((1, 3, 2))), "the key points were modified")
+
+    def test_extract_from_empty_images(self):
+        imgs = []
+        kps = torch.empty((0, 1, 2))
+        box = BoundingBoxes(torch.tensor([0, 0, 200, 300]), format="XYWH", canvas_size=(300, 200))
+        crop, kps = extract_crops_from_images(imgs=imgs, kps=kps, bboxes=box)
+        self.assertEqual(kps, None)
+        self.assertTrue(torch.allclose(crop, tvte.Image(torch.empty(0, 3, 1, 1))))
+
+    def test_extract_crops_exceptions(self):
+        imgs = load_test_images_list(["866-500x500.jpg"])  # 1
+        box = BoundingBoxes(torch.ones((2, 4)), format="XYWH", canvas_size=(300, 200))
+        with self.assertRaises(ValueError) as e:
+            _ = extract_crops_from_images(imgs=imgs, bboxes=box)
+        self.assertTrue(
+            "Expected length of imgs 1 and number of bounding boxes 2 to match." in str(e.exception), msg=e.exception
+        )
 
     @test_multiple_devices
     def test_extract_crops_and_save(self, device: Device):

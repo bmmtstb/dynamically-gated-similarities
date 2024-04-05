@@ -67,7 +67,7 @@ omit = [
 ]
 
 [tool.coverage.paths]
-source = ["dgs", "tests"]
+source = ["dgs", "tests", "tests/helper.py"]
 
 [tool.coverage.report]
 fail_under = 60

@@ -52,6 +52,8 @@ Video = Union[tv_Video, torch.Tensor]
 """Torchvision tv_tensor.Video or regular tensor"""
 Image = Union[tv_Image, torch.Tensor]
 """A tensor based image with shape ``[(B x) C x H x W]``"""
+Images = list[Image]
+"""A list of Images, every Image has the shape ``[1 x C x H x W]``"""
 Heatmap = Union[tv_Mask, torch.Tensor]
 """Heatmap as mask with shape ``[(B x) J x h x w]``"""
 ImgShape = tuple[int, int]

@@ -13,8 +13,8 @@ import torch
 
 from dgs.default_config import cfg as default_config
 from dgs.utils.image import load_image
-from dgs.utils.types import Config, Device, Image
-from dgs.utils.validation import validate_images
+from dgs.utils.types import Config, Device, Image, Images
+from dgs.utils.validation import validate_image
 
 
 def test_multiple_devices(func: callable) -> callable:
@@ -41,7 +41,7 @@ def test_multiple_devices(func: callable) -> callable:
 
 def load_test_image(filename: str) -> Image:
     """Given the filename of an image in tests/test_data folder, load, validate and return it."""
-    return validate_images(load_image(os.path.join("./tests/test_data/images/", filename)))
+    return validate_image(load_image(os.path.join("./tests/test_data/images/", filename)))
 
 
 def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kwargs) -> Image:
@@ -49,6 +49,11 @@ def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kw
     return load_image(
         tuple(os.path.join("./tests/test_data/images/", fn) for fn in filenames), force_reshape=force_reshape, **kwargs
     )
+
+
+def load_test_images_list(filenames: Iterable[str]) -> Images:
+    """Given the filename of an image in tests/test_data folder, load, validate and return it."""
+    return [load_test_image(fn) for fn in filenames]
 
 
 @contextmanager

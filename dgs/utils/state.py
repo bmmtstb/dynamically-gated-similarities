@@ -7,6 +7,7 @@ keeping custom tensor subtypes intact.
 
 import os
 from collections import UserDict
+from collections.abc import Iterable
 from copy import deepcopy
 from typing import Callable, Type, Union
 
@@ -19,12 +20,14 @@ from torchvision.utils import save_image
 
 from dgs.utils.constants import COLORS, SKELETONS
 from dgs.utils.files import mkdir_if_missing
-from dgs.utils.image import load_image
-from dgs.utils.types import DataGetter, FilePath, FilePaths, Heatmap, Image
+from dgs.utils.image import load_image, load_image_list
+from dgs.utils.types import DataGetter, FilePath, FilePaths, Heatmap, Image, Images
+from dgs.utils.utils import extract_crops_from_images
 from dgs.utils.validation import (
     validate_bboxes,
     validate_filepath,
     validate_heatmaps,
+    validate_image,
     validate_images,
     validate_key_points,
 )
@@ -130,7 +133,19 @@ class State(UserDict):
             self.validate == other.validate
             and self.data.keys() == other.data.keys()
             and all(
-                torch.allclose(v, other.data[k]) if isinstance(v, torch.Tensor) else v == other.data[k]
+                (
+                    # tensor equality
+                    torch.allclose(v, other.data[k])
+                    if isinstance(v, torch.Tensor)
+                    else (
+                        # check for iterable of tensors
+                        len(other.data[k]) == len(v)
+                        and all(torch.allclose(sub_v, sub_o) for sub_v, sub_o in zip(v, other.data[k]))
+                        if isinstance(v, Iterable) and any(isinstance(sub_v, torch.Tensor) for sub_v in v)
+                        # regular equality
+                        else v == other.data[k]
+                    )
+                )
                 for k, v in self.data.items()
             )
         )
@@ -303,7 +318,7 @@ class State(UserDict):
         ).to(device=self.device)
 
     @property
-    def image(self) -> Image:
+    def image(self) -> Images:
         """Get the original image(s) of this State.
         If the images are not available, try to load them using :func:`load_image` and :attr:`filepath`.
         """
@@ -312,8 +327,9 @@ class State(UserDict):
         return self.data["image"]
 
     @image.setter
-    def image(self, value: Image) -> None:
-        self.data["image"]: Image = (validate_images(value) if self.validate else value).to(device=self.device)
+    def image(self, value: Images) -> None:
+        imgs = validate_images(value) if self.validate else value
+        self.data["image"]: Images = [tv_tensors.wrap(v.to(device=self.device), like=v) for v in imgs]
 
     @property
     def image_crop(self) -> Image:
@@ -326,7 +342,7 @@ class State(UserDict):
 
     @image_crop.setter
     def image_crop(self, value: Image) -> None:
-        self.data["image_crop"]: Image = (validate_images(value) if self.validate else value).to(device=self.device)
+        self.data["image_crop"]: Image = (validate_image(value) if self.validate else value).to(device=self.device)
 
     @property
     def crop_path(self):
@@ -431,38 +447,44 @@ class State(UserDict):
         return [State(**d) for d in new_data]  # pylint: disable=missing-kwoa
 
     def load_image_crop(self, **kwargs) -> Image:
-        """Load the images crops using the crop_paths of this object. Does nothing if the crops are already present."""
+        """Load the images crops using the crop_paths of this object. Does nothing if the crops are already present.
+
+        Keyword Args:
+            crop_size: The size of the image crops.
+                Default `DEF_CONF.images.crop_size`.
+        """
         if "image_crop" in self.data and self.data["image_crop"] is not None and len(self.data["image_crop"]) == self.B:
             return self.image_crop
-        if "crop_path" not in self.data:
-            raise AttributeError("Could not load image crops without proper filepaths given.")
-        if len(self.crop_path) == 0:
-            self.data["image_crop"] = tv_tensors.Image(torch.empty((0, 0, 1, 1)))
-            return self.image_crop
-        self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
-        return self.image_crop
 
         if "crop_path" in self.data:
             if len(self.crop_path) == 0:
-                self.data["image_crop"] = tv_tensors.Image(torch.empty((0, 0, 1, 1)))
+                self.data["image_crop"] = []
                 return self.image_crop
+            # allow changing the crop_size and other params via kwargs
             self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
+            return self.image_crop
+
+        if "filepath" in self.data:
+            kps = self.keypoints if "keypoints" in self.data else None
+            self.image_crop, loc_kps = extract_crops_from_images(imgs=self.image, bboxes=self.bbox, kps=kps, **kwargs)
+            if kps is not None:
+                self.keypoints_local = loc_kps
             return self.image_crop
 
         raise AttributeError(
             "Could not load image crops without either a proper filepath given or an image and bbox given."
         )
 
-    def load_image(self, **kwargs) -> Image:
+    def load_image(self) -> Images:
         """Load the images using the filepaths of this object. Does nothing if the images are already present."""
         if "image" in self.data and self.data["image"] is not None and len(self.data["image"]) == self.B:
             return self.image
         if "filepath" not in self.data:
             raise AttributeError("Could not load images without proper filepaths given.")
         if len(self.filepath) == 0:
-            self.data["image"] = tv_tensors.Image(torch.empty((0, 0, 1, 1)))
+            self.data["image"] = []
             return self.image
-        self.image = load_image(filepath=self.filepath, device=self.device, *kwargs)
+        self.image = load_image_list(filepath=self.filepath, device=self.device)
         return self.image
 
     def to(self, *args, **kwargs) -> "State":
@@ -533,20 +555,17 @@ class State(UserDict):
         """Draw the bboxes and key points of this State on the first image."""
         if self.B == 0:
             return
-        if (
-            self.image.ndim > 3
-            and self.image.size(0) > 1
-            and not all(torch.allclose(self.image[i - 1], self.image[i]) for i in range(len(self.image)))
+        if len(self.image) > 1 and not all(
+            torch.allclose(self.image[i - 1], self.image[i]) for i in range(1, len(self.image))
         ):
             raise ValueError(
-                f"If the image of this state has a batch-size bigger than one, "
-                f"it is expected, that all the images are equal. Image-shape: {self.image.shape}"
+                "If there are more than one image in this state, it is expected, that all the images are equal."
             )
 
         save_dir = os.path.dirname(os.path.abspath(save_path))
         mkdir_if_missing(save_dir)
 
-        orig_img = self.image[0].detach().clone() if self.image.ndim == 4 else self.image.detach().clone()
+        orig_img = self.image[0].detach().clone()
 
         img_kwargs = {
             "img": orig_img,
@@ -667,6 +686,7 @@ CUSTOM_COLLATE_MAP: dict[Type, Callable] = default_collate_fn_map.copy()
 CUSTOM_COLLATE_MAP.update(  # pragma: no cover
     {
         str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
+        list: lambda l_batch, *args, **kwargs: sum(l_batch, []),
         tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
         tv_tensors.BoundingBoxes: collate_bboxes,
         (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,

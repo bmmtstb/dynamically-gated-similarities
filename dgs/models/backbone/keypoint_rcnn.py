@@ -44,10 +44,9 @@ class KeypointRCNNBackbone(BaseBackboneModule, TorchModule):
 
         self.threshold: float = self.params.get("threshold", DEF_CONF.backbone.kprcnn.threshold)
 
-        model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
-        model.eval()
-        model.to(self.device)
-        self.model = model
+        self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
+        self.model.eval()
+        self.model.to(self.device)
 
     def forward(self, image_paths: Union[FilePath, FilePaths], *args, **kwargs) -> State:
         """Given a tuple of image paths, return a State containing the bounding boxes and the predicted key-points."""
@@ -55,7 +54,9 @@ class KeypointRCNNBackbone(BaseBackboneModule, TorchModule):
             image_paths = (image_paths,)
         assert len(image_paths) > 0, "No images provided"
 
-        images = load_image_list(filepath=image_paths, dtype=torch.float32, device=self.device)
+        images = [
+            img.squeeze(0) for img in load_image_list(filepath=image_paths, dtype=torch.float32, device=self.device)
+        ]
         outputs = self.model(images)
 
         states = []

@@ -161,7 +161,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
                 if B != 0:
                     # check the number of dimensions
                     self.assertEqual(batch.class_id.ndim, 1)
-                    self.assertEqual(batch.image.ndim, 4)
+                    self.assertTrue(all(img.ndim == 4 for img in batch.image))
                     self.assertEqual(batch.image_crop.ndim, 4)
                     self.assertEqual(batch.joint_weight.ndim, 3)
                     self.assertEqual(batch.keypoints.ndim, 3)
@@ -171,7 +171,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
 
                 # check that the first dimension is B
                 self.assertEqual(batch.class_id.size(0), B)
-                self.assertEqual(batch.image.size(0), B)
+                self.assertEqual(len(batch.image), B)
                 self.assertEqual(batch.image_crop.size(0), B)
                 self.assertEqual(batch.joint_weight.size(0), B)
                 self.assertEqual(batch.keypoints.size(0), B)

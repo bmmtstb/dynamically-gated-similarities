@@ -16,7 +16,7 @@ IMAGE_PATH = os.path.abspath(os.path.join("./tests/test_data/images/", "torch_pe
 class TestKPRCNNModel(unittest.TestCase):
 
     def test_init(self):
-        cfg = get_test_config()
+        cfg = fill_in_defaults({"device": "cuda" if torch.cuda.is_available() else "cpu"}, get_test_config())
         m = KeypointRCNNBackbone(config=cfg, path=[])
         self.assertTrue(isinstance(m, BaseBackboneModule))
         self.assertTrue(isinstance(m.model, TorchModule))
@@ -24,7 +24,9 @@ class TestKPRCNNModel(unittest.TestCase):
         self.assertTrue(m.threshold > 0.0)
 
     def test_forward(self):
-        cfg = fill_in_defaults({"kprcnn": {"threshold": 0.0}}, get_test_config())
+        cfg = fill_in_defaults(
+            {"device": "cuda" if torch.cuda.is_available() else "cpu", "kprcnn": {"threshold": 0.0}}, get_test_config()
+        )
         m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
 
         for fp, B in [
@@ -41,7 +43,9 @@ class TestKPRCNNModel(unittest.TestCase):
                 self.assertEqual(len(out.filepath), B)
 
     def test_forward_with_threshold(self):
-        cfg = fill_in_defaults({"kprcnn": {"threshold": 0.5}}, get_test_config())
+        cfg = fill_in_defaults(
+            {"device": "cuda" if torch.cuda.is_available() else "cpu", "kprcnn": {"threshold": 0.5}}, get_test_config()
+        )
 
         m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
         out = m(IMAGE_PATH)

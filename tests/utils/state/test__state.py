@@ -6,9 +6,10 @@ import numpy as np
 import torch
 from torchvision import tv_tensors
 
+from dgs.utils.config import DEF_CONF
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.state import get_ds_data_getter, State
-from dgs.utils.types import Device, FilePaths, Heatmap, Image
+from dgs.utils.types import Device, FilePaths, Heatmap, Image, Images
 from tests.helper import load_test_image, test_multiple_devices
 
 J = 17
@@ -21,6 +22,7 @@ PIDS = torch.ones(B, dtype=torch.long) * PID
 IMG_NAME = "866-200x300.jpg"
 DUMMY_IMG: Image = load_test_image(IMG_NAME)
 DUMMY_IMG_BATCH: Image = tv_tensors.Image(torch.cat([DUMMY_IMG.detach().clone() for _ in range(B)]))
+DUMMY_IMGS: Images = [DUMMY_IMG.detach().clone() for _ in range(B)]
 
 DUMMY_KP_TENSOR: torch.Tensor = torch.rand((1, J, J_DIM), dtype=torch.float32)
 DUMMY_KP = DUMMY_KP_TENSOR.detach().clone()
@@ -56,7 +58,7 @@ DUMMY_DATA: dict[str, any] = {
     "keypoints": DUMMY_KP,
     "keypoints_local": DUMMY_KP,
     "heatmap": DUMMY_HM,
-    "image": DUMMY_IMG,
+    "image": [DUMMY_IMG],
     "image_crop": DUMMY_IMG,
     "person_id": PID,
     "class_id": PID,
@@ -71,7 +73,7 @@ DUMMY_DATA_BATCH: dict[str, any] = {
     "keypoints": DUMMY_KP_BATCH,
     "keypoints_local": DUMMY_KP_BATCH,
     "heatmap": DUMMY_HM_BATCH,
-    "image": DUMMY_IMG_BATCH,
+    "image": DUMMY_IMGS,
     "image_crop": DUMMY_IMG_BATCH,
     "person_id": PIDS,
     "class_id": PIDS,
@@ -289,8 +291,8 @@ class TestStateAttributes(unittest.TestCase):
                     ds: State = State(**data_dict)
                     self.assertEqual(ds.device, torch.device(device))
                     self.assertTrue(torch.allclose(ds.person_id, out_id))
-                    self.assertTrue(torch.allclose(ds.image, out_image))
-                    self.assertTrue(torch.allclose(ds.image_crop, out_imgcrop))
+                    self.assertTrue(torch.allclose(ds.image[0], out_image))
+                    self.assertTrue(torch.allclose(ds.image_crop[0], out_imgcrop))
                     self.assertTrue(torch.allclose(ds.keypoints, out_kp))
                     self.assertTrue(torch.allclose(ds.keypoints_local, out_loc_kp))
                     self.assertTrue(torch.allclose(ds.bbox, out_bbox))
@@ -427,7 +429,7 @@ class TestStateFunctions(unittest.TestCase):
         res = s.split()
         for r in res:
             # check the number of dimensions
-            self.assertEqual(r.image.ndim, 4)
+            self.assertTrue(all(img.ndim == 4 for img in r.image))
             self.assertEqual(r.image_crop.ndim, 4)
             self.assertEqual(r.joint_weight.ndim, 3)
             self.assertEqual(r.keypoints.ndim, 3)
@@ -437,6 +439,7 @@ class TestStateFunctions(unittest.TestCase):
             self.assertEqual(r.track_id.ndim, 1)
 
             # check that the first dimension is B
+            self.assertEqual(len(r.image), 1)
             self.assertEqual(r.image_crop.size(0), 1)
             self.assertEqual(r.joint_weight.size(0), 1)
             self.assertEqual(r.keypoints.size(0), 1)
@@ -521,22 +524,26 @@ class TestStateFunctions(unittest.TestCase):
                     _ = obj.copy().data["image"]
                 self.assertTrue("'image'" in str(e.exception), msg=e.exception)
         # -> succeed if present
-        orig_img = img_ds.data["image"]
-        self.assertTrue(torch.allclose(orig_img, orig_img.clone()))
+        img_0 = img_ds.data["image"][0]
+        self.assertTrue(torch.allclose(img_0, orig_img))
 
         # call load_image
         ds.load_image()
-        img = ds.data["image"]
-        self.assertTrue(isinstance(img, tv_tensors.Image))
-        self.assertEqual(img.shape, orig_img.shape)
-        self.assertTrue(torch.allclose(img, orig_img))
+        imgs_1 = ds.data["image"]
+        self.assertTrue(isinstance(imgs_1, list))
+        img_1 = imgs_1[0]
+        self.assertTrue(isinstance(img_1, tv_tensors.Image))
+        self.assertEqual(img_1.shape, orig_img.shape)
+        self.assertTrue(torch.allclose(img_1, orig_img))
 
-        imgs = multi_ds.load_image()
-        self.assertTrue(isinstance(imgs, tv_tensors.Image))
-        self.assertEqual(list(imgs.shape), [B] + list(orig_img.shape)[1:])
-        self.assertTrue(torch.allclose(imgs, orig_img.repeat_interleave(B, dim=0)))
+        imgs_2 = multi_ds.load_image()
+        self.assertTrue(isinstance(imgs_2, list))
+        for img_2 in imgs_2:
+            self.assertTrue(isinstance(img_2, tv_tensors.Image))
+            self.assertEqual(list(img_2.shape), [1] + list(orig_img.shape)[-3:])
+            self.assertTrue(torch.allclose(img_2, orig_img))
 
-        self.assertTrue(torch.allclose(img_ds.load_image(), orig_img))
+        self.assertTrue(torch.allclose(img_ds.load_image()[0], orig_img))
 
         # calling load image fails if the filepaths are not given
         with self.assertRaises(AttributeError) as e:
@@ -545,7 +552,7 @@ class TestStateFunctions(unittest.TestCase):
 
         # call load image with zero-length image data
         empty_img = empty_fps.load_image()
-        self.assertTrue(torch.allclose(empty_img, tv_tensors.Image(torch.empty((0, 0, 1, 1)))))
+        self.assertEqual(empty_img, [])
 
     def test_load_image_crop(self):
         orig_img = load_test_image(IMG_NAME)
@@ -581,7 +588,7 @@ class TestStateFunctions(unittest.TestCase):
         self.assertEqual(list(imgs.shape), [B] + list(orig_img.shape)[1:])
         self.assertTrue(torch.allclose(imgs, orig_img.repeat_interleave(B, dim=0)))
 
-        self.assertTrue(torch.allclose(img_ds.load_image_crop(), orig_img))
+        self.assertTrue(torch.allclose(img_ds.load_image_crop()[0], orig_img))
 
         # calling load image fails if the filepaths are not given
         with self.assertRaises(AttributeError) as e:
@@ -594,25 +601,42 @@ class TestStateFunctions(unittest.TestCase):
 
         # call load image with zero-length image data
         empty_crop = empty_fps.load_image_crop()
-        self.assertTrue(torch.allclose(empty_crop, tv_tensors.Image(torch.empty((0, 0, 1, 1)))))
+        self.assertEqual(empty_crop, [])
+
+    def test_load_img_crop_by_extraction(self):
+        single_s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP, keypoints=DUMMY_KP)
+        multi_s = State(bbox=DUMMY_BBOX_BATCH, filepath=DUMMY_FP_BATCH)
+
+        crop = single_s.load_image_crop()
+        self.assertTrue(isinstance(crop, tv_tensors.Image))
+        self.assertEqual(crop.shape, torch.Size((1, 3, *DEF_CONF.images.crop_size)))
+        self.assertTrue("keypoints_local" in single_s.data)
+        self.assertEqual(single_s.keypoints_local.shape, DUMMY_KP.shape)
+
+        out_size = (100, 100)
+        crops = multi_s.load_image_crop(crop_size=out_size)
+        self.assertTrue(isinstance(crops, tv_tensors.Image))
+        self.assertEqual(crops.shape, torch.Size((B, 3, *out_size)))
+        self.assertFalse("keypoints_local" in multi_s.data)
 
     def test_get_image_and_load(self):
         ds = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP)
-        img = ds.image
-        self.assertTrue(torch.allclose(img, load_test_image(IMG_NAME)))
+        imgs = ds.image
+        self.assertTrue(all(torch.allclose(i, load_test_image(IMG_NAME)) for i in imgs))
 
     def test_get_image_crop_and_load(self):
         ds = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP)
-        crop = ds.image_crop
-        self.assertTrue(torch.allclose(crop, load_test_image(IMG_NAME)))
+        crops = ds.image_crop
+        self.assertTrue(all(torch.allclose(i, load_test_image(IMG_NAME)) for i in crops))
 
 
 class TestDataGetter(unittest.TestCase):
     def test_get_ds_data_getter(self):
-        getter = get_ds_data_getter(["image", "filepath"])
+        getter = get_ds_data_getter(["bbox", "filepath"])
         self.assertTrue(callable(getter))
         ds = State(**DUMMY_DATA.copy())
-        self.assertTrue(torch.allclose(getter(ds)[0], ds.image))
+        self.assertTrue(torch.allclose(getter(ds)[0], ds.bbox))
+        self.assertEqual(getter(ds)[1], ds.filepath)
 
 
 if __name__ == "__main__":

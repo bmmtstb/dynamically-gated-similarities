@@ -20,9 +20,9 @@ from dgs.utils.image import (
     load_image,
     load_image_list,
 )
-from dgs.utils.types import Image, ImgShape
-from dgs.utils.validation import validate_bboxes, validate_images, validate_key_points
-from helper import load_test_image, load_test_images, test_multiple_devices
+from dgs.utils.types import Image, Images, ImgShape
+from dgs.utils.validation import validate_bboxes, validate_key_points
+from helper import load_test_image, load_test_images_list, test_multiple_devices
 
 # Map image name to shape.
 # Shape is torch shape and therefore [C x H x W].
@@ -72,7 +72,7 @@ def create_coordinate_diagonal(
     return validate_key_points(torch.tensor([[left + i * step_size_w, top + i * step_size_h] for i in range(amount)]))
 
 
-def create_structured_data(
+def create_tensor_batch_data(
     image: Image,
     out_shape: ImgShape,
     mode: str,
@@ -85,6 +85,31 @@ def create_structured_data(
 
     return {
         "image": image.detach().clone(),
+        "box": bbox.detach().clone() if bbox is not None else create_bbox(H, W),
+        "keypoints": (
+            key_points.detach().clone()
+            if key_points is not None
+            else create_coordinate_diagonal(H, W, is_3d=kwargs.get("is_3d", False))
+        ),
+        "mode": mode,
+        "output_size": out_shape,
+        **kwargs,
+    }
+
+
+def create_list_batch_data(
+    images: Images,
+    out_shape: ImgShape,
+    mode: str,
+    bbox: tv_tensors.BoundingBoxes = None,
+    key_points: torch.Tensor = None,
+    **kwargs,
+) -> dict[str, any]:
+    """Given data, create a structured data dictionary with detached clones of each tensor."""
+    H, W = images[0].shape[-2:]
+
+    return {
+        "images": [img.detach().clone() for img in images],
         "box": bbox.detach().clone() if bbox is not None else create_bbox(H, W),
         "keypoints": (
             key_points.detach().clone()
@@ -172,16 +197,16 @@ class TestImage(unittest.TestCase):
     @test_multiple_devices
     def test_load_image_list(self, device: torch.device):
         for filepaths, dtype, hw in [
-            ("tests/test_data/images/866-200x300.jpg", torch.float32, [torch.Size((3, 300, 200))]),
+            ("tests/test_data/images/866-200x300.jpg", torch.float32, [torch.Size((1, 3, 300, 200))]),
             (
                 tuple("tests/test_data/images/866-200x300.jpg" for _ in range(3)),
                 torch.float32,
-                [torch.Size((3, 300, 200)) for _ in range(3)],
+                [torch.Size((1, 3, 300, 200)) for _ in range(3)],
             ),
             (
                 tuple(os.path.join("./tests/test_data/images/", k) for k in TEST_IMAGES),
                 torch.uint8,
-                [torch.Size(v) for v in TEST_IMAGES.values()],
+                [torch.Size((1, *v)) for v in TEST_IMAGES.values()],
             ),
         ]:
             with self.subTest(msg="filepaths: {}, dtype: {}, hw: {}".format(filepaths, dtype, hw)):
@@ -193,6 +218,10 @@ class TestImage(unittest.TestCase):
                     self.assertEqual(image.shape, shape)
                     self.assertEqual(image.device, device)
                     self.assertEqual(image.dtype, dtype)
+
+    def test_load_empty_image_list(self):
+        image_list = load_image_list(tuple())
+        self.assertEqual(image_list, [])
 
 
 class TestCustomTransformValidator(unittest.TestCase):
@@ -247,6 +276,22 @@ class TestCustomTransformValidator(unittest.TestCase):
                 with self.assertRaises(raised_exception):
                     CustomTransformValidator._validate_image(data)
 
+    def test_validate_images_exceptions(self):
+        inst = CustomTransformValidator()
+        for data, raised_exception, err_msg in [
+            (load_test_image("866-200x300.jpg"), TypeError, "images should be a list of tv_tensors.Image"),
+            (
+                tuple(load_test_images_list(["866-200x300.jpg"])),
+                TypeError,
+                "images should be a list of tv_tensors.Image",
+            ),
+            ([torch.ones((1, 2, 3, 4))], TypeError, "image should be a tv_tensors.Image"),
+        ]:
+            with self.subTest(msg=f"data: {data}, raised_exception: {raised_exception}"):
+                with self.assertRaises(raised_exception) as e:
+                    inst._validate_images(imgs=data)
+                self.assertTrue(err_msg in str(e.exception), msg=e.exception)
+
     def test_validate_output_size_exceptions(self):
         for data, raised_exception in [
             (None, TypeError),  # None is a faulty type
@@ -276,7 +321,7 @@ class TestCustomToAspect(unittest.TestCase):
 
                 for _3d in [False, True]:
                     with self.subTest(msg=f"img_name: {img_name}, out_shape: {out_shape}"):
-                        data = create_structured_data(image=img, out_shape=out_shape, mode=mode, is_3d=_3d)
+                        data = create_tensor_batch_data(image=img, out_shape=out_shape, mode=mode, is_3d=_3d)
 
                         # get result
                         res: dict[str, any] = distort_transform(data)
@@ -312,7 +357,7 @@ class TestCustomToAspect(unittest.TestCase):
 
                 for _3d in [True, False]:
                     with self.subTest(msg=f"img_name: {img_name}, out_shape: {out_shape}"):
-                        data = create_structured_data(image=img, out_shape=out_shape, mode="distort", is_3d=_3d)
+                        data = create_tensor_batch_data(image=img, out_shape=out_shape, mode="distort", is_3d=_3d)
 
                         # get result
                         res: dict[str, any] = distort_resize_transform(data)
@@ -365,7 +410,7 @@ class TestCustomToAspect(unittest.TestCase):
                 for _3d in [True, False]:
                     for mode in [m for m in CustomToAspect.modes if m.endswith("-pad")]:
                         with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
-                            data = create_structured_data(image=img, out_shape=out_shape, mode=mode, is_3d=_3d)
+                            data = create_tensor_batch_data(image=img, out_shape=out_shape, mode=mode, is_3d=_3d)
 
                             # fill-pad mode needs additional kwarg fill
                             if mode == "fill-pad":
@@ -436,7 +481,7 @@ class TestCustomToAspect(unittest.TestCase):
 
                 for _3d in [False, True]:
                     with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}, 3d: {_3d}"):
-                        data = create_structured_data(image=img, out_shape=out_shape, mode=mode, is_3d=_3d)
+                        data = create_tensor_batch_data(image=img, out_shape=out_shape, mode=mode, is_3d=_3d)
 
                         nh = min(int(W / w * h), H)
                         nw = min(int(H / h * w), W)
@@ -499,7 +544,7 @@ class TestCustomResize(unittest.TestCase):
 
                         H, W = img.shape[-2:]
 
-                        data = create_structured_data(image=img, out_shape=out_shape, mode="dummy", is_3d=_3d)
+                        data = create_tensor_batch_data(image=img, out_shape=out_shape, mode="dummy", is_3d=_3d)
 
                         # get result
                         res: dict[str, any] = resize_transform(data)
@@ -536,7 +581,7 @@ class TestCustomResize(unittest.TestCase):
 
 class TestCustomCropResize(unittest.TestCase):
 
-    def test_outside_crop(self):
+    def test_outside_crop_single_image(self):
         out_shapes: list[ImgShape] = [(500, 500), (200, 100), (100, 200)]
         bbox_l, bbox_t, bbox_w, bbox_h = 20, 30, 50, 40
         mode = "outside-crop"
@@ -558,8 +603,8 @@ class TestCustomCropResize(unittest.TestCase):
                     custom_diag = create_coordinate_diagonal(H=bbox_h, W=bbox_w, left=bbox_l, top=bbox_t, is_3d=_3d)
 
                     with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
-                        data = create_structured_data(
-                            image=img, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
+                        data = create_list_batch_data(
+                            images=[img], out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
                         )
 
                         # get result - these are the resized and stacked images!
@@ -608,7 +653,20 @@ class TestCustomCropResize(unittest.TestCase):
                         # test mode: should not have changed
                         self.assertEqual(mode, res["mode"])
 
-    def test_other_modes(self):
+    def test_single_image_3d(self):
+        img = tv_tensors.Image(load_test_image("866-200x300.jpg").squeeze(0))
+        data = create_list_batch_data(
+            images=[img],
+            out_shape=(100, 100),
+            mode="zero-pad",
+            bbox=tv_tensors.BoundingBoxes([0, 0, 300, 200], canvas_size=(200, 300), format="XYWH"),
+            key_points=torch.ones((1, 3, 2)),
+        )
+        res = CustomCropResize()(data)
+        self.assertTrue(isinstance(res["image"], tv_tensors.Image))
+        self.assertTrue(res["image"].ndim == 4)
+
+    def test_other_modes_single_image(self):
         out_shape = (100, 200)
         h, w = out_shape
         bbox_l, bbox_t, bbox_w, bbox_h = 20, 30, 50, 40
@@ -639,8 +697,13 @@ class TestCustomCropResize(unittest.TestCase):
                         # diagonal through box
                         custom_diag = create_coordinate_diagonal(H=bbox_h, W=bbox_w, left=bbox_l, top=bbox_t, is_3d=_3d)
 
-                        data = create_structured_data(
-                            image=img, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag, fill=0
+                        data = create_list_batch_data(
+                            images=[img],
+                            out_shape=out_shape,
+                            mode=mode,
+                            bbox=custom_bbox,
+                            key_points=custom_diag,
+                            fill=0,
                         )
 
                         # get result - these are the resized and stacked images!
@@ -655,7 +718,7 @@ class TestCustomCropResize(unittest.TestCase):
                         # test image: image is sub-image, shape is: [B x C x H x W]
                         img_crop = tv_tensors.wrap(tvt_crop(img, bbox_t, bbox_l, bbox_h, bbox_w), like=img)
                         crop_resized_img = transform(
-                            create_structured_data(image=img_crop, mode=mode, out_shape=out_shape, fill=0)
+                            create_tensor_batch_data(image=img_crop, mode=mode, out_shape=out_shape, fill=0)
                         )["image"]
                         self.assertTrue(torch.allclose(crop_resized_img, new_image))
                         # test bboxes: should stay the same
@@ -667,17 +730,15 @@ class TestCustomCropResize(unittest.TestCase):
                         # test mode: should not have changed
                         self.assertEqual(mode, res["mode"])
 
-    def test_batched_input(self):
+    def test_outside_crop_batched_input(self):
         out_shapes: list[ImgShape] = [(500, 500), (200, 100), (100, 200)]
         bbox_l, bbox_t, bbox_w, bbox_h = [20, 30, 50, 40]
         mode = "outside-crop"
 
         for out_shape in out_shapes:
             for img_name in TEST_IMAGES.keys():
-                img: tv_tensors.Image = load_test_image(img_name)
-                img = validate_images(img.expand(2, -1, -1, -1))
-
-                H, W = img.shape[-2:]
+                imgs: Images = load_test_images_list([img_name, img_name])
+                H, W = imgs[0].shape[-2:]
 
                 custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
                     torch.tensor([[bbox_l, bbox_t, bbox_w, bbox_h], [bbox_l, bbox_t, bbox_w, bbox_h]]),
@@ -691,8 +752,8 @@ class TestCustomCropResize(unittest.TestCase):
                     custom_diag = custom_diag.expand(2, -1, -1)
 
                     with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
-                        data = create_structured_data(
-                            image=img, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
+                        data = create_list_batch_data(
+                            images=imgs, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
                         )
 
                         # get result - these are the resized and stacked images!
@@ -712,21 +773,30 @@ class TestCustomCropResize(unittest.TestCase):
                         self.assertTrue(torch.allclose(new_coords[0], new_coords[1]))
 
     def test_exceptions(self):
-        for images, bboxes, coords, exception in [
-            (load_test_image("866-200x300.jpg"), create_bbox(10, 10), torch.zeros((10, 21, 2)), ValueError),
+        for images, bboxes, coords, exception, err_msg in [
             (
-                load_test_images(["866-200x300.jpg", "866-200x300.jpg"]),
-                tv_tensors.BoundingBoxes(torch.zeros((10, 4)), canvas_size=(10, 10), format="xywh"),
-                torch.zeros((10, 21, 2)),
+                load_test_images_list(["866-200x300.jpg", "866-200x300.jpg"]),
+                create_bbox(10, 10),  # 1 x 4
+                torch.zeros((2, 21, 2)),
                 ValueError,
+                "Expected bounding boxes 1 and key points 2 to have the same number of dimensions",
+            ),
+            (
+                load_test_images_list(["866-200x300.jpg"]),  # just 1 image
+                tv_tensors.BoundingBoxes(torch.zeros((2, 4)), canvas_size=(10, 10), format="xywh"),
+                torch.zeros((2, 21, 2)),
+                ValueError,
+                "Expected the same amount of images 1 and bounding boxes 2",
             ),
         ]:
-            with self.subTest(msg=f"bboxes, coords, exception"):
-                data = create_structured_data(
-                    image=images, out_shape=(100, 100), mode="zero-pad", bbox=bboxes, key_points=coords
+            with self.subTest(msg=f"err_msg: {err_msg}, bboxes: {bboxes.shape}, coords: {coords.shape}"):
+                data = create_list_batch_data(
+                    images=images, out_shape=(100, 100), mode="zero-pad", bbox=bboxes, key_points=coords
                 )
-                with self.assertRaises(exception):
-                    CustomCropResize()(data)
+
+                with self.assertRaises(exception) as e:
+                    _ = CustomCropResize()(data)
+                self.assertTrue(err_msg in str(e.exception), msg=e.exception)
 
 
 if __name__ == "__main__":

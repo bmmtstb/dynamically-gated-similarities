@@ -1,7 +1,7 @@
 import unittest
 
 from dgs.utils.types import Device
-from tests.helper import load_test_image, load_test_images, test_multiple_devices
+from tests.helper import load_test_image, load_test_images, load_test_images_list, test_multiple_devices
 
 all_images: list[str] = [
     "866-200x300.jpg",
@@ -58,6 +58,15 @@ class TestTestHelpers(unittest.TestCase):
             with self.subTest(msg=f"filenames: {filenames}, exception: {exception}"):
                 with self.assertRaises(exception):
                     load_test_images(filenames)
+
+    def test_load_test_images_list(self):
+        for filenames, length in [
+            (["866-200x300.jpg"], 1),
+            (["866-200x300.jpg", "866-200x300.jpg", "866-200x300.jpg"], 3),
+            (all_images, len(all_images)),
+        ]:
+            with self.subTest(msg=f"filenames: {filenames}"):
+                self.assertEqual(len(load_test_images_list(filenames)), length)
 
 
 if __name__ == "__main__":

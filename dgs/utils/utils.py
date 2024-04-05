@@ -16,8 +16,8 @@ from torchvision.transforms.functional import convert_image_dtype
 
 from dgs.utils.config import DEF_CONF
 from dgs.utils.files import mkdir_if_missing
-from dgs.utils.image import CustomCropResize, load_image
-from dgs.utils.types import Device, FilePath, FilePaths, Image
+from dgs.utils.image import CustomCropResize, load_image_list
+from dgs.utils.types import Device, FilePath, FilePaths, Image, Images
 
 
 def torch_to_numpy(t: torch.Tensor) -> np.ndarray:
@@ -35,13 +35,13 @@ def torch_to_numpy(t: torch.Tensor) -> np.ndarray:
 
 
 def extract_crops_from_images(
-    imgs: Image, bboxes: tvte.BoundingBoxes, kps: torch.Tensor = None, **kwargs
+    imgs: Images, bboxes: tvte.BoundingBoxes, kps: torch.Tensor = None, **kwargs
 ) -> tuple[Image, Union[torch.Tensor, None]]:
-    """Given one or multiple images, use the bounding boxes to extract the respective image crops.
-    Additionally, compute the local keypoint-coordinates if global keypoints are given.
+    """Given a list of images, use the bounding boxes to extract the respective image crops.
+    Additionally, compute the local key-point coordinates if global key points are given.
 
     Args:
-        imgs: A tv_tensors.Image tensor containing at least one image.
+        imgs: A list containing one or multiple tv_tensors.Image tensors.
         bboxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
         kps: The key points of the respective images.
             The key points will be transformed with the images to obtain the local key point coordinates.
@@ -57,7 +57,10 @@ def extract_crops_from_images(
             Default `DEF_CONF.images.mode`.
     """
     if len(imgs) == 0:
-        return imgs, None
+        return tvte.Image(torch.empty(0, 3, 1, 1)), None
+
+    if len(imgs) != len(bboxes):
+        raise ValueError(f"Expected length of imgs {len(imgs)} and number of bounding boxes {len(bboxes)} to match.")
 
     transform = kwargs.get(
         "transform",
@@ -65,9 +68,9 @@ def extract_crops_from_images(
     )
     res = transform(
         {
-            "image": imgs,
+            "images": imgs,
             "box": bboxes,
-            "keypoints": kps if kps is not None else torch.zeros((imgs.shape[-4], 1, 2), device=imgs.device),
+            "keypoints": kps if kps is not None else torch.zeros((len(imgs), 1, 2), device=imgs[0].device),
             "mode": kwargs.get("crop_mode", DEF_CONF.images.crop_mode),
             "output_size": kwargs.get("crop_size", DEF_CONF.images.crop_size),
         }
@@ -78,7 +81,7 @@ def extract_crops_from_images(
 def extract_crops_and_save(
     img_fps: Union[list[FilePath], FilePaths],
     boxes: tvte.BoundingBoxes,
-    new_fps: Union[list[FilePath], FilePaths] = None,
+    new_fps: Union[list[FilePath], FilePaths],
     key_points: torch.Tensor = None,
     **kwargs,
 ) -> tuple[Image, torch.Tensor]:
@@ -94,7 +97,6 @@ def extract_crops_and_save(
         img_fps: An iterable of absolute paths pointing to the original images.
         boxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
         new_fps: An iterable of absolute paths pointing to the image crops.
-            Default None will not save the image_crops at all.
         key_points (torch.Tensor, optional): Key points of the respective images.
             The key points will be transformed with the images. Default None just means that a placeholder is passed.
 
@@ -123,16 +125,15 @@ def extract_crops_and_save(
     # extract kwargs
     device: Device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
 
-    imgs: Image = load_image(filepath=tuple(img_fps), device=device)
+    imgs: Images = load_image_list(filepath=tuple(img_fps), device=device)
 
     crops, loc_kps = extract_crops_from_images(imgs=imgs, bboxes=boxes, kps=key_points, **kwargs)
 
-    if new_fps:
-        for i, (fp, crop) in enumerate(zip(new_fps, crops.cpu())):
-            mkdir_if_missing(os.path.dirname(fp))
-            write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))
-            if key_points is not None:
-                torch.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
+    for i, (fp, crop) in enumerate(zip(new_fps, crops.cpu())):
+        mkdir_if_missing(os.path.dirname(fp))
+        write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))
+        if key_points is not None:
+            torch.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
 
     return crops.to(device=device), None if key_points is None else loc_kps
 
