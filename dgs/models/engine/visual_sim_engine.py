@@ -6,11 +6,12 @@ import time
 from datetime import timedelta
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
 
 from dgs.models.engine.engine import EngineModule
-from dgs.models.metric import metric, METRICS
+from dgs.models.metric import get_metric, metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.similarity.torchreid import TorchreidSimilarity
 from dgs.utils.state import State
@@ -65,7 +66,6 @@ class VisualSimilarityEngine(EngineModule):
         It is possible to pass additional initialization kwargs to the metric
         by adding them to the ``metric_kwargs`` parameter.
 
-
     Optional Test Params
     --------------------
 
@@ -89,6 +89,9 @@ class VisualSimilarityEngine(EngineModule):
 
     model: TorchreidSimilarity
 
+    metric: nn.Module
+    """A metric function used to compute the embedding distance."""
+
     def __init__(
         self,
         config: Config,
@@ -103,6 +106,9 @@ class VisualSimilarityEngine(EngineModule):
 
         self.validate_params(test_validations, "params_test")
         self.topk_cmc: list[int] = self.params_test.get("topk_cmc", [1, 5, 10, 50])
+
+        # get metric and kwargs
+        self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         if self.config["is_training"]:
             self.validate_params(train_validations, attrib_name="params_train")
@@ -273,3 +279,28 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"#### Evaluation of {self.name} complete ####")
 
         return results
+
+    def predict(self) -> torch.Tensor:
+        """Predict the visual embeddings for the test data.
+
+        Notes:
+            Depending on the number of predictions (``N``) and the embeddings size (``E``),
+            the resulting tensor(s) can get incredibly huge.
+            The prediction for the validation data of the |PT21| dataset is roughly 300MB.
+
+        Returns:
+            torch.Tensor: The predicted embeddings as tensor of shape: ``[N x E]``
+        """
+        self.set_model_mode("eval")
+        start_time: float = time.time()
+        self.logger.info(f"#### Start Prediction {self.name} ####")
+
+        embeds, _ = self._extract_data(
+            dl=self.test_dl,
+            desc="Predict",
+            write_embeds=self.params_test["write_embeds"][0] if "write_embeds" in self.params_test else False,
+        )
+        self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
+        self.logger.info(f"#### Prediction of {self.name} complete ####")
+
+        return embeds

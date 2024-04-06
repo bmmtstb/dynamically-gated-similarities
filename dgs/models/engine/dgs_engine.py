@@ -204,5 +204,8 @@ class DGSEngine(EngineModule):
 
         return results
 
+    def predict(self) -> None:
+        """Given test data, predict the results without evaluation."""
+
     def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:
         raise NotImplementedError

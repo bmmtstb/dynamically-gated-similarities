@@ -18,7 +18,6 @@ from torchvision import tv_tensors
 from tqdm import tqdm
 
 from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
-from dgs.models.metric import get_metric, METRICS
 from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
@@ -27,7 +26,7 @@ from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
-from dgs.utils.types import Config, FilePath, Validations
+from dgs.utils.types import Config, FilePath, Results, Validations
 from dgs.utils.visualization import torch_show_image
 
 engine_validations: Validations = {
@@ -47,7 +46,6 @@ train_validations: Validations = {
 }
 
 test_validations: Validations = {
-    "metric": [("any", ["callable", ("in", METRICS)])],
     # optional
     "normalize": ["optional", bool],
     "ranks": ["optional", "iterable", ("all type", int)],
@@ -72,8 +70,6 @@ class EngineModule(BaseModule):
 
     Test Params
     -----------
-
-    metric ():
 
 
     Train Params
@@ -135,7 +131,6 @@ class EngineModule(BaseModule):
     # pylint: disable = too-many-instance-attributes
 
     loss: nn.Module
-    metric: nn.Module
     optimizer: optim.Optimizer
     model: nn.Module
     module: nn.Module
@@ -166,7 +161,6 @@ class EngineModule(BaseModule):
         self.params_test: Config = get_sub_config(config, ["test"])
         self.validate_params(test_validations, attrib_name="params_test")
         self.test_dl = test_loader
-        self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
         # Set up general attributes
         self.model = self.configure_torch_module(model, train=self.config["is_training"])
@@ -249,11 +243,21 @@ class EngineModule(BaseModule):
 
     @abstractmethod
     @enable_keyboard_interrupt
-    def test(self) -> dict[str, any]:
+    def test(self) -> Results:
         """Run tests, defined in Sub-Engine.
 
         Returns:
-            dict[str, any]: A dictionary containing all the computed metrics.
+            dict[str, any]: A dictionary containing all the computed accuracies, metrics, ... .
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    @enable_keyboard_interrupt
+    def predict(self) -> any:
+        """Given test data, predict the results without evaluation.
+
+        Returns:
+            The predicted results. Datatype might vary depending on the used engine.
         """
         raise NotImplementedError
 
@@ -338,7 +342,7 @@ class EngineModule(BaseModule):
 
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
-                metrics = self.test()
+                metrics: dict[str, any] = self.test()
                 self.save_model(epoch=self.curr_epoch, metrics=metrics)
                 self.writer.add_hparams(
                     hparam_dict={

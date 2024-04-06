@@ -42,6 +42,8 @@ Loss = nn.Module
 """A module or function that computes a loss."""
 Scheduler = LRScheduler
 """A Scheduler used to update the learning rate during training."""
+Results = dict[str, any]
+"""A dictionary of results, as name->metric or name->iterable of metrics."""
 
 # Torch
 Device = Union[TorchDevice, str]

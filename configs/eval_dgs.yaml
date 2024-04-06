@@ -11,7 +11,6 @@ log_dir: "./results/own/dgs/"
 
 test:
     inactivity_threshold: 30
-    metric: "CosineDistance"  # fixme not really useful? Should be defined in visual_similarity block...?
     save_images: on
     show_keypoints: off
     show_skeleton: off
