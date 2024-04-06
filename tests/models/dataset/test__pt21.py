@@ -171,7 +171,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
 
                 # check that the first dimension is B
                 self.assertEqual(batch.class_id.size(0), B)
-                self.assertEqual(len(batch.image), B)
+                self.assertEqual(len(batch.image), max(B, 1))  # The frame-based dataset adds 1 img path nevertheless
                 self.assertEqual(batch.image_crop.size(0), B)
                 self.assertEqual(batch.joint_weight.size(0), B)
                 self.assertEqual(batch.keypoints.size(0), B)

@@ -6,7 +6,7 @@ import time
 from datetime import timedelta
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
 

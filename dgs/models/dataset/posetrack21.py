@@ -680,7 +680,8 @@ class PoseTrack21_Image(BaseDataset):
         ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
-            filepath=tuple(self.map_img_id_to_path[idx] for _ in range(len(anno_ids))),
+            # add filepath to tuple even though there is no data to be able to draw the image later
+            filepath=tuple(self.map_img_id_to_path[idx] for _ in range(max(len(anno_ids), 1))),
             bbox=bboxes,
             keypoints=keypoints,
             person_id=self.pids[anno_ids].flatten(),

@@ -15,7 +15,6 @@ from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
 from dgs.utils.config import DEF_CONF
 from dgs.utils.state import State
-from dgs.utils.timer import DifferenceTimer
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks, TrackStatistics
 from dgs.utils.types import Config, Validations
@@ -51,6 +50,7 @@ class DGSEngine(EngineModule):
     inactivity_threshold (int):
         The number of steps after which an inactive :class:`Track` will be removed.
         Removed tracks can be reactivated using :meth:`.Tracks.reactivate_track`.
+        Use `None` to disable the removing of inactive tracks.
         Default `DEF_CONF.tracks.inactivity_threshold`.
     save_images (bool):
         Whether to save the generated image-results.
@@ -95,9 +95,72 @@ class DGSEngine(EngineModule):
     def get_target(self, ds: State) -> any:
         return ds["class_id"].long()
 
+    def _track_step(self, detections: State) -> tuple[TrackStatistics, dict[str, float]]:
+        """Run one step of tracking."""
+        N: int = len(detections)
+        T: int = len(self.tracks)
+        updated_tracks: dict[int, State] = {}
+        new_states: list[State] = []
+        batch_times: dict[str, float] = {}
+
+        time_batch_start: float = time.time()
+
+        # Get the current state from the Tracks and use it to compute the similarity to the current detections.
+        track_state: State = self.tracks.get_states()
+        batch_times["data"] = time.time() - time_batch_start
+
+        states: list[State] = detections.split()
+        if len(track_state) == 0 and N > 0:
+            # No Tracks yet - every detection will be a new track!
+            time_match_start = time.time()
+            new_states += states
+            batch_times["match"] = time.time() - time_match_start
+        elif N > 0:
+            time_sim_start = time.time()
+            similarity = self.model.forward(ds=detections, target=track_state)
+            batch_times["similarity"] = time.time() - time_sim_start
+
+            # Solve Linear sum Assignment Problem (LAP) using py-lapsolver.
+            # The goal is to obtain the best combination of Track-IDs and detection-IDs given the probabilities of
+            # a similarity-matrix with a shape of [N x T].
+            # Because the algorithm returns the lowest scores, we need to compute 1-sim as cost matrix.
+            # The result is a list of N 2-tuples containing the position
+            time_match_start = time.time()
+            cost_matrix = torch.ones_like(similarity) - similarity
+            # lapsolver uses numpy arrays instead of torch, therefore, convert but loose computational graph
+            cost_matrix = torch_to_numpy(cost_matrix)
+            rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
+
+            # assert (
+            #     N == len(states) == len(rids) == len(cids)
+            # ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
+
+            tids = self.tracks.ids
+            for rid, cid in zip(rids, cids):
+                if cid < T and cid in tids:
+                    updated_tracks[cid] = states[rid]
+                else:
+                    new_states.append(states[rid])
+            batch_times["match"] = time.time() - time_match_start
+
+        # update tracks
+        time_track_update_start = time.time()
+        ts: TrackStatistics
+        _, ts = self.tracks.add(tracks=updated_tracks, new=new_states)
+
+        batch_times["track"] = time.time() - time_track_update_start
+        batch_times["batch"] = time.time() - time_batch_start
+        if N > 0:
+            batch_times["indiv"] = batch_times["batch"] / N
+
+        return ts, batch_times
+
     def test(self) -> dict[str, any]:
         """Test the DGS Tracker"""
         # pylint: disable=too-many-statements
+
+        if self.test_dl.batch_size > 1:
+            raise NotImplementedError("Tracking does only support a batch size of 1.")
 
         results: dict[str, any] = {}
         detections: State
@@ -109,79 +172,14 @@ class DGSEngine(EngineModule):
         self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        # set up timers
-        data_t: DifferenceTimer = DifferenceTimer()
-        batch_t: DifferenceTimer = DifferenceTimer()
-        similarity_t: DifferenceTimer = DifferenceTimer()
-        match_t: DifferenceTimer = DifferenceTimer()
-        track_t: DifferenceTimer = DifferenceTimer()
-
-        time_batch_start: float = time.time()
-
         for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Tracking", total=len(self.test_dl)):
             # fixme reset tracks at the end of every sub-dataset
             if self.tracks.nof_removed > 50:
                 self.tracks.reset_deleted()
 
             N: int = len(detections)
-            T: int = len(self.tracks)
-            batch_times: dict[str, float] = {}
 
-            updated_tracks: dict[int, State] = {}
-            new_states: list[State] = []
-
-            # Get the current state from the Tracks and use it to compute the similarity to the current detections.
-            track_state: State = self.tracks.get_states()
-            data_t.add(time_batch_start)
-            batch_times["data"] = data_t[-1]
-            states: list[State] = detections.split()
-            if len(track_state) == 0 and N > 0:
-                # No Tracks yet - every detection will be a new track!
-                time_match_start = time.time()
-                new_states += states
-                match_t.add(time_match_start)
-                batch_times["match"] = match_t[-1]
-            elif N > 0:
-                time_sim_start = time.time()
-                similarity = self.model.forward(ds=detections, target=track_state)
-                similarity_t.add(time_sim_start)
-                batch_times["similarity"] = similarity_t[-1]
-
-                # Solve Linear sum Assignment Problem (LAP) using py-lapsolver.
-                # The goal is to obtain the best combination of Track-IDs and detection-IDs given the probabilities of
-                # a similarity-matrix with a shape of [N x T].
-                # Because the algorithm returns the lowest scores, we need to compute 1-sim as cost matrix.
-                # The result is a list of N 2-tuples containing the position
-                time_match_start = time.time()
-                cost_matrix = torch.ones_like(similarity) - similarity
-                # lapsolver uses numpy arrays instead of torch, therefore, convert but loose computational graph
-                cost_matrix = torch_to_numpy(cost_matrix)
-                rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
-
-                # assert (
-                #     N == len(states) == len(rids) == len(cids)
-                # ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
-
-                tids = self.tracks.ids
-                for rid, cid in zip(rids, cids):
-                    if cid < T and cid in tids:
-                        updated_tracks[cid] = states[rid]
-                    else:
-                        new_states.append(states[rid])
-                match_t.add(time_match_start)
-                batch_times["matching"] = match_t[-1]
-
-            # update tracks
-            time_track_update_start = time.time()
-            ts: TrackStatistics
-            _, ts = self.tracks.add(tracks=updated_tracks, new=new_states)
-            track_t.add(time_track_update_start)
-            batch_times["track"] = track_t[-1]
-
-            batch_t.add(time_batch_start)
-            batch_times["batch"] = batch_t[-1]
-            if N > 0:
-                batch_times["indiv"] = batch_t[-1] / N
+            ts, batch_times = self._track_step(detections=detections)
 
             # print debug info
             ts.print(logger=self.logger, frame_idx=frame_idx)
@@ -199,13 +197,34 @@ class DGSEngine(EngineModule):
                     show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
                 )
-            # reset timer for next batch
-            time_batch_start = time.time()
+
+        self.logger.info(f"#### Finished Evaluating {self.name} ####")
 
         return results
 
     def predict(self) -> None:
         """Given test data, predict the results without evaluation."""
+        # set model to evaluation mode and freeze / close all layers
+        self.set_model_mode("eval")
+        close_all_layers(self.model)
+
+        self.logger.info(f"#### Start Prediction {self.name} ####")
+        self.logger.info("Loading, extracting, and predicting data, this might take a while...")
+        detections: State
+        for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Predicting", total=len(self.test_dl)):
+            _ = self._track_step(detections=detections)
+
+            out_fp = os.path.join(self.log_dir, f"./images/{frame_idx}.png")
+            if len(detections) > 0:
+                self.tracks.get_active_states().draw(
+                    save_path=out_fp,
+                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
+                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
+                )
+            else:
+                detections.draw(save_path=out_fp, show_kp=False, show_skeleton=False)
+
+        self.logger.info(f"#### Finished Prediction {self.name} ####")
 
     def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:
         raise NotImplementedError

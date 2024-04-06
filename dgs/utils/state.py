@@ -6,6 +6,7 @@ keeping custom tensor subtypes intact.
 """
 
 import os
+import warnings
 from collections import UserDict
 from collections.abc import Iterable
 from copy import deepcopy
@@ -37,47 +38,88 @@ from dgs.utils.visualization import show_image_with_additional
 class State(UserDict):
     """Class for storing one or multiple samples of data as a 'State'.
 
+    Batch Size
+    ----------
+
+    Even if the batch size of a State is 1, or even zero (!),
+    the dimension containing the batch size should always be present.
+
+    Validation
+    ----------
+
     By default, this object validates all new inputs.
     If you validate elsewhere, use an existing dataset,
     or you don't want validation for performance reasons, validation can be turned off.
+
+
+    Additional Values
+    -----------------
 
     The model might be given additional values during initialization,
     or at any time using the given setters or the get_item call.
     Additionally, the object can compute / load further values.
 
     All args and keyword args can be accessed using the States' properties.
-    Additionally, the underlying dict structure can be used,
+    Additionally, the underlying dict structure ('self.data') can be used,
     but this does not allow validation nor on the fly computation of additional values.
+    So make sure you do so, if needed.
+
+    keypoints (:class:`torch.Tensor`)
+        The key points for this bounding box as torch tensor in global coordinates.
+
+        Shape ``[B x J x 2|3]``
+
+    filepath (:obj:`.FilePaths`)
+        The respective filepath(s) of every image.
+
+        Length ``B``.
+
+    person_id (:class:`torch.Tensor`)
+        The person id, only required for training and validation.
+
+        Shape ``[B]``.
+
+    class_id (:class:`torch.Tensor`)
+        The class id, only required for training and validation.
+
+        Shape ``[B]``.
+
+    device (:obj:`.Device`)
+        The torch device to use.
+        If the device is not given, the device of :attr:`bbox` is used as the default.
+
+    heatmap (:class:`torch.Tensor`)
+        The heatmap of this bounding box.
+        Currently not used.
+
+        Shape ``[B x J x h x w]``.
+
+    image (:obj:`.Images`)
+        A list containing the original image(s) as :class:`tv_tensors.Image` object.
+
+        A list of length ``B`` containing images of shape ``[1 x C x H x W]``.
+
+    image_crop (:obj:`.Image`)
+        The content of the original image cropped using the bbox.
+
+        Shape ``[B x C x h x w]``
+
+    joint_weight (:class:`torch.Tensor`)
+        Some kind of joint- or key-point confidence.
+        E.g., the joint confidence score (JCS) of AlphaPose or the joint visibility of |PT21|.
+
+        Shape ``[B x J x 1]``
+
+    keypoints_local (:class:`torch.Tensor`)
+        The key points for this bounding box as torch tensor in local coordinates.
+
+        Shape ``[B x J x 2|3]``
 
     Args:
         bbox (tv_tensors.BoundingBoxes): One single bounding box as torchvision bounding box in global coordinates.
-            Shape ``[B x 4]``
-        kwargs: Additional keyword arguments as shown below.
 
-    Keyword Args:
-        keypoints (torch.Tensor): The key points for this bounding box as torch tensor in global coordinates.
-            Shape ``[B x J x 2|3]``
-        filepath (tuple[str]): The respective filepath of every image.
-            Length ``B``.
-        person_id (torch.Tensor): The person id, only required for training and validation.
-            Shape ``[B]``.
-        class_id (torch.Tensor): The class id, only required for training and validation.
-            Shape ``[B]``.
-        device (Device): The torch device to use.
-            If the device is not given, the device the bbox is on is used as a default.
-        heatmap (torch.Tensor)
-            The heatmap of this bounding box with a shape of shape ``[B x J x h x w]``.
-            Currently not used.
-        image (tv_tensor.Image): The original image,
-            resized to the respective shape of the key point prediction model input.
-            Shape ``[B x C x H x W]``
-        image_crop (tv_tensor.Image): The content of the original image cropped using the bbox.
-           Shape ``[B x C x h x w]``
-        joint_weight (torch.Tensor): Some kind of joint- or key-point confidence.
-            E.g., the joint confidence score (JCS) of AlphaPose or the joint visibility of |PT21|.
-            Shape ``[B x J x 1]``
-        keypoints_local (torch.Tensor): The key points for this bounding box as torch tensor in local coordinates.
-            Shape ``[B x J x 2|3]``
+            Shape ``[B x 4]``
+        kwargs: Additional keyword arguments as shown in the 'Additional Values' section.
     """
 
     # there a many attributes and they can get used, so please the linter
@@ -247,6 +289,9 @@ class State(UserDict):
 
     @filepath.setter
     def filepath(self, fp: Union[FilePath, FilePaths]) -> None:
+        if not self.validate:
+            self.data["filepath"] = fp if isinstance(fp, tuple) else (fp,)
+            return
         if isinstance(fp, tuple):
             if len(fp) != self.B:
                 raise ValueError(
@@ -550,30 +595,46 @@ class State(UserDict):
 
     @torch.no_grad()
     def draw(
-        self, save_path: FilePath, show_kp: bool = True, show_skeleton: bool = True, **kwargs
+        self, save_path: FilePath, show_kp: bool = True, show_skeleton: bool = True, show_bbox: bool = True, **kwargs
     ) -> None:  # pragma: no cover
-        """Draw the bboxes and key points of this State on the first image."""
-        if self.B == 0:
-            return
+        """Draw the bboxes and key points of this State on the first image.
+
+        This method uses torchvision to draw the information of this State on the first image in :attr:`self.image`.
+        The drawing of key points, the respective connectivity / skeleton, and the bounding boxes can be disabled.
+        Additionally, many keyword arguments can be set,
+        see the docstring for :func:`.show_image_with_additional` for more information.
+
+        Notes:
+            In the case that :attr:`B` is ``0``,
+            this method can still draw an empty image if an image or filepath is set.
+            This works iff :attr:`validation` is ``False``.
+            The :class:`PoseTrack21_Image` dataset uses this trick to draw the images that aren't annotated.
+        """
+        # make sure the full image is loaded
+        self.load_image()
+
+        if "image" not in self.data or len(self.image) == 0:
+            warnings.warn(f"There are no images to be drawn for save_path: '{save_path}'")
+
+        # get the original image - with B > 0, there might be multiple images; they all should be equal
         if len(self.image) > 1 and not all(
             torch.allclose(self.image[i - 1], self.image[i]) for i in range(1, len(self.image))
         ):
             raise ValueError(
                 "If there are more than one image in this state, it is expected, that all the images are equal."
             )
+        orig_img = self.image[0].detach().clone()
 
         save_dir = os.path.dirname(os.path.abspath(save_path))
         mkdir_if_missing(save_dir)
 
-        orig_img = self.image[0].detach().clone()
-
         img_kwargs = {
             "img": orig_img,
-            "bboxes": self.bbox,
-            "show": kwargs.pop("show", False),
+            "show": kwargs.pop("show", False),  # whether to show the image, the image will be saved nevertheless
             **kwargs,
         }
-
+        if show_bbox:
+            img_kwargs["bboxes"] = self.bbox
         if show_kp and "keypoints" in self.data:
             img_kwargs["key_points"] = self.keypoints
         if show_kp and "joint_weight" in self.data:
@@ -581,13 +642,13 @@ class State(UserDict):
         if show_skeleton and "skeleton_name" in self.data:
             img_kwargs["kp_connectivity"] = SKELETONS[self.data["skeleton_name"]]
         if "pred_tid" in self.data:
-            # fixme should PID or T-ID be used?
             img_kwargs["bbox_labels"] = [str(tid) for tid in self["pred_tid"].tolist()]
-
             # make sure to map the same PID to the same color all the time
             colors = [COLORS[int(i) % len(COLORS)] for i in self["pred_tid"].tolist()]
             img_kwargs["bbox_colors"] = colors
             img_kwargs["kp_colors"] = colors
+            img_kwargs["bbox_font"] = kwargs.pop("bbox_font", "./data/freemono/FreeMono.ttf")
+            img_kwargs["bbox_font_size"] = kwargs.pop("bbox_font_size", 14)
 
         # draw bboxes and key points
         int_img = show_image_with_additional(**img_kwargs)
