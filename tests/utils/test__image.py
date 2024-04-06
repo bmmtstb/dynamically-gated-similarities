@@ -1,4 +1,5 @@
 import os.path
+import shutil
 import unittest
 from math import ceil
 
@@ -12,6 +13,7 @@ from torchvision.transforms.v2.functional import crop as tvt_crop, resize as tvt
 from dgs.utils.exceptions import ValidationException
 from dgs.utils.files import to_abspath
 from dgs.utils.image import (
+    combine_images_to_video,
     compute_padding,
     CustomCropResize,
     CustomResize,
@@ -151,6 +153,28 @@ class TestVideo(unittest.TestCase):
         ]:
             with self.subTest(msg=f"image name: {fp}"):
                 self.assertEqual(load_video(fp).shape, shape)
+
+    def test_combine_images_to_video(self):
+        for imgs, video_file, out_shape in [
+            (
+                tv_tensors.Image(load_video("./tests/test_data/images/3209828-sd_426_240_25fps.mp4")),
+                "./tests/test_data/video_out/test1.mp4",
+                (345, 3, 240, 426),
+            ),
+            (
+                load_test_images_list(["866-200x300.jpg", "866-200x300.jpg"]),
+                "./tests/test_data/video_out/test2.mpeg",
+                (2, 3, 300, 200),
+            ),
+        ]:
+            with self.subTest(msg="video_file: {}, out_shape: {}".format(video_file, out_shape)):
+                # save
+                combine_images_to_video(imgs=imgs, video_file=video_file)
+                # reload
+                vid = load_video(video_file)
+                self.assertEqual(vid.shape, out_shape)
+
+        shutil.rmtree("./tests/test_data/video_out/")
 
 
 class TestImage(unittest.TestCase):

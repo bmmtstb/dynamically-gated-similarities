@@ -114,7 +114,7 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
         canvas_size = (max(i.shape[-2] for i in images), max(i.shape[-1] for i in images))
 
         for output, image in zip(outputs, images):
-            # for every image (output), get the indices where score is bigger than the threshold
+            # for every image (output), get the indices where the score is bigger than the threshold
             indices = output["scores"] > self.threshold
 
             # bbox given in XYXY format

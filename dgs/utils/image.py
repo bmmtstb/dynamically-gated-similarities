@@ -15,13 +15,14 @@ RGB Images in cv2 have a shape of ``[h x w x C]`` and the channels are in order 
 Grayscale Images in cv2 have a shape of ``[h x w]``.
 """
 
+import os
 from typing import Iterable, Union
 
 import torch
 import torchvision.transforms.v2 as tvt
 from torch.nn import Module as Torch_NN_Module
 from torchvision import tv_tensors as tvte
-from torchvision.io import ImageReadMode, read_image, read_video
+from torchvision.io import ImageReadMode, read_image, read_video, write_video
 from torchvision.transforms.v2.functional import (
     center_crop as tvt_center_crop,
     crop as tvt_crop,
@@ -30,8 +31,9 @@ from torchvision.transforms.v2.functional import (
 )
 
 from dgs.utils.config import DEF_CONF
+from dgs.utils.constants import IMAGE_FORMATS
 from dgs.utils.exceptions import ValidationException
-from dgs.utils.files import to_abspath
+from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import FilePath, FilePaths, Image, Images, ImgShape, Video
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
@@ -162,11 +164,47 @@ def load_image_list(
     ]
 
 
+def combine_images_to_video(
+    imgs: Union[Image, Images, FilePath], video_file: FilePath, fps: int = 30, **kwargs
+) -> None:
+    """Combine multiple images into a single video.
+    Images can either be a stacked image, a list of single images, or a path to a directory containing images.
+
+    The image data is expected to be in regular format ``[(1 x) C x H x W]``.
+    This function will then transform the images into a single uint8 video tensor of shape ``[N x H x W x C]``
+    """
+    images: Image
+    transform_dtype = tvt.ToDtype(torch.uint8, scale=True)
+
+    # get a single tensor containing the images in uint8 format, still in regular image format
+    if isinstance(imgs, str):  # pragma: no cover
+        paths = tuple(
+            os.path.join(imgs, path)
+            for path in os.listdir(imgs)
+            if any(path.lower().endswith(end) for end in IMAGE_FORMATS)
+        )
+        images = load_image(filepath=paths, dtype=torch.uint8)
+    elif isinstance(imgs, torch.Tensor):
+        images = transform_dtype(imgs)
+    elif isinstance(imgs, list):
+        images = transform_dtype(torch.cat(imgs))
+    else:
+        raise NotImplementedError(f"Unknown input format.")
+
+    # change order of the dimensions
+    video_tensor = torch.permute(images, (0, 2, 3, 1))
+
+    # make directory for out file
+    mkdir_if_missing(os.path.dirname(video_file))
+
+    write_video(filename=video_file, video_array=video_tensor, fps=fps, **kwargs)
+
+
 def load_video(filepath: FilePath, **kwargs) -> Video:
     """Load a video from a given filepath.
 
     Returns:
-        A batch of torch uint8 / byte images with their original shape of ``[T x C x H x W]``.
+        A batch of torch uint8 / byte images with their original shape of ``[N x C x H x W]``.
         With T being the number of frames in the video.
     """
     fp: FilePath = to_abspath(filepath)

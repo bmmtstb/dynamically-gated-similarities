@@ -1,0 +1,51 @@
+name: "Predict-Video"
+description: "Use the DGS tracker to track and predict a video input."
+
+device: "cuda"
+print_prio: "DEBUG"
+is_training: off
+log_dir: "./results/own/dgs_predict/rcnn/"
+
+test:
+    inactivity_threshold: None
+    save_images: on
+    show_keypoints: off
+    show_skeleton: off
+
+# #### #
+# DATA #
+# #### #
+
+dataloader_test:
+    module_name: "KeypointRCNNBackbone"
+    dataset_path: "./data/"
+    path: "test.mkv"
+    batch_size: 1  # fixme
+    threshold: 0.4
+
+# ####### #
+# MODULES #
+# ####### #
+
+dgs:
+    module_name: "DGS"
+    combine: "combine_similarities"
+    names: ["visual_similarity", "pose_similarity", "box_similarity"]
+
+combine_similarities:
+    module_name: "constant_alpha"
+    alpha: [0.5, 0.25, 0.25]
+
+visual_similarity:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    similarity: "NegSoftmaxEuclideanDist"
+    weights: "pretrained"
+    nof_classes: 5474
+
+pose_similarity:
+    module_name: "oks"
+    format: "coco"
+
+box_similarity:
+    module_name: "iou"

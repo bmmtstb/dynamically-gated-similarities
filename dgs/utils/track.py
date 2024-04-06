@@ -370,6 +370,8 @@ class Tracks(UserDict):
         # set the inactivity threshold
         if thresh is None:
             self.inactivity_threshold = DEF_CONF.tracks.inactivity_threshold
+        elif not isinstance(thresh, int):
+            raise TypeError(f"Threshold is expected to be int or None, but got {thresh}")
         elif thresh < 0:
             raise ValueError(f"Threshold must be positive, got {thresh}.")
         else:
