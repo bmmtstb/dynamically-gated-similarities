@@ -189,7 +189,7 @@ def combine_images_to_video(
     elif isinstance(imgs, list):
         images = transform_dtype(torch.cat(imgs))
     else:
-        raise NotImplementedError(f"Unknown input format.")
+        raise TypeError(f"Unknown input format. Got {type(imgs)}")
 
     # change order of the dimensions
     video_tensor = torch.permute(images, (0, 2, 3, 1))

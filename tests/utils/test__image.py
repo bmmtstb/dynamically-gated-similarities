@@ -176,6 +176,11 @@ class TestVideo(unittest.TestCase):
 
         shutil.rmtree("./tests/test_data/video_out/")
 
+    def test_combine_exceptions(self):
+        with self.assertRaises(TypeError) as e:
+            combine_images_to_video(imgs=np.ones(1), video_file="./tests/test_data/video_out/test1.mp4")
+        self.assertTrue("Unknown input format. Got" in str(e.exception), msg=e.exception)
+
 
 class TestImage(unittest.TestCase):
 
