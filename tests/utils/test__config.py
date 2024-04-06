@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 from copy import deepcopy
 from unittest.mock import patch
@@ -238,7 +239,12 @@ class TestLoadConfig(unittest.TestCase):
             ]
             for path in paths:
                 with self.subTest(msg=f"path: {path}"):
-                    cfg = load_config(path, easydict=is_easydict)
+                    # make sure to change log_dir, so tests do not create empty log folders
+                    cfg = fill_in_defaults(
+                        {"log_dir": f"./tests/test_data/TEST_loader/{path.split('.')[0]}/"},
+                        load_config(path, easydict=is_easydict),
+                    )
+
                     self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
                     self.assertIn("name", cfg)
                     name = cfg["name"]
@@ -246,6 +252,7 @@ class TestLoadConfig(unittest.TestCase):
                     b = BaseModule(cfg_w_def, [])
                     self.assertIsInstance(b, BaseModule)
                     self.assertEqual(b.name, name)
+        shutil.rmtree("./tests/test_data/TEST_loader/")
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_test_data(self):
@@ -260,7 +267,11 @@ class TestLoadConfig(unittest.TestCase):
             self.assertTrue(len(paths) > 2)
             for path in paths:
                 with self.subTest(msg=f"path: {path}"):
-                    cfg = load_config(path, easydict=is_easydict)
+                    # make sure to change log_dir, so tests do not create empty log folders
+                    cfg = fill_in_defaults(
+                        {"log_dir": f"./tests/test_data/TEST_loader/{path.split('.')[0]}/"},
+                        load_config(path, easydict=is_easydict),
+                    )
                     self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
                     self.assertIn("name", cfg)
                     name = cfg["name"]
@@ -268,6 +279,7 @@ class TestLoadConfig(unittest.TestCase):
                     b = BaseModule(cfg_w_def, [])
                     self.assertIsInstance(b, BaseModule)
                     self.assertEqual(b.name, name)
+        shutil.rmtree("./tests/test_data/TEST_loader/")
 
     def test_load_config_exception(self):
         for fp in [
