@@ -19,6 +19,7 @@ from dgs.utils.image import (
     CustomTransformValidator,
     load_image,
     load_image_list,
+    load_video,
 )
 from dgs.utils.types import Image, Images, ImgShape
 from dgs.utils.validation import validate_bboxes, validate_key_points
@@ -141,6 +142,15 @@ class TestImageUtils(unittest.TestCase):
         ]:
             with self.subTest(msg=msg):
                 self.assertListEqual(compute_padding(old_w=width, old_h=height, target_aspect=target_aspect), paddings)
+
+
+class TestVideo(unittest.TestCase):
+    def test_load_video(self):
+        for fp, shape in [
+            ("./tests/test_data/images/3209828-sd_426_240_25fps.mp4", (345, 3, 240, 426)),
+        ]:
+            with self.subTest(msg=f"image name: {fp}"):
+                self.assertEqual(load_video(fp).shape, shape)
 
 
 class TestImage(unittest.TestCase):

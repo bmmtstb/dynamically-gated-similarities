@@ -509,16 +509,16 @@ class State(UserDict):
             self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
             return self.image_crop
 
-        if "filepath" in self.data:
+        try:
             kps = self.keypoints if "keypoints" in self.data else None
             self.image_crop, loc_kps = extract_crops_from_images(imgs=self.image, bboxes=self.bbox, kps=kps, **kwargs)
             if kps is not None:
                 self.keypoints_local = loc_kps
             return self.image_crop
-
-        raise AttributeError(
-            "Could not load image crops without either a proper filepath given or an image and bbox given."
-        )
+        except AttributeError as e:
+            raise AttributeError(
+                "Could not load image crops without either a proper filepath given or an image and bbox given."
+            ) from e
 
     def load_image(self) -> Images:
         """Load the images using the filepaths of this object. Does nothing if the images are already present."""
@@ -772,6 +772,9 @@ def collate_states(batch: Union[list[State], State]) -> State:
     """
     if isinstance(batch, State):
         return batch
+
+    if len(batch) == 1:
+        return batch[0]
 
     c_batch: dict[str, any] = collate(batch, collate_fn_map=CUSTOM_COLLATE_MAP)
 

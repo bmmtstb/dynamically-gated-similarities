@@ -9,12 +9,15 @@ from typing import Type
 from dgs.utils.loader import get_instance, register_instance
 from .alphapose import AlphaPoseLoader
 from .dataset import BaseDataset
+from .keypoint_rcnn import KeypointRCNNBackbone
 from .posetrack21 import PoseTrack21_BBox
 
 DATASETS: dict[str, Type[BaseDataset]] = {
     "PoseTrack21_BBox": PoseTrack21_BBox,
     "PoseTrack21_Image": PoseTrack21_BBox,
     "AlphaPoseLoader": AlphaPoseLoader,
+    "RCNN": KeypointRCNNBackbone,
+    "KeypointRCNNBackbone": KeypointRCNNBackbone,
 }
 
 

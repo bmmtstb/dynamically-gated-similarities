@@ -162,7 +162,7 @@ def load_image_list(
     ]
 
 
-def load_video(filepath: FilePath, **kwargs) -> Video:  # pragma: no cover
+def load_video(filepath: FilePath, **kwargs) -> Video:
     """Load a video from a given filepath.
 
     Returns:

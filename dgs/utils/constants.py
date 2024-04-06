@@ -143,3 +143,22 @@ PRECISION_MAP: [str, torch.dtype] = {
     "short": torch.short,
     "uint8": torch.uint8,
 }
+
+IMAGE_FORMATS: list[str] = [".jpg", ".jpeg", ".png"]
+"""A list of image formats supported by torchvision."""
+
+# pylint: disable=line-too-long
+# fmt: off
+VIDEO_FORMATS: list[str] = [
+    ".264", ".265", ".3g2", ".3gp", ".A64", ".a64", ".adp", ".amr", ".amv", ".asf", ".avc", ".avi", ".avr", ".avs",
+    ".avs2", ".avs3", ".bmv", ".cavs", ".cdg", ".cdxl", ".cgi", ".chk", ".cif", ".cpk", ".dat", ".dav", ".dif",
+    ".dnxhd", ".dnxhr", ".drc", ".dv", ".dvd", ".f4v", ".flm", ".flv", ".gsm", ".gxf", ".h261", ".h263", ".h264",
+    ".h265", ".h26l", ".hevc", ".idf", ".ifv", ".imx", ".ipu", ".ism", ".isma", ".ismv", ".ivf", ".ivr", ".j2k",
+    ".kux", ".lvf", ".m1v", ".m2t", ".m2ts", ".m2v", ".m4a", ".m4b", ".m4v", ".mj2", ".mjpeg", ".mjpg", ".mk3d",
+    ".mka", ".mks", ".mkv", ".mods", ".moflex", ".mov", ".mp4", ".mpc", ".mpd", ".mpeg", ".mpg", ".mpo", ".mts",
+    ".mvi", ".mxf", ".mxg", ".nut", ".obu", ".ogg", ".ogv", ".psp", ".qcif", ".rcv", ".rgb", ".rm", ".roq", ".sdr2",
+    ".ser", ".sga", ".svag", ".svs", ".ts", ".ty", ".ty+", ".v", ".v210", ".vb", ".vc1", ".vc2", ".viv", ".vob",
+    ".webm", ".wmv", ".wtv", ".xl", ".xmv", ".y4m", ".yop", ".yuv", ".yuv10"
+]
+"""A list of video formats supported by torchvision. Which uses 'pyav' which is based on 'ffmpeg'."""
+# fmt: on
