@@ -38,8 +38,8 @@ DUMMY_BBOX_BATCH: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     canvas_size=(1000, 1000),
 )
 
-DUMMY_FP_STRING: str = f"./tests/test_data/images/{IMG_NAME}"
-DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/images/" + IMG_NAME)),)
+DUMMY_FP_STRING: str = os.path.normpath(os.path.join(PROJECT_ROOT, f"./tests/test_data/images/{IMG_NAME}"))
+DUMMY_FP: FilePaths = (DUMMY_FP_STRING,)
 DUMMY_FP_BATCH: FilePaths = tuple(os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING)) for _ in range(B))
 
 DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, B, 20))).float()
@@ -213,6 +213,17 @@ class TestStateAttributes(unittest.TestCase):
         with self.assertRaises(NotImplementedError) as e:
             ds.bbox = DUMMY_BBOX
         self.assertTrue("not allowed to change the bounding box of an already" in str(e.exception), msg=e.exception)
+
+    def test_filepath(self):
+        for validate in [True, False]:
+            for fp, box, fp_res in [
+                (DUMMY_FP, DUMMY_BBOX, DUMMY_FP),
+                (DUMMY_FP_STRING, DUMMY_BBOX, DUMMY_FP),
+                (DUMMY_FP_BATCH, DUMMY_BBOX_BATCH, DUMMY_FP_BATCH),
+            ]:
+                with self.subTest(msg="fp: {}, fp_res: {}".format(fp, fp_res)):
+                    s = State(bbox=box, filepath=fp, validate=validate)
+                    self.assertEqual(s.filepath, fp_res)
 
     def test_filepath_exceptions(self):
         # tuple
