@@ -371,7 +371,7 @@ class TestCustomToAspect(unittest.TestCase):
                         new_coords = res["keypoints"]
 
                         # test image shape - should not be modified
-                        self.assertEqual(new_image.shape[-2:], img.shape[-2:])
+                        self.assertEqual(new_image.shape, img.shape)
                         # test image: should not have been changed without calling resize!
                         self.assertTrue(torch.allclose(img.detach().clone(), new_image))
                         # test bbox: should not have been changed without calling resize!
@@ -407,7 +407,7 @@ class TestCustomToAspect(unittest.TestCase):
                         new_coords = res["keypoints"]
 
                         # test image shape
-                        self.assertEqual(new_image.shape[-2:], out_shape)
+                        self.assertEqual(new_image.shape, torch.Size((1, 3, *out_shape)))
 
                         # check if image is close by resizing original
                         self.assertTrue(
@@ -479,7 +479,7 @@ class TestCustomToAspect(unittest.TestCase):
                             new_coords = res["keypoints"]
 
                             # test image shape:
-                            self.assertEqual(new_image.shape[-2:], (H + t + b, W + l + r))
+                            self.assertEqual(new_image.shape, torch.Size((1, 3, H + t + b, W + l + r)))
 
                             # test image is sub-image, shape is: [B x C x H x W]
                             self.assertTrue(torch.allclose(img, new_image[:, :, t : H + t, l : W + l]))
@@ -536,7 +536,7 @@ class TestCustomToAspect(unittest.TestCase):
                         new_coords = res["keypoints"]
 
                         # test image shape: subtract padding from image shape
-                        self.assertEqual(new_image.shape[-2:], (nh, nw))
+                        self.assertEqual(new_image.shape, torch.Size((1, 3, nh, nw)))
                         # test image is sub-image, shape is: [B x C x nh x nw]
                         self.assertTrue(
                             torch.allclose(
@@ -594,7 +594,7 @@ class TestCustomResize(unittest.TestCase):
                         new_coords = res["keypoints"]
 
                         # test image shape:
-                        self.assertEqual(new_image.shape[-2:], out_shape)
+                        self.assertEqual(new_image.shape, torch.Size((1, 3, *out_shape)))
                         # test image: image is just resized
                         self.assertTrue(
                             torch.allclose(
@@ -654,7 +654,7 @@ class TestCustomCropResize(unittest.TestCase):
                         new_coords = res["keypoints"]
 
                         # test image shape:
-                        self.assertEqual(new_image.shape[-2:], out_shape)
+                        self.assertEqual(new_image.shape, torch.Size((1, 3, *out_shape)))
                         # test image: image is sub-image, shape is: [B x C x H x W]
                         l_pad, t_pad, r_pad, b_pad = compute_padding(old_w=bbox_w, old_h=bbox_h, target_aspect=w / h)
                         self.assertTrue(
@@ -694,20 +694,22 @@ class TestCustomCropResize(unittest.TestCase):
 
     def test_single_image_3d(self):
         img = tv_tensors.Image(load_test_image("866-200x300.jpg").squeeze(0))
+        out_shape = (100, 100)
         data = create_list_batch_data(
             images=[img],
-            out_shape=(100, 100),
+            out_shape=out_shape,
             mode="zero-pad",
             bbox=tv_tensors.BoundingBoxes([0, 0, 300, 200], canvas_size=(200, 300), format="XYWH"),
             key_points=torch.ones((1, 3, 2)),
         )
         res = CustomCropResize()(data)
-        self.assertTrue(isinstance(res["image"], tv_tensors.Image))
-        self.assertTrue(res["image"].ndim == 4)
+        new_img = res["image"]
+        self.assertTrue(isinstance(new_img, tv_tensors.Image))
+        self.assertTrue(new_img.ndim == 4)
+        self.assertEqual(new_img.shape, torch.Size((1, 3, *out_shape)))
 
     def test_other_modes_single_image(self):
         out_shape = (100, 200)
-        h, w = out_shape
         bbox_l, bbox_t, bbox_w, bbox_h = 20, 30, 50, 40
 
         for mode in CustomToAspect.modes:
@@ -753,7 +755,7 @@ class TestCustomCropResize(unittest.TestCase):
                         new_coords = res["keypoints"]
 
                         # test image shape:
-                        self.assertEqual(new_image.shape[-2:], out_shape)
+                        self.assertEqual(new_image.shape, torch.Size((1, 3, *out_shape)))
                         # test image: image is sub-image, shape is: [B x C x H x W]
                         img_crop = tv_tensors.wrap(tvt_crop(img, bbox_t, bbox_l, bbox_h, bbox_w), like=img)
                         crop_resized_img = transform(
@@ -769,47 +771,48 @@ class TestCustomCropResize(unittest.TestCase):
                         # test mode: should not have changed
                         self.assertEqual(mode, res["mode"])
 
-    def test_outside_crop_batched_input(self):
+    def test_batched_input(self):
         out_shapes: list[ImgShape] = [(500, 500), (200, 100), (100, 200)]
         bbox_l, bbox_t, bbox_w, bbox_h = [20, 30, 50, 40]
-        mode = "outside-crop"
+        modes = ["outside-crop", "zero-pad"]
+        B = 2
 
-        for out_shape in out_shapes:
-            for img_name in TEST_IMAGES.keys():
-                imgs: Images = load_test_images_list([img_name, img_name])
-                H, W = imgs[0].shape[-2:]
+        for mode in modes:
+            for out_shape in out_shapes:
+                for img_name in TEST_IMAGES.keys():
+                    imgs: Images = load_test_images_list([img_name for _ in range(B)])
+                    H, W = imgs[0].shape[-2:]
 
-                custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
-                    torch.tensor([[bbox_l, bbox_t, bbox_w, bbox_h], [bbox_l, bbox_t, bbox_w, bbox_h]]),
-                    canvas_size=(H, W),
-                    format=tv_tensors.BoundingBoxFormat.XYWH,
-                    dtype=torch.float32,
-                )
+                    custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
+                        torch.tensor([[bbox_l, bbox_t, bbox_w, bbox_h], [bbox_l, bbox_t, bbox_w, bbox_h]]),
+                        canvas_size=(H, W),
+                        format=tv_tensors.BoundingBoxFormat.XYWH,
+                        dtype=torch.float32,
+                    )
 
-                for _3d in [True, False]:
-                    custom_diag = create_coordinate_diagonal(H=bbox_h, W=bbox_w, left=bbox_l, top=bbox_t, is_3d=_3d)
-                    custom_diag = custom_diag.expand(2, -1, -1)
+                    for _3d in [True, False]:
+                        custom_diag = create_coordinate_diagonal(H=bbox_h, W=bbox_w, left=bbox_l, top=bbox_t, is_3d=_3d)
+                        custom_diag = custom_diag.expand(2, -1, -1)
 
-                    with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
-                        data = create_list_batch_data(
-                            images=imgs, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
-                        )
+                        with self.subTest(msg=f"mode: {mode}, img_name: {img_name}, out_shape: {out_shape}"):
+                            data = create_list_batch_data(
+                                images=imgs, out_shape=out_shape, mode=mode, bbox=custom_bbox, key_points=custom_diag
+                            )
 
-                        # get result - these are the resized and stacked images!
-                        res: dict[str, any] = CustomCropResize()(data)
+                            # get result - these are the resized and stacked images!
+                            res: dict[str, any] = CustomCropResize()(data)
 
-                        new_image = res["image"]
-                        new_bboxes = res["box"]
-                        new_coords = res["keypoints"]
+                            new_image = res["image"]
+                            new_bboxes = res["box"]
+                            new_coords = res["keypoints"]
 
-                        self.assertEqual(tuple(new_image.shape[-2:]), out_shape)
-                        self.assertEqual(new_image.shape[0], 2)
-                        self.assertEqual(new_bboxes.shape[0], 2)
-                        self.assertEqual(new_coords.shape[0], 2)
+                            self.assertEqual(new_image.shape, torch.Size((B, 3, *out_shape)))
+                            self.assertEqual(new_bboxes.shape, torch.Size((B, 4)))
+                            self.assertEqual(new_coords.shape, custom_diag.shape)
 
-                        self.assertTrue(torch.allclose(new_image[0], new_image[1]))
-                        self.assertTrue(torch.allclose(new_bboxes[0], new_bboxes[1]))
-                        self.assertTrue(torch.allclose(new_coords[0], new_coords[1]))
+                            self.assertTrue(torch.allclose(new_image[0], new_image[1]))
+                            self.assertTrue(torch.allclose(new_bboxes[0], new_bboxes[1]))
+                            self.assertTrue(torch.allclose(new_coords[0], new_coords[1]))
 
     def test_exceptions(self):
         for images, bboxes, coords, exception, err_msg in [

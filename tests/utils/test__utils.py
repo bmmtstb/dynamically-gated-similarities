@@ -94,12 +94,14 @@ class TestUtils(unittest.TestCase):
                 crops, loc_kps = extract_crops_from_images(imgs=imgs, bboxes=bboxes, kps=kps, **kwargs)
 
                 self.assertEqual(
-                    crops.shape[-2:],
-                    torch.Size(kwargs["crop_size"] if "crop_size" in kwargs else DEF_CONF.images.crop_size),
+                    crops.shape,
+                    torch.Size(
+                        (len(imgs), 3, *(kwargs["crop_size"] if "crop_size" in kwargs else DEF_CONF.images.crop_size))
+                    ),
                 )
-
                 self.assertTrue(isinstance(crops, tvte.Image))
                 self.assertTrue(torch.allclose(crops, res_imgs))
+
                 if loc_kps is None:
                     self.assertTrue(res_kps is None)
                 else:

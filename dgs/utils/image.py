@@ -170,7 +170,7 @@ def combine_images_to_video(
     """Combine multiple images into a single video.
     Images can either be a stacked image, a list of single images, or a path to a directory containing images.
 
-    The image data is expected to be in regular format ``[(1 x) C x H x W]``.
+    The image data is expected to be in regular format ``[1 x C x H x W]``.
     This function will then transform the images into a single uint8 video tensor of shape ``[N x H x W x C]``
     """
     images: Image
@@ -191,12 +191,16 @@ def combine_images_to_video(
     else:
         raise TypeError(f"Unknown input format. Got {type(imgs)}")
 
+    if images.ndim == 3:
+        images = images.unsqueeze(0)
+
     # change order of the dimensions
     video_tensor = torch.permute(images, (0, 2, 3, 1))
 
     # make directory for out file
     mkdir_if_missing(os.path.dirname(video_file))
 
+    # input [N x H x W x C]
     write_video(filename=video_file, video_array=video_tensor, fps=fps, **kwargs)
 
 

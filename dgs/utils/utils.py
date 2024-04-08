@@ -75,7 +75,10 @@ def extract_crops_from_images(
             "output_size": kwargs.get("crop_size", DEF_CONF.images.crop_size),
         }
     )
-    return res["image"], None if kps is None else res["keypoints"]
+    crop = res["image"]
+    if crop.ndim == 3:
+        crop = tvte.Image(crop.unsqueeze(0))
+    return crop, None if kps is None else res["keypoints"]
 
 
 def extract_crops_and_save(
