@@ -18,6 +18,7 @@ dummy_config:
         more_data: true
         even_more_data: [1,2,3,4]
         tuple_data: !!python/tuple [1, 2, 3]
+        none_data: null
 
 # Modules
 
