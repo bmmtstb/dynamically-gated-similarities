@@ -7,7 +7,7 @@ from torchvision import tv_tensors
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone
-from dgs.utils.config import fill_in_defaults
+from dgs.utils.config import DEF_CONF, fill_in_defaults
 from dgs.utils.state import State
 from helper import get_test_config, load_test_image
 
@@ -56,7 +56,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_init_data_loading_exceptions(self):
         for path, exception, err_msg in [
             (os.path.join(FOLDER_PATH, "license.txt"), NotImplementedError, "Unknown file type. Got"),
-            # both technically unreachable
+            # both technically unreachable due to failsafes in the module
             # (os.path.join(FOLDER_PATH, "dummy.jpg"), ValueError, "string is neither file nor dir. Got"),
             # ({IMAGE_PATH, IMAGE_PATH}, TypeError, "Unknown path object, expected filepath, dirpath, or list"),
         ]:
@@ -90,7 +90,6 @@ class TestKPRCNNModel(unittest.TestCase):
             get_test_config(),
         )
         detections = 1
-
         m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
         for out in m:
             self.assertTrue(isinstance(out, State))
@@ -120,9 +119,12 @@ class TestKPRCNNModel(unittest.TestCase):
         )
 
         m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+
         i = 0
         for out in m:
             self.assertTrue(isinstance(out, State))
+            self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
+            self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_CONF.images.crop_size)))
             i += 1
             if i >= 2:
                 break

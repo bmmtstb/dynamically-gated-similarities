@@ -13,6 +13,7 @@ from torch.nn import Module as TorchModule
 from torchvision import tv_tensors as tvte
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
 from torchvision.transforms.functional import convert_image_dtype
+from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset
 from dgs.utils.config import DEF_CONF
@@ -56,6 +57,7 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
 
         self.threshold: float = self.params.get("threshold", DEF_CONF.backbone.kprcnn.threshold)
 
+        self.logger.info("Loading Keypoint-RCNN Model")
         self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
         self.model.eval()
         self.model.to(self.device)
@@ -73,6 +75,7 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
                     self.data = [path]
                 # video file
                 elif any(path.lower().endswith(ending) for ending in VIDEO_FORMATS):
+                    self.logger.info(f"Loading video file: '{path}'")
                     self.data = load_video(path, device=self.device)
                 else:
                     raise NotImplementedError(f"Unknown file type. Got '{path}'")
@@ -80,7 +83,7 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
                 # directory of images
                 self.data = [
                     os.path.normpath(os.path.join(path, child_path))
-                    for child_path in os.listdir(path)
+                    for child_path in tqdm(os.listdir(path), desc="Loading images", total=len(os.listdir(path)))
                     if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
                 ]
             else:
@@ -102,8 +105,10 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
 
         # the torch model expects a 3D image
         if a.ndim == 3:
+            assert a.size(-3) == 3, "Image should be RGB"
             images = [convert_image_dtype(tvte.Image(a, device=self.device), dtype=torch.float32)]
         elif a.ndim == 4:
+            assert a.size(-3) == 3, "Image should be RGB"
             images = [convert_image_dtype(tvte.Image(img, device=self.device), dtype=torch.float32) for img in a]
         else:
             raise NotImplementedError(f"Got image with unknown shape {a.shape}")
@@ -126,10 +131,10 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
                 .reshape((-1, 17, 3))
                 .split([2, 1], dim=-1)
             )
-            images = [tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))]
+            new_images = [tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))]
 
             crop, loc_kps = extract_crops_from_images(
-                imgs=images,
+                imgs=new_images,
                 bboxes=bbox,
                 kps=kps,
                 crop_size=self.params.get("crop_size", DEF_CONF.images.crop_size),
@@ -139,7 +144,7 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule):
             data = {
                 "validate": False,
                 "bbox": bbox,
-                "image": images,
+                "image": new_images,
                 "image_crop": crop,
                 "keypoints": kps,
                 "keypoints_local": loc_kps,

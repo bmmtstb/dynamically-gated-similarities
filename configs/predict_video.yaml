@@ -7,7 +7,7 @@ is_training: off
 log_dir: "./results/own/dgs_predict/rcnn/"
 
 test:
-    inactivity_threshold: None
+    inactivity_threshold: null
     save_images: on
     show_keypoints: off
     show_skeleton: off

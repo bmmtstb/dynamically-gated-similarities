@@ -642,7 +642,9 @@ class PoseTrack21_Image(BaseDataset):
         pid_list: list[int] = []
         cid_list: list[int] = []
 
-        for anno_id, anno in enumerate(json["annotations"]):
+        for anno_id, anno in tqdm(
+            enumerate(json["annotations"]), total=len(json["annotations"]), desc="Loading Annotations"
+        ):
             img_id = int(anno["image_id"])
             pid = int(anno["person_id"])
             # append the ID of the current annotation to the annotation-list of the respective image

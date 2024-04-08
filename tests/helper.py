@@ -76,5 +76,6 @@ def get_test_config() -> Config:
 
     cfg.name = "Test"
     cfg.log_dir = "./tests/test_data/logs/"
+    cfg.print_prio = "CRITICAL"
 
     return cfg

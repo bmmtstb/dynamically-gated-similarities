@@ -2,7 +2,7 @@ name: "Configuration for tests"
 description: "Do not use, will most likely not work"
 
 device: "cpu"
-print_prio: "DEBUG"
+print_prio: "CRITICAL"
 is_training: off
 log_dir: "./tests/test_data/TEST_loader/"
 
