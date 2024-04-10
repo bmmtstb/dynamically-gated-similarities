@@ -7,21 +7,25 @@ is_training: off
 log_dir: "./results/own/dgs_predict/rcnn/"
 
 test:
-    inactivity_threshold: null
+    inactivity_threshold: 15
+    max_track_length: 1
     save_images: on
     show_keypoints: off
     show_skeleton: off
+    draw_kwargs:
+        bbox_font_size: 60
+        bbox_width: 5
 
 # #### #
 # DATA #
 # #### #
 
 dataloader_test:
-    module_name: "KeypointRCNNBackbone"
+    module_name: "VideoRCNN"
     dataset_path: "./data/"
-    path: "test.mkv"
+    path: "test.mp4"
     batch_size: 1  # fixme
-    threshold: 0.4
+    threshold: 0.75
 
 # ####### #
 # MODULES #
@@ -41,7 +45,6 @@ visual_similarity:
     model_name: "osnet_x1_0"
     similarity: "NegSoftmaxEuclideanDist"
     weights: "pretrained"
-    nof_classes: 5474
 
 pose_similarity:
     module_name: "oks"

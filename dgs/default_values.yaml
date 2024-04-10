@@ -17,6 +17,11 @@ dataloader:
     shuffle: False
     workers: 0
 
+video_dataset:
+    stream: "video"
+    num_threads: 0
+    video_backend: "pyav"
+
 images:
     image_size: !!python/tuple [1024, 1024]
     image_mode: "zero-pad"

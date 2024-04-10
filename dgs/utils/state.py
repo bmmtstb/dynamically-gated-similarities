@@ -647,6 +647,7 @@ class State(UserDict):
             colors = [COLORS[int(i) % len(COLORS)] for i in self["pred_tid"].tolist()]
             img_kwargs["bbox_colors"] = colors
             img_kwargs["kp_colors"] = colors
+            # fixme kind of useless, move to sub function
             img_kwargs["bbox_font"] = kwargs.pop("bbox_font", "./data/freemono/FreeMono.ttf")
             img_kwargs["bbox_font_size"] = kwargs.pop("bbox_font_size", 14)
 

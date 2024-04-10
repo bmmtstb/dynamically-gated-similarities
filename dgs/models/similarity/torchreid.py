@@ -184,13 +184,15 @@ class TorchreidSimilarity(SimilarityModule):
         """Given a :class:`State` get the current embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
-        return self.model(ds.image_crop)
+        # fixme the embeddings could be saved to the state
+        return self.predict_embeddings(ds.image_crop)
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the target embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
-        return self.model(ds.image_crop)
+        # fixme the embeddings could be saved to the state
+        return self.predict_embeddings(ds.image_crop)
 
     def forward(self, data: State, target: State) -> torch.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.

@@ -47,26 +47,33 @@ class DGSEngine(EngineModule):
     max_track_length (int):
         The maximum number of :class:`.State` objects per :class:`Track`.
         Default `DEF_CONF.track.N`.
+
     inactivity_threshold (int):
         The number of steps after which an inactive :class:`Track` will be removed.
         Removed tracks can be reactivated using :meth:`.Tracks.reactivate_track`.
         Use `None` to disable the removing of inactive tracks.
         Default `DEF_CONF.tracks.inactivity_threshold`.
+
     save_images (bool):
         Whether to save the generated image-results.
         Default `DEF_CONF.dgs_engine.save_images`.
+
     show_keypoints (bool):
         Whether to show the key-point-coordinates when generating the image-results.
         Therefore, this will only have an influence, if `save_images` is `True`.
         To be drawn correctly, the detections- :class:`State` has to contain the global key-point-coordinates as
         'keypoints' and possibly the joint-visibility as 'joint_weight'.
         Default `DEF_CONF.dgs_engine.show_skeleton`.
+
     show_skeleton (bool):
         Whether to connect the drawn key-point-coordinates with the human skeleton.
         This will only have an influence, if `save_images` is `True` and `show_keypoints` is `True` as well.
         To be drawn correctly, the detections- :class:`State` has to contain a valid 'skeleton_name' key.
         Default `DEF_CONF.dgs_engine.show_skeleton`.
 
+    draw_kwargs (dict[str, any]):
+        Additional keyword arguments to pass to State.draw().
+        Default {}.
     """
 
     # The heart of the project might get a little larger...
@@ -220,7 +227,12 @@ class DGSEngine(EngineModule):
                     save_path=out_fp,
                     show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
+                    **self.params_test.get("draw_kwargs", {}),
                 )
+                # we can safely remove the image from every old State, because every State should have a image crop
+                # and the image was drawn
+                for t in self.tracks.data.values():
+                    t[-1].pop("image", None)
             else:
                 detections.draw(save_path=out_fp, show_kp=False, show_skeleton=False)
 

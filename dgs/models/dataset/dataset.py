@@ -2,20 +2,24 @@
 Module for handling data loading and preprocessing using torch Datasets.
 """
 
+import math
 import os
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import torch
+import torchvision
 import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TorchDataset
 from torchvision import tv_tensors
+from torchvision.io import VideoReader
 
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_CONF
+from dgs.utils.constants import VIDEO_FORMATS
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.state import State
-from dgs.utils.types import Config, FilePath, NodePath, Validations  # pylint: disable=unused-import
+from dgs.utils.types import Config, FilePath, Image, NodePath, Validations  # pylint: disable=unused-import
 
 base_dataset_validations: Validations = {
     "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
@@ -23,6 +27,14 @@ base_dataset_validations: Validations = {
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", (int, ("gt", 0)))],
     "batch_size": ["optional", int, ("gt", 0)],
+}
+
+video_dataset_validations: Validations = {
+    "path": [str],
+    # optional
+    "stream": ["optional", str],
+    "num_threads": ["optional", int],
+    "video_backend": ["optional", str, ("in", ["pyav", "cuda", "video_reader"])],
 }
 
 
@@ -132,6 +144,8 @@ class BaseDataset(BaseModule, TorchDataset):
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
+        self.validate_params(base_dataset_validations)
+
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         """Has to override call from BaseModule"""
         raise NotImplementedError("Dataset can't be called.")
@@ -158,8 +172,6 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         s: State = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
-        # if len(s) and "image_crop" not in s:
-        #     self.get_image_crops(s)
         return s
 
     @abstractmethod
@@ -320,3 +332,89 @@ class BaseDataset(BaseModule, TorchDataset):
         if is_project_file(dataset_path) or is_project_dir(dataset_path):
             return to_abspath(dataset_path)
         raise FileNotFoundError(f"Could not find a path to file or directory at {path}")
+
+
+class VideoDataset(BaseDataset, ABC):
+    """A dataset containing a single video.
+
+    Should support many file formats, but .mp4 works best.
+
+    Notes:
+        The torchvision Video-API is in beta status and will most likely change.
+        So make sure everything works before upgrading the version of torchvision.
+
+    Params
+    ------
+
+    path (:obj:`.FilePath`)
+
+
+    Optional Params
+    ---------------
+
+    stream (str):
+        Default `DEF_CONF.video_dataset.stream`
+
+    num_threads (int):
+        The number of threads used when loading the video.
+        The default is 0 and lets ffmpeg decide the best configuration.
+        Default `DEF_CONF.video_dataset.num_threads`
+
+    video_backend (str):
+        The backend to use when loading the video.
+        Default `DEF_CONF.video_dataset.video_backend`
+    """
+
+    data: VideoReader
+
+    def __init__(self, config: Config, path: NodePath) -> None:
+        super().__init__(config=config, path=path)
+
+        self.validate_params(video_dataset_validations)
+
+        torchvision.set_video_backend(self.params.get("video_backend", DEF_CONF.video_dataset.video_backend))
+
+        if not any(self.params["path"].endswith(ending) for ending in VIDEO_FORMATS):
+            raise ValueError(f"File with unknown file format. Got {self.params['path']}")
+        video_path = self.get_path_in_dataset(self.params["path"])
+
+        stream = self.params.get("stream", DEF_CONF.video_dataset.stream)
+
+        self.data = VideoReader(
+            src=video_path,
+            stream=stream,
+            num_threads=self.params.get("num_threads", DEF_CONF.video_dataset.num_threads),
+        )
+        m = self.data.get_metadata()
+        self.fps = m[stream]["fps"][-1]
+        self.duration = m[stream]["duration"][-1]
+
+    def __len__(self) -> int:
+        """Override len() functionality for torch.
+
+        The Length of the video is obtainable using :meth:`.VideoReader.get_metadata`.
+        """
+        return math.ceil(self.fps * self.duration)
+
+    def __getitem__(self, idx: int) -> State:
+        """Retrieve data at index from given dataset.
+        Should load / precompute the images from given filepaths if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            idx: An index of the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+
+        Returns:
+            A :class:`State` containing all the data of this index.
+        """
+        # don't call .to(self.device), the DS should be created on the correct device!
+        self.data.seek(time_s=float(idx) / self.fps)
+        frame = tv_tensors.Image(next(self.data)["data"], device=self.device)
+        s: State = self.arbitrary_to_ds(a=frame, idx=idx)
+        return s
+
+    @abstractmethod
+    def arbitrary_to_ds(self, a: Image, idx: int) -> State:
+        raise NotImplementedError

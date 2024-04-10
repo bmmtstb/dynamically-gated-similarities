@@ -29,6 +29,7 @@ from torchvision.transforms.v2.functional import (
     pad as tvt_pad,
     resize as tvt_resize,
 )
+from tqdm import tqdm
 
 from dgs.utils.config import DEF_CONF
 from dgs.utils.constants import IMAGE_FORMATS
@@ -180,7 +181,7 @@ def combine_images_to_video(
     if isinstance(imgs, str):  # pragma: no cover
         paths = tuple(
             os.path.join(imgs, path)
-            for path in os.listdir(imgs)
+            for path in tqdm(os.listdir(imgs))
             if any(path.lower().endswith(end) for end in IMAGE_FORMATS)
         )
         images = load_image(filepath=paths, dtype=torch.uint8)

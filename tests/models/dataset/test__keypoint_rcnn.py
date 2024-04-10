@@ -6,7 +6,7 @@ from torch.nn import Module as TorchModule
 from torchvision import tv_tensors
 
 from dgs.models.dataset.dataset import BaseDataset
-from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone
+from dgs.models.dataset.keypoint_rcnn import KeypointRCNNImageBackbone
 from dgs.utils.config import DEF_CONF, fill_in_defaults
 from dgs.utils.state import State
 from helper import get_test_config, load_test_image
@@ -29,7 +29,7 @@ class TestKPRCNNModel(unittest.TestCase):
             },
             get_test_config(),
         )
-        m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
         self.assertTrue(isinstance(m, BaseDataset))
         self.assertTrue(isinstance(m.model, TorchModule))
         self.assertFalse(m.model.training)
@@ -43,13 +43,13 @@ class TestKPRCNNModel(unittest.TestCase):
         ]:
             with self.subTest(msg="path: {}, length: {}".format(path, length)):
                 cfg = fill_in_defaults({"kprcnn": {"path": path, "dataset_path": ""}}, get_test_config())
-                m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+                m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(isinstance(m.data, list))
                 self.assertEqual(len(m.data), length)
 
     def test_init_video_data(self):
         cfg = fill_in_defaults({"kprcnn": {"path": VIDEO_PATH, "dataset_path": ""}}, get_test_config())
-        m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
         self.assertTrue(isinstance(m.data, tv_tensors.Video))
         self.assertEqual(len(m.data), 345)
 
@@ -63,7 +63,7 @@ class TestKPRCNNModel(unittest.TestCase):
             with self.subTest(msg="path: {}, exception: {}, err_msg: {}".format(path, exception, err_msg)):
                 cfg = fill_in_defaults({"kprcnn": {"path": path, "dataset_path": ""}}, get_test_config())
                 with self.assertRaises(exception) as e:
-                    _ = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+                    _ = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(err_msg in str(e.exception), msg=e.exception)
 
     def test_arbitrary_to_ds_exceptions(self):
@@ -74,7 +74,7 @@ class TestKPRCNNModel(unittest.TestCase):
             },
             get_test_config(),
         )
-        m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
 
         with self.assertRaises(TypeError) as e:
             # noinspection PyTypeChecker
@@ -90,7 +90,7 @@ class TestKPRCNNModel(unittest.TestCase):
             get_test_config(),
         )
         detections = 1
-        m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
         for out in m:
             self.assertTrue(isinstance(out, State))
             self.assertEqual(out.B, 1)
@@ -118,7 +118,7 @@ class TestKPRCNNModel(unittest.TestCase):
             get_test_config(),
         )
 
-        m = KeypointRCNNBackbone(config=cfg, path=["kprcnn"])
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
 
         i = 0
         for out in m:
