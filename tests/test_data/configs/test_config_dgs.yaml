@@ -18,11 +18,16 @@ combine_sims:
     alpha: [0.5, 0.30, 0.20]
 
 vis_sim:
-    module_name: "torchreid"  # see `dgs.models.similarity.__init__`
-    model_name: "osnet_x0_25"
+    module_name: "torchreid"
     similarity: "NegSoftmaxEuclideanDist"
-    weights: "pretrained"
-    nof_classes: 10
+    embedding_generator_path: [ "vis_sim", "vis_emb_gen" ]
+
+    vis_emb_gen:
+        module_name: "torchreid"
+        model_name: "osnet_x0_25"
+        nof_classes: 10
+        weights: "pretrained"
+        compute_softmax: true
 
 pose_sim:
     module_name: "oks"

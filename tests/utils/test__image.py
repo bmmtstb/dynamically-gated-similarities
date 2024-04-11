@@ -149,7 +149,7 @@ class TestImageUtils(unittest.TestCase):
 class TestVideo(unittest.TestCase):
     def test_load_video(self):
         for fp, shape in [
-            ("./tests/test_data/images/3209828-sd_426_240_25fps.mp4", (345, 3, 240, 426)),
+            ("./tests/test_data/videos/3209828-sd_426_240_25fps.mp4", (345, 3, 240, 426)),
         ]:
             with self.subTest(msg=f"image name: {fp}"):
                 self.assertEqual(load_video(fp).shape, shape)
@@ -157,7 +157,7 @@ class TestVideo(unittest.TestCase):
     def test_combine_images_to_video(self):
         for imgs, video_file, out_shape in [
             (
-                tv_tensors.Image(load_video("./tests/test_data/images/3209828-sd_426_240_25fps.mp4")),
+                tv_tensors.Image(load_video("./tests/test_data/videos/3209828-sd_426_240_25fps.mp4")),
                 "./tests/test_data/video_out/test1.mp4",
                 (345, 3, 240, 426),
             ),

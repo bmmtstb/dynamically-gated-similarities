@@ -49,3 +49,7 @@ dgs_engine:
 backbone:
     kprcnn:
         threshold: 0.3
+
+similarity:
+    torchreid:
+        compute_softmax: true

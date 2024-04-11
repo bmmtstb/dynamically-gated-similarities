@@ -13,5 +13,5 @@ You can find the extended Documentation [here](https://bmmtstb.github.io/dynamic
 ## Pipeline
 
 You can find a visual Pipeline on
-[LucidChart](https://lucid.app/documents/view/848ef9df-ac3d-464d-912f-f5760b6cfbe9)
-or directly download it as PDF [here](https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01).
+[LucidChart](https://lucid.app/lucidchart/848ef9df-ac3d-464d-912f-f5760b6cfbe9/edit?viewport_loc=19%2C-867%2C1761%2C3019%2CnKP9V3Rhwz2T&invitationId=inv_e5a52469-f95f-414f-a78b-3416435fcb2d)
+or directly download it as PDF [here](./docs/algorithm_structure/Pipeline%20-%20Main.pdf).

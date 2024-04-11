@@ -9,6 +9,7 @@ from torch import nn
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.utils.config import get_sub_config, insert_into_config
+from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import to_abspath
 from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
@@ -77,6 +78,8 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
     model: nn.Module
 
     def __init__(self, config, path):
+        if path is None:
+            raise InvalidPathException("path is required but got None")
         sub_cfg = get_sub_config(config, path)
         if "embedding_size" in sub_cfg and sub_cfg["embedding_size"] != 512:
             warnings.warn(
@@ -104,6 +107,56 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             load_pretrained_weights(m, to_abspath(self.model_weights))
         # send model to the device
         return self.configure_torch_module(m, train=False)
+
+    def predict_embeddings(self, data: torch.Tensor) -> torch.Tensor:
+        """Predict embeddings given some input.
+
+        Args:
+            data: The input for the model, most likely a cropped image.
+
+        Returns:
+            Tensor containing a batch B of embeddings.
+            Shape: ``[B x E]``
+        """
+
+        def _get_torchreid_embeds(r) -> torch.Tensor:
+            """Torchreid returns embeddings during eval and ids during training."""
+            if isinstance(r, torch.Tensor):
+                # During model building, triplet loss was forced for torchreid models.
+                # Therefore, only one return value means that only the embeddings are returned
+                return r
+            if len(r) == 2:
+                _, embeddings = r
+                return embeddings
+            raise NotImplementedError("Unknown torchreid model output.")
+
+        results = self.model(data)
+        return _get_torchreid_embeds(results)
+
+    def predict_ids(self, data: torch.Tensor) -> torch.Tensor:
+        """Predict class IDs given some input.
+
+        Args:
+            data: The input for the model, most likely a cropped image.
+
+        Returns:
+            Tensor containing class predictions, which are not necessarily a probability distribution.
+            Shape: ``[B x num_classes]``
+        """
+
+        def _get_torchreid_ids(r) -> torch.Tensor:
+            """Torchreid returns embeddings during eval and ids during training."""
+            if isinstance(r, torch.Tensor):
+                # During model building, triplet loss was forced for torchreid models.
+                # Therefore, only one return value means that only the embeddings are returned
+                return self.model.classifier(r)
+            if len(r) == 2:
+                ids, _ = r
+                return ids
+            raise NotImplementedError("Unknown torchreid model output.")
+
+        results = self.model(data)
+        return _get_torchreid_ids(results)
 
     def forward(self, ds: State) -> torch.Tensor:
         """Predict embeddings given some input.

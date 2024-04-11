@@ -19,7 +19,3 @@ They are just to test loading of different file types.
 The following media is taken from the torchvision package
 ( https://github.com/pytorch/vision/blob/main/gallery/assets/person1.jpg )
 * 'torch_person.jpg'
-
-The following media is taken from pexels:
-( https://www.pexels.com/video/a-boy-wears-a-virtual-reality-headset-3209828/ )
-* '3209828-sd_426_240_25fps.mp4'

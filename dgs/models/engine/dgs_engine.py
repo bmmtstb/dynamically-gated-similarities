@@ -200,7 +200,7 @@ class DGSEngine(EngineModule):
             # print the resulting image if requested
             if self.save_images and detections.B >= 1:
                 self.tracks.get_active_states().draw(
-                    save_path=os.path.join(self.log_dir, f"./images/{frame_idx}.png"),
+                    save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
                     show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
                 )
@@ -221,7 +221,7 @@ class DGSEngine(EngineModule):
         for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Predicting", total=len(self.test_dl)):
             _ = self._track_step(detections=detections)
 
-            out_fp = os.path.join(self.log_dir, f"./images/{frame_idx}.png")
+            out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
             if len(detections) > 0:
                 self.tracks.get_active_states().draw(
                     save_path=out_fp,
@@ -229,10 +229,6 @@ class DGSEngine(EngineModule):
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
                     **self.params_test.get("draw_kwargs", {}),
                 )
-                # we can safely remove the image from every old State, because every State should have a image crop
-                # and the image was drawn
-                for t in self.tracks.data.values():
-                    t[-1].pop("image", None)
             else:
                 detections.draw(save_path=out_fp, show_kp=False, show_skeleton=False)
 

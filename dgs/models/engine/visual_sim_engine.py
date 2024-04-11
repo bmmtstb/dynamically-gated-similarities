@@ -180,7 +180,7 @@ class VisualSimilarityEngine(EngineModule):
             # Then use the model to compute the predicted embedding and the predicted pID probabilities.
             t_id = self.get_target(batch)
             img_crop = self.get_data(batch)
-            embed = self.model.predict_embeddings(img_crop)
+            embed = self.model.get_data(batch)
 
             # keep the results in lists
             embed_l.append(embed)
@@ -217,7 +217,7 @@ class VisualSimilarityEngine(EngineModule):
             self.writer.add_embedding(
                 mat=p_embed[: min(512, N), :],
                 metadata=t_ids[: min(512, N)].tolist(),
-                label_img=torch.cat(imgs_l)[: min(512, N)] if imgs_l else None,  # 4D images [N x C X h x w]
+                label_img=torch.cat(imgs_l)[: min(512, N)] if imgs_l else None,  # 4D images [N x C x h x w]
                 tag=f"Test/{desc}_embeds_{self.curr_epoch}",
             )
 

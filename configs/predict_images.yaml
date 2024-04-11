@@ -1,10 +1,10 @@
-name: "Predict-Video"
-description: "Use the DGS tracker to track and predict a video input."
+name: "Predict-Images"
+description: "Use the DGS tracker to track and predict given a directory of images as input."
 
 device: "cuda"
 print_prio: "DEBUG"
 is_training: off
-log_dir: "./results/own/dgs_predict/rcnn_video/"
+log_dir: "./results/own/dgs_predict/rcnn_images/"
 
 test:
     inactivity_threshold: 15
@@ -13,17 +13,17 @@ test:
     show_keypoints: on
     show_skeleton: on
     draw_kwargs:
-        bbox_font_size: 60
-        bbox_width: 5
+        bbox_font_size: 90
+        bbox_width: 8
 
 # #### #
 # DATA #
 # #### #
 
 dataloader_test:
-    module_name: "VideoRCNN"
+    module_name: "ImageRCNN"
     dataset_path: "./data/"
-    path: "test.mp4"
+    path: "./test/"
     batch_size: 1  # fixme
     threshold: 0.75
 

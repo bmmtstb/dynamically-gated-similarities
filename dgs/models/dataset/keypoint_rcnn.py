@@ -1,15 +1,15 @@
 """
-Use 'keypointrcnn_resnet50_fpn' from PyTorch.
+Use :func:`.keypointrcnn_resnet50_fpn` to predict the key points and bounding boxes of each image.
 
 References:
-    https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html#torchvision.models.detection.keypointrcnn_resnet50_fpn
+    https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html
 """
 
 import os
 from abc import ABC
 
 import torch
-from torch.nn import Module as TorchModule
+from torch import nn
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
@@ -34,11 +34,23 @@ rcnn_validations: Validations = {
 }
 
 
-class KeypointRCNNBackbone(BaseDataset, TorchModule, ABC):
+class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
+    """Metaclass for the torchvision Key Point RCNN backbone model.
+
+    This class sets up the RCNN model and validates and sets the basic modules parameters.
+
+    Params
+    ------
+
+    threshold (float):
+        Detections with a score lower than the threshold will be ignored.
+        Default `DEF_CONF.backbone.kprcnn.threshold`.
+
+    """
 
     def __init__(self, config: Config, path: NodePath) -> None:
         BaseDataset.__init__(self, config, path)
-        TorchModule.__init__(self)
+        nn.Module.__init__(self)
 
         self.validate_params(rcnn_validations)
 
@@ -49,8 +61,16 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule, ABC):
         self.model.eval()
         self.model.to(self.device)
 
-    def outputs_to_states(self, outputs: list[dict], images: Images) -> State:
-        """"""
+    def images_to_states(self, images: Images) -> State:
+        """Given a list of images, use the key-point-RCNN model to predict key points and bounding boxes,
+        then create a :class:`State` containing the available information.
+
+        Notes:
+            Does not add the original image to the new State, to reduce memory / GPU usage.
+        """
+
+        outputs = self.model(images)
+
         states = []
         canvas_size = (max(i.shape[-2] for i in images), max(i.shape[-1] for i in images))
 
@@ -67,10 +87,9 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule, ABC):
                 .reshape((-1, 17, 3))
                 .split([2, 1], dim=-1)
             )
-            new_images = [tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))]
 
             crops, loc_kps = extract_crops_from_images(
-                imgs=new_images,
+                imgs=[tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))],
                 bboxes=bbox,
                 kps=kps,
                 crop_size=self.params.get("crop_size", DEF_CONF.images.crop_size),
@@ -81,14 +100,15 @@ class KeypointRCNNBackbone(BaseDataset, TorchModule, ABC):
                 crops = tvte.wrap(crops.unsqueeze(0), like=crops)
 
             data = {
-                "validate": True,  # fixme remove
-                # "validate": False,
+                # "validate": True,  # fixme remove
+                "validate": False,
                 "bbox": bbox,
                 "image_crop": crops,
                 "keypoints": kps,
                 "keypoints_local": loc_kps,
                 "joint_weight": vis,
                 "scores": output["scores"],
+                "skeleton_name": "coco",
             }
             states.append(State(**data))
 
@@ -101,7 +121,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
     Predicts 17 key-points (like COCO).
 
     References:
-        https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html#torchvision.models.detection.keypointrcnn_resnet50_fpn
+        https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html
 
     Params
     ------
@@ -132,7 +152,9 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
         self.data = []
         path = self.params["path"]
         if isinstance(path, list):
-            self.data = path
+            assert all(isinstance(p, str) for p in path), "Path is a list but not all values are string"
+            assert all(any(p.lower().endswith(end) for end in IMAGE_FORMATS) for p in path), "Not all values are images"
+            self.data = sorted(path)
         elif isinstance(path, str):
             path = self.get_path_in_dataset(path)
             if is_file(path):
@@ -148,40 +170,39 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
                 # directory of images
                 self.data = [
                     os.path.normpath(os.path.join(path, child_path))
-                    for child_path in tqdm(os.listdir(path), desc="Loading images", total=len(os.listdir(path)))
+                    for child_path in tqdm(sorted(os.listdir(path)), desc="Loading images", total=len(os.listdir(path)))
                     if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
                 ]
             else:
-                raise ValueError(f"string is neither file nor dir. Got '{path}'.")  # pragma: no cover
+                raise NotImplementedError(f"string is neither file nor dir. Got '{path}'.")
         else:
-            raise TypeError(
+            raise NotImplementedError(
                 f"Unknown path object, expected filepath, dirpath, or list of filepaths. Got {type(path)}"
-            )  # pragma: no cover
+            )
 
     def arbitrary_to_ds(self, a: FilePath, idx: int) -> State:
         """Given a filepath, predict the bounding boxes and key-points of the respective image.
         Return a State containing all the available information.
         Because the state is known, the image is not saved in the State, to reduce the space-overhead on the GPU.
         """
-        # the torch model expects a 3D image
-        images = [convert_image_dtype(tvte.Image(load_image(a), device=self.device), dtype=torch.float32)]
+        # the torch model expects a list of 3D images
+        images = [convert_image_dtype(tvte.Image(load_image(a).squeeze(0), device=self.device), dtype=torch.float32)]
 
-        outputs = self.model(images)
-
-        s = self.outputs_to_states(outputs=outputs, images=images)
+        s = self.images_to_states(images=images)
 
         s.filepath = tuple(a for _ in range(len(s)))
 
         return s
 
 
+# pylint: disable=too-many-ancestors
 class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
     """A Dataset that gets the path to a single Video file and predicts the bounding boxes and key points of the Video.
 
     Predicts 17 key-points (like COCO).
 
     References:
-        https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html#torchvision.models.detection.keypointrcnn_resnet50_fpn
+        https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html
 
     Params
     ------
@@ -215,9 +236,7 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
         # the torch RCNN model expects a list of 3D images
         images = [convert_image_dtype(a, torch.float32)]
 
-        outputs = self.model(images)
-
-        s = self.outputs_to_states(outputs=outputs, images=images)
+        s = self.images_to_states(images=images)
 
         s.image = [a.unsqueeze(0) for _ in range(len(s))]
 

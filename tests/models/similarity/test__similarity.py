@@ -18,7 +18,15 @@ class TestSimilarity(unittest.TestCase):
             (
                 "torchreid",
                 TorchreidSimilarity,
-                {"model_name": "osnet_x0_25", "similarity": "EuclideanDistance", "embedding_size": 3, "nof_classes": 2},
+                {
+                    "similarity": "EuclideanDistance",
+                    "embedding_generator_path": ["sim", "vis_emb_gen"],
+                    "vis_emb_gen": {
+                        "module_name": "torchreid",
+                        "model_name": "osnet_x0_25",
+                        "nof_classes": 2,
+                    },
+                },
             ),
         ]:
             with self.subTest(msg="name: {}, mod_class: {}, kwargs: {}".format(name, mod_class, kwargs)):

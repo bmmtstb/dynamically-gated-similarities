@@ -94,7 +94,8 @@ class TestDGSModule(unittest.TestCase):
                     joint_weight=torch.ones((2, J, 1)),
                     validate=False,
                 ),
-                torch.ones((5, 2)) * 0.5 * (pose_mod + box_mod) + torch.tensor([0.0, 1.0]).repeat(5, 1) * vis_mod,
+                torch.ones((5, 2)) * 0.5 * (pose_mod + box_mod)
+                + f_softmax(torch.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * vis_mod,
                 0.2 * torch.ones((2, 5)),
             ),
             (  # bbox differs
@@ -173,6 +174,7 @@ class TestDGSModule(unittest.TestCase):
                 self.assertEqual(r.shape, target_shape)
                 self.assertEqual(r_inv.shape, target_inv_shape)
 
+                # add zeros for empty states
                 out_values = torch.cat([out_values, torch.zeros(len(ds_input), 1)], dim=-1)
                 self.assertTrue(torch.allclose(r, out_values, rtol=1e-3), (r, out_values))
 

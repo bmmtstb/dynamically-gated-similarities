@@ -382,7 +382,7 @@ class State(UserDict):
         If the crops are not available, try to load them using :func:`load_image_crop` and :attr:`crop_path`.
         """
         if "image_crop" not in self.data:
-            self.load_image_crop()
+            return self.load_image_crop()
         return self.data["image_crop"]
 
     @image_crop.setter
@@ -464,10 +464,7 @@ class State(UserDict):
         for k, v in self.data.items():
             ks = str(k)
             for idx in range(self.B):
-                if isinstance(v, tv_tensors.TVTensor):
-                    # make sure tv_tensors stay, especially for bboxes
-                    new_data[idx][ks] = tv_tensors.wrap(v[idx], like=v)
-                elif isinstance(v, list):
+                if isinstance(v, list):
                     # lists stay list
                     new_data[idx][ks] = [v[idx]]
                 elif isinstance(v, tuple):
@@ -488,10 +485,16 @@ class State(UserDict):
                     new_data[idx][ks] = v[idx]
                 else:
                     new_data[idx][ks] = v
+
+                # if it was a tv_tensor, make sure to wrap it again
+                if isinstance(v, tv_tensors.TVTensor):
+                    # make sure tv_tensors stay, especially for bboxes
+                    new_data[idx][ks] = tv_tensors.wrap(new_data[idx][ks], like=v)
+
         assert all("bbox" in d for d in new_data), "No Bounding box given while creating the state."
         return [State(**d) for d in new_data]  # pylint: disable=missing-kwoa
 
-    def load_image_crop(self, **kwargs) -> Image:
+    def load_image_crop(self, store: bool = False, **kwargs) -> Image:
         """Load the images crops using the crop_paths of this object. Does nothing if the crops are already present.
 
         Keyword Args:
@@ -503,34 +506,40 @@ class State(UserDict):
 
         if "crop_path" in self.data:
             if len(self.crop_path) == 0:
-                self.data["image_crop"] = []
-                return self.image_crop
-            # allow changing the crop_size and other params via kwargs
-            self.image_crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
-            return self.image_crop
+                crop = []
+            else:
+                # allow changing the crop_size and other params via kwargs
+                crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
+            if store:
+                self.data["image_crop"] = crop
+            return crop
 
         try:
             kps = self.keypoints if "keypoints" in self.data else None
-            self.image_crop, loc_kps = extract_crops_from_images(imgs=self.image, bboxes=self.bbox, kps=kps, **kwargs)
-            if kps is not None:
-                self.keypoints_local = loc_kps
-            return self.image_crop
+            crop, loc_kps = extract_crops_from_images(imgs=self.image, bboxes=self.bbox, kps=kps, **kwargs)
+            if store:
+                self.image_crop = crop
+                if kps is not None:
+                    self.keypoints_local = loc_kps
+            return crop
         except AttributeError as e:
             raise AttributeError(
                 "Could not load image crops without either a proper filepath given or an image and bbox given."
             ) from e
 
-    def load_image(self) -> Images:
+    def load_image(self, store: bool = False) -> Images:
         """Load the images using the filepaths of this object. Does nothing if the images are already present."""
-        if "image" in self.data and self.data["image"] is not None and len(self.data["image"]) == self.B:
+        if "image" in self.data and self.data["image"] is not None:
             return self.image
         if "filepath" not in self.data:
             raise AttributeError("Could not load images without proper filepaths given.")
         if len(self.filepath) == 0:
-            self.data["image"] = []
-            return self.image
-        self.image = load_image_list(filepath=self.filepath, device=self.device)
-        return self.image
+            imgs: Images = []
+        else:
+            imgs: Images = load_image_list(filepath=self.filepath, device=self.device)
+        if store:
+            self.image = imgs
+        return imgs
 
     def to(self, *args, **kwargs) -> "State":
         """Override torch.Tensor.to() for the whole object."""
@@ -611,19 +620,19 @@ class State(UserDict):
             The :class:`PoseTrack21_Image` dataset uses this trick to draw the images that aren't annotated.
         """
         # make sure the full image is loaded
-        self.load_image()
+        img: Images = self.load_image(store=False)
 
-        if "image" not in self.data or len(self.image) == 0:
+        if len(img) == 0:
             warnings.warn(f"There are no images to be drawn for save_path: '{save_path}'")
 
         # get the original image - with B > 0, there might be multiple images; they all should be equal
-        if len(self.image) > 1 and not all(
+        if len(img) > 1 and not all(
             torch.allclose(self.image[i - 1], self.image[i]) for i in range(1, len(self.image))
         ):
             raise ValueError(
                 "If there are more than one image in this state, it is expected, that all the images are equal."
             )
-        orig_img = self.image[0].detach().clone()
+        orig_img = img[0].detach().clone()
 
         save_dir = os.path.dirname(os.path.abspath(save_path))
         mkdir_if_missing(save_dir)
@@ -640,7 +649,13 @@ class State(UserDict):
         if show_kp and "joint_weight" in self.data:
             img_kwargs["kp_visibility"] = self.joint_weight
         if show_skeleton and "skeleton_name" in self.data:
-            img_kwargs["kp_connectivity"] = SKELETONS[self.data["skeleton_name"]]
+            img_kwargs["kp_connectivity"] = SKELETONS[
+                (
+                    self.data["skeleton_name"]
+                    if isinstance(self.data["skeleton_name"], str)
+                    else self.data["skeleton_name"][0]
+                )
+            ]
         if "pred_tid" in self.data:
             img_kwargs["bbox_labels"] = [str(tid) for tid in self["pred_tid"].tolist()]
             # make sure to map the same PID to the same color all the time
@@ -649,7 +664,8 @@ class State(UserDict):
             img_kwargs["kp_colors"] = colors
             # fixme kind of useless, move to sub function
             img_kwargs["bbox_font"] = kwargs.pop("bbox_font", "./data/freemono/FreeMono.ttf")
-            img_kwargs["bbox_font_size"] = kwargs.pop("bbox_font_size", 14)
+            img_kwargs["bbox_font_size"] = kwargs.pop("bbox_font_size", min(self.bbox.canvas_size) // 10)
+            img_kwargs["bbox_width"] = kwargs.pop("bbox_width", min(self.bbox.canvas_size) // 100)
 
         # draw bboxes and key points
         int_img = show_image_with_additional(**img_kwargs)

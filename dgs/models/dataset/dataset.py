@@ -346,8 +346,8 @@ class VideoDataset(BaseDataset, ABC):
     Params
     ------
 
-    path (:obj:`.FilePath`)
-
+    path (:obj:`.FilePath`):
+        A single path to a video file.
 
     Optional Params
     ---------------

@@ -2,41 +2,22 @@
 Compute the similarity using one of the torchreid models.
 """
 
-import warnings
-
 import torch
 from torch import nn
 
+from dgs.models.embedding_generator import TorchreidEmbeddingGenerator
 from dgs.models.metric import get_metric, METRICS
 from dgs.models.similarity.similarity import SimilarityModule
-from dgs.utils.files import to_abspath
+from dgs.utils.config import DEF_CONF
 from dgs.utils.state import State
-from dgs.utils.torchtools import configure_torch_module, load_pretrained_weights
+from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config
 
-with warnings.catch_warnings():
-    # ignore cython warning
-    warnings.filterwarnings("ignore", message="Cython evaluation.*is unavailable", category=UserWarning)
-    try:
-        # If torchreid is installed using `./dependencies/torchreid`
-        # noinspection PyUnresolvedReferences
-        from torchreid.models import __model_factory as torchreid_models, build_model
-    except ModuleNotFoundError:
-        # if torchreid is installed using `pip install torchreid`
-        # noinspection PyUnresolvedReferences
-        from torchreid.reid.models import __model_factory as torchreid_models, build_model
-
 torchreid_validations: Config = {
-    "model_name": [str, ("in", torchreid_models.keys())],
     "similarity": [str, ("in", METRICS.keys())],
+    "embedding_generator_path": [list, ("forall", str)],
     # optional
-    "weights": [
-        "optional",
-        (
-            "or",
-            [("eq", "pretrained"), "file exists", "file exists in project", ("file exists in folder", "./weights/")],
-        ),
-    ],
+    "compute_softmax": ["optional", bool],
     "similarity_kwargs": ["optional", dict],
 }
 
@@ -59,12 +40,15 @@ class TorchreidSimilarity(SimilarityModule):
     Params
     ------
 
-    model_name (str):
-        The name of the torchreid model used.
-        Has to be one of :data:`torchreid.models.__model_factory.keys()`.
     similarity (str):
         The name of the similarity function / metric to use.
         Has to be one of :data:`~dgs.models.metric.METRICS`
+    embedding_generator_path (:obj:`Path`):
+        The path to the configuration of the embedding generator within the config.
+
+
+    Optional Params
+    ---------------
 
     compute_softmax (bool, optional):
         Whether to compute the softmax of the similarity as the last step of the model.
@@ -75,52 +59,28 @@ class TorchreidSimilarity(SimilarityModule):
         On the other hand, the Euclidean distance will be larger for values that are further apart, with no upper limit.
         You can use the :class:`~.NegativeSoftmaxEuclideanDistance` or
         :class:`~.NegativeSoftmaxEuclideanSquaredDistance` as metric.
-
-        Default True.
-    weights (Union[str, FilePath], optional):
-        A path to the model weights or the string 'pretrained' for the default pretrained torchreid model.
-        Default 'pretrained'.
+        Default `DEF_CONF.similarity.torchreid.compute_softmax`.
     similarity_kwargs (dict, optional):
         Possibly pass additional kwargs to the similarity function.
         Default {}.
-    nof_classes (int, optional):
-        The number of classes in the dataset.
-        Should only be set if the classes are used at any point.
-        Default 1000.
     """
 
-    model: nn.Module
+    model: TorchreidEmbeddingGenerator
     func: nn.Module
 
     def __init__(self, config, path):
         SimilarityModule.__init__(self, config=config, path=path)
 
-        self.model_weights = self.params.get("weights", "pretrained")
+        model = TorchreidEmbeddingGenerator(config=config, path=self.params.get("embedding_generator_path"))
+        model.eval()
+        self.add_module(name="model", module=model)
 
-        self.model = self._init_model(self.model_weights == "pretrained")
-        self.add_module(name="model", module=self.model)
-
-        self.func = self._init_func()
-        self.add_module(name="func", module=self.func)
+        func = self._init_func()
+        self.add_module(name="func", module=func)
 
         self.final = nn.Sequential()
-        if self.params.get("compute_softmax", False):
+        if self.params.get("compute_softmax", DEF_CONF.similarity.torchreid.compute_softmax):
             self.final.append(nn.Softmax(dim=-1))
-
-    def _init_model(self, pretrained: bool) -> nn.Module:
-        """Initialize torchreid model"""
-        m = build_model(
-            name=self.params["model_name"],
-            num_classes=self.params.get("nof_classes", 1000),
-            pretrained=pretrained,
-            loss="triplet",  # we always want to use the embeddings!
-            use_gpu=self.device.type == "cuda",
-        )
-        if not pretrained:
-            # custom model params
-            load_pretrained_weights(m, to_abspath(self.model_weights))
-        # send model to the device
-        return self.configure_torch_module(m, train=False)
 
     def _init_func(self) -> nn.Module:
         """Initialize the similarity function"""
@@ -130,69 +90,19 @@ class TorchreidSimilarity(SimilarityModule):
         # send function to the device
         return self.configure_torch_module(m, train=False)
 
-    def predict_ids(self, data: torch.Tensor) -> torch.Tensor:
-        """Predict class IDs given some input.
-
-        Args:
-            data: The input for the model, most likely a cropped image.
-
-        Returns:
-            Tensor containing class predictions, which are not necessarily a probability distribution.
-            Shape: ``[B x num_classes]``
-        """
-
-        def _get_torchreid_ids(r) -> torch.Tensor:
-            """Torchreid returns embeddings during eval and ids during training."""
-            if isinstance(r, torch.Tensor):
-                # During model building, triplet loss was forced for torchreid models.
-                # Therefore, only one return value means that only the embeddings are returned
-                return self.model.classifier(r)
-            if len(r) == 2:
-                ids, _ = r
-                return ids
-            raise NotImplementedError("Unknown torchreid model output.")
-
-        results = self.model(data)
-        return _get_torchreid_ids(results)
-
-    def predict_embeddings(self, data: torch.Tensor) -> torch.Tensor:
-        """Predict embeddings given some input.
-
-        Args:
-            data: The input for the model, most likely a cropped image.
-
-        Returns:
-            Tensor containing a batch B of embeddings.
-            Shape: ``[B x E]``
-        """
-
-        def _get_torchreid_embeds(r) -> torch.Tensor:
-            """Torchreid returns embeddings during eval and ids during training."""
-            if isinstance(r, torch.Tensor):
-                # During model building, triplet loss was forced for torchreid models.
-                # Therefore, only one return value means that only the embeddings are returned
-                return r
-            if len(r) == 2:
-                _, embeddings = r
-                return embeddings
-            raise NotImplementedError("Unknown torchreid model output.")
-
-        results = self.model(data)
-        return _get_torchreid_embeds(results)
-
     def get_data(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the current embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
         # fixme the embeddings could be saved to the state
-        return self.predict_embeddings(ds.image_crop)
+        return self.model.predict_embeddings(ds.image_crop)
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the target embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
         # fixme the embeddings could be saved to the state
-        return self.predict_embeddings(ds.image_crop)
+        return self.model.predict_embeddings(ds.image_crop)
 
     def forward(self, data: State, target: State) -> torch.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.
