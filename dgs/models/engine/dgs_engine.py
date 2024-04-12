@@ -120,7 +120,7 @@ class DGSEngine(EngineModule):
         if len(track_state) == 0 and N > 0:
             # No Tracks yet - every detection will be a new track!
             time_match_start = time.time()
-            new_states += states
+            new_states += [s.clean() for s in states]
             batch_times["match"] = time.time() - time_match_start
         elif N > 0:
             time_sim_start = time.time()
@@ -145,9 +145,9 @@ class DGSEngine(EngineModule):
             tids = self.tracks.ids
             for rid, cid in zip(rids, cids):
                 if cid < T and cid in tids:
-                    updated_tracks[cid] = states[rid]
+                    updated_tracks[cid] = states[rid].clean()
                 else:
-                    new_states.append(states[rid])
+                    new_states.append(states[rid].clean())
             batch_times["match"] = time.time() - time_match_start
 
         # update tracks

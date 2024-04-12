@@ -704,6 +704,23 @@ class State(UserDict):
             state.draw(save_path=path, show=show, **kwargs)
         plt.show()
 
+    def clean(self, keys: Union[list[str], str] = None) -> "State":
+        """Given a state, remove one or more keys to free up memory.
+
+        Args:
+            keys: The name of the keys to remove.
+                If a key is not present in self.data, the key is ignored.
+        """
+        if keys is None:
+            keys = ["image", "image_crop"]
+        elif isinstance(keys, str):
+            keys = [keys]
+        if "bbox" in keys:
+            raise ValueError("Can not clean bounding box!")
+        for key in keys:
+            self.data.pop(key, None)
+        return self
+
 
 def get_ds_data_getter(attributes: list[str]) -> DataGetter:
     """Given a list of attribute names,

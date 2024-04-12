@@ -653,6 +653,28 @@ class TestStateFunctions(unittest.TestCase):
         self.assertTrue("image_crop" not in s.data)
         self.assertTrue(all(torch.allclose(i, load_test_image(IMG_NAME)) for i in crops))
 
+    def test_clean(self):
+        s = State(**DUMMY_DATA)
+        multi_s = State(**DUMMY_DATA_BATCH)
+
+        self.assertTrue("image" in s.data)
+        self.assertTrue("image_crop" in s.data)
+        s.clean()
+        self.assertTrue("image" not in s.data)
+        self.assertTrue("image_crop" not in s.data)
+
+        self.assertTrue("image" in multi_s.data)
+        self.assertTrue("image_crop" in multi_s.data)
+        multi_s.clean(["image", "image_crop", "embedding", "keypoints"])
+        self.assertTrue("image" not in multi_s.data)
+        self.assertTrue("image_crop" not in multi_s.data)
+        self.assertTrue("embedding" not in multi_s.data)
+        self.assertTrue("keypoints" not in multi_s.data)
+
+        with self.assertRaises(ValueError) as e:
+            _ = s.clean("bbox")
+        self.assertTrue("Can not clean bounding box!" in str(e.exception), msg=e.exception)
+
 
 class TestDataGetter(unittest.TestCase):
     def test_get_ds_data_getter(self):
