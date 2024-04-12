@@ -20,8 +20,14 @@ from dgs.utils.track import Tracks, TrackStatistics
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
 
-dgs_engine_validations: Validations = {
+dgs_eng_test_validations: Validations = {
+    # optional
     "inactivity_threshold": ["optional", int, ("gt", 0)],
+    "max_track_length": ["optional", int],
+    "save_images": ["optional", bool],
+    "show_keypoints": ["optional", bool],
+    "show_skeleton": ["optional", bool],
+    "draw_kwargs": ["optional", dict],
 }
 
 
@@ -44,9 +50,9 @@ class DGSEngine(EngineModule):
     Optional Test Params
     --------------------
 
-    max_track_length (int):
-        The maximum number of :class:`.State` objects per :class:`Track`.
-        Default `DEF_CONF.track.N`.
+    draw_kwargs (dict[str, any]):
+        Additional keyword arguments to pass to State.draw().
+        Default {}.
 
     inactivity_threshold (int):
         The number of steps after which an inactive :class:`Track` will be removed.
@@ -54,26 +60,27 @@ class DGSEngine(EngineModule):
         Use `None` to disable the removing of inactive tracks.
         Default `DEF_CONF.tracks.inactivity_threshold`.
 
+    max_track_length (int):
+        The maximum number of :class:`.State` objects per :class:`Track`.
+        Default `DEF_CONF.track.N`.
+
     save_images (bool):
         Whether to save the generated image-results.
-        Default `DEF_CONF.dgs_engine.save_images`.
+        Default `DEF_CONF.engine.dgs.save_images`.
 
     show_keypoints (bool):
         Whether to show the key-point-coordinates when generating the image-results.
         Therefore, this will only have an influence, if `save_images` is `True`.
         To be drawn correctly, the detections- :class:`State` has to contain the global key-point-coordinates as
         'keypoints' and possibly the joint-visibility as 'joint_weight'.
-        Default `DEF_CONF.dgs_engine.show_skeleton`.
+        Default `DEF_CONF.engine.dgs.show_skeleton`.
 
     show_skeleton (bool):
         Whether to connect the drawn key-point-coordinates with the human skeleton.
         This will only have an influence, if `save_images` is `True` and `show_keypoints` is `True` as well.
         To be drawn correctly, the detections- :class:`State` has to contain a valid 'skeleton_name' key.
-        Default `DEF_CONF.dgs_engine.show_skeleton`.
+        Default `DEF_CONF.engine.dgs.show_skeleton`.
 
-    draw_kwargs (dict[str, any]):
-        Additional keyword arguments to pass to State.draw().
-        Default {}.
     """
 
     # The heart of the project might get a little larger...
@@ -89,7 +96,7 @@ class DGSEngine(EngineModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
 
-        self.save_images: bool = self.params_test.get("save_images", DEF_CONF.dgs_engine.save_images)
+        self.save_images: bool = self.params_test.get("save_images", DEF_CONF.engine.dgs.save_images)
 
         self.tracks = Tracks(
             N=self.params_test.get("max_track_length", DEF_CONF.track.N),
@@ -120,7 +127,7 @@ class DGSEngine(EngineModule):
         if len(track_state) == 0 and N > 0:
             # No Tracks yet - every detection will be a new track!
             time_match_start = time.time()
-            new_states += [s.clean() for s in states]
+            new_states += states
             batch_times["match"] = time.time() - time_match_start
         elif N > 0:
             time_sim_start = time.time()
@@ -145,9 +152,9 @@ class DGSEngine(EngineModule):
             tids = self.tracks.ids
             for rid, cid in zip(rids, cids):
                 if cid < T and cid in tids:
-                    updated_tracks[cid] = states[rid].clean()
+                    updated_tracks[cid] = states[rid]
                 else:
-                    new_states.append(states[rid].clean())
+                    new_states.append(states[rid])
             batch_times["match"] = time.time() - time_match_start
 
         # update tracks
@@ -201,8 +208,8 @@ class DGSEngine(EngineModule):
             if self.save_images and detections.B >= 1:
                 self.tracks.get_active_states().draw(
                     save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
-                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
-                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
+                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
+                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
                 )
 
         self.logger.info(f"#### Finished Evaluating {self.name} ####")
@@ -225,12 +232,15 @@ class DGSEngine(EngineModule):
             if len(detections) > 0:
                 self.tracks.get_active_states().draw(
                     save_path=out_fp,
-                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.dgs_engine.show_keypoints),
-                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.dgs_engine.show_skeleton),
+                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
+                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
                     **self.params_test.get("draw_kwargs", {}),
                 )
             else:
                 detections.draw(save_path=out_fp, show_kp=False, show_skeleton=False)
+
+            for t in self.tracks.data.values():
+                t[-1].clean()
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 

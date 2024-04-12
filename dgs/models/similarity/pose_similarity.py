@@ -12,8 +12,18 @@ from dgs.utils.constants import OKS_SIGMAS
 from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 from .similarity import SimilarityModule
+from ...utils.config import DEF_CONF
 
-oks_validations: Validations = {"format": [str, ("in", list(OKS_SIGMAS.keys()))]}
+oks_validations: Validations = {
+    "format": [str, ("in", list(OKS_SIGMAS.keys()))],
+    # optional
+    "softmax": ["optional", bool],
+}
+
+iou_validations: Validations = {
+    # optional
+    "softmax": ["optional", bool],
+}
 
 
 class ObjectKeypointSimilarity(SimilarityModule):
@@ -28,7 +38,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
     softmax (bool, optional):
         Whether to compute the softmax of the result.
         All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
-        Default False.
+        Default `DEF_CONF.similarity.oks.softmax`.
     """
 
     def __init__(self, config: Config, path: NodePath):
@@ -51,7 +61,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
-        if self.params.get("softmax", False):
+        if self.params.get("softmax", DEF_CONF.similarity.oks.softmax):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
@@ -153,7 +163,7 @@ class IntersectionOverUnion(SimilarityModule):
     softmax (bool, optional):
         Whether to compute the softmax of the result.
         All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
-        Default False.
+        Default `DEF_CONF.similarity.iou.softmax`.
     """
 
     def __init__(self, config: Config, path: NodePath):
@@ -163,7 +173,7 @@ class IntersectionOverUnion(SimilarityModule):
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
-        if self.params.get("softmax", False):
+        if self.params.get("softmax", DEF_CONF.similarity.iou.softmax):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: State) -> BoundingBoxes:

@@ -78,8 +78,9 @@ class TestDGSModule(unittest.TestCase):
         with HidePrint():
             m = DGSModule(config=cfg, path=["dgs"])
 
-        for ds_input, ds_target, out_values, inv_out in [
-            (  # image differs
+        for msg, ds_input, ds_target, out_values, inv_out in [
+            (
+                "image differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
@@ -94,11 +95,11 @@ class TestDGSModule(unittest.TestCase):
                     joint_weight=torch.ones((2, J, 1)),
                     validate=False,
                 ),
-                torch.ones((5, 2)) * 0.5 * (pose_mod + box_mod)
-                + f_softmax(torch.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * vis_mod,
+                torch.ones((5, 2)) * 0.5 * (pose_mod + box_mod) + torch.tensor([0.0, 1.0]).repeat(5, 1) * vis_mod,
                 0.2 * torch.ones((2, 5)),
             ),
-            (  # bbox differs
+            (
+                "bbox differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
@@ -117,7 +118,8 @@ class TestDGSModule(unittest.TestCase):
                 + f_softmax(torch.tensor([1.0, 16 / 34]).repeat(5, 1), dim=-1) * box_mod,
                 0.2 * torch.ones((2, 5)),
             ),
-            (  # pose differs
+            (
+                "pose differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
@@ -136,7 +138,8 @@ class TestDGSModule(unittest.TestCase):
                 + f_softmax(torch.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * pose_mod,
                 0.2 * torch.ones((2, 5)),
             ),
-            (  # joint weight differs
+            (
+                "joint weight differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
                     bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
@@ -159,11 +162,7 @@ class TestDGSModule(unittest.TestCase):
             target_shape = torch.Size((len(ds_input), len(ds_target) + 1))
             target_inv_shape = torch.Size((len(ds_target), len(ds_input) + 1))
 
-            with self.subTest(
-                msg="ds_input: {}, ds_target: {}, out_values: {}".format(
-                    ds_input.filepath[0], ds_target.filepath[0], out_values
-                )
-            ):
+            with self.subTest(msg="msg: {}".format(msg)):
                 # make sure the image crops are loaded
                 ds_input.image_crop = load_test_images(ds_input.filepath, force_reshape=True, output_size=(256, 256))
                 ds_target.image_crop = load_test_images(ds_target.filepath, force_reshape=True, output_size=(256, 256))
@@ -174,9 +173,11 @@ class TestDGSModule(unittest.TestCase):
                 self.assertEqual(r.shape, target_shape)
                 self.assertEqual(r_inv.shape, target_inv_shape)
 
+                # combined softmax is True
+                out_values = f_softmax(out_values, dim=-1)
                 # add zeros for empty states
                 out_values = torch.cat([out_values, torch.zeros(len(ds_input), 1)], dim=-1)
-                self.assertTrue(torch.allclose(r, out_values, rtol=1e-3), (r, out_values))
+                self.assertTrue(torch.allclose(r, out_values, rtol=1e-3), (r[0], out_values[0]))
 
                 inv_out = torch.cat([inv_out, torch.zeros(len(ds_target), 1)], dim=-1)
                 self.assertTrue(torch.allclose(r_inv, inv_out, rtol=1e-3), (r_inv, inv_out))

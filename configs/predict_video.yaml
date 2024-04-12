@@ -42,7 +42,7 @@ combine_similarities:
 
 visual_similarity:
     module_name: "torchreid"
-    similarity: "NegSoftmaxEuclideanDist"
+    metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["visual_similarity", "vis_emb_gen"]
     vis_emb_gen:
         module_name: "torchreid"

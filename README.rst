@@ -87,7 +87,7 @@ generally use this State object instead of returning possibly non descriptive te
 This can be seen in the :class:`~.SimilarityModule` class and its children.
 SimilarityModules can be quite different,
 the pose similarity (e.g. :class:`~.ObjectKeypointSimilarity` ) does need the key-point coordinates to compute the OKS,
-while the visual similarity (e.g. :class:`~.TorchreidSimilarity` ) needs the image crops to compute embeddings.
+while the visual similarity (e.g. :class:`~.TorchreidVisualSimilarity` ) needs the image crops to compute embeddings.
 
 +----------------------------+---------------------------------------------------------------+
 |  Name                      | Description                                                   |

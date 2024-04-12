@@ -35,6 +35,8 @@ dgs:
     module_name: "DGS"
     combine: "combine_similarities"
     names: ["visual_similarity", "pose_similarity", "box_similarity"]
+    similarity_softmax: true
+    combined_softmax: true
 
 combine_similarities:
     module_name: "constant_alpha"
@@ -42,13 +44,16 @@ combine_similarities:
 
 visual_similarity:
     module_name: "torchreid"
-    similarity: "NegSoftmaxEuclideanDist"
+#    metric: "NegSoftmaxEuclideanDist"
+    metric: "NegSoftmaxEuclideanSqDist"
+    compute_softmax: false
     embedding_generator_path: ["visual_similarity", "vis_emb_gen"]
     vis_emb_gen:
         module_name: "torchreid"
         nof_classes: 1000
         weights: "pretrained"
-        model_name: "osnet_x1_0"
+#        model_name: "osnet_x1_0"
+        model_name: "osnet_x0_25"
 
 pose_similarity:
     module_name: "oks"

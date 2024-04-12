@@ -14,16 +14,16 @@ from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config
 
 torchreid_validations: Config = {
-    "similarity": [str, ("in", METRICS.keys())],
+    "metric": [str, ("in", METRICS.keys())],
     "embedding_generator_path": [list, ("forall", str)],
     # optional
-    "compute_softmax": ["optional", bool],
-    "similarity_kwargs": ["optional", dict],
+    "softmax": ["optional", bool],
+    "metric_kwargs": ["optional", dict],
 }
 
 
 @configure_torch_module
-class TorchreidSimilarity(SimilarityModule):
+class TorchreidVisualSimilarity(SimilarityModule):
     """Given image crops, generate Re-ID embedding using the torchreid package.
 
     Model can use the default pretrained weights or custom weights.
@@ -40,17 +40,19 @@ class TorchreidSimilarity(SimilarityModule):
     Params
     ------
 
-    similarity (str):
-        The name of the similarity function / metric to use.
+    metric (str):
+        The name of the metric to use.
         Has to be one of :data:`~dgs.models.metric.METRICS`
     embedding_generator_path (:obj:`Path`):
         The path to the configuration of the embedding generator within the config.
 
-
     Optional Params
     ---------------
 
-    compute_softmax (bool, optional):
+    metric_kwargs (dict, optional):
+        Possibly pass additional kwargs to the similarity function.
+        Default {}.
+    softmax (bool, optional):
         Whether to compute the softmax of the similarity as the last step of the model.
         Some metrics do not return a probability distribution or even values in range :math:`[0, 1]`,
         which makes it hard to sum them up using the :class:`~.CombineSimilaritiesModule` modules.
@@ -59,10 +61,7 @@ class TorchreidSimilarity(SimilarityModule):
         On the other hand, the Euclidean distance will be larger for values that are further apart, with no upper limit.
         You can use the :class:`~.NegativeSoftmaxEuclideanDistance` or
         :class:`~.NegativeSoftmaxEuclideanSquaredDistance` as metric.
-        Default `DEF_CONF.similarity.torchreid.compute_softmax`.
-    similarity_kwargs (dict, optional):
-        Possibly pass additional kwargs to the similarity function.
-        Default {}.
+        Default `DEF_CONF.similarity.torchreid.softmax`.
     """
 
     model: TorchreidEmbeddingGenerator
@@ -79,12 +78,12 @@ class TorchreidSimilarity(SimilarityModule):
         self.add_module(name="func", module=func)
 
         self.final = nn.Sequential()
-        if self.params.get("compute_softmax", DEF_CONF.similarity.torchreid.compute_softmax):
+        if self.params.get("softmax", DEF_CONF.similarity.torchreid.softmax):
             self.final.append(nn.Softmax(dim=-1))
 
     def _init_func(self) -> nn.Module:
         """Initialize the similarity function"""
-        name = self.params["similarity"]
+        name = self.params["metric"]
         m = get_metric(name)(**self.params.get("similarity_kwargs", {}))
 
         # send function to the device
@@ -126,10 +125,10 @@ class TorchreidSimilarity(SimilarityModule):
             A similarity matrix containing values describing the similarity between every current- and target-embedding.
             The similarity should be (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
             If the provided metric does not return a probability distribution,
-            you might want to change the metric or set the 'compute_softmax' parameter of this module.
-            This will ensure better / correct behavior when combining this similarity with others.
+            you might want to change the metric or set the 'softmax' parameter of this module,
+            or within the :class:`DGSModule` if this is a submodule.
+            Computing the softmax ensures better / correct behavior when combining this similarity with others.
         """
-        # pred embeds have shape [A x E]
         pred_embeds = self.get_data(ds=data)
         targ_embeds = self.get_target(ds=target)
 

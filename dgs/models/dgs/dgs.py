@@ -8,13 +8,16 @@ from torch import nn
 from dgs.models.combine import CombineSimilaritiesModule, get_combine_module
 from dgs.models.module import BaseModule
 from dgs.models.similarity import get_similarity_module
-from dgs.utils.config import get_sub_config
+from dgs.utils.config import DEF_CONF, get_sub_config
 from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
 dgs_validations: Validations = {
     "names": [list, ("forall", str)],
     "combine": [str],
+    # optional
+    "similarity_softmax": ["optional", bool],
+    "combined_softmax": ["optional", bool],
 }
 
 
@@ -29,12 +32,17 @@ class DGSModule(BaseModule, nn.Module):
     combine (str):
         The name of the key in the configuration containing the parameters for the module to combine the similarities
         (see the parameters at :class:`.CombineSimilaritiesModule`).
-    similarity_softmax (bool, optional):
-        Whether to compute the softmax of every resulting similarity matrix (independently) before combining them.
-        Default False.
+
+    Optional Params
+    ---------------
+
     combined_softmax (bool, optional):
         Whether to compute the softmax after the similarities have been summed up / combined.
-        Default False
+        Default `DEF_CONF.dgs.combined_softmax`.
+
+    similarity_softmax (bool, optional):
+        Whether to compute the softmax of every resulting similarity matrix (independently) before combining them.
+        Default `DEF_CONF.dgs.similarity_softmax`.
     """
 
     def __init__(self, config: Config, path: NodePath):
@@ -54,7 +62,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # if wanted, compute the softmax of every resulting similarity matrix
         self.similarity_softmax = nn.Sequential()
-        if self.params.get("similarity_softmax", False):
+        if self.params.get("similarity_softmax", DEF_CONF.dgs.similarity_softmax):
             self.similarity_softmax.append(nn.Softmax(dim=-1))
 
         # module for combining multiple similarities
@@ -66,7 +74,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # if wanted, compute the softmax after the similarities have been summed up / combined
         self.combined_softmax = nn.Sequential()
-        if self.params.get("combined_softmax", False):
+        if self.params.get("combined_softmax", DEF_CONF.dgs.combined_softmax):
             self.combined_softmax.append(nn.Softmax(dim=-1))
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover

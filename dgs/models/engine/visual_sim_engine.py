@@ -13,7 +13,7 @@ from tqdm import tqdm
 from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import get_metric, metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.similarity.torchreid import TorchreidSimilarity
+from dgs.models.similarity.torchreid import TorchreidVisualSimilarity
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
@@ -87,7 +87,7 @@ class VisualSimilarityEngine(EngineModule):
     val_dl: TorchDataLoader
     """The torch DataLoader containing the validation (query) data."""
 
-    model: TorchreidSimilarity
+    model: TorchreidVisualSimilarity
 
     metric: nn.Module
     """A metric function used to compute the embedding distance."""
@@ -95,7 +95,7 @@ class VisualSimilarityEngine(EngineModule):
     def __init__(
         self,
         config: Config,
-        model: TorchreidSimilarity,
+        model: TorchreidVisualSimilarity,
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader,
         train_loader: TorchDataLoader = None,

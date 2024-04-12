@@ -2,7 +2,7 @@
 # TRACKS #
 # ###### #
 track:
-    N: 30
+    N: 5
 
 tracks:
     inactivity_threshold: 30
@@ -40,10 +40,11 @@ cross_entropy_loss:
 # MODULES #
 # ####### #
 
-dgs_engine:
-    save_images: true
-    show_keypoints: true
-    show_skeleton: true
+engine:
+    dgs:
+        save_images: true
+        show_keypoints: true
+        show_skeleton: true
 
 
 backbone:
@@ -52,4 +53,14 @@ backbone:
 
 similarity:
     torchreid:
-        compute_softmax: true
+        softmax: false
+
+    oks:
+        softmax: false
+
+    iou:
+        softmax: false
+
+dgs:
+    similarity_softmax: true
+    combined_softmax: true

@@ -91,10 +91,11 @@ from typing import Type
 from dgs.utils.loader import get_instance, register_instance
 from .pose_similarity import IntersectionOverUnion, ObjectKeypointSimilarity
 from .similarity import SimilarityModule
-from .torchreid import TorchreidSimilarity
+from .torchreid import TorchreidVisualSimilarity
 
 SIMILARITIES: dict[str, Type[SimilarityModule]] = {
-    "torchreid": TorchreidSimilarity,
+    "torchreid": TorchreidVisualSimilarity,
+    "TorchreidVisualSimilarity": TorchreidVisualSimilarity,
     "iou": IntersectionOverUnion,
     "IntersectionOverUnion": IntersectionOverUnion,
     "oks": ObjectKeypointSimilarity,
