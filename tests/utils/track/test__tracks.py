@@ -374,33 +374,39 @@ class TestTracks(unittest.TestCase):
     def test_get_states(self):
         t1 = ONE_TRACKS.copy()
         r1 = t1.get_states()
-        self.assertTrue(isinstance(r1, State))
+        self.assertTrue(isinstance(r1, list))
+        self.assertTrue(all(isinstance(r, State) for r in r1))
         self.assertEqual(len(r1), 1)
 
         t2 = MULTI_TRACKS.copy()
         r2 = t2.get_states()
-        self.assertTrue(isinstance(r2, State))
+        self.assertTrue(isinstance(r2, list))
+        self.assertTrue(all(isinstance(r, State) for r in r2))
         self.assertEqual(len(r2), MAX_LENGTH + 1)
 
         t0 = Tracks(N=MAX_LENGTH)
         r0 = t0.get_states()
-        self.assertTrue(isinstance(r2, State))
+        self.assertTrue(isinstance(r0, list))
+        self.assertTrue(all(isinstance(r, State) for r in r0))
         self.assertEqual(len(r0), 0)
 
     def test_get_active_states(self):
         t1 = ONE_TRACKS.copy()
         r1 = t1.get_active_states()
-        self.assertTrue(isinstance(r1, State))
+        self.assertTrue(isinstance(r1, list))
+        self.assertTrue(all(isinstance(r, State) for r in r1))
         self.assertEqual(len(r1), 1)
 
         t2 = MULTI_TRACKS.copy()
         r2 = t2.get_active_states()
-        self.assertTrue(isinstance(r2, State))
+        self.assertTrue(isinstance(r2, list))
+        self.assertTrue(all(isinstance(r, State) for r in r2))
         self.assertEqual(len(r2), 1)
 
         t0 = Tracks(N=MAX_LENGTH)
         r0 = t0.get_active_states()
-        self.assertTrue(isinstance(r2, State))
+        self.assertTrue(isinstance(r0, list))
+        self.assertTrue(all(isinstance(r, State) for r in r0))
         self.assertEqual(len(r0), 0)
 
     def test_age(self):

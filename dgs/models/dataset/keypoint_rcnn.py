@@ -100,7 +100,6 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 crops = tvte.wrap(crops.unsqueeze(0), like=crops)
 
             data = {
-                # "validate": True,  # fixme remove
                 "validate": False,
                 "bbox": bbox,
                 "image_crop": crops,

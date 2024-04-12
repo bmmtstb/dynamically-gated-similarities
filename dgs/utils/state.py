@@ -14,7 +14,7 @@ from typing import Callable, Type, Union
 
 import torch
 from matplotlib import pyplot as plt
-from torch.utils.data._utils.collate import collate, default_collate_fn_map
+from torch.utils.data._utils.collate import collate
 from torchvision import tv_tensors
 from torchvision.transforms.v2.functional import convert_image_dtype
 from torchvision.utils import save_image
@@ -777,18 +777,15 @@ def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> 
     )
 
 
-CUSTOM_COLLATE_MAP: dict[Type, Callable] = default_collate_fn_map.copy()
-CUSTOM_COLLATE_MAP.update(  # pragma: no cover
-    {
-        str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
-        list: lambda l_batch, *args, **kwargs: sum(l_batch, []),
-        tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
-        tv_tensors.BoundingBoxes: collate_bboxes,
-        (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
-        torch.device: collate_devices,
-        torch.Tensor: collate_tensors,  # override regular tensor collate to *not* add another dimension
-    }
-)
+CUSTOM_COLLATE_MAP: dict[Type, Callable] = {  # pragma: no cover
+    str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
+    list: lambda l_batch, *args, **kwargs: sum(l_batch, []),
+    tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
+    tv_tensors.BoundingBoxes: collate_bboxes,
+    (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
+    torch.device: collate_devices,
+    torch.Tensor: collate_tensors,  # override regular tensor collate to *not* add another dimension
+}
 
 
 def collate_states(batch: Union[list[State], State]) -> State:

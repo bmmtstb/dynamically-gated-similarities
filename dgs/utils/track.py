@@ -7,7 +7,6 @@ from copy import deepcopy
 from enum import Enum
 
 import torch
-from torchvision import tv_tensors
 
 from dgs.utils.config import DEF_CONF
 from dgs.utils.state import collate_states, State
@@ -527,7 +526,7 @@ class Tracks(UserDict):
     def _next_frame(self) -> None:
         self._curr_frame += 1
 
-    def get_states(self) -> State:
+    def get_states(self) -> list[State]:
         """Get the last state of **every** track in this object as a :class:`State`."""
         states: list[State] = []
         tids: list[TrackID] = []
@@ -536,17 +535,9 @@ class Tracks(UserDict):
             states.append(track[-1])
             tids.append(tid)
 
-        if len(states) == 0:
-            return State(
-                bbox=tv_tensors.BoundingBoxes(
-                    torch.zeros((0, 4)), canvas_size=(0, 0), format="XYWH", dtype=torch.float32, requires_grad=False
-                ),
-                validate=False,
-            )
-        state = collate_states(states)
-        return state
+        return states
 
-    def get_active_states(self) -> State:
+    def get_active_states(self) -> list[State]:
         """Get the last state of every **active** track in this object as a :class:`State`."""
         states: list[State] = []
         tids: list[TrackID] = []
@@ -557,15 +548,7 @@ class Tracks(UserDict):
             states.append(track[-1])
             tids.append(tid)
 
-        if len(states) == 0:
-            return State(
-                bbox=tv_tensors.BoundingBoxes(
-                    torch.zeros((0, 4)), canvas_size=(0, 0), format="XYWH", dtype=torch.float32, requires_grad=False
-                ),
-                validate=False,
-            )
-        state = collate_states(states)
-        return state
+        return states
 
     def add_empty_tracks(self, n: int = 1) -> list[TrackID]:
         """Given a Track, compute the next track-ID, and save this track in data using this ID.

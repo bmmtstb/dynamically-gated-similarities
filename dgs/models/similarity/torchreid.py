@@ -93,15 +93,15 @@ class TorchreidVisualSimilarity(SimilarityModule):
         """Given a :class:`State` get the current embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
-        # fixme the embeddings could be saved to the state
-        return self.model.predict_embeddings(ds.image_crop)
+        ds["embedding"] = self.model.predict_embeddings(ds.image_crop)
+        return ds["embedding"]
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the target embedding or compute it using the image crop."""
         if "embedding" in ds:
             return ds["embedding"]
-        # fixme the embeddings could be saved to the state
-        return self.model.predict_embeddings(ds.image_crop)
+        ds["embedding"] = self.model.predict_embeddings(ds.image_crop)
+        return ds["embedding"]
 
     def forward(self, data: State, target: State) -> torch.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.
@@ -131,6 +131,8 @@ class TorchreidVisualSimilarity(SimilarityModule):
         """
         pred_embeds = self.get_data(ds=data)
         targ_embeds = self.get_target(ds=target)
+        assert "embedding" in data.data, "embedding of data should be saved"
+        assert "embedding" in target.data, "embedding of target should be saved"
 
         dist = self.func(pred_embeds, targ_embeds)
 

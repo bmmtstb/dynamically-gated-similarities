@@ -14,7 +14,7 @@ from tqdm import tqdm
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
 from dgs.utils.config import DEF_CONF
-from dgs.utils.state import State
+from dgs.utils.state import collate_states, State
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks, TrackStatistics
 from dgs.utils.types import Config, Validations
@@ -120,18 +120,17 @@ class DGSEngine(EngineModule):
         time_batch_start: float = time.time()
 
         # Get the current state from the Tracks and use it to compute the similarity to the current detections.
-        track_state: State = self.tracks.get_states()
+        track_state: list[State] = self.tracks.get_states()
         batch_times["data"] = time.time() - time_batch_start
 
-        states: list[State] = detections.split()
         if len(track_state) == 0 and N > 0:
             # No Tracks yet - every detection will be a new track!
             time_match_start = time.time()
-            new_states += states
+            new_states += detections.split()
             batch_times["match"] = time.time() - time_match_start
         elif N > 0:
             time_sim_start = time.time()
-            similarity = self.model.forward(ds=detections, target=track_state)
+            similarity = self.model.forward(ds=detections, target=collate_states(track_state))
             batch_times["similarity"] = time.time() - time_sim_start
 
             # Solve Linear sum Assignment Problem (LAP) using py-lapsolver.
@@ -149,6 +148,7 @@ class DGSEngine(EngineModule):
             #     N == len(states) == len(rids) == len(cids)
             # ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
 
+            states: list[State] = detections.split()
             tids = self.tracks.ids
             for rid, cid in zip(rids, cids):
                 if cid < T and cid in tids:
@@ -206,7 +206,8 @@ class DGSEngine(EngineModule):
             )
             # print the resulting image if requested
             if self.save_images and detections.B >= 1:
-                self.tracks.get_active_states().draw(
+                active = collate_states(self.tracks.get_active_states())
+                active.draw(
                     save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
                     show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
@@ -230,7 +231,8 @@ class DGSEngine(EngineModule):
 
             out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
             if len(detections) > 0:
-                self.tracks.get_active_states().draw(
+                active = collate_states(self.tracks.get_active_states())
+                active.draw(
                     save_path=out_fp,
                     show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
                     show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
@@ -239,7 +241,7 @@ class DGSEngine(EngineModule):
             else:
                 detections.draw(save_path=out_fp, show_kp=False, show_skeleton=False)
 
-            for t in self.tracks.data.values():
+            for t in self.tracks.values():
                 t[-1].clean()
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
