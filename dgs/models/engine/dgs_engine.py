@@ -251,7 +251,8 @@ class DGSEngine(EngineModule):
 
                 for t in self.tracks.values():
                     t[-1].clean()
-            frame_idx += 1
+                # move to the next frame
+                frame_idx += 1
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 
