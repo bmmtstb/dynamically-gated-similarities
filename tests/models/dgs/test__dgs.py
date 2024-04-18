@@ -159,8 +159,8 @@ class TestDGSModule(unittest.TestCase):
                 0.2 * torch.ones((2, 5)),
             ),
         ]:
-            target_shape = torch.Size((len(ds_input), len(ds_target) + 1))
-            target_inv_shape = torch.Size((len(ds_target), len(ds_input) + 1))
+            target_shape = torch.Size((len(ds_input), len(ds_target) + len(ds_input)))
+            target_inv_shape = torch.Size((len(ds_target), len(ds_input) + len(ds_target)))
 
             with self.subTest(msg="msg: {}".format(msg)):
                 # make sure the image crops are loaded
@@ -176,10 +176,10 @@ class TestDGSModule(unittest.TestCase):
                 # combined softmax is True
                 out_values = f_softmax(out_values, dim=-1)
                 # add zeros for empty states
-                out_values = torch.cat([out_values, torch.zeros(len(ds_input), 1)], dim=-1)
+                out_values = torch.cat([out_values, torch.zeros(len(ds_input), len(ds_input))], dim=-1)
                 self.assertTrue(torch.allclose(r, out_values, rtol=1e-3), (r[0], out_values[0]))
 
-                inv_out = torch.cat([inv_out, torch.zeros(len(ds_target), 1)], dim=-1)
+                inv_out = torch.cat([inv_out, torch.zeros(len(ds_target), len(ds_target))], dim=-1)
                 self.assertTrue(torch.allclose(r_inv, inv_out, rtol=1e-3), (r_inv, inv_out))
 
     def setUp(self):

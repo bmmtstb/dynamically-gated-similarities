@@ -84,16 +84,17 @@ class DGSModule(BaseModule, nn.Module):
         """Given a State containing the current detections and a target, compute the similarity between every pair.
 
         Returns:
-            The combined similarity matrix as tensor of shape ``[nof_detections x (nof_tracks + 1)]``.
+            The combined similarity matrix as tensor of shape ``[nof_detections x (nof_tracks + nof_detections)]``.
         """
         nof_det = len(ds)
 
         # compute similarity for every module and possibly compute the softmax
         results = [self.similarity_softmax(m(ds, target)) for m in self.sim_mods]
 
-        # combine and possibly compute softmax
+        # combine and possibly compute softmax []
         combined: torch.Tensor = self.combined_softmax(self.combine(*results))
 
-        # add column for the empty / new track
-        new_track = torch.zeros((nof_det, 1), dtype=self.precision, device=self.device)
+        # add a number of columns for the empty / new tracks equal to the length of the input
+        # every input should be allowed to get assigned to a new track
+        new_track = torch.zeros((nof_det, nof_det), dtype=self.precision, device=self.device)
         return torch.cat([combined, new_track], dim=-1)
