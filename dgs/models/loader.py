@@ -9,11 +9,11 @@ from torch.utils.data import (
     DataLoader as TorchDataLoader,
 )
 
-from dgs.models.dataset import BaseDataset
+from dgs.models.dataset.dataset import BaseDataset, dataloader_validations
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_CONF, get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
-from dgs.utils.state import collate_states
+from dgs.utils.state import collate_lists, collate_states
 from dgs.utils.types import Config, NodePath
 
 M = TypeVar("M", bound=BaseModule)
@@ -162,28 +162,21 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
     Returns:
         A `~.DataLoader` object for the given dataset.
     """
-    params = get_sub_config(config, path)
-    batch_size: int = params.get("batch_size", DEF_CONF.dataloader.batch_size)
-    drop_last: bool = params.get("drop_last", DEF_CONF.dataloader.drop_last)
-    shuffle: bool = params.get("shuffle", DEF_CONF.dataloader.shuffle)
-
     ds: BaseDataset = module_loader(config=config, module_class="dataset", key=path)
 
-    # if shuffle:
-    #     sampler = TorchSequentialSampler(ds)
-    # else:
-    #     sampler = TorchRandomSampler(ds)
-    #
-    # batch_sampler = TorchBatchSampler(sampler=sampler, batch_size=batch_size, drop_last=drop_last)
+    # validate data loader params
+    ds.validate_params(dataloader_validations)
+
+    batch_size: int = ds.params.get("batch_size", DEF_CONF.dataloader.batch_size)
+    drop_last: bool = ds.params.get("drop_last", DEF_CONF.dataloader.drop_last)
+    shuffle: bool = ds.params.get("shuffle", DEF_CONF.dataloader.shuffle)
 
     data_loader = TorchDataLoader(
         dataset=ds,
-        # sampler=batch_sampler,
-        # batch_size=None,
         batch_size=batch_size,
         drop_last=drop_last,
-        num_workers=params.get("workers", DEF_CONF.dataloader.workers),
+        num_workers=ds.params.get("workers", DEF_CONF.dataloader.workers),
         shuffle=shuffle,
-        collate_fn=collate_states,
+        collate_fn=collate_lists if ds.params.get("return_lists", DEF_CONF.dataloader.return_lists) else collate_states,
     )
     return data_loader

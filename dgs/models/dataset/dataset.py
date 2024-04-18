@@ -5,6 +5,7 @@ Module for handling data loading and preprocessing using torch Datasets.
 import math
 import os
 from abc import ABC, abstractmethod
+from typing import Union
 
 import torch
 import torchvision
@@ -37,6 +38,13 @@ video_dataset_validations: Validations = {
     "video_backend": ["optional", str, ("in", ["pyav", "cuda", "video_reader"])],
 }
 
+dataloader_validations: Validations = {
+    "batch_size": ["optional", int],
+    "drop_last": ["optional", bool],
+    "return_lists": ["optional", bool],
+    "workers": ["optional", int, ("gte", 0)],
+}
+
 
 class BaseDataset(BaseModule, TorchDataset):
     """Base class for custom datasets.
@@ -56,6 +64,8 @@ class BaseDataset(BaseModule, TorchDataset):
     The bounding-boxes can be sampled randomly from the dataset, because there is no time-based information.
     This method can be used for generating and training the visual Re-ID embeddings, because the model
     does not care when or in which order the bounding-boxes representing the Person-ID (class labels) are perceived.
+
+    A dataset with this kind of structure will always return a single :class:`.State` containing the data.
 
     Using the Image ID as Index
     ---------------------------
@@ -80,7 +90,7 @@ class BaseDataset(BaseModule, TorchDataset):
     The other option is to keep the batches with differing sizes.
     The :class:`~torch.utils.data.DataLoader` loads a fixed batch of images,
     the :meth:`~BaseDataset.__getitem__` call of the Dataset then computes the resulting detections
-    and returns those as a :class:`.State`.
+    and returns those as a list of :class:`.State` 's.
 
     Params
     ------
@@ -90,41 +100,50 @@ class BaseDataset(BaseModule, TorchDataset):
         The value has to either be a local project path, or a valid absolute path.
     force_img_reshape (bool, optional):
         Whether to accept that images in one folder might have different shapes.
-        Default False.
+        Default `DEF_CONF.dataset.force_img_reshape`.
     image_mode (str, optional):
         Only applicable if ``force_img_reshape`` is True.
         The cropping mode used for loading the full images when calling :meth:`.get_image_crops`.
         Value has to be in :attr:`.CustomToAspect.modes`.
-        Default "zero-pad".
+        Default `DEF_CONF.images.image_mode`.
     image_size (tuple[int, int], optional):
         Only applicable if ``force_img_reshape`` is True.
         The size that the original images should have.
-        Default (1024, 1024).
+        Default `DEF_CONF.images.image_size`.
     crops_folder (FilePath, optional):
         A path (global, project local, or dataset local), containing the previously cropped images.
         The structure is dataset-dependent, and might not be necessary for some datasets.
         Default is not set, and the crops are generated live.
+        Default `DEF_CONF.dataset.crops_folder`.
     crop_mode (str, optional):
         The mode for image cropping used when calling :meth:`.get_image_crops`.
         Value has to be in :attr:`.CustomToAspect.modes`.
-        Default "zero-pad".
+        Default `DEF_CONF.images.crop_mode`.
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
-        Default (256, 256).
+        Default `DEF_CONF.images.crop_size`.
 
     Additional Params for the DataLoader
     ------------------------------------
 
     batch_size (int, optional):
         The batch size to use while creating the DataLoader for this Dataset.
+        Default `DEF_CONF.dataloader.batch_size`.
     drop_last (bool, optional):
         Whether to drop the last batch if its size is unequal to the target batch size.
+        Default `DEF_CONF.dataloader.drop_last`.
     shuffle (bool, optional):
         Whether to shuffle the dataset.
+        Default `DEF_CONF.dataloader.shuffle`.
     workers (int, optional):
         The number of workers for multi-device data-loading.
         Not fully supported!
         Therefore, default 0, no multi-device.
+        Default `DEF_CONF.dataloader.workers`.
+    return_lists (bool, optional):
+        Whether the DataLoader should return a list of States.
+        The DataLoader will return a single collated State if `return_lists` is `False`.
+        Default `DEF_CONF.dataloader.return_lists`.
 
     Default Values
     --------------
@@ -134,6 +153,10 @@ class BaseDataset(BaseModule, TorchDataset):
 
         {% for param in data['dataloader'] %}
         - {{param}}: {{data['dataloader'][param]}}
+        {% endfor %}
+
+        {% for param in data['dataset'] %}
+        - {{param}}: {{data['dataset'][param]}}
         {% endfor %}
 
     """
@@ -157,7 +180,7 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> State:
+    def __getitem__(self, idx: int) -> Union[State, list[State]]:
         """Retrieve data at index from given dataset.
         Should load / precompute the images from given filepaths if not done already.
 
@@ -168,17 +191,15 @@ class BaseDataset(BaseModule, TorchDataset):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A :class:`State` containing all the data of this index.
+            A single :class:`State` containing all the data of this index or a list of multiple states.
         """
         # don't call .to(self.device), the DS should be created on the correct device!
-        s: State = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
+        s: Union[State, list[State]] = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
         return s
 
     @abstractmethod
-    def arbitrary_to_ds(self, a: any, idx: int) -> State:
-        """Given a single sample of arbitrary data, convert it to a :class:`State` object.
-        The index ``idx`` is given additionally, though it might not be used by other datasets.
-        """
+    def arbitrary_to_ds(self, a: any, idx: int) -> Union[State, list[State]]:
+        """Given an index, convert arbitrary data into a :class:`State` or a list of States."""
         raise NotImplementedError
 
     def get_image_crops(self, ds: State) -> None:
@@ -334,6 +355,63 @@ class BaseDataset(BaseModule, TorchDataset):
         raise FileNotFoundError(f"Could not find a path to file or directory at {path}")
 
 
+class BBoxDataset(BaseDataset, ABC):
+    """A dataset using the bounding boxes as indices. See :class:`.BaseDataset` for more information."""
+
+    def __getitem__(self, idx: int) -> State:
+        """Retrieve data at index from given dataset.
+        Should load / precompute the images from given filepaths if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            idx: An index of the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+
+        Returns:
+            A single :class:`State` containing all the data of this index.
+        """
+        s: State = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
+        return s
+
+    @abstractmethod
+    def arbitrary_to_ds(self, a: any, idx: int) -> State:
+        """Given a single bounding box (ID) and other arbitrary data, convert everything to a :class:`State` object.
+        The index ``idx`` is given additionally, though it might not be used.
+        """
+        raise NotImplementedError
+
+
+class ImageDataset(BaseDataset, ABC):
+    """A dataset using the image IDs as indices. See :class:`.BaseDataset` for more information."""
+
+    def __getitem__(self, idx: int) -> list[State]:
+        """Retrieve the image at index from a given dataset.
+
+        This function should load or precompute the image from the given filepath if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            idx: An index of the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+
+        Returns:
+            A list of :class:`State`s containing all the data of this index.
+        """
+        s: list[State] = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
+        return s
+
+    @abstractmethod
+    def arbitrary_to_ds(self, a: any, idx: int) -> list[State]:
+        """Given a single image ID or filepath, obtain the image, bbox, and possibly more information,
+        then convert everything to a :class:`State` object.
+
+        The index ``idx`` is given additionally, though it might not be used.
+        """
+        raise NotImplementedError
+
+
 class VideoDataset(BaseDataset, ABC):
     """A dataset containing a single video.
 
@@ -396,7 +474,7 @@ class VideoDataset(BaseDataset, ABC):
         """
         return math.ceil(self.fps * self.duration)
 
-    def __getitem__(self, idx: int) -> State:
+    def __getitem__(self, idx: int) -> Union[State, list[State]]:
         """Retrieve data at index from given dataset.
         Should load / precompute the images from given filepaths if not done already.
 
@@ -407,7 +485,7 @@ class VideoDataset(BaseDataset, ABC):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A :class:`State` containing all the data of this index.
+            A :class:`State` containing all the data of this index or a list of those states.
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         self.data.seek(time_s=float(idx) / self.fps)
@@ -416,5 +494,5 @@ class VideoDataset(BaseDataset, ABC):
         return s
 
     @abstractmethod
-    def arbitrary_to_ds(self, a: Image, idx: int) -> State:
+    def arbitrary_to_ds(self, a: Image, idx: int) -> Union[State, list[State]]:
         raise NotImplementedError

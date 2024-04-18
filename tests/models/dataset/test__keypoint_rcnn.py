@@ -7,8 +7,9 @@ import torch
 from torch.nn import Module as TorchModule
 from torchvision.io import VideoReader
 
-from dgs.models.dataset.dataset import BaseDataset, VideoDataset
+from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone, KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
+from dgs.models.loader import get_data_loader
 from dgs.utils.config import DEF_CONF, fill_in_defaults
 from dgs.utils.state import State
 from helper import get_test_config, load_test_image
@@ -50,6 +51,7 @@ class TestKPRCNNModel(unittest.TestCase):
         )
         m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
         self.assertTrue(isinstance(m, KeypointRCNNBackbone))
+        self.assertTrue(isinstance(m, ImageDataset))
         self.assertTrue(isinstance(m.model, TorchModule))
         self.assertFalse(m.model.training)
         self.assertTrue(m.threshold > 0.0)
@@ -108,7 +110,12 @@ class TestKPRCNNModel(unittest.TestCase):
         )
         detections = 1
         m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
-        for out in m:
+        out_list: list[State]
+        for out_list in m:
+            self.assertTrue(isinstance(out_list, list))
+            self.assertEqual(len(out_list), 1)
+
+            out: State = out_list[0]
             self.assertTrue(isinstance(out, State))
             self.assertEqual(out.B, 1)
             self.assertTrue("bbox" in out.data)
@@ -126,6 +133,47 @@ class TestKPRCNNModel(unittest.TestCase):
             self.assertEqual(out.keypoints.shape, torch.Size((detections, 17, 2)))
             self.assertEqual(out.joint_weight.shape, torch.Size((detections, 17, 1)))
 
+    def test_dataloader_image(self):
+        cfg = fill_in_defaults(
+            {
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "kprcnn": {
+                    "module_name": "ImageRCNN",
+                    "threshold": 0.5,
+                    "path": [IMAGE_PATH, IMAGE_PATH],
+                    "dataset_path": "",
+                    "batch_size": 2,
+                    "return_lists": True,
+                },
+            },
+            get_test_config(),
+        )
+        detections = 1
+        m = get_data_loader(config=cfg, path=["kprcnn"])
+        self.assertEqual(len(m), 1)
+
+        for out_list in m:
+            self.assertTrue(isinstance(out_list, list))
+            self.assertEqual(len(out_list), 2)
+
+            for out in out_list:
+                self.assertTrue(isinstance(out, State))
+                self.assertEqual(out.B, 1)
+                self.assertTrue("bbox" in out.data)
+                self.assertTrue("keypoints" in out.data)
+                self.assertTrue("keypoints_local" in out.data)
+                self.assertTrue("joint_weight" in out.data)
+                self.assertTrue("filepath" in out.data)
+                self.assertTrue("image_crop" in out.data)
+
+                self.assertEqual(out.image[0].ndim, 4)
+                self.assertEqual(out.image[0].size(0), detections)
+                self.assertEqual(out.image_crop.ndim, 4)
+                self.assertEqual(out.image_crop.size(0), detections)
+                self.assertEqual(out.bbox.shape, torch.Size((detections, 4)))
+                self.assertEqual(out.keypoints.shape, torch.Size((detections, 17, 2)))
+                self.assertEqual(out.joint_weight.shape, torch.Size((detections, 17, 1)))
+
     def test_dataset_video(self):
         cfg = fill_in_defaults(
             {
@@ -142,10 +190,50 @@ class TestKPRCNNModel(unittest.TestCase):
             warnings.filterwarnings(
                 "ignore", message="Accurate seek is not implemented for pyav backend", category=UserWarning
             )
-            for out in m:
+            out_list: list[State]
+            for out_list in m:
+                self.assertTrue(isinstance(out_list, list))
+                self.assertEqual(len(out_list), 1)
+
+                out: State = out_list[0]
                 self.assertTrue(isinstance(out, State))
                 self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
                 self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_CONF.images.crop_size)))
+                i += 1
+                if i >= 2:
+                    break
+
+    def test_dataloader_video(self):
+        cfg = fill_in_defaults(
+            {
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "kprcnn": {
+                    "module_name": "VideoRCNN",
+                    "threshold": 0.5,
+                    "path": VIDEO_PATH,
+                    "dataset_path": "",
+                    "batch_size": 2,
+                    "return_lists": True,
+                },
+            },
+            get_test_config(),
+        )
+
+        m = get_data_loader(config=cfg, path=["kprcnn"])
+        i = 0
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="Accurate seek is not implemented for pyav backend", category=UserWarning
+            )
+
+            for out_list in m:
+                self.assertTrue(isinstance(out_list, list))
+                self.assertEqual(len(out_list), 2)
+                for out in out_list:
+                    self.assertTrue(isinstance(out, State))
+                    self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
+                    self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_CONF.images.crop_size)))
                 i += 1
                 if i >= 2:
                     break

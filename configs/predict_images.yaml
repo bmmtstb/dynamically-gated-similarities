@@ -15,7 +15,7 @@ test:
     draw_kwargs:
         bbox_font_size: 90
         bbox_width: 8
-
+        kp_width: 6
 # #### #
 # DATA #
 # #### #
@@ -24,8 +24,9 @@ dataloader_test:
     module_name: "ImageRCNN"
     dataset_path: "./data/"
     path: "./test/"
-    batch_size: 1  # fixme
+    batch_size: 8
     threshold: 0.75
+    return_lists: true
 
 # ####### #
 # MODULES #
@@ -40,7 +41,7 @@ dgs:
 
 combine_similarities:
     module_name: "constant_alpha"
-    alpha: [0.5, 0.25, 0.25]
+    alpha: [0.4, 0.5, 0.1]
 
 visual_similarity:
     module_name: "torchreid"
@@ -52,8 +53,7 @@ visual_similarity:
         module_name: "torchreid"
         nof_classes: 1000
         weights: "pretrained"
-#        model_name: "osnet_x1_0"
-        model_name: "osnet_x0_25"
+        model_name: "osnet_x1_0"
 
 pose_similarity:
     module_name: "oks"

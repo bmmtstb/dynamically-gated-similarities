@@ -144,9 +144,9 @@ class DGSEngine(EngineModule):
             cost_matrix = torch_to_numpy(cost_matrix)
             rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
 
-            # assert (
-            #     N == len(states) == len(rids) == len(cids)
-            # ), f"expected shapes to match - N: {N}, states: {len(states)}, rids: {len(rids)}, cids: {len(cids)}"
+            assert (
+                N == len(rids) == len(cids)
+            ), f"expected shapes to match - N: {N}, states: {len(track_state)}, rids: {len(rids)}, cids: {len(cids)}"
 
             states: list[State] = detections.split()
             tids = self.tracks.ids
@@ -177,7 +177,8 @@ class DGSEngine(EngineModule):
             raise NotImplementedError("Tracking does only support a batch size of 1.")
 
         results: dict[str, any] = {}
-        detections: State
+        detections: list[State]
+        frame_idx: int = 0
 
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
@@ -186,32 +187,34 @@ class DGSEngine(EngineModule):
         self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Tracking", total=len(self.test_dl)):
-            # fixme reset tracks at the end of every sub-dataset
-            if self.tracks.nof_removed > 50:
-                self.tracks.reset_deleted()
+        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl), position=1):
+            for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False, position=2):
+                # fixme reset tracks at the end of every sub-dataset
+                if self.tracks.nof_removed > 50:
+                    self.tracks.reset_deleted()
 
-            N: int = len(detections)
+                N: int = len(detections)
 
-            ts, batch_times = self._track_step(detections=detections)
+                ts, batch_times = self._track_step(detections=detection)
 
-            # print debug info
-            ts.print(logger=self.logger, frame_idx=frame_idx)
-            # Add timings and other metrics to the writer
-            self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
-            self.writer.add_scalars(
-                main_tag="Test/time",
-                tag_scalar_dict={**batch_times},
-                global_step=frame_idx,
-            )
-            # print the resulting image if requested
-            if self.save_images and detections.B >= 1:
-                active = collate_states(self.tracks.get_active_states())
-                active.draw(
-                    save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
-                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
-                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
+                # print debug info
+                ts.print(logger=self.logger, frame_idx=frame_idx)
+                # Add timings and other metrics to the writer
+                self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
+                self.writer.add_scalars(
+                    main_tag="Test/time",
+                    tag_scalar_dict={**batch_times},
+                    global_step=frame_idx,
                 )
+                # print the resulting image if requested
+                if self.save_images and detection.B >= 1:
+                    active = collate_states(self.tracks.get_active_states())
+                    active.draw(
+                        save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
+                        show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
+                        show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
+                    )
+                frame_idx += 1
 
         self.logger.info(f"#### Finished Evaluating {self.name} ####")
 
@@ -222,27 +225,33 @@ class DGSEngine(EngineModule):
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
         close_all_layers(self.model)
+        frame_idx: int = 0
 
         self.logger.info(f"#### Start Prediction {self.name} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
-        detections: State
-        for frame_idx, detections in tqdm(enumerate(self.test_dl), desc="Predicting", total=len(self.test_dl)):
-            _ = self._track_step(detections=detections)
+        detections: list[State]
+        # batch get data from the data loader
+        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl), position=1):
+            for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False, position=2):
+                _ = self._track_step(detections=detection)
 
-            out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
-            if len(detections) > 0:
-                active = collate_states(self.tracks.get_active_states())
-                active.draw(
-                    save_path=out_fp,
-                    show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
-                    show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
-                    **self.params_test.get("draw_kwargs", {}),
-                )
-            else:
-                detections.draw(save_path=out_fp, show_kp=False, show_skeleton=False)
+                out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
+                if detection.B > 0:
+                    active = collate_states(self.tracks.get_active_states())
+                    active.draw(
+                        save_path=out_fp,
+                        show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
+                        show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
+                        **self.params_test.get("draw_kwargs", {}),
+                    )
+                else:
+                    detection.draw(
+                        save_path=out_fp, show_kp=False, show_skeleton=False, **self.params_test.get("draw_kwargs", {})
+                    )
 
-            for t in self.tracks.values():
-                t[-1].clean()
+                for t in self.tracks.values():
+                    t[-1].clean()
+            frame_idx += 1
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 

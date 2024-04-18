@@ -640,7 +640,6 @@ class State(UserDict):
         img_kwargs = {
             "img": orig_img,
             "show": kwargs.pop("show", False),  # whether to show the image, the image will be saved nevertheless
-            **kwargs,
         }
         if show_bbox:
             img_kwargs["bboxes"] = self.bbox
@@ -660,13 +659,15 @@ class State(UserDict):
             img_kwargs["bbox_labels"] = [str(tid) for tid in self["pred_tid"].tolist()]
             # make sure to map the same PID to the same color all the time
             colors = [COLORS[int(i) % len(COLORS)] for i in self["pred_tid"].tolist()]
-            img_kwargs["bbox_colors"] = colors
-            img_kwargs["kp_colors"] = colors
+            img_kwargs["bbox_colors"] = kwargs.pop("bbox_colors", colors)
+            img_kwargs["kp_colors"] = kwargs.pop("kp_colors", colors)
             # fixme kind of useless, move to sub function
             img_kwargs["bbox_font"] = kwargs.pop("bbox_font", "./data/freemono/FreeMono.ttf")
             img_kwargs["bbox_font_size"] = kwargs.pop("bbox_font_size", min(self.bbox.canvas_size) // 10)
             img_kwargs["bbox_width"] = kwargs.pop("bbox_width", min(self.bbox.canvas_size) // 100)
 
+        # add kwargs
+        img_kwargs.update(kwargs)
         # draw bboxes and key points
         int_img = show_image_with_additional(**img_kwargs)
 
@@ -814,3 +815,21 @@ def collate_states(batch: Union[list[State], State]) -> State:
     # then set the validation to the correct value
     s.validate = batch[0].validate
     return s
+
+
+def collate_lists(batch: Union[State, list[State], list[list[State]]]) -> list[State]:
+    """Collate function used to not concatenate a batch of States.
+
+    Args:
+        batch: Either a batch of States, a single State, or a list containing list of States.
+
+    Returns:
+        A list of States. Every State can have a different number of items.
+    """
+    if isinstance(batch, State):
+        return [batch]
+    if isinstance(batch, list) and all(isinstance(b, State) for b in batch):
+        return batch
+    if isinstance(batch, list) and all(isinstance(b, list) for b in batch):
+        return [collate_states(b) for b in batch]
+    raise NotImplementedError

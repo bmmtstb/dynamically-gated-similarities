@@ -7,6 +7,7 @@ References:
 
 import os
 from abc import ABC
+from typing import Union
 
 import torch
 from torch import nn
@@ -16,13 +17,13 @@ from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN
 from torchvision.transforms.functional import convert_image_dtype
 from tqdm import tqdm
 
-from dgs.models.dataset.dataset import BaseDataset, VideoDataset
+from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.utils.config import DEF_CONF
 from dgs.utils.constants import IMAGE_FORMATS, VIDEO_FORMATS
 from dgs.utils.files import is_dir, is_file
 from dgs.utils.image import CustomToAspect, load_image
-from dgs.utils.state import collate_states, State
-from dgs.utils.types import Config, FilePath, Image, Images, NodePath, Validations
+from dgs.utils.state import State
+from dgs.utils.types import Config, FilePath, FilePaths, Image, Images, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 
 rcnn_validations: Validations = {
@@ -44,24 +45,26 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
     threshold (float):
         Detections with a score lower than the threshold will be ignored.
-        Default `DEF_CONF.backbone.kprcnn.threshold`.
+        Default `DEF_CONF.dataset.kprcnn.threshold`.
 
     """
 
     def __init__(self, config: Config, path: NodePath) -> None:
-        BaseDataset.__init__(self, config, path)
+        BaseDataset.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
 
         self.validate_params(rcnn_validations)
 
-        self.threshold: float = self.params.get("threshold", DEF_CONF.backbone.kprcnn.threshold)
+        self.threshold: float = self.params.get("threshold", DEF_CONF.dataset.kprcnn.threshold)
 
         self.logger.info("Loading Keypoint-RCNN Model")
-        self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
+        self.model = nn.DataParallel(
+            keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
+        )
         self.model.eval()
         self.model.to(self.device)
 
-    def images_to_states(self, images: Images) -> State:
+    def images_to_states(self, images: Images) -> list[State]:
         """Given a list of images, use the key-point-RCNN model to predict key points and bounding boxes,
         then create a :class:`State` containing the available information.
 
@@ -71,7 +74,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         outputs = self.model(images)
 
-        states = []
+        states: list[State] = []
         canvas_size = (max(i.shape[-2] for i in images), max(i.shape[-1] for i in images))
 
         for output, image in zip(outputs, images):
@@ -111,10 +114,11 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             }
             states.append(State(**data))
 
-        return collate_states(states)
+        return states
 
 
-class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
+# pylint: disable=too-many-ancestors
+class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
     """
 
     Predicts 17 key-points (like COCO).
@@ -127,7 +131,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
 
     threshold (float):
         Detections with a score lower than the threshold will be ignored.
-        Default `DEF_CONF.backbone.kprcnn.threshold`.
+        Default `DEF_CONF.dataset.kprcnn.threshold`.
 
     Optional Params
     ---------------
@@ -146,6 +150,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
 
     def __init__(self, config: Config, path: NodePath) -> None:
         KeypointRCNNBackbone.__init__(self, config=config, path=path)
+        ImageDataset.__init__(self, config=config, path=path)
 
         # load data - path is either a directory, a single image file, or a list of image filepaths
         self.data = []
@@ -179,19 +184,25 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone):
                 f"Unknown path object, expected filepath, dirpath, or list of filepaths. Got {type(path)}"
             )
 
-    def arbitrary_to_ds(self, a: FilePath, idx: int) -> State:
+    def arbitrary_to_ds(self, a: Union[FilePath, FilePaths], idx: int) -> list[State]:
         """Given a filepath, predict the bounding boxes and key-points of the respective image.
         Return a State containing all the available information.
         Because the state is known, the image is not saved in the State, to reduce the space-overhead on the GPU.
         """
+        if isinstance(a, str):
+            a = (a,)
         # the torch model expects a list of 3D images
-        images = [convert_image_dtype(tvte.Image(load_image(a).squeeze(0), device=self.device), dtype=torch.float32)]
+        images = [
+            convert_image_dtype(tvte.Image(load_image(fp).squeeze(0), device=self.device), dtype=torch.float32)
+            for fp in a
+        ]
 
-        s = self.images_to_states(images=images)
+        states = self.images_to_states(images=images)
 
-        s.filepath = tuple(a for _ in range(len(s)))
+        for fp, state in zip(a, states):
+            state.filepath = tuple(fp for _ in range(state.B))
 
-        return s
+        return states
 
 
 # pylint: disable=too-many-ancestors
@@ -208,7 +219,7 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
 
     threshold (float):
         Detections with a score lower than the threshold will be ignored.
-        Default `DEF_CONF.backbone.kprcnn.threshold`.
+        Default `DEF_CONF.dataset.kprcnn.threshold`.
 
     Optional Params
     ---------------
@@ -230,13 +241,18 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
         # the data has already been loaded in the VideoDataset
         # the model and threshold has been loaded in KeypointRCNNBackbone
 
-    def arbitrary_to_ds(self, a: Image, idx: int) -> State:
+    def arbitrary_to_ds(self, a: Image, idx: int) -> list[State]:
         """Given a frame of a video, return the resulting state after running the RCNN model."""
+        if not isinstance(a, torch.Tensor):
+            raise NotImplementedError
+        if a.ndim == 3:
+            a = a.unsqueeze(0)
         # the torch RCNN model expects a list of 3D images
-        images = [convert_image_dtype(a, torch.float32)]
+        images = [convert_image_dtype(img, torch.float32) for img in a]
 
-        s = self.images_to_states(images=images)
+        states = self.images_to_states(images=images)
 
-        s.image = [a.unsqueeze(0) for _ in range(len(s))]
+        for img, state in zip(a, states):
+            state.image = [img.unsqueeze(0) for _ in range(state.B)]
 
-        return s
+        return states

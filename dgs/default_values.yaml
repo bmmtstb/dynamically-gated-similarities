@@ -1,21 +1,31 @@
 # ###### #
 # TRACKS #
 # ###### #
+
 track:
     N: 5
 
 tracks:
     inactivity_threshold: 30
 
-
 # ###################### #
 # Dataset and DataLoader #
 # ###################### #
+
+dataset:
+    crops_folder: ""
+    force_img_reshape: false
+
+    kprcnn:
+        threshold: 0.3
+
+
 dataloader:
     batch_size: 16
-    drop_last: False
-    shuffle: False
-    workers: 0
+    drop_last: false
+    shuffle: false
+    workers: 0  # right now there is no full multi device support
+    return_lists: false
 
 video_dataset:
     stream: "video"
@@ -35,7 +45,6 @@ images:
 cross_entropy_loss:
     label_smoothing: 0.1
 
-
 # ####### #
 # MODULES #
 # ####### #
@@ -45,11 +54,6 @@ engine:
         save_images: true
         show_keypoints: true
         show_skeleton: true
-
-
-backbone:
-    kprcnn:
-        threshold: 0.3
 
 similarity:
     torchreid:

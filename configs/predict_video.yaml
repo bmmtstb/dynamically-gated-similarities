@@ -24,8 +24,9 @@ dataloader_test:
     module_name: "VideoRCNN"
     dataset_path: "./data/"
     path: "test.mp4"
-    batch_size: 1  # fixme
+    batch_size: 16
     threshold: 0.75
+    return_lists: true
 
 # ####### #
 # MODULES #

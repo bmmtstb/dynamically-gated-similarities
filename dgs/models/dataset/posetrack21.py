@@ -24,8 +24,8 @@ from torchvision import tv_tensors as tvte
 from torchvision.tv_tensors import BoundingBoxes
 from tqdm import tqdm
 
-from dgs.models.dataset.dataset import BaseDataset
-from dgs.models.dataset.pose_dataset import TorchreidPoseDataset
+from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, ImageDataset
+from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataset
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.state import collate_bboxes, collate_tensors, State
@@ -427,7 +427,7 @@ class PoseTrack21(BaseDataset):
         raise NotImplementedError
 
 
-class PoseTrack21_BBox(BaseDataset):
+class PoseTrack21_BBox(BBoxDataset):
     """Load a single precomputed json file from the |PT21| dataset.
 
     Params
@@ -562,7 +562,7 @@ class PoseTrack21_BBox(BaseDataset):
         return ds
 
 
-class PoseTrack21_Image(BaseDataset):
+class PoseTrack21_Image(ImageDataset):
     """Load a single precomputed json file from the |PT21| dataset where every index represents one image.
     Every getitem call therefore returns a :class:`.State` object,
     containing zero or more bounding-boxes of people detected on this image.

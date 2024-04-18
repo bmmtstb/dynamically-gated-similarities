@@ -32,7 +32,7 @@ import imagesize
 import torch
 from torchvision import tv_tensors
 
-from dgs.models.dataset.dataset import BaseDataset
+from dgs.models.dataset.dataset import BBoxDataset
 from dgs.utils.files import read_json
 from dgs.utils.state import State
 from dgs.utils.types import Config, ImgShape, NodePath, Validations
@@ -40,7 +40,7 @@ from dgs.utils.types import Config, ImgShape, NodePath, Validations
 ap_load_validations: Validations = {"path": [str, "file exists in project", ("endswith", ".json")]}
 
 
-class AlphaPoseLoader(BaseDataset):
+class AlphaPoseLoader(BBoxDataset):
     """Load precomputed json files."""
 
     def __init__(self, config: Config, path: NodePath) -> None:

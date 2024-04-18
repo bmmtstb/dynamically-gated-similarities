@@ -17,8 +17,8 @@ from typing import Union
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from dgs.models.dataset.pose_dataset import TorchreidPoseDataManager
 from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
+from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataManager
 
 try:
     # If torchreid is installed using `./dependencies/torchreid`
