@@ -4,6 +4,7 @@ Engine for a full model of the dynamically gated similarity tracker.
 
 import os.path
 import time
+from datetime import datetime
 
 import torch
 from lapsolver import solve_dense
@@ -11,6 +12,7 @@ from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
 
+from dgs.models.dataset.posetrack21 import generate_pt21_submission_file, submission_data_from_state
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
 from dgs.utils.config import DEF_CONF
@@ -179,6 +181,8 @@ class DGSEngine(EngineModule):
         results: dict[str, any] = {}
         detections: list[State]
         frame_idx: int = 0
+        img_data: list[dict[str, any]] = []
+        anno_data: list[dict[str, any]] = []
 
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
@@ -197,6 +201,12 @@ class DGSEngine(EngineModule):
 
                 ts, batch_times = self._track_step(detections=detection)
 
+                active = collate_states(self.tracks.get_active_states())
+                # get submission data
+                new_img_data, new_anno_data = submission_data_from_state(active)
+                img_data.append(new_img_data)
+                anno_data += new_anno_data
+
                 # print debug info
                 ts.print(logger=self.logger, frame_idx=frame_idx)
                 # Add timings and other metrics to the writer
@@ -208,13 +218,19 @@ class DGSEngine(EngineModule):
                 )
                 # print the resulting image if requested
                 if self.save_images and detection.B >= 1:
-                    active = collate_states(self.tracks.get_active_states())
+
                     active.draw(
                         save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
                         show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
                         show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
                     )
                 frame_idx += 1
+
+        generate_pt21_submission_file(
+            outfile=os.path.join(self.log_dir, f"./results_{datetime.now().strftime('%Y%m%d_%H_%M')}.json"),
+            images=img_data,
+            annotations=anno_data,
+        )
 
         self.logger.info(f"#### Finished Evaluating {self.name} ####")
 
@@ -226,6 +242,8 @@ class DGSEngine(EngineModule):
         self.set_model_mode("eval")
         close_all_layers(self.model)
         frame_idx: int = 0
+        img_data: list[dict[str, any]] = []
+        anno_data: list[dict[str, any]] = []
 
         self.logger.info(f"#### Start Prediction {self.name} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
@@ -234,6 +252,12 @@ class DGSEngine(EngineModule):
         for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl), position=1):
             for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False, position=2):
                 _ = self._track_step(detections=detection)
+
+                active = collate_states(self.tracks.get_active_states())
+                # get submission data
+                new_img_data, new_anno_data = submission_data_from_state(active)
+                img_data.append(new_img_data)
+                anno_data += new_anno_data
 
                 out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
                 if detection.B > 0:
@@ -253,6 +277,12 @@ class DGSEngine(EngineModule):
                     t[-1].clean()
                 # move to the next frame
                 frame_idx += 1
+
+        generate_pt21_submission_file(
+            outfile=os.path.join(self.log_dir, f"./prediction_{datetime.now().strftime('%Y%m%d_%H_%M')}.json"),
+            images=img_data,
+            annotations=anno_data,
+        )
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 

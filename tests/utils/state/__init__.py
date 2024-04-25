@@ -65,6 +65,7 @@ DUMMY_DATA: dict[str, any] = {
     "class_id": PID,
     "track_id": PID,
     "joint_weight": DUMMY_WEIGHT,
+    "pred_tid": PID,
 }
 
 DUMMY_DATA_BATCH: dict[str, any] = {
@@ -82,4 +83,5 @@ DUMMY_DATA_BATCH: dict[str, any] = {
     "class_id": PIDS,
     "track_id": PIDS,
     "joint_weight": DUMMY_WEIGHT_BATCH,
+    "pred_tid": PIDS,
 }

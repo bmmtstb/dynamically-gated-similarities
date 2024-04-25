@@ -64,6 +64,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         self.model.eval()
         self.model.to(self.device)
 
+        self.img_id: int = 1
+
     def images_to_states(self, images: Images) -> list[State]:
         """Given a list of images, use the key-point-RCNN model to predict key points and bounding boxes,
         then create a :class:`State` containing the available information.
@@ -111,7 +113,11 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 "joint_weight": vis,
                 "scores": output["scores"],
                 "skeleton_name": "coco",
+                "image_id": (self.img_id,),
+                "frame_id": (self.img_id,),
+                "person_id": -1,
             }
+            self.img_id += 1
             states.append(State(**data))
 
         return states

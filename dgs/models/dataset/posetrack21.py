@@ -348,7 +348,7 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
         return image_data, []
 
     # validate the annotation data
-    for key in ["person_id", "track_id", "bbox", "keypoints", "joint_weight"]:
+    for key in ["person_id", "pred_tid", "bbox", "keypoints", "joint_weight"]:
         if key not in s:
             raise KeyError(f"Expected key '{key}' to be in State.")
         if (l := len(s[key])) != s.B:
@@ -366,7 +366,7 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
                 "scores": s["scores"][i].flatten().tolist() if "scores" in s else [0.0 for _ in range(17)],
                 "image_id": int(s["image_id"][i]),
                 "person_id": int(s.person_id[i]),
-                "track_id": int(s.track_id[i]),
+                "track_id": int(s["pred_tid"][i]),
             }
         )
 

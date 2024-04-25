@@ -540,13 +540,11 @@ class Tracks(UserDict):
     def get_active_states(self) -> list[State]:
         """Get the last state of every **active** track in this object as a :class:`State`."""
         states: list[State] = []
-        tids: list[TrackID] = []
 
         for tid, track in self.data.items():
             if tid in self.inactive:
                 continue
             states.append(track[-1])
-            tids.append(tid)
 
         return states
 
