@@ -54,17 +54,13 @@ visdom
 # local dependencies #
 # ################## #
 
-# Set up halpecocotools
-# fixme do we still need halpecocotools without AlphaPose ?
-# -e dependencies/halpecocotools/PythonAPI/
 # Torchreid - install requirements and Set up torchreid and cythonize
 # somehow installing requirements does not work just by calling setup
 -e dependencies/torchreid/
 # install PoseTrack21 evaluation toolkit
 # fixme is this still required ?
 # -e dependencies/PoseTrack21/eval/posetrack21/
-# Alpha Pose plus its requirements - make sure this will be installed last!
-# -e dependencies/AlphaPose_Fork
+git+https://github.com/svenkreiss/poseval
 
 # own project
 -e .

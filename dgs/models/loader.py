@@ -5,9 +5,7 @@ Load and register modules.
 from typing import Type, TypeVar, Union
 
 import torch.nn
-from torch.utils.data import (
-    DataLoader as TorchDataLoader,
-)
+from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
 from dgs.models.dataset.dataset import BaseDataset, dataloader_validations
 from dgs.models.module import BaseModule
@@ -164,19 +162,24 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
     """
     ds: BaseDataset = module_loader(config=config, module_class="dataset", key=path)
 
-    # validate data loader params
-    ds.validate_params(dataloader_validations)
+    # validate data loader params on regular BaseDataset, a concatenated dataset should have been validated elsewhere
+    if isinstance(ds, BaseDataset):
+        ds.validate_params(dataloader_validations)
+        params = ds.params
+    else:
+        assert isinstance(ds, TorchDataset)
+        params = get_sub_config(config=config, path=path)
 
-    batch_size: int = ds.params.get("batch_size", DEF_CONF.dataloader.batch_size)
-    drop_last: bool = ds.params.get("drop_last", DEF_CONF.dataloader.drop_last)
-    shuffle: bool = ds.params.get("shuffle", DEF_CONF.dataloader.shuffle)
+    batch_size: int = params.get("batch_size", DEF_CONF.dataloader.batch_size)
+    drop_last: bool = params.get("drop_last", DEF_CONF.dataloader.drop_last)
+    shuffle: bool = params.get("shuffle", DEF_CONF.dataloader.shuffle)
 
     data_loader = TorchDataLoader(
         dataset=ds,
         batch_size=batch_size,
         drop_last=drop_last,
-        num_workers=ds.params.get("workers", DEF_CONF.dataloader.workers),
+        num_workers=params.get("workers", DEF_CONF.dataloader.workers),
         shuffle=shuffle,
-        collate_fn=collate_lists if ds.params.get("return_lists", DEF_CONF.dataloader.return_lists) else collate_states,
+        collate_fn=collate_lists if params.get("return_lists", DEF_CONF.dataloader.return_lists) else collate_states,
     )
     return data_loader

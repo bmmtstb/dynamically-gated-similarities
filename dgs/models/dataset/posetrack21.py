@@ -21,13 +21,13 @@ import numpy as np
 import torch as t
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors as tvte
-from torchvision.tv_tensors import BoundingBoxes
+from torchvision.transforms.v2.functional import convert_bounding_box_format
 from tqdm import tqdm
 
-from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, ImageDataset
+from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, dataloader_validations, ImageDataset
 from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataset
 from dgs.utils.constants import PROJECT_ROOT
-from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
+from dgs.utils.files import mkdir_if_missing, read_json, to_abspath, write_json
 from dgs.utils.state import collate_bboxes, collate_tensors, State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_and_save
@@ -42,7 +42,6 @@ with warnings.catch_warnings():
         # if torchreid is installed using `pip install torchreid`
         # noinspection PyUnresolvedReferences
         from torchreid.reid.data import ImageDataset as TorchreidImageDataset
-
 
 # Do not allow import of 'PoseTrack21' base dataset
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21_BBox", "PoseTrack21_Image", "PoseTrack21Torchreid"]
@@ -316,14 +315,78 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
     )
 
 
-def generate_pt21_submission(outfile: FilePath) -> None:
+def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str, any]]]:
+    """Given a :class:`.State`, extract data for the 'images' and 'annotations' list used in the pt21 submission.
+
+    See :func:`.generate_pt21_submission_file` for more details on the submission format.
+
+    Returns:
+        The image and annotation data as dictionaries.
+        The annotation data is a list of dicts, because every image can have multiple detections / annotations.
+    """
+    # validate the image data
+    for key in ["filepath", "image_id", "frame_id"]:
+        if key not in s:
+            raise KeyError(f"Expected key '{key}' to be in State.")
+        if isinstance(s[key], str):
+            # str -> tuple of str, this will always be correct, add at least one value for later usage
+            s[key] = (s[key] for _ in range(max(1, s.B)))
+        elif s.B > 1:
+            if (l := len(s[key])) != s.B:
+                raise ValueError(f"Expected '{key}' ({l}) to have the same length as the State ({s.B}).")
+            if any(s[key][i] != s[key][0] for i in range(1, s.B)):
+                raise ValueError(f"State has different {key}s, expected all {key}s to match. got: '{s[key]}'.")
+        elif (l := len(s[key])) != 1:
+            raise ValueError(f"Expected '{key}' ({l}) to have a length of exactly 1.")
+    # get the image data
+    image_data = {
+        "file_name": s.filepath[0],
+        "id": s["image_id"][0],
+        "frame_id": s["image_id"][0],
+    }
+    if s.B == 0:
+        return image_data, []
+
+    # validate the annotation data
+    for key in ["person_id", "track_id", "bbox", "keypoints", "joint_weight"]:
+        if key not in s:
+            raise KeyError(f"Expected key '{key}' to be in State.")
+        if (l := len(s[key])) != s.B:
+            raise ValueError(f"Expected '{key}' ({l}) to have the same length as the State ({s.B}).")
+
+    # get the annotation data
+    anno_data = []
+    bboxes = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+    for i in range(s.B):
+        kps = t.cat([s.keypoints[i], s.joint_weight[i]], dim=-1)
+        anno_data.append(
+            {
+                "bboxes": bboxes[i].flatten().tolist(),
+                "kps": kps.flatten().tolist(),
+                "scores": s["scores"][i].flatten().tolist() if "scores" in s else [0.0 for _ in range(17)],
+                "image_id": int(s["image_id"][i]),
+                "person_id": int(s.person_id[i]),
+                "track_id": int(s.track_id[i]),
+            }
+        )
+
+    return image_data, anno_data
+
+
+def generate_pt21_submission_file(
+    outfile: FilePath, images: list[dict[str, any]], annotations: list[dict[str, any]]
+) -> None:  # pragma: no cover
     """Given data, generate a |PT21| submission file.
 
     References:
         https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md
 
+        https://github.com/leonid-pishchulin/poseval
+
     Args:
-        outfile (FilePath):
+        outfile: The path to the target file
+        images: A list containing the IDs and file names of the images
+        annotations: A list containing the per-bbox predicted annotations.
 
     Notes:
         The structure of the PT21 submission file is similar to the structure of the inputs::
@@ -351,7 +414,8 @@ def generate_pt21_submission(outfile: FilePath) -> None:
         Additionally, note that the visibilities are ignored during evaluation.
 
     """
-    raise NotImplementedError(f"Not implemented {outfile}")
+    data = {"images": images, "annotations": annotations}
+    write_json(obj=data, filepath=outfile)
 
 
 def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> Union[BaseDataset, TorchDataset]:
@@ -379,6 +443,8 @@ def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> 
     """
     ds = PoseTrack21(config, path)
     ds.validate_params(pt21_json_validations)
+    ds.validate_params(dataloader_validations)
+
     ds_type: Union[Type[PoseTrack21_Image], Type[PoseTrack21_BBox]] = (
         PoseTrack21_Image if ds_name == "image" else PoseTrack21_BBox
     )
@@ -474,6 +540,7 @@ class PoseTrack21_BBox(BBoxDataset):
             img["id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
             for img in json["images"]
         }
+        map_img_id_frame_id: dict[int, FilePath] = {img["id"]: str(img["frame_id"]) for img in json["images"]}
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
         img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in map_img_id_path.values()}
@@ -499,11 +566,13 @@ class PoseTrack21_BBox(BBoxDataset):
         )
         # save the image-, person-, and class-ids for later use as torch tensors
         img_id_list: list[int] = []
+        frame_id_list: list[int] = []
         pid_list: list[int] = []
         cid_list: list[int] = []
 
         for anno in json["annotations"]:
             img_id_list.append(int(anno["image_id"]))
+            frame_id_list.append(int(map_img_id_frame_id[anno["image_id"]]))
             pid_list.append(int(anno["person_id"]))
             cid_list.append(int(map_pid_to_cid[int(anno["person_id"])]))
             # add image and crop filepaths
@@ -515,6 +584,7 @@ class PoseTrack21_BBox(BBoxDataset):
             )
 
         self.img_ids: t.Tensor = t.tensor(img_id_list, dtype=t.long, device=self.device)
+        self.frame_ids: t.Tensor = t.tensor(frame_id_list, dtype=t.long, device=self.device)
         self.pids: t.Tensor = t.tensor(pid_list, dtype=t.long, device=self.device)
         self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
 
@@ -555,7 +625,8 @@ class PoseTrack21_BBox(BBoxDataset):
             # additional values which are not required
             joint_weight=visibility,
             image_id=self.img_ids[idx],
-            skeleton_name=self.skeleton_name,
+            skeleton_name=(self.skeleton_name,),
+            frame_id=self.frame_ids[idx],
         )
         # make sure to get the image crop for this State
         self.get_image_crops(ds)
@@ -692,6 +763,10 @@ class PoseTrack21_Image(ImageDataset):
             crop_path=crop_paths,
             joint_weight=visibilities,
             skeleton_name=tuple(self.skeleton_name for _ in range(len(anno_ids))),
+            # optional values
+            # Add at least one value for image and frame ID, to be able to generate the results later!
+            image_id=tuple(a["image_id"] for _ in range(max(1, len(anno_ids)))),
+            frame_id=tuple(a["frame_id"] for _ in range(max(1, len(anno_ids)))),
         )
         # make sure to get the image crop for this State
         self.get_image_crops(ds)
@@ -728,7 +803,7 @@ class PoseTrack21_Image(ImageDataset):
             return (
                 t.empty((0, 17, 2)),
                 t.empty((0, 17, 1)),
-                BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+                tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
                 (),
             )
         return collate_tensors(keypoints), collate_tensors(visibilities), collate_bboxes(bboxes), tuple(crop_paths)

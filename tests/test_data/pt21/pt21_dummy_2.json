@@ -4,18 +4,21 @@
       "is_labeled": false,
       "image_id": 21,
       "id": 21,
+      "frame_id": 21,
       "file_name": "images/866-500x500.jpg"
     },
     {
       "is_labeled": false,
       "image_id": 22,
       "id": 22,
+      "frame_id": 22,
       "file_name": "images/866-500x500.jpg"
     },
     {
       "is_labeled": true,
       "image_id": 23,
       "id": 23,
+      "frame_id": 23,
       "file_name": "images/866-1000x1000.jpg"
     }
   ],
