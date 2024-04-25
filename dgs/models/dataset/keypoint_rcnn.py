@@ -104,6 +104,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             if crops.ndim == 3:
                 crops = tvte.wrap(crops.unsqueeze(0), like=crops)
 
+            B = len(bbox)
+
             data = {
                 "validate": False,
                 "bbox": bbox,
@@ -112,10 +114,10 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 "keypoints_local": loc_kps,
                 "joint_weight": vis,
                 "scores": output["scores"],
-                "skeleton_name": "coco",
-                "image_id": (self.img_id,),
-                "frame_id": (self.img_id,),
-                "person_id": -1,
+                "skeleton_name": tuple("coco" for _ in range(B)),
+                "image_id": torch.ones(B, device=self.device, dtype=torch.long) * self.img_id,
+                "frame_id": torch.ones(B, device=self.device, dtype=torch.long) * self.img_id,
+                "person_id": torch.ones(B, device=self.device, dtype=torch.long) * -1,
             }
             self.img_id += 1
             states.append(State(**data))
