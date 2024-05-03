@@ -12,7 +12,7 @@ from functools import wraps
 import torch
 from torch.nn import Module
 
-from dgs.utils.config import get_sub_config
+from dgs.utils.config import DEF_CONF, get_sub_config
 from dgs.utils.constants import PRECISION_MAP, PRINT_PRIORITY, PROJECT_ROOT
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
 from dgs.utils.files import mkdir_if_missing
@@ -23,17 +23,17 @@ module_validations: Validations = {
     "device": [("any", [("in", ["cuda", "cpu"]), ("instance", torch.device)])],
     "is_training": [bool],
     "name": [str, ("longer", 2)],
-    "print_prio": [("in", PRINT_PRIORITY)],
     # optional
+    "print_prio": ["optional", str, ("in", PRINT_PRIORITY)],
     "description": ["optional", str],
     "log_dir": ["optional", str],
-    "num_workers": ["optional", int, ("gte", 0)],
     "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), torch.dtype])],
 }
 
 
 def enable_keyboard_interrupt(func: callable) -> callable:  # pragma: no cover
-    """Call module.terminate() on Keyboard Interruption (e.g., ctrl+c), which makes sure that all threads are stopped.
+    """Call :func:`BaseModule.terminate` on Keyboard Interruption (e.g., ctrl+c),
+    which should make sure that all threads are stopped and the GPU memory is freed.
 
     Args:
         func: The decorated function
@@ -71,24 +71,32 @@ class BaseModule(ABC):
     -------------
 
     device: (Device)
-        The device to run this module and tracker on.
+        The torch device to run this module and tracker on.
     is_training: (bool)
-        Whether the torch modules should train or evaluate.
+        Whether the general torch modules should train or evaluate.
+        Modes of different modules can be set individually using '.eval()', '.train()', or the functions from
+        :mod:`.dgs.utils.torchtools`.
     name (str):
         The name of this configuration.
         Mostly used for printing, logging, and file saving.
-    print_prio: (str)
+
+    Optional Configuration
+    ----------------------
+
+    print_prio: (str, optional)
         How much information should be printed while running.
-        Default "INFO" will print status reports but no debugging information.
-
-
-    log_dir (FilePath, optional, default="./results/"):
+        "INFO" will print status reports but no debugging information.
+        Default: ``DEF_CONF.base.print_prio`` .
+    description (str, optional):
+        The description of the overall configuration.
+        Default: ``DEF_CONF.base.description`` .
+    log_dir (FilePath, optional):
         Path to directory where all the files of this run are saved.
-        The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/").
-    num_workers: (int, optional, default=0)
-        The number of additional workers, the torch DataLoader should use to load the datasets.
-    precision (Union[type, str, torch.dtype], optional, default=torch.float32)
+        The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/") in every case.
+        Default: ``DEF_CONF.base.log_dir`` .
+    precision (Union[type, str, torch.dtype], optional)
         The precision at which this module should operate.
+        Default: ``DEF_CONF.base.precision`` .
 
     Attributes:
         config: The overall configuration of the whole algorithm.
@@ -116,7 +124,9 @@ class BaseModule(ABC):
         self.log_dir: FilePath = os.path.normpath(
             os.path.abspath(
                 os.path.join(
-                    PROJECT_ROOT, self.config.get("log_dir", "./results/"), f"./{date.today().strftime('%Y%m%d')}/"
+                    PROJECT_ROOT,
+                    self.config.get("log_dir", DEF_CONF.base.log_dir),
+                    f"./{date.today().strftime('%Y%m%d')}/",
                 )
             )
         )
@@ -213,6 +223,7 @@ class BaseModule(ABC):
                     )
                 # case custom callable
                 if callable(validation):
+                    validation: callable
                     if validation(value):
                         continue
                     raise InvalidParameterException(
@@ -238,7 +249,7 @@ class BaseModule(ABC):
             return logger
 
         # set level
-        prio = self.config.get("print_prio", "INFO")
+        prio = self.config.get("print_prio", DEF_CONF.base.print_prio)
         log_level = PRINT_PRIORITY[prio] if isinstance(prio, str) else prio
         logger.setLevel(log_level)
 
@@ -257,6 +268,11 @@ class BaseModule(ABC):
         return logger
 
     @property
+    def is_training(self) -> bool:
+        """Get whether this module is set to training-mode."""
+        return self.config["is_training"]
+
+    @property
     def device(self) -> torch.device:
         """Get the device of this module."""
         return torch.device(self.config["device"])
@@ -273,10 +289,8 @@ class BaseModule(ABC):
 
     @property
     def precision(self) -> torch.dtype:
-        """Get the floating point precision used in this module."""
-        if "precision" not in self.config:
-            return torch.float32
-        precision = self.config["precision"]
+        """Get the (floating point) precision used in multiple parts of this module."""
+        precision = self.config.get("precision", DEF_CONF.base.precision)
         if isinstance(precision, torch.dtype):
             return precision
         if precision == int:
@@ -297,7 +311,7 @@ class BaseModule(ABC):
         Returns:
             The module on the specified device or in parallel.
         """
-        train: bool = self.config["is_training"] if train is None else train
+        train: bool = self.is_training if train is None else train
         # set torch mode
         if train:
             module.train()

@@ -110,7 +110,7 @@ class VisualSimilarityEngine(EngineModule):
         # get metric and kwargs
         self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
 
-        if self.config["is_training"]:
+        if self.is_training:
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]

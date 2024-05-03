@@ -4,27 +4,9 @@ Definition of default configuration for dynamically gated similarity tracker.
 These values are used, iff the given config does not set own values.
 """
 
-import torch
 from easydict import EasyDict
 
 cfg = EasyDict()
-
-# ####### #
-# General #
-# ####### #
-
-cfg.name = "DEFAULT"
-cfg.description = "Default configuration..."
-cfg.print_prio = "INFO"
-cfg.working_memory_size = 30
-cfg.log_dir = "./results/"
-
-# torch and device settings
-cfg.device = "cpu"  # tests need cpu as the default device!
-cfg.gpus = [0] if torch.cuda.is_available() else [-1]  # use gpu=0 or none, on multi-GPU systems use list of int
-cfg.num_workers = 0  # number of subprocesses to use for data loading during torch DataLoader
-cfg.sp = True  # single or multiprocess
-cfg.is_training = False
 
 # ######## #
 # Training #

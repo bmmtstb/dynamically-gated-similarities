@@ -163,7 +163,7 @@ class EngineModule(BaseModule):
         self.test_dl = test_loader
 
         # Set up general attributes
-        self.model = self.configure_torch_module(model, train=self.config["is_training"])
+        self.model = self.configure_torch_module(model, train=self.is_training)
 
         # Logging
         self.writer = SummaryWriter(
@@ -185,7 +185,7 @@ class EngineModule(BaseModule):
 
         # Set up train attributes
         self.params_train: Config = {}
-        if self.config["is_training"]:
+        if self.is_training:
             if "train" not in config:
                 raise KeyError("'is_training' is True, but there is no key in the config named 'train'")
             self.params_train = get_sub_config(config, ["train"])
@@ -236,7 +236,7 @@ class EngineModule(BaseModule):
         if "description" in self.config:
             self.logger.info(f"Config Description: {self.config['description']}")
 
-        if self.config["is_training"]:
+        if self.is_training:
             self.train()
 
         self.test()

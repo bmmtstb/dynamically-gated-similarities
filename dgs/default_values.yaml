@@ -49,6 +49,13 @@ cross_entropy_loss:
 # MODULES #
 # ####### #
 
+base:
+    print_prio: "INFO"
+    description: ""
+    log_dir: "./results/"
+    precision: "float32"
+
+
 engine:
     dgs:
         save_images: true
