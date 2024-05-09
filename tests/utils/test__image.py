@@ -141,6 +141,10 @@ class TestImageUtils(unittest.TestCase):
             (50, 75, 5 / 6, [6, 0, 6, 0], "portrait to short portrait"),  # (w=62.5,h=75)
             (50, 100, 2, [75, 0, 75, 0], "portrait to landscape"),
             (150, 75, 0.5, [0, 112, 0, 113], "landscape to portrait"),
+            (1920, 1080, 192 / 256, [0, 740, 0, 740], "landscape to portrait - huge values"),
+            (62, 46, 256 / 192, [0, 0, 0, 0], "landscape to portrait - tiny values"),
+            (46, 62, 192 / 256, [0, 0, 0, 0], "portrait to landscape - tiny values"),
+            (81, 107, 0.75, [0, 0, 0, 1], "portrait to portrait - tiny values"),
         ]:
             with self.subTest(msg=msg):
                 self.assertListEqual(compute_padding(old_w=width, old_h=height, target_aspect=target_aspect), paddings)

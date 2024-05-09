@@ -230,26 +230,31 @@ def compute_padding(old_w: int, old_h: int, target_aspect: float) -> list[int]:
     Args:
         old_w: Width of the old image
         old_h: Height of the old image
-        target_aspect: Aspect the new image should have
+        target_aspect: Aspect the new image should have (width / height).
 
     Returns:
         A list of integers as paddings for the left, top, right, and bottom side respectively.
     """
     old_aspect: float = old_w / old_h
 
-    if old_aspect == target_aspect:
+    if abs(old_aspect - target_aspect) < 1e-4:
         return [0, 0, 0, 0]
 
     height_padding = int(old_w // target_aspect - old_h)
     width_padding = int(target_aspect * old_h - old_w)
 
-    if height_padding > 0 > width_padding:
+    if height_padding >= 0 >= width_padding:
         # +1 pixel on the bottom if new shape is odd
         return [0, height_padding // 2, 0, height_padding // 2 + (height_padding % 2)]
-    if height_padding < 0 < width_padding:
+    if height_padding <= 0 <= width_padding:
         # +1 pixel on the right if new shape is odd
         return [width_padding // 2, 0, width_padding // 2 + (width_padding % 2), 0]
-    raise ArithmeticError("During computing the sizes for padding, something unexpected happened.")  # pragma: no cover
+    if height_padding == width_padding == 0:
+        return [0, 0, 0, 0]
+    raise ArithmeticError(
+        f"During computing the sizes for padding, something unexpected happened. "
+        f"old_w: {old_w}, old_h: {old_h}, targ_asp: {target_aspect}"
+    )  # pragma: no cover
 
 
 class CustomTransformValidator:
