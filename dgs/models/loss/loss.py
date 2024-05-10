@@ -5,7 +5,7 @@ Custom loss functions.
 import torch
 from torch import nn
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.types import Loss
 
 
@@ -15,7 +15,7 @@ class CrossEntropyLoss(Loss):
     def __init__(self, **kwargs):
         super().__init__()
         # self.log_softmax = nn.LogSoftmax(dim=1)
-        default_kwargs: dict[str, any] = DEF_CONF.cross_entropy_loss.copy()
+        default_kwargs: dict[str, any] = DEF_VAL.cross_entropy_loss.copy()
         default_kwargs.update(kwargs)
         self.cross_entropy_loss = nn.CrossEntropyLoss(**default_kwargs)
 

@@ -37,7 +37,7 @@ from dgs.utils.files import read_json
 from dgs.utils.state import State
 from dgs.utils.types import Config, ImgShape, NodePath, Validations
 
-ap_load_validations: Validations = {"path": [str, "file exists in project", ("endswith", ".json")]}
+ap_load_validations: Validations = {"data_path": [str, "file exists in project", ("endswith", ".json")]}
 
 
 class AlphaPoseLoader(BBoxDataset):
@@ -48,12 +48,12 @@ class AlphaPoseLoader(BBoxDataset):
 
         self.validate_params(ap_load_validations)
 
-        json = read_json(self.params["path"])
+        json = read_json(self.params["data_path"])
 
         if isinstance(json, list):
             self.data: list[dict] = json
         else:
-            raise NotImplementedError(f"JSON file {self.params['path']} does not contain known instances.")
+            raise NotImplementedError(f"JSON file {self.params['data_path']} does not contain known instances.")
 
         canvas_sizes: set[ImgShape] = set()
 

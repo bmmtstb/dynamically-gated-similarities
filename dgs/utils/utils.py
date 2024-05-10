@@ -14,7 +14,7 @@ from torchvision.io import write_jpeg
 from torchvision.transforms import v2 as tvt
 from torchvision.transforms.functional import convert_image_dtype
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.image import CustomCropResize, load_image_list
 from dgs.utils.types import Device, FilePath, FilePaths, Image, Images
@@ -71,8 +71,8 @@ def extract_crops_from_images(
             "images": imgs,
             "box": bboxes,
             "keypoints": kps if kps is not None else torch.zeros((len(imgs), 1, 2), device=imgs[0].device),
-            "mode": kwargs.get("crop_mode", DEF_CONF.images.crop_mode),
-            "output_size": kwargs.get("crop_size", DEF_CONF.images.crop_size),
+            "mode": kwargs.get("crop_mode", DEF_VAL.images.crop_mode),
+            "output_size": kwargs.get("crop_size", DEF_VAL.images.crop_size),
         }
     )
     crop = res["image"]

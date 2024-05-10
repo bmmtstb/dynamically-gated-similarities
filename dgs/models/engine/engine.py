@@ -21,7 +21,7 @@ from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
 from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
-from dgs.utils.config import DEF_CONF, get_sub_config, save_config
+from dgs.utils.config import DEF_VAL, get_sub_config, save_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
@@ -180,7 +180,7 @@ class EngineModule(BaseModule):
         # save default values
         save_config(
             filepath=os.path.join(self.log_dir, f"default-values-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
-            config=DEF_CONF,
+            config=DEF_VAL,
         )
 
         # Set up train attributes

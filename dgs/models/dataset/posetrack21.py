@@ -47,7 +47,10 @@ with warnings.catch_warnings():
 __all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21_BBox", "PoseTrack21_Image", "PoseTrack21Torchreid"]
 
 pt21_json_validations: Validations = {
-    "crops_folder": [("instance", FilePath)],
+    "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
+    "crops_folder": [str, ("folder exists", False)],
+    # optional
+    "id_map": ["optional", str],
 }
 
 
@@ -449,15 +452,15 @@ def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> 
         PoseTrack21_Image if ds_name == "image" else PoseTrack21_BBox
     )
 
-    if isinstance(json_path := ds.params["json_path"], (list, tuple)):
-        print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {json_path}")
+    if isinstance(data_path := ds.params["data_path"], (list, tuple)):
+        print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {data_path}")
         return ConcatDataset(
-            [ds_type(config=config, path=path, json_path=ds.get_path_in_dataset(path=p)) for p in tqdm(json_path)]
+            [ds_type(config=config, path=path, data_path=ds.get_path_in_dataset(path=p)) for p in tqdm(data_path)]
         )
 
     # path is either directory or single json file
     paths: list[FilePath]
-    abs_path: FilePath = ds.get_path_in_dataset(ds.params["json_path"])
+    abs_path: FilePath = ds.get_path_in_dataset(ds.params["data_path"])
     if os.path.isfile(abs_path):
         paths = [abs_path]
     else:
@@ -470,11 +473,11 @@ def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> 
 
     if len(paths) == 1:
         print(f"Loading dataset: {paths[0]}")
-        return ds_type(config=config, path=path, json_path=paths[0])
+        return ds_type(config=config, path=path, data_path=paths[0])
 
     return ConcatDataset(
         [
-            ds_type(config=config, path=path, json_path=p)
+            ds_type(config=config, path=path, data_path=p)
             for p in tqdm(paths, desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}")
         ]
     )
@@ -499,7 +502,7 @@ class PoseTrack21_BBox(BBoxDataset):
     Params
     ------
 
-    json_path (FilePath):
+    data_path (FilePath):
         The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
     id_map (FilePath, optional):
         The (local or absolute) path to a json file containing a mapping from person ID to classifier ID.
@@ -521,17 +524,17 @@ class PoseTrack21_BBox(BBoxDataset):
         Default False.
     """
 
-    def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
+    def __init__(self, config: Config, path: NodePath, data_path: FilePath = None) -> None:
         super().__init__(config=config, path=path)
 
         self.validate_params(pt21_json_validations)
 
         # validate and get the path to the json
-        if json_path is None:
-            json_path: FilePath = self.get_path_in_dataset(self.params["json_path"])
+        if data_path is None:
+            data_path: FilePath = self.get_path_in_dataset(self.params["data_path"])
 
         # validate and get json data
-        json: dict[str, list[dict[str, any]]] = read_json(json_path)
+        json: dict[str, list[dict[str, any]]] = read_json(data_path)
         validate_pt21_json(json)
         self.len = len(json["annotations"])
 
@@ -551,7 +554,7 @@ class PoseTrack21_BBox(BBoxDataset):
             if len(img_sizes) > 1:
                 raise ValueError(
                     f"The images within a single dataset should have equal shapes. "
-                    f"json_path: {json_path}, shapes: {img_sizes}"
+                    f"data_path: {data_path}, shapes: {img_sizes}"
                 )
             self.img_shape: ImgShape = img_sizes.pop()
 
@@ -641,7 +644,7 @@ class PoseTrack21_Image(ImageDataset):
     Params
     ------
 
-    json_path (FilePath):
+    data_path (FilePath):
         The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
     id_map (FilePath, optional):
         The (local or absolute) path to a json file containing a mapping from person ID to classifier ID.
@@ -663,17 +666,17 @@ class PoseTrack21_Image(ImageDataset):
         Default False.
     """
 
-    def __init__(self, config: Config, path: NodePath, json_path: FilePath = None) -> None:
+    def __init__(self, config: Config, path: NodePath, data_path: FilePath = None) -> None:
         super().__init__(config=config, path=path)
 
         self.validate_params(pt21_json_validations)
 
         # validate and get the path to the json
-        if json_path is None:
-            json_path: FilePath = self.get_path_in_dataset(self.params["json_path"])
+        if data_path is None:
+            data_path: FilePath = self.get_path_in_dataset(self.params["data_path"])
 
         # validate and get json data
-        json: dict[str, list[dict[str, any]]] = read_json(json_path)
+        json: dict[str, list[dict[str, any]]] = read_json(data_path)
         validate_pt21_json(json)
         self.len = len(json["images"])
 
@@ -692,7 +695,7 @@ class PoseTrack21_Image(ImageDataset):
             if len(img_sizes) > 1:
                 raise ValueError(
                     f"The images within a single dataset should have equal shapes. "
-                    f"json_path: {json_path}, shapes: {img_sizes}"
+                    f"data_path: {data_path}, shapes: {img_sizes}"
                 )
             self.img_shape: ImgShape = img_sizes.pop()
 

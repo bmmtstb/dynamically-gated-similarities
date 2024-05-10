@@ -21,7 +21,7 @@ test:
 # #### #
 
 dataloader_test:
-    module_name: "ImageRCNN"
+    module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/"
     path: "./test/"
     batch_size: 8

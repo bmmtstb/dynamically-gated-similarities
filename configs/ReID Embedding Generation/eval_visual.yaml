@@ -19,7 +19,7 @@ test:
 valid_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_person_search/val.json"
+    data_path: "./posetrack_person_search/val.json"
     force_img_reshape: true
     crops_folder: "./crops/gallery/"
     batch_size: 256
@@ -27,7 +27,7 @@ valid_dl:
 test_dl:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_person_search/query.json"
+    data_path: "./posetrack_person_search/query.json"
     force_img_reshape: true
     crops_folder: "./crops/query/"
     batch_size: 1024

@@ -8,7 +8,7 @@ from torch import nn
 from dgs.models.combine import CombineSimilaritiesModule, get_combine_module
 from dgs.models.module import BaseModule
 from dgs.models.similarity import get_similarity_module
-from dgs.utils.config import DEF_CONF, get_sub_config
+from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -62,7 +62,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # if wanted, compute the softmax of every resulting similarity matrix
         self.similarity_softmax = nn.Sequential()
-        if self.params.get("similarity_softmax", DEF_CONF.dgs.similarity_softmax):
+        if self.params.get("similarity_softmax", DEF_VAL.dgs.similarity_softmax):
             self.similarity_softmax.append(nn.Softmax(dim=-1))
 
         # module for combining multiple similarities
@@ -74,7 +74,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # if wanted, compute the softmax after the similarities have been summed up / combined
         self.combined_softmax = nn.Sequential()
-        if self.params.get("combined_softmax", DEF_CONF.dgs.combined_softmax):
+        if self.params.get("combined_softmax", DEF_VAL.dgs.combined_softmax):
             self.combined_softmax.append(nn.Softmax(dim=-1))
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover

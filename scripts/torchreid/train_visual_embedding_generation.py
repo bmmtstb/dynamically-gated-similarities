@@ -29,6 +29,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
+from dgs.utils.config import load_config
 
 try:
     # If torchreid is installed using `./dependencies/torchreid`
@@ -57,8 +58,7 @@ except ModuleNotFoundError:
     # noinspection PyUnresolvedReferences
     from torchreid.reid.optim import build_lr_scheduler, build_optimizer
 
-LOG_DIR = f"./results/torchreid/visual/{date.today().strftime('%Y%m%d')}/"
-MODEL_NAME = "osnet_ain_x1_0"
+MODEL_NAME = "osnet_x1_0"
 BATCH_TRAIN = 128
 HEIGHT = 256
 WIDTH = 256
@@ -71,11 +71,18 @@ PRE_TRAINED: bool = True
 TEST_ONLY: bool = False
 NUM_CLASSES: int = 5474
 
+LOG_DIR = f"./results/torchreid/visual/{MODEL_NAME}/{date.today().strftime('%Y%m%d')}/"
+
+CONFIG_FILE: str = "./scripts/torchreid/custom_configs/pt21_osnet_x1_0_softmax_256x192_amsgrad.yaml"
+
 if __name__ == "__main__":
-    # noinspection PyTypeChecker
-    register_image_dataset("PoseTrack21", PoseTrack21Torchreid)
+
+    cfg = load_config(CONFIG_FILE)
 
     print(f"Cuda available: {torch.cuda.is_available()}")
+
+    # noinspection PyTypeChecker
+    register_image_dataset("PoseTrack21", PoseTrack21Torchreid)
 
     # with HidePrint():  # this will hide the data summary and transforms set-up
     data_manager = ImageDataManager(

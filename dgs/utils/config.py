@@ -223,5 +223,5 @@ def easydict_to_dict(ed: Union[dict, EasyDict]) -> dict:
     return ed
 
 
-DEF_CONF: Config = load_config("./dgs/default_values.yaml")
-"""Parameters of the default configuration."""
+DEF_VAL: Config = load_config("./dgs/default_values.yaml")
+"""Default values and parameters."""

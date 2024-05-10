@@ -5,13 +5,12 @@ Helper methods for tests.
 import os
 import sys
 from contextlib import contextmanager
-from copy import deepcopy
 from io import StringIO
 from typing import Iterable
 
 import torch
 
-from dgs.default_config import cfg as default_config
+from dgs.utils.config import load_config
 from dgs.utils.image import load_image
 from dgs.utils.types import Config, Device, Image, Images
 from dgs.utils.validation import validate_image
@@ -72,7 +71,7 @@ def get_test_config() -> Config:
     """Get the default configuration for tests.
     Will replace a few values to keep all the data local in the tests folder.
     """
-    cfg = deepcopy(default_config)
+    cfg = load_config("./tests/test_data/configs/test_config.yaml")
 
     cfg.name = "Test"
     cfg.log_dir = "./tests/test_data/logs/"

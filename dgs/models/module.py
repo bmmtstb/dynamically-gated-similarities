@@ -12,7 +12,7 @@ from functools import wraps
 import torch
 from torch.nn import Module
 
-from dgs.utils.config import DEF_CONF, get_sub_config
+from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.constants import PRECISION_MAP, PRINT_PRIORITY, PROJECT_ROOT
 from dgs.utils.exceptions import InvalidParameterException, ValidationException
 from dgs.utils.files import mkdir_if_missing
@@ -125,7 +125,7 @@ class BaseModule(ABC):
             os.path.abspath(
                 os.path.join(
                     PROJECT_ROOT,
-                    self.config.get("log_dir", DEF_CONF.base.log_dir),
+                    self.config.get("log_dir", DEF_VAL.base.log_dir),
                     f"./{date.today().strftime('%Y%m%d')}/",
                 )
             )
@@ -219,7 +219,7 @@ class BaseModule(ABC):
                     raise InvalidParameterException(
                         f"In module '{self.__class__.__name__}', parameter '{param_name}' is not valid. "
                         f"Value is '{value}' and is expected to have validation '{validation_name}' with data '{data}'."
-                        f"Total list of validations: '{list_of_validations}'."
+                        f"\n\nTotal list of validations: '{list_of_validations}'."
                     )
                 # case custom callable
                 if callable(validation):
@@ -249,7 +249,7 @@ class BaseModule(ABC):
             return logger
 
         # set level
-        prio = self.config.get("print_prio", DEF_CONF.base.print_prio)
+        prio = self.config.get("print_prio", DEF_VAL.base.print_prio)
         log_level = PRINT_PRIORITY[prio] if isinstance(prio, str) else prio
         logger.setLevel(log_level)
 
@@ -290,7 +290,7 @@ class BaseModule(ABC):
     @property
     def precision(self) -> torch.dtype:
         """Get the (floating point) precision used in multiple parts of this module."""
-        precision = self.config.get("precision", DEF_CONF.base.precision)
+        precision = self.config.get("precision", DEF_VAL.base.precision)
         if isinstance(precision, torch.dtype):
             return precision
         if precision == int:

@@ -51,7 +51,7 @@ vis_emb_gen:
 dataloader:
     module_name: "PoseTrack21"
     dataset_path: "./tests/test_data/"
-    json_path: "./pt21/"
+    data_path: "./pt21/"
     force_img_reshape: true
     crops_folder: "./tests/test_data/"
     batch_size: 2

@@ -10,7 +10,7 @@ from torchvision.io import VideoReader
 from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone, KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
 from dgs.models.loader import get_data_loader
-from dgs.utils.config import DEF_CONF, fill_in_defaults
+from dgs.utils.config import DEF_VAL, fill_in_defaults
 from dgs.utils.state import State
 from helper import get_test_config, load_test_image
 
@@ -30,7 +30,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"path": IMAGE_PATH, "dataset_path": ""},
+                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": ""},
             },
             get_test_config(),
         )
@@ -45,7 +45,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"path": IMAGE_PATH, "dataset_path": ""},
+                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": ""},
             },
             get_test_config(),
         )
@@ -60,7 +60,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"path": VIDEO_PATH, "dataset_path": ""},
+                "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": ""},
             },
             get_test_config(),
         )
@@ -78,13 +78,13 @@ class TestKPRCNNModel(unittest.TestCase):
             (IMG_FOLDER_PATH, 14),  # directory
         ]:
             with self.subTest(msg="path: {}, length: {}".format(path, length)):
-                cfg = fill_in_defaults({"kprcnn": {"path": path, "dataset_path": ""}}, get_test_config())
+                cfg = fill_in_defaults({"kprcnn": {"data_path": path, "dataset_path": ""}}, get_test_config())
                 m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(isinstance(m.data, list))
                 self.assertEqual(len(m.data), length)
 
     def test_init_video_data(self):
-        cfg = fill_in_defaults({"kprcnn": {"path": VIDEO_PATH, "dataset_path": ""}}, get_test_config())
+        cfg = fill_in_defaults({"kprcnn": {"data_path": VIDEO_PATH, "dataset_path": ""}}, get_test_config())
         m = KeypointRCNNVideoBackbone(config=cfg, path=["kprcnn"])
         self.assertTrue(isinstance(m.data, VideoReader))
         self.assertEqual(len(m), 345)
@@ -95,7 +95,7 @@ class TestKPRCNNModel(unittest.TestCase):
             (VIDEO_PATH, TypeError, "Got Video file, but is an Image Dataset"),
         ]:
             with self.subTest(msg="path: {}, exception: {}, err_msg: {}".format(path, exception, err_msg)):
-                cfg = fill_in_defaults({"kprcnn": {"path": path, "dataset_path": ""}}, get_test_config())
+                cfg = fill_in_defaults({"kprcnn": {"data_path": path, "dataset_path": ""}}, get_test_config())
                 with self.assertRaises(exception) as e:
                     _ = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(err_msg in str(e.exception), msg=e.exception)
@@ -104,7 +104,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"threshold": 0.5, "path": [IMAGE_PATH, IMAGE_PATH], "dataset_path": ""},
+                "kprcnn": {"threshold": 0.5, "data_path": [IMAGE_PATH, IMAGE_PATH], "dataset_path": ""},
             },
             get_test_config(),
         )
@@ -138,9 +138,9 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
-                    "module_name": "ImageRCNN",
+                    "module_name": "KeypointRCNNImageBackbone",
                     "threshold": 0.5,
-                    "path": [IMAGE_PATH, IMAGE_PATH],
+                    "data_path": [IMAGE_PATH, IMAGE_PATH],
                     "dataset_path": "",
                     "batch_size": 2,
                     "return_lists": True,
@@ -178,7 +178,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"threshold": 0.5, "path": VIDEO_PATH, "dataset_path": ""},
+                "kprcnn": {"threshold": 0.5, "data_path": VIDEO_PATH, "dataset_path": ""},
             },
             get_test_config(),
         )
@@ -198,7 +198,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 out: State = out_list[0]
                 self.assertTrue(isinstance(out, State))
                 self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
-                self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_CONF.images.crop_size)))
+                self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL.images.crop_size)))
                 i += 1
                 if i >= 2:
                     break
@@ -208,9 +208,9 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
-                    "module_name": "VideoRCNN",
+                    "module_name": "KeypointRCNNVideoBackbone",
                     "threshold": 0.5,
-                    "path": VIDEO_PATH,
+                    "data_path": VIDEO_PATH,
                     "dataset_path": "",
                     "batch_size": 2,
                     "return_lists": True,
@@ -233,7 +233,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 for out in out_list:
                     self.assertTrue(isinstance(out, State))
                     self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
-                    self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_CONF.images.crop_size)))
+                    self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL.images.crop_size)))
                 i += 1
                 if i >= 2:
                     break

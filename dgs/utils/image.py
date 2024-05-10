@@ -31,7 +31,7 @@ from torchvision.transforms.v2.functional import (
 )
 from tqdm import tqdm
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import IMAGE_FORMATS
 from dgs.utils.exceptions import ValidationException
 from dgs.utils.files import mkdir_if_missing, to_abspath
@@ -110,8 +110,8 @@ def load_image(
     if force_reshape:
         transform = tvt.Compose([CustomToAspect(), CustomResize(), transform_dtype])
         new_images: list[Image] = []
-        mode: str = kwargs.pop("mode", DEF_CONF.images.image_mode)
-        output_size: ImgShape = kwargs.pop("output_size", DEF_CONF.images.image_size)
+        mode: str = kwargs.pop("mode", DEF_VAL.images.image_mode)
+        output_size: ImgShape = kwargs.pop("output_size", DEF_VAL.images.image_size)
 
         for img in images:
             data = {

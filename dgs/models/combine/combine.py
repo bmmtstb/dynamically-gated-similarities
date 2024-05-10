@@ -20,7 +20,7 @@ combine_validations: Validations = {
 static_alpha_validation: Validations = {
     "alpha": [
         list,
-        ("longer", 1),  # there is no need for combining a single model -> only accept two or more
+        ("longer eq", 1),  # there is  actually no need for combining a single model
         ("forall", [float, ("within", (0.0, 1.0))]),
         lambda x: abs(sum(x_i for x_i in x) - 1.0) < 1e-6,  # has to sum to 1
     ],
@@ -160,15 +160,18 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
         if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
             raise ValueError("The shapes of every tensor should match.")
 
-        if len(tensors) == 1:
-            # given a single already stacked tensor
+        if len(tensors) == 1 and self.len_alpha != 1:
+            # given a single already stacked tensor or a single valued alpha
             tensors = tensors[0]
         else:
             tensors = torch.stack(tensors)
 
-        if len(tensors) != self.len_alpha:
+        if self.len_alpha != 1 and len(tensors) != self.len_alpha:
             raise ValueError(
                 f"The length of the tensors {len(tensors)} should equal the length of alpha {self.len_alpha}"
             )
 
         return torch.tensordot(self.alpha_const, tensors.float(), dims=1)
+
+    def terminate(self) -> None:
+        del self.alpha, self.alpha_const, self.len_alpha

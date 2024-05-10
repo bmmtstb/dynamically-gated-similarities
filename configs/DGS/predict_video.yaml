@@ -21,7 +21,7 @@ test:
 # #### #
 
 dataloader_test:
-    module_name: "VideoRCNN"
+    module_name: "KeypointRCNNVideoBackbone"
     dataset_path: "./data/"
     path: "test.mp4"
     batch_size: 16

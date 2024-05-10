@@ -7,7 +7,7 @@ import torch
 from torchvision import tv_tensors as tvte
 from torchvision.tv_tensors import BoundingBoxes
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import is_project_file
 from dgs.utils.image import CustomCropResize
@@ -34,8 +34,8 @@ class TestUtils(unittest.TestCase):
                 "images": load_test_images_list(["866-200x300.jpg"]),
                 "box": dummy_box.detach().clone(),
                 "keypoints": dummy_kp.detach().clone(),
-                "output_size": DEF_CONF.images.crop_size,
-                "mode": DEF_CONF.images.crop_mode,
+                "output_size": DEF_VAL.images.crop_size,
+                "mode": DEF_VAL.images.crop_mode,
             }
         )
 
@@ -49,8 +49,8 @@ class TestUtils(unittest.TestCase):
                     torch.tensor([[0, 0, 500, 500]]).repeat(2, 1), format="XYWH", canvas_size=(500, 500)
                 ),
                 "keypoints": torch.ones((2, 3, 2)),
-                "output_size": DEF_CONF.images.crop_size,
-                "mode": DEF_CONF.images.crop_mode,
+                "output_size": DEF_VAL.images.crop_size,
+                "mode": DEF_VAL.images.crop_mode,
             }
         )["image"]
 
@@ -96,7 +96,7 @@ class TestUtils(unittest.TestCase):
                 self.assertEqual(
                     crops.shape,
                     torch.Size(
-                        (len(imgs), 3, *(kwargs["crop_size"] if "crop_size" in kwargs else DEF_CONF.images.crop_size))
+                        (len(imgs), 3, *(kwargs["crop_size"] if "crop_size" in kwargs else DEF_VAL.images.crop_size))
                     ),
                 )
                 self.assertTrue(isinstance(crops, tvte.Image))

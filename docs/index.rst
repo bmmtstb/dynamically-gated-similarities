@@ -12,6 +12,7 @@ Keep on reading
     Weights <weight_link>
 	Explanation of scripts <scripts>
 	Explanation of custom Crop and Resize transforms <full_crop_resize_example/resize_crop_example>
+	A list of all the modules <modules>
 
 
 Class and Method definitions

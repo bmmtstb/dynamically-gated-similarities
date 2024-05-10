@@ -8,7 +8,7 @@ from enum import Enum
 
 import torch
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.state import collate_states, State
 
 TrackID = int
@@ -368,7 +368,7 @@ class Tracks(UserDict):
 
         # set the inactivity threshold
         if thresh is None:
-            self.inactivity_threshold = DEF_CONF.tracks.inactivity_threshold
+            self.inactivity_threshold = DEF_VAL.tracks.inactivity_threshold
         elif not isinstance(thresh, int):
             raise TypeError(f"Threshold is expected to be int or None, but got {thresh}")
         elif thresh < 0:

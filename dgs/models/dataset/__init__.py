@@ -16,9 +16,7 @@ DATASETS: dict[str, Type[BaseDataset]] = {
     "PoseTrack21_BBox": PoseTrack21_BBox,
     "PoseTrack21_Image": PoseTrack21_Image,
     "AlphaPoseLoader": AlphaPoseLoader,
-    "ImageRCNN": KeypointRCNNImageBackbone,
     "KeypointRCNNImageBackbone": KeypointRCNNImageBackbone,
-    "VideoRCNN": KeypointRCNNVideoBackbone,
     "KeypointRCNNVideoBackbone": KeypointRCNNVideoBackbone,
 }
 

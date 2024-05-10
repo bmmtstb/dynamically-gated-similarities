@@ -8,7 +8,7 @@ from torch import nn
 from dgs.models.embedding_generator import TorchreidEmbeddingGenerator
 from dgs.models.metric import get_metric, METRICS
 from dgs.models.similarity.similarity import SimilarityModule
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config
@@ -78,7 +78,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
         self.add_module(name="func", module=func)
 
         self.final = nn.Sequential()
-        if self.params.get("softmax", DEF_CONF.similarity.torchreid.softmax):
+        if self.params.get("softmax", DEF_VAL.similarity.torchreid.softmax):
             self.final.append(nn.Softmax(dim=-1))
 
     def _init_func(self) -> nn.Module:

@@ -38,7 +38,7 @@ def is_project_dir(filepath: FilePath, root: FilePath = PROJECT_ROOT) -> bool:
         bool: True if the ``filepath`` is a directory inside ``root``, False otherwise.
 
     """
-    return os.path.isdir(os.path.normpath(os.path.join(root, filepath)))
+    return os.path.isdir(os.path.join(root, filepath))
 
 
 def is_abs_file(filepath: FilePath) -> bool:

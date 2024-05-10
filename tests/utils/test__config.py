@@ -9,7 +9,7 @@ from easydict import EasyDict
 from dgs.default_config import cfg as DEFAULT_CFG
 from dgs.models.module import BaseModule
 from dgs.utils.config import (
-    DEF_CONF,
+    DEF_VAL,
     easydict_to_dict,
     fill_in_defaults,
     get_sub_config,
@@ -40,8 +40,8 @@ NESTED_CONFIG = EasyDict(
 
 class TestGetSubConfig(unittest.TestCase):
     def test_default_config_yaml(self):
-        self.assertTrue(isinstance(DEF_CONF, EasyDict))
-        self.assertTrue(len(DEF_CONF.keys()) > 1)
+        self.assertTrue(isinstance(DEF_VAL, EasyDict))
+        self.assertTrue(len(DEF_VAL.keys()) > 1)
 
     def test_sub_config_still_correct_type(self):
         for cfg, path, new_type in [
@@ -254,7 +254,7 @@ class TestLoadConfig(unittest.TestCase):
                     b = BaseModule(cfg_w_def, [])
                     self.assertIsInstance(b, BaseModule)
                     self.assertEqual(b.name, name)
-        shutil.rmtree("./tests/test_data/TEST_loader/")
+        shutil.rmtree("./tests/test_data/TEST_loader/", ignore_errors=True)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_test_data(self):
@@ -281,7 +281,7 @@ class TestLoadConfig(unittest.TestCase):
                     b = BaseModule(cfg_w_def, [])
                     self.assertIsInstance(b, BaseModule)
                     self.assertEqual(b.name, name)
-        shutil.rmtree("./tests/test_data/TEST_loader/")
+        shutil.rmtree("./tests/test_data/TEST_loader/", ignore_errors=True)
 
     def test_load_config_exception(self):
         for fp in [

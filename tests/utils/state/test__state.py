@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.state import get_ds_data_getter, State
 from dgs.utils.types import Device
 from tests.helper import test_multiple_devices
@@ -560,7 +560,7 @@ class TestStateFunctions(unittest.TestCase):
         self.assertTrue("keypoints_local" in single_s.data)
         self.assertTrue("image_crop" in single_s.data)
         self.assertTrue(isinstance(crop, tv_tensors.Image))
-        self.assertEqual(crop.shape, torch.Size((1, 3, *DEF_CONF.images.crop_size)))
+        self.assertEqual(crop.shape, torch.Size((1, 3, *DEF_VAL.images.crop_size)))
         self.assertEqual(single_s.keypoints_local.shape, DUMMY_KP.shape)
 
         out_size = (100, 100)

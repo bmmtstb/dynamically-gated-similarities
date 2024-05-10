@@ -14,7 +14,14 @@ from helper import get_test_config, test_multiple_devices
 
 
 class TestDGSCombine(unittest.TestCase):
-    default_cfg = get_test_config()
+    default_cfg = fill_in_defaults(
+        {
+            "def_dgs": {"module_name": "DGS", "names": ["def_sim"], "combine": "def_comb"},
+            "def_comb": {"module_name": "static_alpha", "alpha": [1.0]},
+            "def_sim": {"nodule_name": "iou"},
+        },
+        get_test_config(),
+    )
 
     def test_dgs_modules_class(self):
         for name, mod_class, kwargs in [
@@ -37,7 +44,7 @@ class TestDGSCombine(unittest.TestCase):
         self.assertTrue("Instance 'dummy' is not defined in" in str(e.exception), msg=e.exception)
 
     def test_dgs_init(self):
-        m = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])
+        m = DynamicallyGatedSimilarities(config=self.default_cfg, path=["def_dgs"])
         self.assertTrue(isinstance(m, CombineSimilaritiesModule))
         self.assertTrue(isinstance(m, BaseModule))
 
@@ -45,7 +52,6 @@ class TestDGSCombine(unittest.TestCase):
     def test_dgs_forward(self, device: Device):
         N = 7
         T = 21
-        default_cfg = get_test_config()
         for alpha, s1, s2, result in [
             (torch.tensor([0.7]), torch.ones((N, T)), torch.ones((N, T)), torch.ones((N, T))),
             (torch.tensor([[0.3]]), torch.ones((N, T)), torch.ones((N, T)), torch.ones((N, T))),
@@ -57,7 +63,7 @@ class TestDGSCombine(unittest.TestCase):
                 msg="alpha: {}, s1: {}, s2: {}, result: {}, device: {}".format(alpha, s1, s2, result, device)
             ):
                 dgs = DynamicallyGatedSimilarities(
-                    config=fill_in_defaults({"device": device}, default_cfg), path=["weighted_similarity"]
+                    config=fill_in_defaults({"device": device}, self.default_cfg), path=["def_dgs"]
                 )
                 # send matrices to the respective device
                 self.assertTrue(
@@ -109,7 +115,7 @@ class TestDGSCombine(unittest.TestCase):
                     alpha.shape, sn[0].shape, sn[0].shape, exception_type, msg
                 )
             ):
-                dgs = DynamicallyGatedSimilarities(config=self.default_cfg, path=["weighted_similarity"])
+                dgs = DynamicallyGatedSimilarities(config=self.default_cfg, path=["def_dgs"])
                 with self.assertRaises(exception_type) as e:
                     dgs.forward(*sn, alpha=alpha)
                 self.assertTrue(msg in str(e.exception), msg=e.exception)
@@ -133,25 +139,32 @@ class TestDGSCombine(unittest.TestCase):
 
 
 class TestConstantAlpha(unittest.TestCase):
-    default_cfg = get_test_config()
+    default_cfg = fill_in_defaults(
+        {
+            "def_dgs": {"module_name": "DGS", "names": ["def_sim"], "combine": "def_comb"},
+            "def_comb": {"module_name": "static_alpha", "alpha": [1.0]},
+            "def_sim": {"nodule_name": "iou"},
+        },
+        get_test_config(),
+    )
 
     def test_constant_alpha_init(self):
         for alpha in [[0.9, 0.1], [0.5, 0.5], [0.1 for _ in range(10)]]:
             with self.subTest(msg="alpha: {}".format(alpha)):
                 m = StaticAlphaCombine(
-                    config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
-                    path=["weighted_similarity"],
+                    config=self.default_cfg,
+                    path=["def_comb"],
                 )
                 self.assertTrue(isinstance(m, CombineSimilaritiesModule))
 
     def test_constant_alpha_init_exceptions(self):
         for alpha, exp, text in [
-            ([1.0], InvalidParameterException, "parameter 'alpha' is not valid"),
+            ([], InvalidParameterException, "parameter 'alpha' is not valid"),
             ([0.5, 0.4], InvalidParameterException, "parameter 'alpha' is not valid. Used a custom validation"),
             ([1 / 11 for _ in range(10)], InvalidParameterException, "parameter 'alpha' is not valid"),
         ]:
             with self.subTest(msg="alpha: {}".format(alpha)):
-                cfg = fill_in_defaults({"sim": {"alpha": alpha, "module_name": "constant_alpha"}}, self.default_cfg)
+                cfg = fill_in_defaults({"sim": {"alpha": alpha, "module_name": "constant_alpha"}}, get_test_config())
                 with self.assertRaises(exp) as e:
                     _ = StaticAlphaCombine(config=cfg, path=["sim"])
                 self.assertTrue(text in str(e.exception), msg=e.exception)
@@ -162,6 +175,7 @@ class TestConstantAlpha(unittest.TestCase):
 
         for alpha, sn, result in [
             ([1.0, 0.0], (torch.ones((N, T)), torch.zeros((N, T))), torch.ones((N, T))),
+            ([1.0], (torch.ones((N, T)),), torch.ones((N, T))),
             ([0.5, 0.5], (torch.ones((N, T)), torch.zeros((N, T))), 0.5 * torch.ones((N, T))),
             ([0.7, 0.3], (torch.ones((N, T)), -1 * torch.ones((N, T))), 0.4 * torch.ones((N, T))),
             (
@@ -182,10 +196,12 @@ class TestConstantAlpha(unittest.TestCase):
         ]:
             with self.subTest(msg="alpha: {}, sn: {}".format(alpha, sn)):
                 m = StaticAlphaCombine(
-                    config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
-                    path=["weighted_similarity"],
+                    config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
+                    path=["def_comb"],
                 )
-                self.assertTrue(torch.allclose(m.forward(*sn), result))
+                self.assertTrue(
+                    torch.allclose(m.forward(*sn), result), f"r: {result.shape}, sn: {torch.stack(sn).shape}"
+                )
 
     def test_constant_alpha_forward_single_tensor_input(self):
         N = 5
@@ -195,8 +211,8 @@ class TestConstantAlpha(unittest.TestCase):
         alpha = [0.5, 0.5]
 
         m = StaticAlphaCombine(
-            config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
-            path=["weighted_similarity"],
+            config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
+            path=["def_comb"],
         )
         r = m(inp)
 
@@ -211,8 +227,8 @@ class TestConstantAlpha(unittest.TestCase):
         alpha = [0.4, 0.4, 0.2]  # size 3
 
         m = StaticAlphaCombine(
-            config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
-            path=["weighted_similarity"],
+            config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
+            path=["def_comb"],
         )
         with self.assertRaises(ValueError) as e:
             _ = m(inp)
@@ -232,8 +248,8 @@ class TestConstantAlpha(unittest.TestCase):
             with self.subTest(msg="alpha: {}, sn: {}, exp: {}, err_msg: {}".format(alpha, sn, exception, err_msg)):
                 with self.assertRaises(exception) as e:
                     m = StaticAlphaCombine(
-                        config=fill_in_defaults({"weighted_similarity": {"alpha": alpha}}, self.default_cfg),
-                        path=["weighted_similarity"],
+                        config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
+                        path=["def_comb"],
                     )
                     m.forward(*sn)
                 self.assertTrue(err_msg in str(e.exception))

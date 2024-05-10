@@ -18,7 +18,7 @@ from torchvision.transforms.functional import convert_image_dtype
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import IMAGE_FORMATS, VIDEO_FORMATS
 from dgs.utils.files import is_dir, is_file
 from dgs.utils.image import CustomToAspect, load_image
@@ -27,7 +27,7 @@ from dgs.utils.types import Config, FilePath, FilePaths, Image, Images, NodePath
 from dgs.utils.utils import extract_crops_from_images
 
 rcnn_validations: Validations = {
-    "path": [("any", [str, [list, ("forall", str)]])],
+    "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
     # optional
     "threshold": ["optional", float, ("within", (0.0, 1.0))],
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
@@ -55,9 +55,9 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         self.validate_params(rcnn_validations)
 
-        self.threshold: float = self.params.get("threshold", DEF_CONF.dataset.kprcnn.threshold)
+        self.threshold: float = self.params.get("threshold", DEF_VAL.dataset.kprcnn.threshold)
 
-        self.logger.info("Loading Keypoint-RCNN Model")
+        self.logger.debug("Loading Keypoint-RCNN Model")
         self.model = nn.DataParallel(
             keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
         )
@@ -97,8 +97,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 imgs=[tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))],
                 bboxes=bbox,
                 kps=kps,
-                crop_size=self.params.get("crop_size", DEF_CONF.images.crop_size),
-                crop_mode=self.params.get("crop_mode", DEF_CONF.images.crop_mode),
+                crop_size=self.params.get("crop_size", DEF_VAL.images.crop_size),
+                crop_mode=self.params.get("crop_mode", DEF_VAL.images.crop_mode),
             )
 
             if crops.ndim == 3:
@@ -123,6 +123,9 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             states.append(State(**data))
 
         return states
+
+    def terminate(self) -> None:
+        self.model = None
 
 
 # pylint: disable=too-many-ancestors
@@ -160,36 +163,40 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         KeypointRCNNBackbone.__init__(self, config=config, path=path)
         ImageDataset.__init__(self, config=config, path=path)
 
-        # load data - path is either a directory, a single image file, or a list of image filepaths
+        # load data - data_path is either a directory, a single image file, or a list of image filepaths
         self.data = []
-        path = self.params["path"]
-        if isinstance(path, list):
-            assert all(isinstance(p, str) for p in path), "Path is a list but not all values are string"
-            assert all(any(p.lower().endswith(end) for end in IMAGE_FORMATS) for p in path), "Not all values are images"
-            self.data = sorted(path)
-        elif isinstance(path, str):
-            path = self.get_path_in_dataset(path)
-            if is_file(path):
+        data_path = self.params["data_path"]
+        if isinstance(data_path, list):
+            assert all(isinstance(p, str) for p in data_path), "Path is a list but not all values are string"
+            assert all(
+                any(p.lower().endswith(end) for end in IMAGE_FORMATS) for p in data_path
+            ), "Not all values are images"
+            self.data = sorted(data_path)
+        elif isinstance(data_path, str):
+            data_path = self.get_path_in_dataset(data_path)
+            if is_file(data_path):
                 # single image
-                if any(path.lower().endswith(ending) for ending in IMAGE_FORMATS):
-                    self.data = [path]
+                if any(data_path.lower().endswith(ending) for ending in IMAGE_FORMATS):
+                    self.data = [data_path]
                 # video file
-                elif any(path.lower().endswith(ending) for ending in VIDEO_FORMATS):
-                    raise TypeError(f"Got Video file, but is an Image Dataset. File: {path}")
+                elif any(data_path.lower().endswith(ending) for ending in VIDEO_FORMATS):
+                    raise TypeError(f"Got Video file, but is an Image Dataset. File: {data_path}")
                 else:
-                    raise NotImplementedError(f"Unknown file type. Got '{path}'")
-            elif is_dir(path):
+                    raise NotImplementedError(f"Unknown file type. Got '{data_path}'")
+            elif is_dir(data_path):
                 # directory of images
                 self.data = [
-                    os.path.normpath(os.path.join(path, child_path))
-                    for child_path in tqdm(sorted(os.listdir(path)), desc="Loading images", total=len(os.listdir(path)))
+                    os.path.normpath(os.path.join(data_path, child_path))
+                    for child_path in tqdm(
+                        sorted(os.listdir(data_path)), desc="Loading images", total=len(os.listdir(data_path))
+                    )
                     if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
                 ]
             else:
-                raise NotImplementedError(f"string is neither file nor dir. Got '{path}'.")
+                raise NotImplementedError(f"string is neither file nor dir. Got '{data_path}'.")
         else:
             raise NotImplementedError(
-                f"Unknown path object, expected filepath, dirpath, or list of filepaths. Got {type(path)}"
+                f"Unknown path object, expected filepath, dirpath, or list of filepaths. Got {type(data_path)}"
             )
 
     def arbitrary_to_ds(self, a: Union[FilePath, FilePaths], idx: int) -> list[State]:
@@ -245,7 +252,7 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
 
     def __init__(self, config: Config, path: NodePath) -> None:
         KeypointRCNNBackbone.__init__(self, config=config, path=path)
-        VideoDataset.__init__(self, config, path)
+        VideoDataset.__init__(self, config=config, path=path)
         # the data has already been loaded in the VideoDataset
         # the model and threshold has been loaded in KeypointRCNNBackbone
 

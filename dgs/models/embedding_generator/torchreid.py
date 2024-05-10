@@ -87,6 +87,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
                 "because torchreid does not support different sizes."
             )
         new_cfg = insert_into_config(path=path, value={"embedding_size": 512}, original=config)
+
         EmbeddingGeneratorModule.__init__(self, config=new_cfg, path=path)
 
         self.model_weights = self.params.get("weights", "pretrained")

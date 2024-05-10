@@ -27,20 +27,20 @@ test:
 dataloader_train:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_person_search/train.json"
+    data_path: "./posetrack_person_search/train.json"
     batch_size: 2048
     id_map: "./weights/pt21_id_map.json"
 
 dataloader_gallery:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_person_search/val.json"
+    data_path: "./posetrack_person_search/val.json"
     batch_size: 2048
 
 dataloader_query:
     module_name: "PoseTrack21"
     dataset_path: "./data/PoseTrack21/"
-    json_path: "./posetrack_person_search/query.json"
+    data_path: "./posetrack_person_search/query.json"
     batch_size: 2048
 
 # ####### #

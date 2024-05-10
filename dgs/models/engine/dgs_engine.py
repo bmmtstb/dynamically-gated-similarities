@@ -15,7 +15,7 @@ from tqdm import tqdm
 from dgs.models.dataset.posetrack21 import generate_pt21_submission_file, submission_data_from_state
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.state import collate_states, State
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks, TrackStatistics
@@ -98,11 +98,11 @@ class DGSEngine(EngineModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
 
-        self.save_images: bool = self.params_test.get("save_images", DEF_CONF.engine.dgs.save_images)
+        self.save_images: bool = self.params_test.get("save_images", DEF_VAL.engine.dgs.save_images)
 
         self.tracks = Tracks(
-            N=self.params_test.get("max_track_length", DEF_CONF.track.N),
-            thresh=self.params_test.get("inactivity_threshold", DEF_CONF.tracks.inactivity_threshold),
+            N=self.params_test.get("max_track_length", DEF_VAL.track.N),
+            thresh=self.params_test.get("inactivity_threshold", DEF_VAL.tracks.inactivity_threshold),
         )
 
     def get_data(self, ds: State) -> any:
@@ -175,9 +175,6 @@ class DGSEngine(EngineModule):
         """Test the DGS Tracker"""
         # pylint: disable=too-many-statements
 
-        if self.test_dl.batch_size > 1:
-            raise NotImplementedError("Tracking does only support a batch size of 1.")
-
         results: dict[str, any] = {}
         detections: list[State]
         frame_idx: int = 0
@@ -193,9 +190,6 @@ class DGSEngine(EngineModule):
 
         for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl), position=1):
             for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False, position=2):
-                # fixme reset tracks at the end of every sub-dataset
-                if self.tracks.nof_removed > 50:
-                    self.tracks.reset_deleted()
 
                 N: int = len(detections)
 
@@ -221,8 +215,8 @@ class DGSEngine(EngineModule):
 
                     active.draw(
                         save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
-                        show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
-                        show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
+                        show_kp=self.params_test.get("show_keypoints", DEF_VAL.engine.dgs.show_keypoints),
+                        show_skeleton=self.params_test.get("show_skeleton", DEF_VAL.engine.dgs.show_skeleton),
                     )
                 frame_idx += 1
 
@@ -264,8 +258,8 @@ class DGSEngine(EngineModule):
                     active = collate_states(self.tracks.get_active_states())
                     active.draw(
                         save_path=out_fp,
-                        show_kp=self.params_test.get("show_keypoints", DEF_CONF.engine.dgs.show_keypoints),
-                        show_skeleton=self.params_test.get("show_skeleton", DEF_CONF.engine.dgs.show_skeleton),
+                        show_kp=self.params_test.get("show_keypoints", DEF_VAL.engine.dgs.show_keypoints),
+                        show_skeleton=self.params_test.get("show_skeleton", DEF_VAL.engine.dgs.show_skeleton),
                         **self.params_test.get("draw_kwargs", {}),
                     )
                 else:

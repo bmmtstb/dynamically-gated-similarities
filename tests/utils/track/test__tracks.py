@@ -3,7 +3,7 @@ import unittest
 import torch
 from torchvision.tv_tensors import BoundingBoxes
 
-from dgs.utils.config import DEF_CONF
+from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.track import Track, Tracks, TrackStatistics, TrackStatus
 from helper import test_multiple_devices
@@ -116,7 +116,7 @@ class TestTracks(unittest.TestCase):
         no_thresh = Tracks(N=MAX_LENGTH)
         self.assertEqual(len(no_thresh.data), 0)
         self.assertEqual(len(no_thresh.inactive), 0)
-        self.assertEqual(no_thresh.inactivity_threshold, DEF_CONF.tracks.inactivity_threshold)
+        self.assertEqual(no_thresh.inactivity_threshold, DEF_VAL.tracks.inactivity_threshold)
 
         with self.assertRaises(ValueError) as e:
             _ = Tracks(N=-1)

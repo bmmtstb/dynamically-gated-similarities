@@ -8,11 +8,11 @@ from torchvision.ops import box_area, box_iou
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 from torchvision.tv_tensors import BoundingBoxes, BoundingBoxFormat
 
+from dgs.models.similarity.similarity import SimilarityModule
+from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import OKS_SIGMAS
 from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
-from .similarity import SimilarityModule
-from ...utils.config import DEF_CONF
 
 oks_validations: Validations = {
     "format": [str, ("in", list(OKS_SIGMAS.keys()))],
@@ -61,7 +61,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
-        if self.params.get("softmax", DEF_CONF.similarity.oks.softmax):
+        if self.params.get("softmax", DEF_VAL.similarity.oks.softmax):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
@@ -173,7 +173,7 @@ class IntersectionOverUnion(SimilarityModule):
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
-        if self.params.get("softmax", DEF_CONF.similarity.iou.softmax):
+        if self.params.get("softmax", DEF_VAL.similarity.iou.softmax):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: State) -> BoundingBoxes:

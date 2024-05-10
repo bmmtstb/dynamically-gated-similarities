@@ -50,27 +50,27 @@ VALIDATIONS: dict[str, Validator] = {
     "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
     # file and folder
     "file exists": (
-        lambda x, _: isinstance(x, FilePath)
-        and (VALIDATIONS["file exists absolute"] or VALIDATIONS["file exists in project"])
+        lambda x, _: isinstance(x, str)
+        and (VALIDATIONS["file exists absolute"](x, _) or VALIDATIONS["file exists in project"](x, _))
     ),
-    "file exists absolute": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
-    "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
+    "file exists absolute": (lambda x, _: isinstance(x, str) and os.path.isfile(x)),
+    "file exists in project": (lambda x, _: isinstance(x, str) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
     "file exists in folder": (
-        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isfile(os.path.join(f, x))
+        lambda x, f: isinstance(x, str) and isinstance(f, str) and os.path.isfile(os.path.join(f, x))
     ),
     "folder exists": (
-        lambda x, b: isinstance(x, FilePath)
-        and (VALIDATIONS["folder exists absolute"] or VALIDATIONS["folder exists in project"])
+        lambda x, b: isinstance(x, str)
+        and (VALIDATIONS["folder exists absolute"](x, b) or VALIDATIONS["folder exists in project"](x, b))
     ),
     "folder exists absolute": (
-        lambda x, b: isinstance(x, FilePath) and (is_dir(x) if not b else mkdir_if_missing(x) and True)
+        lambda x, b: isinstance(x, str) and (is_dir(x) if not b else mkdir_if_missing(x) and True)
     ),
     "folder exists in project": (
-        lambda x, b: isinstance(x, FilePath)
-        and (is_project_dir(x) if not b else mkdir_if_missing(to_abspath(x)) and True)
+        lambda x, b: isinstance(x, str)
+        and (is_project_dir(x) if not b else is_project_dir(x) or mkdir_if_missing(x) and True)
     ),
     "folder exists in folder": (
-        lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isdir(os.path.join(f, x))
+        lambda x, f: isinstance(x, str) and isinstance(f, str) and os.path.isdir(os.path.join(f, x))
     ),
     # logical operators, including nested validations
     "eq": (lambda x, d: x == d),
