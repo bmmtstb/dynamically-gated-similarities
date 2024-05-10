@@ -10,11 +10,11 @@ from dgs.utils.loader import get_instance, register_instance
 from .alphapose import AlphaPoseLoader
 from .dataset import BaseDataset
 from .keypoint_rcnn import KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
-from .posetrack21 import PoseTrack21_BBox
+from .posetrack21 import PoseTrack21_BBox, PoseTrack21_Image
 
 DATASETS: dict[str, Type[BaseDataset]] = {
     "PoseTrack21_BBox": PoseTrack21_BBox,
-    "PoseTrack21_Image": PoseTrack21_BBox,
+    "PoseTrack21_Image": PoseTrack21_Image,
     "AlphaPoseLoader": AlphaPoseLoader,
     "ImageRCNN": KeypointRCNNImageBackbone,
     "KeypointRCNNImageBackbone": KeypointRCNNImageBackbone,
