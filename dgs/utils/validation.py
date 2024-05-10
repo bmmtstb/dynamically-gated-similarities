@@ -49,12 +49,22 @@ VALIDATIONS: dict[str, Validator] = {
     "startswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.startswith(d)),
     "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
     # file and folder
-    "file exists": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
+    "file exists": (
+        lambda x, _: isinstance(x, FilePath)
+        and (VALIDATIONS["file exists absolute"] or VALIDATIONS["file exists in project"])
+    ),
+    "file exists absolute": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(x)),
     "file exists in project": (lambda x, _: isinstance(x, FilePath) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),
     "file exists in folder": (
         lambda x, f: isinstance(x, FilePath) and isinstance(f, FilePath) and os.path.isfile(os.path.join(f, x))
     ),
-    "folder exists": (lambda x, b: isinstance(x, FilePath) and (is_dir(x) if not b else mkdir_if_missing(x) and True)),
+    "folder exists": (
+        lambda x, b: isinstance(x, FilePath)
+        and (VALIDATIONS["folder exists absolute"] or VALIDATIONS["folder exists in project"])
+    ),
+    "folder exists absolute": (
+        lambda x, b: isinstance(x, FilePath) and (is_dir(x) if not b else mkdir_if_missing(x) and True)
+    ),
     "folder exists in project": (
         lambda x, b: isinstance(x, FilePath)
         and (is_project_dir(x) if not b else mkdir_if_missing(to_abspath(x)) and True)
