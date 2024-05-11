@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from easydict import EasyDict
 
-from dgs.default_config import cfg as DEFAULT_CFG
 from dgs.models.module import BaseModule
 from dgs.utils.config import (
     DEF_VAL,
@@ -17,11 +16,12 @@ from dgs.utils.config import (
     load_config,
 )
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
+from dgs.utils.types import Config
 from helper import get_test_config
 
-EMPTY_CONFIG = EasyDict({})
-SIMPLE_CONFIG = EasyDict({"foo": "foo foo", "second": "value"})
-SUB_DICT = {
+EMPTY_CONFIG: Config = EasyDict({})
+SIMPLE_CONFIG: Config = EasyDict({"foo": "foo foo", "second": "value"})
+SUB_DICT: Config = {
     "x": 1,
     "y": 2,
     "deeper": {
@@ -29,13 +29,14 @@ SUB_DICT = {
         "pickaxe": {"iron": 10, "diamond": 100.0},
     },
 }
-NESTED_CONFIG = EasyDict(
+NESTED_CONFIG: Config = EasyDict(
     {
         "foo": 3,
         "bar": SUB_DICT,
         "dog": SIMPLE_CONFIG,
     }
 )
+TEST_CONFIG: Config = get_test_config()
 
 
 class TestGetSubConfig(unittest.TestCase):
@@ -107,12 +108,12 @@ class TestFillInConfig(unittest.TestCase):
                 (deepcopy(NESTED_CONFIG), deepcopy(NESTED_CONFIG), deepcopy(NESTED_CONFIG), "Same stay - nested", True),
                 (
                     deepcopy(EMPTY_CONFIG),
-                    deepcopy(DEFAULT_CFG),
-                    deepcopy(DEFAULT_CFG),
+                    deepcopy(TEST_CONFIG),
+                    deepcopy(TEST_CONFIG),
                     "get replaced by default config",
                     True,
                 ),
-                (deepcopy(EMPTY_CONFIG), None, deepcopy(DEFAULT_CFG), "get replaced by default config", True),
+                (deepcopy(EMPTY_CONFIG), None, deepcopy(EMPTY_CONFIG), "get replaced by None", True),
                 (
                     EasyDict({"bar": {"x": 1}}),
                     deepcopy(NESTED_CONFIG),
@@ -151,7 +152,8 @@ class TestFillInConfig(unittest.TestCase):
             ]:
                 with self.subTest(msg=f"{msg}, copy: {copy}"):
                     orig = deepcopy(default_cfg)
-                    self.assertEqual(fill_in_defaults(curr_cfg, default_cfg, copy=copy), result)
+                    new_cfg = fill_in_defaults(curr_cfg, default_cfg, copy=copy)
+                    self.assertEqual(new_cfg, result, f"new: {new_cfg}\nexpected: {result}")
                     # orig should stay the same
                     # and catch the special cases:
                     # - adding an empty cfg
@@ -165,7 +167,7 @@ class TestFillInConfig(unittest.TestCase):
         self.assertNotIn("bar", SIMPLE_CONFIG)
         self.assertNotIn("dog", SIMPLE_CONFIG)
         for value in ["second", "bar", "dog"]:
-            self.assertNotIn(value, DEFAULT_CFG)
+            self.assertNotIn(value, TEST_CONFIG)
 
     def test_fill_in_default_nested_update_value(self):
         current = EasyDict({"bar": {"deeper": {"pickaxe": {"iron": 100}}}})
@@ -302,19 +304,13 @@ class TestInsertIntoConfig(unittest.TestCase):
             ([], {"override": False}, {}, True, {"override": False}),
             ([], {"override": True}, {"override": False}, False, {"override": True}),
             ([], {"override": True}, {"override": False}, True, {"override": True}),
+            ([], {}, None, True, {}),
             # one nested deep
             (["test"], {"override": False}, {}, False, {"test": {"override": False}}),
             (["test"], {"override": False}, {}, True, {"test": {"override": False}}),
             (["test"], {"override": True}, {"test": 0}, False, {"test": {"override": True}}),
             (["test"], {"override": True}, {"test": 0}, True, {"test": {"override": True}}),
-            # default config
-            (
-                [],
-                {},
-                None,
-                True,
-                deepcopy(DEFAULT_CFG),
-            ),
+            # test config
             (
                 [],
                 {"override": False},

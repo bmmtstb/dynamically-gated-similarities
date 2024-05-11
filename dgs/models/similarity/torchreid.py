@@ -51,7 +51,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
 
     metric_kwargs (dict, optional):
         Possibly pass additional kwargs to the similarity function.
-        Default {}.
+        Default ``DEF_VAL.similarity.torchreid.sim_kwargs``.
     softmax (bool, optional):
         Whether to compute the softmax of the similarity as the last step of the model.
         Some metrics do not return a probability distribution or even values in range :math:`[0, 1]`,
@@ -61,7 +61,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
         On the other hand, the Euclidean distance will be larger for values that are further apart, with no upper limit.
         You can use the :class:`~.NegativeSoftmaxEuclideanDistance` or
         :class:`~.NegativeSoftmaxEuclideanSquaredDistance` as metric.
-        Default `DEF_CONF.similarity.torchreid.softmax`.
+        Default ``DEF_VAL.similarity.torchreid.softmax``.
     """
 
     model: TorchreidEmbeddingGenerator
@@ -84,7 +84,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
     def _init_func(self) -> nn.Module:
         """Initialize the similarity function"""
         name = self.params["metric"]
-        m = get_metric(name)(**self.params.get("similarity_kwargs", {}))
+        m = get_metric(name)(**self.params.get("similarity_kwargs", DEF_VAL.similarity.torchreid.sim_kwargs))
 
         # send function to the device
         return self.configure_torch_module(m, train=False)

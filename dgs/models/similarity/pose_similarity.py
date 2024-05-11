@@ -38,7 +38,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
     softmax (bool, optional):
         Whether to compute the softmax of the result.
         All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
-        Default `DEF_CONF.similarity.oks.softmax`.
+        Default ``DEF_VAL.similarity.oks.softmax``.
     """
 
     def __init__(self, config: Config, path: NodePath):
@@ -163,7 +163,7 @@ class IntersectionOverUnion(SimilarityModule):
     softmax (bool, optional):
         Whether to compute the softmax of the result.
         All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
-        Default `DEF_CONF.similarity.iou.softmax`.
+        Default ``DEF_VAL.similarity.iou.softmax``.
     """
 
     def __init__(self, config: Config, path: NodePath):

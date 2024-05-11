@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
-from dgs.utils.config import get_sub_config, insert_into_config
+from dgs.utils.config import DEF_VAL, get_sub_config, insert_into_config
 from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import to_abspath
 from dgs.utils.state import State
@@ -56,6 +56,11 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         Setting the parameter ``embedding_size`` does not change this module's output.
         Torchreid does not support custom embedding sizes.
 
+    Module Name
+    -----------
+
+    torchreid
+
     Params
     ------
 
@@ -65,7 +70,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
 
     weights (Union[str, FilePath], optional):
         A path to the model weights or the string 'pretrained' for the default pretrained torchreid model.
-        Default 'pretrained'.
+        Default ``DEF_VAL.embed_gen.torchreid.weights``.
 
     Important Inherited Params
     --------------------------
@@ -90,7 +95,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
 
         EmbeddingGeneratorModule.__init__(self, config=new_cfg, path=path)
 
-        self.model_weights = self.params.get("weights", "pretrained")
+        self.model_weights = self.params.get("weights", DEF_VAL.embed_gen.torchreid.weights)
 
         model = self._init_model(self.model_weights == "pretrained")
         self.add_module(name="model", module=model)

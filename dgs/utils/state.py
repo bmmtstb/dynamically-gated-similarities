@@ -499,7 +499,7 @@ class State(UserDict):
 
         Keyword Args:
             crop_size: The size of the image crops.
-                Default `DEF_CONF.images.crop_size`.
+                Default ``DEF_VAL.images.crop_size``.
         """
         if "image_crop" in self.data and self.data["image_crop"] is not None and len(self.data["image_crop"]) == self.B:
             return self.image_crop

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from dgs.models.engine import VisualSimilarityEngine
 from dgs.models.loader import module_loader
-from dgs.utils.config import fill_in_defaults, load_config
+from dgs.utils.config import load_config
 from dgs.utils.files import to_abspath
 from dgs.utils.utils import HidePrint
 
@@ -21,7 +21,7 @@ SUB_DIR = "./results/own/visual_sim/20240210/checkpoints/Visual_Similarity_(Own)
 
 if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
-    config = fill_in_defaults(load_config(CONFIG_FILE))
+    config = load_config(CONFIG_FILE)
 
     print(f"Cuda available: {torch.cuda.is_available()}")
 

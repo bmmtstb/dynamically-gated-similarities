@@ -86,17 +86,17 @@ class BaseModule(ABC):
     print_prio: (str, optional)
         How much information should be printed while running.
         "INFO" will print status reports but no debugging information.
-        Default: ``DEF_CONF.base.print_prio`` .
+        Default: ``DEF_VAL.base.print_prio`` .
     description (str, optional):
         The description of the overall configuration.
-        Default: ``DEF_CONF.base.description`` .
+        Default: ``DEF_VAL.base.description`` .
     log_dir (FilePath, optional):
         Path to directory where all the files of this run are saved.
         The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/") in every case.
-        Default: ``DEF_CONF.base.log_dir`` .
+        Default: ``DEF_VAL.base.log_dir`` .
     precision (Union[type, str, torch.dtype], optional)
         The precision at which this module should operate.
-        Default: ``DEF_CONF.base.precision`` .
+        Default: ``DEF_VAL.base.precision`` .
 
     Attributes:
         config: The overall configuration of the whole algorithm.

@@ -49,12 +49,12 @@ def extract_crops_from_images(
 
     Keyword Args:
         crop_size (ImgShape): The target shape of the image crops.
-            Defaults to `DEF_CONF.images.crop_size`.
+            Defaults to ``DEF_VAL.images.crop_size``.
         transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
             Defaults to a version of CustomCropResize.
         crop_mode (str): Defines the resize mode in the transform function.
             Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`.
-            Default `DEF_CONF.images.mode`.
+            Default ``DEF_VAL.images.mode``.
     """
     if len(imgs) == 0:
         return tvte.Image(torch.empty(0, 3, 1, 1)), None
@@ -105,13 +105,15 @@ def extract_crops_and_save(
 
     Keyword Args:
         crop_size (ImgShape): The target shape of the image crops.
-            Defaults to `DEF_CONF.images.crop_size`.
+            Defaults to `DEF_VAL.images.crop_size`.
         transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
-            Defaults to a version of CustomCropResize.
+            Defaults to a cleaner version of :class:`.CustomCropResize`.
         crop_mode (str): Defines the resize mode in the transform function.
             Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`.
-            Default `DEF_CONF.images.mode`.
-        quality (int): The quality to save the jpegs as. Default 90. Default of torchvision is 75.
+            Default ``DEF_VAL.images.mode``.
+        quality (int): The quality to save the jpegs as.
+            The default of torchvision is 75.
+            Default ``DEF_VAL.images.quality``.
 
     Returns:
         crops, key_points: The computed image crops and their respective key points on the device specified in kwargs.
@@ -134,7 +136,11 @@ def extract_crops_and_save(
 
     for i, (fp, crop) in enumerate(zip(new_fps, crops.cpu())):
         mkdir_if_missing(os.path.dirname(fp))
-        write_jpeg(input=convert_image_dtype(crop, torch.uint8), filename=fp, quality=kwargs.get("quality", 90))
+        write_jpeg(
+            input=convert_image_dtype(crop, torch.uint8),
+            filename=fp,
+            quality=kwargs.get("quality", DEF_VAL.images.jpeg_quality),
+        )
         if key_points is not None:
             torch.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
 

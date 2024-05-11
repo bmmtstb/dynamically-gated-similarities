@@ -45,7 +45,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
     threshold (float):
         Detections with a score lower than the threshold will be ignored.
-        Default `DEF_CONF.dataset.kprcnn.threshold`.
+        Default ``DEF_VAL.dataset.kprcnn.threshold``.
 
     """
 
@@ -142,18 +142,18 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
 
     threshold (float):
         Detections with a score lower than the threshold will be ignored.
-        Default `DEF_CONF.dataset.kprcnn.threshold`.
+        Default ``DEF_VAL.dataset.kprcnn.threshold``.
 
     Optional Params
     ---------------
 
     crop_size (:obj:`ImgSize`):
         The size, the image crop should have.
-        Default `DEF_CONF.images.crop_size`
+        Default ``DEF_VAL.images.crop_size``.
 
     crop_mode (str):
         The mode to use when cropping the image.
-        Default `DEF_CONF.images.crop_mode`
+        Default ``DEF_VAL.images.crop_mode``.
 
     """
 
@@ -234,18 +234,18 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
 
     threshold (float):
         Detections with a score lower than the threshold will be ignored.
-        Default `DEF_CONF.dataset.kprcnn.threshold`.
+        Default ``DEF_VAL.dataset.kprcnn.threshold``.
 
     Optional Params
     ---------------
 
     crop_size (:obj:`.ImgSize`):
         The size, the image crop should have.
-        Default `DEF_CONF.images.crop_size`
+        Default ``DEF_VAL.images.crop_size``.
 
     crop_mode (str):
         The mode to use when cropping the image.
-        Default `DEF_CONF.images.crop_mode`
+        Default ``DEF_VAL.images.crop_mode``.
     """
 
     data: VideoReader

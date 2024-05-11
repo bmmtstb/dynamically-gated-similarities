@@ -14,6 +14,7 @@ from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import get_metric, metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.similarity.torchreid import TorchreidVisualSimilarity
+from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
 from dgs.utils.types import Config, Validations
@@ -50,9 +51,7 @@ class VisualSimilarityEngine(EngineModule):
 
     nof_classes (int):
         The number of classes in the training set.
-    topk_acc (list[int], optional):
-        The values for k for the top-k accuracy evaluation during training.
-        Default [1].
+
 
     Test Params
     -----------
@@ -66,23 +65,30 @@ class VisualSimilarityEngine(EngineModule):
         It is possible to pass additional initialization kwargs to the metric
         by adding them to the ``metric_kwargs`` parameter.
 
+    Optional Train Params
+    ---------------------
+
+    topk_acc (list[int], optional):
+        The values for k for the top-k accuracy evaluation during training.
+        Default ``DEF_VAL.engine.visual.topk_acc``.
+
     Optional Test Params
     --------------------
 
     metric_kwargs (dict, optional):
         Specific kwargs for the metric.
-        Default {}.
+        Default ``DEF_VAL.engine.visual.metric_kwargs``.
     topk_cmc (list[int], optional):
         The values for k the top-k cmc evaluation during testing / evaluation.
-        Default [1, 5, 10, 50].
+        Default ``DEF_VAL.engine.visual.topk_cmc``.
     write_embeds (list[bool, bool], optional):
         Whether to write the embeddings for the Query and Gallery Dataset to the tensorboard writer.
         Only really feasible for smaller datasets ~1k embeddings.
-        Default [False, False].
+        Default ``DEF_VAL.engine.visual.write_embeds``.
     """
 
     # The heart of the project might get a little larger...
-    # pylint: disable=too-many-arguments,too-many-locals
+    # pylint: disable=too-many-arguments
 
     val_dl: TorchDataLoader
     """The torch DataLoader containing the validation (query) data."""
@@ -105,17 +111,19 @@ class VisualSimilarityEngine(EngineModule):
         self.val_dl = val_loader
 
         self.validate_params(test_validations, "params_test")
-        self.topk_cmc: list[int] = self.params_test.get("topk_cmc", [1, 5, 10, 50])
+        self.topk_cmc: list[int] = self.params_test.get("topk_cmc", DEF_VAL.engine.visual.topk_cmc)
 
         # get metric and kwargs
-        self.metric = get_metric(self.params_test["metric"])(**self.params_test.get("metric_kwargs", {}))
+        self.metric = get_metric(self.params_test["metric"])(
+            **self.params_test.get("metric_kwargs", DEF_VAL.engine.visual.metric_kwargs)
+        )
 
         if self.is_training:
             self.validate_params(train_validations, attrib_name="params_train")
 
             self.nof_classes: int = self.params_train["nof_classes"]
 
-            self.topk_acc: list[int] = self.params_train.get("topk_acc", [1])
+            self.topk_acc: list[int] = self.params_train.get("topk_acc", DEF_VAL.engine.visual.topk_acc)
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Get the target pIDs from the data."""
@@ -230,7 +238,7 @@ class VisualSimilarityEngine(EngineModule):
     def test(self) -> dict[str, any]:
         r"""Test the embeddings predicted by the model on the Test-DataLoader.
 
-        Compute Rank-N for every rank in params_test["ranks"].
+        Compute Rank-N for every rank in ``self.topk_cmc``.
         Compute mean average precision of predicted target labels.
         """
         results: dict[str, any] = {}
@@ -245,12 +253,12 @@ class VisualSimilarityEngine(EngineModule):
         q_embed, q_t_ids = self._extract_data(
             dl=self.test_dl,
             desc="Query",
-            write_embeds=self.params_test["write_embeds"][0] if "write_embeds" in self.params_test else False,
+            write_embeds=self.params_test.get("write_embeds", DEF_VAL.engine.visual.write_embeds)[0],
         )
         g_embed, g_t_ids = self._extract_data(
             dl=self.val_dl,
             desc="Gallery",
-            write_embeds=self.params_test["write_embeds"][1] if "write_embeds" in self.params_test else False,
+            write_embeds=self.params_test.get("write_embeds", DEF_VAL.engine.visual.write_embeds)[1],
         )
 
         self.logger.debug("Use metric to compute the distance matrix.")
@@ -298,7 +306,7 @@ class VisualSimilarityEngine(EngineModule):
         embeds, _ = self._extract_data(
             dl=self.test_dl,
             desc="Predict",
-            write_embeds=self.params_test["write_embeds"][0] if "write_embeds" in self.params_test else False,
+            write_embeds=self.params_test.get("write_embeds", DEF_VAL.engine.visual.write_embeds)[0],
         )
         self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
         self.logger.info(f"#### Prediction of {self.name} complete ####")

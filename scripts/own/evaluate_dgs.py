@@ -9,14 +9,14 @@ import torch
 
 from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
-from dgs.utils.config import fill_in_defaults, load_config
+from dgs.utils.config import load_config
 from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/eval_dgs.yaml"
 
 if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
-    config = fill_in_defaults(load_config(CONFIG_FILE))
+    config = load_config(CONFIG_FILE)
     print(f"Cuda available: {torch.cuda.is_available()}")
 
     # validation dataset

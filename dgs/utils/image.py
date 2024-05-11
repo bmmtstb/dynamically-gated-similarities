@@ -215,7 +215,7 @@ def load_video(filepath: FilePath, **kwargs) -> Video:
     fp: FilePath = to_abspath(filepath)
 
     dtype = kwargs.get("dtype", torch.uint8)
-    device = kwargs.get("device", "cpu")
+    device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
 
     # read video, save frames and discard audio
     frames, *_ = read_video(fp, output_format="TCHW", pts_unit="sec")
@@ -468,13 +468,16 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
                 or there is not batched dimension at all.
                 The ordering of the coordinates will stay the same.
             output_size: (h, w) as target height and width of the image
-            mode: See class description. Default "zero-pad"
+            mode: See class description.
 
-            aspect_round_decimals: (int) (optional)
-                Before comparing them, round the aspect ratios to the number of decimals. Default 2
+            aspect_round_decimals: (int, optional)
+                Before comparing them, round the aspect ratios to the number of decimals.
+                Default ``DEF_VAL.images.aspect_round_decimals``.
 
-            fill: (optional)
-                See parameter fill of torchvision.transforms.v2.Pad()
+            fill: (Union[int, float, List[float]], optional)
+                See parameter fill of :func:`torchvision.transforms.v2.Pad`.
+                Only applicable if ``mode`` is 'fill-pad'.
+                In that instance, fill has to be set and is no longer optional / ignored.
 
         Returns:
             Structured dict with updated and overwritten image(s), bboxes and coordinates.
@@ -491,7 +494,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         self.h, self.w = output_size
         self.target_aspect: float = self.w / self.h
 
-        a_r_decimals: int = int(kwargs.get("aspect_round_decimals", 2))
+        a_r_decimals: int = int(kwargs.get("aspect_round_decimals", DEF_VAL.images.aspect_round_decimals))
 
         # Return early if aspect ratios are fairly close. There will not be any noticeable distortion.
         if mode in ["distort", "outside-crop"] or (
@@ -693,18 +696,18 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         For bboxes and coordinates, N has to be at least 1.
 
         Either there is exactly one image or exactly as many stacked images as there are bounding boxes.
-        If there is one image, then there can be an arbitrary number (N) of bboxes and key points,
+        If there is one image, then there can be an arbitrary number (``N``) of bboxes and key points,
         which will all be extracted from this single source image.
-        If there are exactly N equally sized images, with N bounding boxes and N key points,
+        If there are exactly ``N`` equally sized images, with ``N`` bounding boxes and ``N`` key points,
         every box will be extracted from exactly one image.
 
         Note:
-            If you want to extract 3 bounding boxes from img1 and 2 from img2, either call this method twice,
-            or create an image as a stacked or expanded version of img1 and img2. This will only work,
-            iff img1 and img2 have the same shape!
+            If you want to extract 3 bounding boxes from ``img1`` and 2 from ``img2``, either call this method twice,
+            or create an image as a stacked or expanded version of ``img1`` and ``img2``.
+            The second method will only work, iff ``img1`` and ``img2`` have the same shape!
 
         Note:
-            The bboxes have to be one `tv_tensors.BoundingBoxes` object,
+            The bboxes have to be one :class:`~tv_tensors.BoundingBoxes` object,
             therefore, all boxes have to have the same format and canvas size.
 
         Keyword Args:
@@ -713,8 +716,16 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
             keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
             mode: The mode for resizing.
-                Similar to the modes of CustomToAspect, except there is one additional case 'outside-crop' available.
-            output_size: (h, w) as target height and width of the image
+                Similar to the modes of :class:`CustomToAspect`,
+                except there is one additional case 'outside-crop' available.
+                'outside-crop' uses the data of the surrounding original image instead of padding the image with zeros,
+                extracting more of the image than the bounding-box.
+            output_size: The target height and width of the image as tuple ``(height, width)``.
+
+            aspect_mode (str, optional): If mode is not 'outside-crop',
+                use this transformation mode to resize intermediate images to be stackable.
+                Default ``DEF_VAL.images.aspect_mode``.
+
 
         Returns:
             Will overwrite the content of the 'image' and 'keypoints' keys
@@ -777,7 +788,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
                     "box": validate_bboxes(tvte.wrap(bboxes[i], like=bboxes)),
                     "keypoints": validate_key_points(coord_crop),
                     "output_size": output_size,
-                    "mode": mode if mode != "outside-crop" else kwargs.get("aspect_mode", "zero-pad"),
+                    "mode": mode if mode != "outside-crop" else kwargs.get("aspect_mode", DEF_VAL.images.aspect_mode),
                     **kwargs,
                 }
             )

@@ -26,6 +26,7 @@ from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, dataloader_validations, ImageDataset
 from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataset
+from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath, write_json
 from dgs.utils.state import collate_bboxes, collate_tensors, State
@@ -90,7 +91,8 @@ def extract_crops_from_json_annotation(
 
     Keyword Args:
         check_img_sizes (bool): Whether to check if all images in a given folder have the same size before stacking them
-            for cropping. Default False.
+            for cropping.
+            Default ``DEF_VAL.dataset.pt21.check_img_sizes``.
         device (Device): Device to run the cropping on. Defaults to "cuda" if available "cpu" otherwise.
 
     Notes:
@@ -159,7 +161,7 @@ def extract_crops_from_json_annotation(
         )
 
     # check that the image sizes in the images folder are all the same
-    if kwargs.get("check_img_sizes", False) and len(set(d["sizes"])) != 1:
+    if kwargs.get("check_img_sizes", DEF_VAL.dataset.pt21.check_img_sizes) and len(set(d["sizes"])) != 1:
         warnings.warn(f"Not all the images within {json_file} have the same size. Sizes are: {set(d['sizes'])}")
 
     if individually:
@@ -521,7 +523,7 @@ class PoseTrack21_BBox(BBoxDataset):
         The value has to either be a local project path, or a valid absolute path.
     force_img_reshape (bool, optional):
         Whether to accept that images in one folder might have different shapes.
-        Default False.
+        Default ``DEF_VAL.dataset.force_img_reshape``.
     """
 
     def __init__(self, config: Config, path: NodePath, data_path: FilePath = None) -> None:
@@ -547,7 +549,7 @@ class PoseTrack21_BBox(BBoxDataset):
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
         img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in map_img_id_path.values()}
-        if self.params.get("force_img_reshape", False):
+        if self.params.get("force_img_reshape", DEF_VAL.dataset.force_img_reshape):
             # take the biggest value of every dimension
             self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
         else:
@@ -663,7 +665,7 @@ class PoseTrack21_Image(ImageDataset):
         The value has to either be a local project path, or a valid absolute path.
     force_img_reshape (bool, optional):
         Whether to accept that images in one folder might have different shapes.
-        Default False.
+        Default ``DEF_VAL.dataset.force_img_reshape``.
     """
 
     def __init__(self, config: Config, path: NodePath, data_path: FilePath = None) -> None:
@@ -688,7 +690,7 @@ class PoseTrack21_Image(ImageDataset):
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
         img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in self.map_img_id_to_path.values()}
-        if self.params.get("force_img_reshape", False):
+        if self.params.get("force_img_reshape", DEF_VAL.dataset.force_img_reshape):
             # take the biggest value of every dimension
             self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
         else:

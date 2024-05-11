@@ -9,7 +9,7 @@ import torch
 
 from dgs.models.engine import VisualSimilarityEngine
 from dgs.models.loader import module_loader
-from dgs.utils.config import fill_in_defaults, load_config
+from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers, open_all_layers, open_specified_layers
 
 CONFIG_FILE = "./configs/train_visual.yaml"
@@ -18,7 +18,7 @@ OPEN_CLASSIFIER_ONLY = True
 
 if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
-    config = fill_in_defaults(load_config(CONFIG_FILE))
+    config = load_config(CONFIG_FILE)
 
     print(f"Cuda available: {torch.cuda.is_available()}")
 

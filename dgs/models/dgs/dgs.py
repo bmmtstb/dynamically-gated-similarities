@@ -38,11 +38,11 @@ class DGSModule(BaseModule, nn.Module):
 
     combined_softmax (bool, optional):
         Whether to compute the softmax after the similarities have been summed up / combined.
-        Default `DEF_CONF.dgs.combined_softmax`.
+        Default ``DEF_VAL.dgs.combined_softmax``.
 
     similarity_softmax (bool, optional):
         Whether to compute the softmax of every resulting similarity matrix (independently) before combining them.
-        Default `DEF_CONF.dgs.similarity_softmax`.
+        Default ``DEF_VAL.dgs.similarity_softmax``.
     """
 
     def __init__(self, config: Config, path: NodePath):

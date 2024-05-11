@@ -119,7 +119,7 @@ def save_config(filepath: FilePath, config: Config) -> None:  # pragma: no cover
         yaml.dump(config, file)
 
 
-def fill_in_defaults(config: Config, default_cfg: Config = None, copy: bool = True) -> Config:
+def fill_in_defaults(config: Config, default_cfg: Config, copy: bool = True) -> Config:
     """Use values of a given configuration or the default configuration,
     to fill in missing values of the current configuration.
 
@@ -130,7 +130,6 @@ def fill_in_defaults(config: Config, default_cfg: Config = None, copy: bool = Tr
         config: Current configuration as EasyDict or nested dict
         default_cfg: Default configuration as EasyDict or nested dict
         copy: Whether to copy ``default_cgf`` before updating.
-            If ``default_cfg`` is None it will always be copied.
             Default True.
 
     Returns:
@@ -163,12 +162,6 @@ def fill_in_defaults(config: Config, default_cfg: Config = None, copy: bool = Tr
     if not isinstance(config, EasyDict | dict):
         raise InvalidConfigException(f"Config is expected to be dict or EasyDict, but is {type(config)}.")
 
-    if default_cfg is None:
-        from dgs.default_config import cfg  # pylint: disable=import-outside-toplevel
-
-        default_cfg = cfg
-        copy = True  # copy will always be true for the default configuration
-
     # make sure to create a copy of default config, otherwise values might get overwritten involuntarily!
     new_config: Config = deep_update(
         deepcopy(default_cfg) if copy else default_cfg,
@@ -180,7 +173,7 @@ def fill_in_defaults(config: Config, default_cfg: Config = None, copy: bool = Tr
     return new_config
 
 
-def insert_into_config(path: NodePath, value: Config, original: Config = None, copy: bool = True) -> Config:
+def insert_into_config(path: NodePath, value: Config, original: Config, copy: bool = True) -> Config:
     """Insert a sub-configuration at the given path into the original or a copy of it,
     possibly overwriting existing values.
 
@@ -189,19 +182,13 @@ def insert_into_config(path: NodePath, value: Config, original: Config = None, c
         value: A sub-configuration to be inserted at the given path.
         original: The original configuration to be extended.
             This config will be copied if ``copy`` is true, and modified otherwise.
-            The default `None` will always use a copy of the default configuration at ``dgs.default_config.cfg``.
         copy: Whether to create a (deep-)copy of the original config or modify it inplace.
             Default True, creates and returns a copy.
 
     Returns:
         A modified (copy) of the original with the given value inserted at the path.
     """
-    if original is None:
-        from dgs.default_config import cfg  # pylint: disable=import-outside-toplevel
-
-        original = deepcopy(cfg)
-    else:
-        original = deepcopy(original) if copy else original
+    original = deepcopy(original) if copy else original
 
     # create a nested config, to be able to use fill_in_defaults() later
     for p in path[::-1]:

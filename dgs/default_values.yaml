@@ -16,6 +16,9 @@ dataset:
     crops_folder: ""
     force_img_reshape: false
 
+    pt21:
+        check_img_sizes: false
+
     kprcnn:
         threshold: 0.3
 
@@ -37,6 +40,9 @@ images:
     image_mode: "zero-pad"
     crop_size: !!python/tuple [256, 256]
     crop_mode: "zero-pad"
+    jpeg_quality: 90
+    aspect_mode: "zero-pad"
+    aspect_round_decimals: 2
 
 # ############## #
 # LOSS FUNCTIONS #
@@ -57,14 +63,38 @@ base:
 
 
 engine:
+    test:
+        writer_kwargs: {}
+        normalize: false
+
+    train:
+        epochs: 1
+        start_epoch: 1
+        save_interval: 5
+        loss_kwargs: {}
+        optim_kwargs:
+            lr: 0.0001  # 1e-4
+        scheduler: "StepLR"
+        scheduler_kwargs:
+            step_size: 1
+            gamma": 0.1
+
+    visual:
+        topk_acc: [1]
+        topk_cmc: [ 1, 5, 10, 20 ]
+        metric_kwargs: {}
+        write_embeds: [False, False]
+
     dgs:
         save_images: true
         show_keypoints: true
         show_skeleton: true
+        draw_kwargs: {}
 
 similarity:
     torchreid:
         softmax: false
+        sim_kwargs: {}
 
     oks:
         softmax: false
@@ -75,3 +105,20 @@ similarity:
 dgs:
     similarity_softmax: true
     combined_softmax: true
+
+embed_gen:
+    torchreid:
+        weights: "./weights/osnet_ain_x1_0_msmt17_256x128_amsgrad_ep50_lr0.0015_coslr_b64_fb10_softmax_labsmth_flip_jitter.pth"
+
+    pose:
+        LPBEG:
+            bbox_format: "XYWH"
+            bias: true
+            hidden_layers: []
+
+        KPCPBEG:
+            bbox_format: "XYWH"
+            bias: true
+            nof_kernels: 5
+            hidden_layers: []
+            hidden_layers_kp: []

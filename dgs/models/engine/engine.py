@@ -48,7 +48,6 @@ train_validations: Validations = {
 test_validations: Validations = {
     # optional
     "normalize": ["optional", bool],
-    "ranks": ["optional", "iterable", ("all type", int)],
     "writer_kwargs": ["optional", dict],
 }
 
@@ -89,42 +88,38 @@ class EngineModule(BaseModule):
     Optional Test Params
     --------------------
 
-    ranks (list[int], optional):
-        The cmc ranks to use for evaluation.
-        This value is used during training and testing.
-        Default [1, 5, 10, 20]
     normalize (bool, optional):
         Whether to normalize the prediction and target during testing.
-        Default False.
+        Default ``DEF_VAL.engine.test.normalize``.
     writer_kwargs (dict, optional):
         Additional kwargs for the torch writer.
-        Default {}.
+        Default ``DEF_VAL.engine.test.writer_kwargs``.
 
     Optional Train Params
     ---------------------
 
     epochs (int, optional):
         The number of epochs to run the training for.
-        Default 1.
+        Default ``DEF_VAL.engine.train.epochs``.
     optimizer_kwargs (dict, optional):
         Additional kwargs for the optimizer.
-        Default {}.
+        Default ``DEF_VAL.engine.train.optim_kwargs``.
     scheduler (str|callable, optional):
         The name or instance of a scheduler.
         If you want to use different or multiple schedulers, you can chain them using
         ``torch.optim.lr_scheduler.ChainedScheduler`` or create a custom Scheduler and register it.
-        Default "StepLR".
+        Default ``DEF_VAL.engine.train.scheduler``.
     scheduler_kwargs (dict, optional):
         Additional kwargs for the scheduler.
         Keep in mind that the different schedulers need fairly different kwargs.
         The optimizer will be passed to the scheduler during initialization as the `optimizer` keyword argument.
-        Default {"step_size": 1, "gamma": 0.1}.
+        Default ``DEF_VAL.engine.train.scheduler_kwargs``.
     loss_kwargs (dict, optional):
         Additional kwargs for the loss.
-        Default {}.
+        Default ``DEF_VAL.engine.train.loss_kwargs``.
     save_interval (int, optional):
         The interval for saving (and evaluating) the model during training.
-        Default 5.
+        Default ``DEF_VAL.engine.train.save_interval``.
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
@@ -169,7 +164,7 @@ class EngineModule(BaseModule):
         self.writer = SummaryWriter(
             log_dir=self.log_dir,
             comment=self.config.get("description"),
-            **self.params_test.get("writer_kwargs", {}),
+            **self.params_test.get("writer_kwargs", DEF_VAL.engine.test.writer_kwargs),
         )
         self.writer.add_scalar("Test/batch_size", self.test_dl.batch_size)
         # save config in the out-folder to make sure values haven't changed when validating those files
@@ -196,24 +191,27 @@ class EngineModule(BaseModule):
             self.train_dl = train_loader
 
             # epochs
-            self.epochs: int = self.params_train.get("epochs", 1)
-            self.start_epoch: int = self.params_train.get("start_epoch", 1)
+            self.epochs: int = self.params_train.get("epochs", DEF_VAL.engine.train.epochs)
+            self.start_epoch: int = self.params_train.get("start_epoch", DEF_VAL.engine.train.start_epoch)
             self.curr_epoch = self.start_epoch
-            self.save_interval: int = self.params_train.get("save_interval", 5)
+            self.save_interval: int = self.params_train.get("save_interval", DEF_VAL.engine.train.save_interval)
 
             # modules
             self.loss = get_loss_function(self.params_train["loss"])(
-                **self.params_train.get("loss_kwargs", {})  # optional loss kwargs
+                **self.params_train.get("loss_kwargs", DEF_VAL.engine.train.loss_kwargs)  # optional loss kwargs
             )
             self.optimizer = get_optimizer(self.params_train["optimizer"])(
                 self.model.parameters(),
-                **self.params_train.get("optimizer_kwargs", {"lr": 1e-4}),  # optional optimizer kwargs
+                **self.params_train.get(
+                    "optimizer_kwargs", DEF_VAL.engine.train.optim_kwargs
+                ),  # optional optimizer kwargs
             )
             # the learning-rate schedulers need the optimizer for instantiation
-            self.lr_sched = get_scheduler(self.params_train.get("scheduler", "StepLR"))(
-                optimizer=self.optimizer, **self.params_train.get("scheduler_kwargs", {"step_size": 1, "gamma": 0.1})
+            self.lr_sched = get_scheduler(self.params_train.get("scheduler", DEF_VAL.engine.train.scheduler))(
+                optimizer=self.optimizer,
+                **self.params_train.get("scheduler_kwargs", DEF_VAL.engine.train.scheduler_kwargs),
             )
-            self.writer.add_scalar("Train/batch_size", self.test_dl.batch_size)
+            self.writer.add_scalar("Train/batch_size", self.train_dl.batch_size)
 
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
@@ -349,11 +347,13 @@ class EngineModule(BaseModule):
                         "lr": self.optimizer.param_groups[-1]["lr"],
                         "batch_size": self.train_dl.batch_size,
                         "loss_name": self.params_train["loss"],
-                        "loss_kwargs": self.params_train.get("loss_kwargs", {}),
+                        "loss_kwargs": self.params_train.get("loss_kwargs", DEF_VAL.engine.train.loss_kwargs),
                         "optim_name": self.params_train["optimizer"],
-                        "optim_kwargs": self.params_train.get("optim_kwargs", {}),
-                        "scheduler": self.params_train.get("scheduler", ""),
-                        "scheduler_kwargs": self.params_train.get("scheduler_kwargs", {}),
+                        "optim_kwargs": self.params_train.get("optim_kwargs", DEF_VAL.engine.train.optim_kwargs),
+                        "scheduler": self.params_train.get("scheduler", DEF_VAL.engine.train.scheduler),
+                        "scheduler_kwargs": self.params_train.get(
+                            "scheduler_kwargs", DEF_VAL.engine.train.scheduler_kwargs
+                        ),
                     },
                     metric_dict=metrics,
                 )
@@ -429,7 +429,7 @@ class EngineModule(BaseModule):
 
     def _normalize_test(self, tensor: torch.Tensor) -> torch.Tensor:
         """If ``params_test.normalize`` is True, we want to obtain the normalized prediction and target."""
-        if self.params_test.get("normalize", False):
+        if self.params_test.get("normalize", DEF_VAL.engine.test.normalize):
             self.logger.debug("Normalizing test data")
             tensor: torch.Tensor = nn.functional.normalize(tensor)
         return tensor

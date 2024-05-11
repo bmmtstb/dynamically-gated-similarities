@@ -100,50 +100,50 @@ class BaseDataset(BaseModule, TorchDataset):
         The value has to either be a local project path, or a valid absolute path.
     force_img_reshape (bool, optional):
         Whether to accept that images in one folder might have different shapes.
-        Default `DEF_CONF.dataset.force_img_reshape`.
+        Default ``DEF_VAL.dataset.force_img_reshape``.
     image_mode (str, optional):
         Only applicable if ``force_img_reshape`` is True.
         The cropping mode used for loading the full images when calling :meth:`.get_image_crops`.
-        Value has to be in :attr:`.CustomToAspect.modes`.
-        Default `DEF_CONF.images.image_mode`.
+        Value has to be in :attr:`.CustomToAspect.modes``.
+        Default ``DEF_VAL.images.image_mode``.
     image_size (tuple[int, int], optional):
         Only applicable if ``force_img_reshape`` is True.
         The size that the original images should have.
-        Default `DEF_CONF.images.image_size`.
+        Default ``DEF_VAL.images.image_size``.
     crops_folder (FilePath, optional):
         A path (global, project local, or dataset local), containing the previously cropped images.
         The structure is dataset-dependent, and might not be necessary for some datasets.
         Default is not set, and the crops are generated live.
-        Default `DEF_CONF.dataset.crops_folder`.
+        Default ``DEF_VAL.dataset.crops_folder``.
     crop_mode (str, optional):
         The mode for image cropping used when calling :meth:`.get_image_crops`.
         Value has to be in :attr:`.CustomToAspect.modes`.
-        Default `DEF_CONF.images.crop_mode`.
+        Default ``DEF_VAL.images.crop_mode``.
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
-        Default `DEF_CONF.images.crop_size`.
+        Default ``DEF_VAL.images.crop_size``.
 
     Additional Params for the DataLoader
     ------------------------------------
 
     batch_size (int, optional):
         The batch size to use while creating the DataLoader for this Dataset.
-        Default `DEF_CONF.dataloader.batch_size`.
+        Default ``DEF_VAL.dataloader.batch_size``.
     drop_last (bool, optional):
         Whether to drop the last batch if its size is unequal to the target batch size.
-        Default `DEF_CONF.dataloader.drop_last`.
+        Default ``DEF_VAL.dataloader.drop_last``.
     shuffle (bool, optional):
         Whether to shuffle the dataset.
-        Default `DEF_CONF.dataloader.shuffle`.
+        Default ``DEF_VAL.dataloader.shuffle``.
     workers (int, optional):
         The number of workers for multi-device data-loading.
         Not fully supported!
         Therefore, default 0, no multi-device.
-        Default `DEF_CONF.dataloader.workers`.
+        Default ``DEF_VAL.dataloader.workers``.
     return_lists (bool, optional):
         Whether the DataLoader should return a list of States.
         The DataLoader will return a single collated State if `return_lists` is `False`.
-        Default `DEF_CONF.dataloader.return_lists`.
+        Default ``DEF_VAL.dataloader.return_lists``.
 
     Default Values
     --------------
@@ -241,7 +241,7 @@ class BaseDataset(BaseModule, TorchDataset):
         self.logger.debug("computing image crops")
         ds.to(self.device)
 
-        if self.params.get("force_img_reshape", False):
+        if self.params.get("force_img_reshape", DEF_VAL.dataset.force_img_reshape):
             ds.image = load_image(
                 ds.filepath,
                 force_reshape=True,
@@ -431,16 +431,16 @@ class VideoDataset(BaseDataset, ABC):
     ---------------
 
     stream (str):
-        Default `DEF_CONF.video_dataset.stream`
+        Default ``DEF_VAL.video_dataset.stream``.
 
     num_threads (int):
         The number of threads used when loading the video.
         The default is 0 and lets ffmpeg decide the best configuration.
-        Default `DEF_CONF.video_dataset.num_threads`
+        Default ``DEF_VAL.video_dataset.num_threads``.
 
     video_backend (str):
         The backend to use when loading the video.
-        Default `DEF_CONF.video_dataset.video_backend`
+        Default ``DEF_VAL.video_dataset.video_backend``.
     """
 
     data: VideoReader
