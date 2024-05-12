@@ -55,15 +55,22 @@ class DGSModule(BaseModule, nn.Module):
         names = self.params["names"]
         self.sim_mods = nn.ModuleList(
             [
-                get_similarity_module(get_sub_config(config=config, path=[k])["module_name"])(config=config, path=[k])
+                self.configure_torch_module(
+                    get_similarity_module(get_sub_config(config=config, path=[k])["module_name"])(
+                        config=config, path=[k]
+                    ),
+                )
                 for k in names
             ]
         )
+        self.configure_torch_module(self.sim_mods)
 
         # if wanted, compute the softmax of every resulting similarity matrix
-        self.similarity_softmax = nn.Sequential()
+        similarity_softmax = nn.Sequential()
         if self.params.get("similarity_softmax", DEF_VAL.dgs.similarity_softmax):
-            self.similarity_softmax.append(nn.Softmax(dim=-1))
+            similarity_softmax.append(nn.Softmax(dim=-1))
+        self.register_module(name="similarity_softmax", module=similarity_softmax)
+        self.configure_torch_module(self.similarity_softmax)
 
         # module for combining multiple similarities
         combine_name = self.params["combine"]
@@ -71,11 +78,14 @@ class DGSModule(BaseModule, nn.Module):
             name=get_sub_config(config=config, path=[combine_name])["module_name"]
         )(config=config, path=[combine_name])
         self.register_module(name="combine", module=combine)
+        self.configure_torch_module(self.combine)
 
         # if wanted, compute the softmax after the similarities have been summed up / combined
-        self.combined_softmax = nn.Sequential()
+        combined_softmax = nn.Sequential()
         if self.params.get("combined_softmax", DEF_VAL.dgs.combined_softmax):
-            self.combined_softmax.append(nn.Softmax(dim=-1))
+            combined_softmax.append(nn.Softmax(dim=-1))
+        self.register_module(name="combined_softmax", module=combined_softmax)
+        self.configure_torch_module(self.combined_softmax)
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)

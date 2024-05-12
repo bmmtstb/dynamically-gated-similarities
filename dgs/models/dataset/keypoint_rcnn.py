@@ -58,12 +58,13 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         self.threshold: float = self.params.get("threshold", DEF_VAL.dataset.kprcnn.threshold)
 
         self.logger.debug("Loading Keypoint-RCNN Model")
-        self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
-        self.model.eval()
-        self.model.to(self.device)
+        model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
+        self.register_module("model", model)
+        self.configure_torch_module(module=self.model, train=False)
 
         self.img_id: int = 1
 
+    @torch.no_grad()
     def images_to_states(self, images: Images) -> list[State]:
         """Given a list of images, use the key-point-RCNN model to predict key points and bounding boxes,
         then create a :class:`State` containing the available information.
@@ -123,7 +124,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         return states
 
     def terminate(self) -> None:
-        self.model = None
+        if hasattr(self, "model"):
+            self.model = None
 
 
 # pylint: disable=too-many-ancestors
@@ -185,9 +187,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 # directory of images
                 self.data = [
                     os.path.normpath(os.path.join(data_path, child_path))
-                    for child_path in tqdm(
-                        sorted(os.listdir(data_path)), desc="Loading images", total=len(os.listdir(data_path))
-                    )
+                    for child_path in tqdm(sorted(os.listdir(data_path)), desc="Loading images")
                     if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
                 ]
             else:

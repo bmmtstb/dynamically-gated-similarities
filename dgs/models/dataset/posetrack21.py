@@ -354,8 +354,8 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
     # get the image data
     image_data = {
         "file_name": s.filepath[0],
-        "id": s["image_id"][0],
-        "frame_id": s["image_id"][0],
+        "id": int(s["image_id"][0].item()),
+        "frame_id": int(s["image_id"][0].item()),
     }
     if s.B == 0:
         return image_data, []
@@ -377,9 +377,9 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
                 "bboxes": bboxes[i].flatten().tolist(),
                 "kps": kps.flatten().tolist(),
                 "scores": s["scores"][i].flatten().tolist() if "scores" in s else [0.0 for _ in range(17)],
-                "image_id": int(s["image_id"][i]),
-                "person_id": int(s.person_id[i]),
-                "track_id": int(s["pred_tid"][i]),
+                "image_id": int(s["image_id"][i].item()),
+                "person_id": int(s.person_id[i].item()),
+                "track_id": int(s["pred_tid"][i].item()),
             }
         )
 
@@ -428,7 +428,12 @@ def generate_pt21_submission_file(
 
     """
     data = {"images": images, "annotations": annotations}
-    write_json(obj=data, filepath=outfile)
+    try:
+        write_json(obj=data, filepath=outfile)
+    except TypeError as e:
+        print(f"images: {images}")
+        print(f"annotations: {annotations}")
+        raise TypeError from e
 
 
 def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> Union[BaseDataset, TorchDataset]:

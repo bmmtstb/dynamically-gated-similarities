@@ -185,10 +185,10 @@ class DGSEngine(EngineModule):
         self.set_model_mode("eval")
         close_all_layers(self.model)
 
-        self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
-        self.logger.info("Loading, extracting, and predicting data, this might take a while...")
+        self.logger.debug(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
+        self.logger.debug("Loading, extracting, and predicting data, this might take a while...")
 
-        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl)):
+        for detections in tqdm(self.test_dl, desc="DataLoader"):
             for detection in detections:
 
                 N: int = len(detections)
@@ -234,7 +234,7 @@ class DGSEngine(EngineModule):
             annotations=anno_data,
         )
 
-        self.logger.info(f"#### Finished Evaluating {self.name} ####")
+        self.logger.debug(f"#### Finished Evaluating {self.name} ####")
 
         return results
 
@@ -252,8 +252,8 @@ class DGSEngine(EngineModule):
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
         detections: list[State]
         # batch get data from the data loader
-        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl), position=1):
-            for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False, position=2):
+        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl)):
+            for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False):
                 _ = self._track_step(detections=detection)
 
                 active = collate_states(self.tracks.get_active_states())
