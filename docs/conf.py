@@ -71,17 +71,12 @@ autodoc_mock_imports = [
     "halpecocotools",
     "opencv-python",
     "lapsolver",
-    # "matplotlib",
-    "natsort",
-    # "numpy",
     "posetrack21",
     "pytorch",
     "torch",
     "torcheval",
     "torchvision",
     "torchreid",
-    # "tqdm",
-    "visdom",
 ]
 
 # File parsing

@@ -2,19 +2,19 @@
 # Created for Python 3.10 #
 # ####################### #
 
-# ##################### #
-#  install torch with   #
-# specific cuda version #
-# ##################### #
+# ############################ #
+#     install torch with       #
+# specific cuda or cpu version #
+# ############################ #
 
 # --index-url can be used here, because this requirements file should only be installed line-by-line!
-
 # --index-url https://download.pytorch.org/whl/cpu torch==2.2.*
 # --index-url https://download.pytorch.org/whl/cpu torchvision==0.17.*
 # --index-url https://download.pytorch.org/whl/cpu  torchaudio==2.2.*
---index-url https://download.pytorch.org/whl/cu121 torch==2.2.*
---index-url https://download.pytorch.org/whl/cu121 torchvision==0.17.*
---index-url https://download.pytorch.org/whl/cu121 torchaudio==2.2.*
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.3.*
+torchvision==0.18.*
+torchaudio==2.3.*
 
 # ######################## #
 # regular pip dependencies #
@@ -22,36 +22,20 @@
 av
 black
 coverage[toml]
-cython==3.0.*
 easydict
-future
-gdown
-h5py
-imageio
 imagesize
-jinja2
 lapsolver
 matplotlib
-# # munkres is a package for the hungarian (matching) algorithm
-munkres
-natsort
-ninja
+munkres  # munkres is a package for the hungarian (matching) algorithm
 numpy
 opencv-python
 Pillow
-pycocotools==2.0.*
 pylint
 pyyaml==6.0.*
-scipy
-# # sphinx is used to build the docs
-sphinx
+sphinx  # sphinx is used to build the docs
 sphinxcontrib.datatemplates
-# # use tb nightly, due to torchreid installing it and it being incompatible with the regular tensorboard
-tb-nightly
-# torcheval
+tb-nightly  # use tb nightly, due to torchreid installing it and it being incompatible with the regular tensorboard
 tqdm
-visdom
-
 
 # ################## #
 # local dependencies #
@@ -59,11 +43,8 @@ visdom
 
 # Torchreid - install requirements and Set up torchreid and cythonize
 # somehow installing requirements does not work just by calling setup
--e dependencies/torchreid/
+#-e dependencies/torchreid/
 # install PoseTrack21 evaluation toolkit
 # fixme is this still required ?
-# -e dependencies/PoseTrack21/eval/posetrack21/
+-e dependencies/PoseTrack21/eval/posetrack21/
 git+https://github.com/svenkreiss/poseval
-
-# own project
--e .

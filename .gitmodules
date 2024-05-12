@@ -1,14 +1,7 @@
-[submodule "dependencies/AlphaPose_Fork"]
-	path = dependencies/AlphaPose_Fork
-	url = https://github.com/bmmtstb/AlphaPose.git
-	branch = DGS
 [submodule "dependencies/torchreid"]
 	path = dependencies/torchreid
 	url = https://github.com/KaiyangZhou/deep-person-reid.git
 	branch = master
-[submodule "dependencies/halpecocotools"]
-	path = dependencies/halpecocotools
-	url = https://github.com/Ambrosiussen/HalpeCOCOAPI.git
 [submodule "PoseTrack21"]
 	path = dependencies/PoseTrack21
 	url = https://github.com/anDoer/PoseTrack21.git

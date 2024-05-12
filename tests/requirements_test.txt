@@ -4,31 +4,25 @@
 
 av==11.0.*
 black
-Cython
 coverage[toml]
 easydict
-gdown
 imagesize
 lapsolver
 matplotlib
 munkres
-natsort
 numpy
 opencv-python
 pylint
 pyyaml
-scipy
 tb-nightly
 terminaltables
-torcheval
 torchreid==0.2.5
 tqdm
-visdom
 
 # ############################# #
 # torch cpu as extra dependency #
 # ############################# #
 
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.*
-torchvision==0.17.*
+torch==2.3.*
+torchvision==0.18.*
