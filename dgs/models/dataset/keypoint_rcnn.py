@@ -58,9 +58,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         self.threshold: float = self.params.get("threshold", DEF_VAL.dataset.kprcnn.threshold)
 
         self.logger.debug("Loading Keypoint-RCNN Model")
-        self.model = nn.DataParallel(
-            keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
-        )
+        self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
         self.model.eval()
         self.model.to(self.device)
 

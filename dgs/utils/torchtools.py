@@ -505,3 +505,24 @@ def init_instance_params(instance: nn.Module) -> None:
         for name, _ in instance.named_parameters():
             if name in ["bias"]:
                 nn.init.constant_(instance.bias, 0)
+
+
+def memory_analysis(
+    f: callable, file_name: FilePath = "./memory_snapshot.pickle", max_events: int = 100000000
+) -> callable:  # pragma: no cover
+    """A decorator for torch memory analysis using :func:`torch.cuda.memory._record_memory_history`."""
+    # pylint: disable=protected-access
+
+    def decorator(*args, **kwargs):
+        """The decorator."""
+        try:
+            # start memory recording
+            torch.cuda.memory._record_memory_history(max_entries=max_events)
+            # call original function
+            f(*args, **kwargs)
+        finally:
+            torch.cuda.memory._dump_snapshot(file_name)
+            # stop recording memory
+            torch.cuda.memory._record_memory_history(enabled=None)
+
+    return decorator

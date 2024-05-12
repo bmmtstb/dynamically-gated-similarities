@@ -170,6 +170,7 @@ class DGSEngine(EngineModule):
 
         return batch_times
 
+    @torch.no_grad()
     def test(self) -> dict[str, any]:
         """Test the DGS Tracker"""
         # pylint: disable=too-many-statements
@@ -187,12 +188,12 @@ class DGSEngine(EngineModule):
         self.logger.info(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
 
-        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl), position=1):
-            for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False, position=2):
+        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl)):
+            for detection in detections:
 
                 N: int = len(detections)
 
-                ts, batch_times = self._track_step(detections=detection)
+                batch_times = self._track_step(detections=detection)
 
                 active = collate_states(self.tracks.get_active_states())
                 # get submission data
@@ -201,7 +202,6 @@ class DGSEngine(EngineModule):
                 anno_data += new_anno_data
 
                 # print debug info
-                ts.print(logger=self.logger, frame_idx=frame_idx)
                 # Add timings and other metrics to the writer
                 self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
                 self.writer.add_scalars(
@@ -210,13 +210,22 @@ class DGSEngine(EngineModule):
                     global_step=frame_idx,
                 )
                 # print the resulting image if requested
-                if self.save_images and detection.B >= 1:
-
+                if self.save_images:
                     active.draw(
                         save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
-                        show_kp=self.params_test.get("show_keypoints", DEF_VAL.engine.dgs.show_keypoints),
-                        show_skeleton=self.params_test.get("show_skeleton", DEF_VAL.engine.dgs.show_skeleton),
+                        show_kp=(
+                            self.params_test.get("show_keypoints", DEF_VAL.engine.dgs.show_keypoints)
+                            if detection.B > 0
+                            else False
+                        ),
+                        show_skeleton=(
+                            self.params_test.get("show_skeleton", DEF_VAL.engine.dgs.show_skeleton)
+                            if detection.B > 0
+                            else False
+                        ),
+                        **self.params_test.get("draw_kwargs", DEF_VAL.engine.dgs.draw_kwargs),
                     )
+
                 frame_idx += 1
 
         generate_pt21_submission_file(
@@ -229,6 +238,7 @@ class DGSEngine(EngineModule):
 
         return results
 
+    @torch.no_grad()
     def predict(self) -> None:
         """Given test data, predict the results without evaluation."""
         # set model to evaluation mode and freeze / close all layers

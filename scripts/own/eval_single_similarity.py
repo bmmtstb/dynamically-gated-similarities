@@ -16,33 +16,34 @@ from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
+from dgs.utils.torchtools import close_all_layers, memory_analysis
 from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_sim_indep.yaml"
 
 
-if __name__ == "__main__":
-    print(f"Cuda available: {torch.cuda.is_available()}")
-
+@memory_analysis
+@torch.no_grad()
+def run():
+    """Main function to run the code."""
     print(f"Loading configuration: {CONFIG_FILE}")
     config = load_config(CONFIG_FILE)
 
     # first eval using GT data
     # second eval using RCNN data
-    for dl_key in tqdm(["dl_gt", "dl_rcnn"], desc="datasets", position=0):
+    for dl_key in ["dl_gt", "dl_rcnn"]:
+        print(f"Evaluating on the {dl_key} dataloader")
 
         # get dataset folder (one by one)
         base_path = config[dl_key]["base_path"]
         dataset_folders = [f.path for f in os.scandir(base_path) if f.is_dir()]
 
-        for sub_folder in tqdm(dataset_folders, desc="ds_sub_dir", position=1):
+        for sub_folder in tqdm(dataset_folders, desc="ds_sub_dir"):
 
             config[dl_key]["data_path"] = sub_folder
 
             # IoU, OKS, and visual similarity
-            for dgs_key in tqdm(
-                ["dgs_box", "dgs_pose", "dgs_vis_3", "dgs_vis_2", "dgs_vis_3"], desc="sims", position=2
-            ):
+            for dgs_key in tqdm(["dgs_box", "dgs_pose", "dgs_vis_3", "dgs_vis_2", "dgs_vis_3"], desc="sims"):
 
                 # make sure to have a unique log dir every time
                 orig_log_dir = config["log_dir"]
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
                     # will load all the similarity modules
                     model: DGSModule = module_loader(config=config, module_class="dgs", key=dgs_key).cuda()
-                    model.eval()
+                    close_all_layers(model)
 
                     engine = DGSEngine(config=config, model=model, test_loader=val_dl)
 
@@ -62,3 +63,8 @@ if __name__ == "__main__":
 
                 # reset the original log dir
                 config["log_dir"] = orig_log_dir
+
+
+if __name__ == "__main__":
+    print(f"Cuda available: {torch.cuda.is_available()}")
+    run()

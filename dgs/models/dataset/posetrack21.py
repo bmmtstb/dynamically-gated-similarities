@@ -45,7 +45,15 @@ with warnings.catch_warnings():
         from torchreid.reid.data import ImageDataset as TorchreidImageDataset
 
 # Do not allow import of 'PoseTrack21' base dataset
-__all__ = ["validate_pt21_json", "get_pose_track_21", "PoseTrack21_BBox", "PoseTrack21_Image", "PoseTrack21Torchreid"]
+__all__ = [
+    "validate_pt21_json",
+    "get_pose_track_21",
+    "PoseTrack21_BBox",
+    "PoseTrack21_Image",
+    "PoseTrack21Torchreid",
+    "generate_pt21_submission_file",
+    "submission_data_from_state",
+]
 
 pt21_json_validations: Validations = {
     "data_path": [("any", [str, ("all", [list, ("forall", str)])])],

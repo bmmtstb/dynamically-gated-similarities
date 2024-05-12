@@ -56,8 +56,7 @@ def load_image(
 
 
     Notes:
-        To be able to compute gradients, the dtype has to be ``torch.float32``.
-        Therefore, the ``dtype`` and ``requires_grad`` of the model are partially correlated.
+        To be able to compute gradients, the dtype of the images has to be a float (e.g., ``torch.float32``).
 
     Args:
         filepath: Single string or list of absolute or local filepaths to the image.

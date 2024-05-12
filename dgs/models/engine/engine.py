@@ -279,7 +279,7 @@ class EngineModule(BaseModule):
         data_t: DifferenceTimer = DifferenceTimer()
         data: State
 
-        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=1):
+        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=0):
             self.logger.info(f"#### Training - Epoch {self.curr_epoch} ####")
 
             self.model.zero_grad()  # fixme
@@ -293,7 +293,7 @@ class EngineModule(BaseModule):
             for batch_idx, data in tqdm(
                 enumerate(self.train_dl),
                 desc="Train - Batch",
-                position=2,
+                position=1,
                 total=len(self.train_dl),
             ):
                 curr_iter = (self.curr_epoch - 1) * len(self.train_dl) + batch_idx
