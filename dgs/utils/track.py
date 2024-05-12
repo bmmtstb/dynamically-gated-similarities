@@ -493,7 +493,7 @@ class Tracks(UserDict):
         """Return whether the given Track-ID has been removed."""
         return tid not in self.data and tid in self.removed
 
-    def add(self, tracks: dict[TrackID, State], new: list[State]) -> tuple[list[TrackID], TrackStatistics]:
+    def add(self, tracks: dict[TrackID, State], new: list[State]) -> list[TrackID]:
         """Given tracks with existing Track-IDs update those and create new Tracks for States without Track-IDs.
         Additionally,
         mark Track-IDs that are not in either of the inputs as unseen and therefore as inactive for one more step.
@@ -501,7 +501,6 @@ class Tracks(UserDict):
         Returns:
             The Track-IDs of the new_tracks in the same order as provided.
         """
-        stats = TrackStatistics()
 
         inactive_ids = self.ids - set(int(k) for k in tracks.keys())
 
@@ -510,18 +509,17 @@ class Tracks(UserDict):
 
         # add the new state to the new tracks
         for tid, new_state in zip(new_tids, new):
-            self._update_track(tid=tid, add_state=new_state, stats=stats)
-            stats.new.append(tid)
+            self._update_track(tid=tid, add_state=new_state)
 
         # add state to Track and remove track from inactive if present
         for tid, new_state in tracks.items():
-            self._update_track(tid=tid, add_state=new_state, stats=stats)
+            self._update_track(tid=tid, add_state=new_state)
 
-        self._handle_inactive(tids=inactive_ids, stats=stats)
+        self._handle_inactive(tids=inactive_ids)
 
         # step to the next frame
         self._next_frame()
-        return new_tids, stats
+        return new_tids
 
     def _next_frame(self) -> None:
         self._curr_frame += 1
@@ -574,7 +572,7 @@ class Tracks(UserDict):
 
         # todo should the states of the track be removed / cleared ?
 
-    def _update_track(self, tid: TrackID, add_state: State, stats: TrackStatistics) -> None:
+    def _update_track(self, tid: TrackID, add_state: State) -> None:
         """Use the track-ID to update a track given an additional :class:`State` for the :class:`Track`.
         Will additionally remove the tid from the inactive Tracks.
 
@@ -586,20 +584,16 @@ class Tracks(UserDict):
                 raise KeyError(f"Track-ID {tid} neither present in the current or previously removed Tracks.")
             # reactivate previously removed track
             self.reactivate_track(tid)
-            stats.reactivated.append(tid)
         elif tid in self.inactive:
             # update inactive
             self.inactive.pop(tid)
-            stats.found.append(tid)
-        else:
-            stats.still_active.append(tid)
 
         # append state to track
         self.data[tid].append(state=add_state)
         # add track id to state
         self.data[tid][-1]["pred_tid"] = torch.tensor(tid, dtype=torch.long, device=add_state.device).flatten()
 
-    def _handle_inactive(self, tids: set[TrackID], stats: TrackStatistics) -> None:
+    def _handle_inactive(self, tids: set[TrackID]) -> None:
         """Given the Track-IDs of the Tracks that haven't been seen this step, update the inactivity tracker.
         Create the counter for inactive Track-IDs and update existing counters.
         Additionally, remove tracks that have been inactive for too long.
@@ -610,13 +604,9 @@ class Tracks(UserDict):
 
                 if self.inactive[tid] >= self.inactivity_threshold:
                     self.remove_tid(tid)
-                    stats.removed.append(tid)
-                else:
-                    stats.still_inactive.append(tid)
             else:
                 self.inactive[tid] = 1
                 self.data[tid].set_inactive()
-                stats.lost.append(tid)
 
     def _get_next_id(self) -> TrackID:
         """Get the next free track-ID."""

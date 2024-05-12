@@ -18,7 +18,7 @@ from dgs.models.engine.engine import EngineModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import collate_states, State
 from dgs.utils.torchtools import close_all_layers
-from dgs.utils.track import Tracks, TrackStatistics
+from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
 
@@ -111,7 +111,7 @@ class DGSEngine(EngineModule):
     def get_target(self, ds: State) -> any:
         return ds["class_id"].long()
 
-    def _track_step(self, detections: State) -> tuple[TrackStatistics, dict[str, float]]:
+    def _track_step(self, detections: State) -> dict[str, float]:
         """Run one step of tracking."""
         N: int = len(detections)
         T: int = len(self.tracks)
@@ -161,15 +161,14 @@ class DGSEngine(EngineModule):
 
         # update tracks
         time_track_update_start = time.time()
-        ts: TrackStatistics
-        _, ts = self.tracks.add(tracks=updated_tracks, new=new_states)
+        self.tracks.add(tracks=updated_tracks, new=new_states)
 
         batch_times["track"] = time.time() - time_track_update_start
         batch_times["batch"] = time.time() - time_batch_start
         if N > 0:
             batch_times["indiv"] = batch_times["batch"] / N
 
-        return ts, batch_times
+        return batch_times
 
     def test(self) -> dict[str, any]:
         """Test the DGS Tracker"""
