@@ -560,7 +560,7 @@ class TestStateFunctions(unittest.TestCase):
         self.assertTrue("keypoints_local" in single_s.data)
         self.assertTrue("image_crop" in single_s.data)
         self.assertTrue(isinstance(crop, tv_tensors.Image))
-        self.assertEqual(crop.shape, torch.Size((1, 3, *DEF_VAL.images.crop_size)))
+        self.assertEqual(crop.shape, torch.Size((1, 3, *DEF_VAL["images"]["crop_size"])))
         self.assertEqual(single_s.keypoints_local.shape, DUMMY_KP.shape)
 
         out_size = (100, 100)

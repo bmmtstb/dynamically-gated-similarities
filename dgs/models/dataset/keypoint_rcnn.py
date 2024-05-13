@@ -55,11 +55,11 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         self.validate_params(rcnn_validations)
 
-        self.threshold: float = self.params.get("threshold", DEF_VAL.dataset.kprcnn.threshold)
+        self.threshold: float = self.params.get("threshold", DEF_VAL["dataset"]["kprcnn"]["threshold"])
 
         self.logger.debug("Loading Keypoint-RCNN Model")
-        model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
-        self.register_module("model", model)
+        self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
+        self.register_module("model", self.model)
         self.configure_torch_module(module=self.model, train=False)
 
         self.img_id: int = 1
@@ -96,8 +96,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 imgs=[tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))],
                 bboxes=bbox,
                 kps=kps,
-                crop_size=self.params.get("crop_size", DEF_VAL.images.crop_size),
-                crop_mode=self.params.get("crop_mode", DEF_VAL.images.crop_mode),
+                crop_size=self.params.get("crop_size", DEF_VAL["images"]["crop_size"]),
+                crop_mode=self.params.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
             )
 
             if crops.ndim == 3:

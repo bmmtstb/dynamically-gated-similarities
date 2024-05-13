@@ -71,8 +71,8 @@ def extract_crops_from_images(
             "images": imgs,
             "box": bboxes,
             "keypoints": kps if kps is not None else torch.zeros((len(imgs), 1, 2), device=imgs[0].device),
-            "mode": kwargs.get("crop_mode", DEF_VAL.images.crop_mode),
-            "output_size": kwargs.get("crop_size", DEF_VAL.images.crop_size),
+            "mode": kwargs.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
+            "output_size": kwargs.get("crop_size", DEF_VAL["images"]["crop_size"]),
         }
     )
     crop = res["image"]
@@ -139,7 +139,7 @@ def extract_crops_and_save(
         write_jpeg(
             input=convert_image_dtype(crop, torch.uint8),
             filename=fp,
-            quality=kwargs.get("quality", DEF_VAL.images.jpeg_quality),
+            quality=kwargs.get("quality", DEF_VAL["images"]["jpeg_quality"]),
         )
         if key_points is not None:
             torch.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))

@@ -169,7 +169,7 @@ def extract_crops_from_json_annotation(
         )
 
     # check that the image sizes in the images folder are all the same
-    if kwargs.get("check_img_sizes", DEF_VAL.dataset.pt21.check_img_sizes) and len(set(d["sizes"])) != 1:
+    if kwargs.get("check_img_sizes", DEF_VAL["dataset"]["pt21"]["check_img_sizes"]) and len(set(d["sizes"])) != 1:
         warnings.warn(f"Not all the images within {json_file} have the same size. Sizes are: {set(d['sizes'])}")
 
     if individually:
@@ -337,6 +337,7 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
         The image and annotation data as dictionaries.
         The annotation data is a list of dicts, because every image can have multiple detections / annotations.
     """
+    # pylint: disable=too-many-branches
     # validate the image data
     for key in ["filepath", "image_id", "frame_id"]:
         if key not in s:
@@ -351,11 +352,15 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
                 raise ValueError(f"State has different {key}s, expected all {key}s to match. got: '{s[key]}'.")
         elif (l := len(s[key])) != 1:
             raise ValueError(f"Expected '{key}' ({l}) to have a length of exactly 1.")
+    # add frame id if missing as duplicate of image id
+    if "frame_id" not in s:
+        s["frame_id"] = s["image_id"]
+
     # get the image data
     image_data = {
         "file_name": s.filepath[0],
-        "id": int(s["image_id"][0].item()),
-        "frame_id": int(s["image_id"][0].item()),
+        "id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
+        "frame_id": int(s["frame_id"][0].item() if isinstance(s["frame_id"], t.Tensor) else s["frame_id"][0]),
     }
     if s.B == 0:
         return image_data, []
@@ -377,7 +382,7 @@ def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str,
                 "bboxes": bboxes[i].flatten().tolist(),
                 "kps": kps.flatten().tolist(),
                 "scores": s["scores"][i].flatten().tolist() if "scores" in s else [0.0 for _ in range(17)],
-                "image_id": int(s["image_id"][i].item()),
+                "image_id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
                 "person_id": int(s.person_id[i].item()),
                 "track_id": int(s["pred_tid"][i].item()),
             }
@@ -562,7 +567,7 @@ class PoseTrack21_BBox(BBoxDataset):
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
         img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in map_img_id_path.values()}
-        if self.params.get("force_img_reshape", DEF_VAL.dataset.force_img_reshape):
+        if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
             # take the biggest value of every dimension
             self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
         else:
@@ -703,7 +708,7 @@ class PoseTrack21_Image(ImageDataset):
 
         # imagesize.get() output = (w,h) and our own format = (h, w)
         img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in self.map_img_id_to_path.values()}
-        if self.params.get("force_img_reshape", DEF_VAL.dataset.force_img_reshape):
+        if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
             # take the biggest value of every dimension
             self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
         else:
@@ -731,9 +736,7 @@ class PoseTrack21_Image(ImageDataset):
         pid_list: list[int] = []
         cid_list: list[int] = []
 
-        for anno_id, anno in tqdm(
-            enumerate(json["annotations"]), total=len(json["annotations"]), desc="Loading Annotations"
-        ):
+        for anno_id, anno in enumerate(json["annotations"]):
             img_id = int(anno["image_id"])
             pid = int(anno["person_id"])
             # append the ID of the current annotation to the annotation-list of the respective image
@@ -763,8 +766,8 @@ class PoseTrack21_Image(ImageDataset):
 
     def arbitrary_to_ds(self, a: dict, idx: int) -> State:
         """Convert raw PoseTrack21 annotations to a :class:`State` object."""
-        idx: int = int(a["id"])
-        anno_ids: list[int] = self.map_img_id_to_anno_ids[idx]
+        img_id: int = int(a["id"])
+        anno_ids: list[int] = self.map_img_id_to_anno_ids[img_id]
 
         keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
 
@@ -772,7 +775,7 @@ class PoseTrack21_Image(ImageDataset):
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             # add filepath to tuple even though there is no data to be able to draw the image later
-            filepath=tuple(self.map_img_id_to_path[idx] for _ in range(max(len(anno_ids), 1))),
+            filepath=tuple(self.map_img_id_to_path[img_id] for _ in range(max(len(anno_ids), 1))),
             bbox=bboxes,
             keypoints=keypoints,
             person_id=self.pids[anno_ids].flatten(),
@@ -783,8 +786,8 @@ class PoseTrack21_Image(ImageDataset):
             skeleton_name=tuple(self.skeleton_name for _ in range(len(anno_ids))),
             # optional values
             # Add at least one value for image and frame ID, to be able to generate the results later!
-            image_id=tuple(a["image_id"] for _ in range(max(1, len(anno_ids)))),
-            frame_id=tuple(a["frame_id"] for _ in range(max(1, len(anno_ids)))),
+            image_id=t.ones(max(len(anno_ids), 1), device=self.device, dtype=t.long) * img_id,
+            frame_id=t.ones(max(len(anno_ids), 1), device=self.device, dtype=t.long) * img_id,
         )
         # make sure to get the image crop for this State
         self.get_image_crops(ds)

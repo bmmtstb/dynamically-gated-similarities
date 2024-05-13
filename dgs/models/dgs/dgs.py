@@ -67,7 +67,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # if wanted, compute the softmax of every resulting similarity matrix
         similarity_softmax = nn.Sequential()
-        if self.params.get("similarity_softmax", DEF_VAL.dgs.similarity_softmax):
+        if self.params.get("similarity_softmax", DEF_VAL["dgs"]["similarity_softmax"]):
             similarity_softmax.append(nn.Softmax(dim=-1))
         self.register_module(name="similarity_softmax", module=similarity_softmax)
         self.configure_torch_module(self.similarity_softmax)
@@ -82,7 +82,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # if wanted, compute the softmax after the similarities have been summed up / combined
         combined_softmax = nn.Sequential()
-        if self.params.get("combined_softmax", DEF_VAL.dgs.combined_softmax):
+        if self.params.get("combined_softmax", DEF_VAL["dgs"]["combined_softmax"]):
             combined_softmax.append(nn.Softmax(dim=-1))
         self.register_module(name="combined_softmax", module=combined_softmax)
         self.configure_torch_module(self.combined_softmax)

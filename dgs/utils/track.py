@@ -368,7 +368,7 @@ class Tracks(UserDict):
 
         # set the inactivity threshold
         if thresh is None:
-            self.inactivity_threshold = DEF_VAL.tracks.inactivity_threshold
+            self.inactivity_threshold = DEF_VAL["tracks"]["inactivity_threshold"]
         elif not isinstance(thresh, int):
             raise TypeError(f"Threshold is expected to be int or None, but got {thresh}")
         elif thresh < 0:

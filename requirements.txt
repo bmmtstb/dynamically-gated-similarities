@@ -22,7 +22,6 @@ torchaudio==2.3.*
 av
 black
 coverage[toml]
-easydict
 imagesize
 lapsolver
 matplotlib

@@ -241,12 +241,12 @@ class BaseDataset(BaseModule, TorchDataset):
         self.logger.debug("computing image crops")
         ds.to(self.device)
 
-        if self.params.get("force_img_reshape", DEF_VAL.dataset.force_img_reshape):
+        if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
             ds.image = load_image(
                 ds.filepath,
                 force_reshape=True,
-                mode=self.params.get("image_mode", DEF_VAL.images.image_mode),
-                output_size=self.params.get("image_size", DEF_VAL.images.image_size),
+                mode=self.params.get("image_mode", DEF_VAL["images"]["image_mode"]),
+                output_size=self.params.get("image_size", DEF_VAL["images"]["image_size"]),
                 device=ds.device,
             )
         else:
@@ -256,8 +256,8 @@ class BaseDataset(BaseModule, TorchDataset):
             "image": ds.image,
             "box": ds.bbox,
             "keypoints": ds.keypoints,
-            "output_size": self.params.get("crop_size", DEF_VAL.images.crop_size),
-            "mode": self.params.get("crop_mode", DEF_VAL.images.crop_mode),
+            "output_size": self.params.get("crop_size", DEF_VAL["images"]["crop_size"]),
+            "mode": self.params.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
         }
         new_state = self.transform_crop_resize()(structured_input)
 
@@ -450,18 +450,18 @@ class VideoDataset(BaseDataset, ABC):
 
         self.validate_params(video_dataset_validations)
 
-        torchvision.set_video_backend(self.params.get("video_backend", DEF_VAL.video_dataset.video_backend))
+        torchvision.set_video_backend(self.params.get("video_backend", DEF_VAL["video_dataset"]["video_backend"]))
 
         if not any(self.params["data_path"].endswith(ending) for ending in VIDEO_FORMATS):
             raise ValueError(f"File with unknown file format. Got {self.params['data_path']}")
         video_path = self.get_path_in_dataset(self.params["data_path"])
 
-        stream = self.params.get("stream", DEF_VAL.video_dataset.stream)
+        stream = self.params.get("stream", DEF_VAL["video_dataset"]["stream"])
 
         self.data = VideoReader(
             src=video_path,
             stream=stream,
-            num_threads=self.params.get("num_threads", DEF_VAL.video_dataset.num_threads),
+            num_threads=self.params.get("num_threads", DEF_VAL["video_dataset"]["num_threads"]),
         )
         m = self.data.get_metadata()
         self.fps = m[stream]["fps"][-1]

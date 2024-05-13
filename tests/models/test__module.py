@@ -1,9 +1,9 @@
 import shutil
 import unittest
+from copy import deepcopy
 from unittest.mock import patch
 
 import torch
-from easydict import EasyDict
 from torch import nn
 
 from dgs.models.module import BaseModule, module_validations as base_module_validation
@@ -14,19 +14,17 @@ from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.types import Config, Device
 from helper import get_test_config, test_multiple_devices
 
-TEST_CFG: Config = EasyDict(
-    {
-        "name": "TestModel",
-        "description": "Test Description",
-        "print_prio": "DEBUG",
-        "device": "cpu",
-        "log_dir": "./tests/test_data/logs/",
-        "gpus": "",
-        "sp": True,
-        "is_training": False,
-        "num_workers": 0,
-    }
-)
+TEST_CFG: Config = {
+    "name": "TestModel",
+    "description": "Test Description",
+    "print_prio": "DEBUG",
+    "device": "cpu",
+    "log_dir": "./tests/test_data/logs/",
+    "gpus": "",
+    "sp": True,
+    "is_training": False,
+    "num_workers": 0,
+}
 
 
 def _def_repl(key: str, value: any) -> Config:
@@ -39,7 +37,7 @@ def _def_repl(key: str, value: any) -> Config:
     Returns:
         A modified copy of `TEST_CFG`.
     """
-    new_cfg: Config = EasyDict(TEST_CFG.copy())
+    new_cfg: Config = deepcopy(TEST_CFG)
     new_cfg[key] = value
     return new_cfg
 

@@ -5,7 +5,6 @@
 av==11.0.*
 black
 coverage[toml]
-easydict
 imagesize
 lapsolver
 matplotlib

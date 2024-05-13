@@ -61,7 +61,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
-        if self.params.get("softmax", DEF_VAL.similarity.oks.softmax):
+        if self.params.get("softmax", DEF_VAL["similarity"]["oks"]["softmax"]):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
@@ -173,7 +173,7 @@ class IntersectionOverUnion(SimilarityModule):
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
-        if self.params.get("softmax", DEF_VAL.similarity.iou.softmax):
+        if self.params.get("softmax", DEF_VAL["similarity"]["iou"]["softmax"]):
             self.softmax.append(nn.Softmax(dim=-1))
 
     def get_data(self, ds: State) -> BoundingBoxes:

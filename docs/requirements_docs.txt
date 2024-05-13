@@ -5,7 +5,6 @@
 # av is for FFmpeg libraries and loading videos
 av
 coverage[toml]
-easydict
 imagesize
 matplotlib
 numpy

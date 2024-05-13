@@ -141,12 +141,12 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         self.validate_params(kpcpbeg_validations)
 
         J, j_dim = self.params.get("joint_shape")
-        self.nof_kernels = self.params.get("nof_kernels", DEF_VAL.embed_gen.pose.KPCPBEG.nof_kernels)
+        self.nof_kernels = self.params.get("nof_kernels", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["nof_kernels"])
         # get bias from parameters or use default: True
-        bias: bool = self.params.get("bias", DEF_VAL.embed_gen.pose.KPCPBEG.bias)
+        bias: bool = self.params.get("bias", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["bias"])
 
         self.bbox_converter = ConvertBoundingBoxFormat(
-            format=self.params.get("bbox_format", DEF_VAL.embed_gen.pose.KPCPBEG.bbox_format)
+            format=self.params.get("bbox_format", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["bbox_format"])
         )
 
         # define layers
@@ -156,7 +156,9 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         hidden_layers_kp = set_up_hidden_layer_sizes(
             input_size=J,
             output_size=0,  # placeholder output size will be ignored during creation
-            hidden_layers=self.params.get("hidden_layers_kp", DEF_VAL.embed_gen.pose.KPCPBEG.hidden_layers_kp),
+            hidden_layers=self.params.get(
+                "hidden_layers_kp", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["hidden_layers_kp"]
+            ),
         )
         fc1 = nn.Sequential(
             *[
@@ -173,7 +175,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         hidden_layers_all = set_up_hidden_layer_sizes(
             input_size=hidden_layers_kp[-2] + 4,  # last real layer-size of key point fc layers, defaults to J
             output_size=self.embedding_size,
-            hidden_layers=self.params.get("hidden_layers", DEF_VAL.embed_gen.pose.KPCPBEG.hidden_layers),
+            hidden_layers=self.params.get("hidden_layers", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["hidden_layers"]),
         )
         self.fc2 = nn.Sequential(
             *[
@@ -278,7 +280,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
 
         self.J, self.j_dim = self.params.get("joint_shape")
         # get bias from parameters or use default: True
-        self.bias: bool = self.params.get("bias", DEF_VAL.embed_gen.pose.LPBEG.bias)
+        self.bias: bool = self.params.get("bias", DEF_VAL["embed_gen"]["pose"]["LPBEG"]["bias"])
 
         self.classifier = nn.Sequential(
             nn.Linear(self.embedding_size, self.nof_classes),
@@ -288,7 +290,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         self.model = self._init_flattened_model()
 
         self.bbox_converter = ConvertBoundingBoxFormat(
-            format=self.params.get("bbox_format", DEF_VAL.embed_gen.pose.LPBEG.bbox_format)
+            format=self.params.get("bbox_format", DEF_VAL["embed_gen"]["pose"]["LPBEG"]["bbox_format"])
         )
 
     def _init_flattened_model(self) -> nn.Module:
@@ -298,7 +300,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         hidden_layers = set_up_hidden_layer_sizes(
             input_size=self.J * self.j_dim + 4,
             output_size=self.embedding_size,
-            hidden_layers=self.params.get("hidden_layers", DEF_VAL.embed_gen.pose.LPBEG.hidden_layers),
+            hidden_layers=self.params.get("hidden_layers", DEF_VAL["embed_gen"]["pose"]["LPBEG"]["hidden_layers"]),
         )
         return self.configure_torch_module(  # send to the target device
             nn.Sequential(

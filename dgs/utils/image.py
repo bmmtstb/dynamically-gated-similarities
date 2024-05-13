@@ -109,8 +109,8 @@ def load_image(
     if force_reshape:
         transform = tvt.Compose([CustomToAspect(), CustomResize(), transform_dtype])
         new_images: list[Image] = []
-        mode: str = kwargs.pop("mode", DEF_VAL.images.image_mode)
-        output_size: ImgShape = kwargs.pop("output_size", DEF_VAL.images.image_size)
+        mode: str = kwargs.pop("mode", DEF_VAL["images"]["image_mode"])
+        output_size: ImgShape = kwargs.pop("output_size", DEF_VAL["images"]["image_size"])
 
         for img in images:
             data = {
@@ -493,7 +493,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         self.h, self.w = output_size
         self.target_aspect: float = self.w / self.h
 
-        a_r_decimals: int = int(kwargs.get("aspect_round_decimals", DEF_VAL.images.aspect_round_decimals))
+        a_r_decimals: int = int(kwargs.get("aspect_round_decimals", DEF_VAL["images"]["aspect_round_decimals"]))
 
         # Return early if aspect ratios are fairly close. There will not be any noticeable distortion.
         if mode in ["distort", "outside-crop"] or (
@@ -787,7 +787,9 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
                     "box": validate_bboxes(tvte.wrap(bboxes[i], like=bboxes)),
                     "keypoints": validate_key_points(coord_crop),
                     "output_size": output_size,
-                    "mode": mode if mode != "outside-crop" else kwargs.get("aspect_mode", DEF_VAL.images.aspect_mode),
+                    "mode": (
+                        mode if mode != "outside-crop" else kwargs.get("aspect_mode", DEF_VAL["images"]["aspect_mode"])
+                    ),
                     **kwargs,
                 }
             )

@@ -78,13 +78,13 @@ class TorchreidVisualSimilarity(SimilarityModule):
         self.add_module(name="func", module=func)
 
         self.final = nn.Sequential()
-        if self.params.get("softmax", DEF_VAL.similarity.torchreid.softmax):
+        if self.params.get("softmax", DEF_VAL["similarity"]["torchreid"]["softmax"]):
             self.final.append(nn.Softmax(dim=-1))
 
     def _init_func(self) -> nn.Module:
         """Initialize the similarity function"""
         name = self.params["metric"]
-        m = get_metric(name)(**self.params.get("similarity_kwargs", DEF_VAL.similarity.torchreid.sim_kwargs))
+        m = get_metric(name)(**self.params.get("similarity_kwargs", DEF_VAL["similarity"]["torchreid"]["sim_kwargs"]))
 
         # send function to the device
         return self.configure_torch_module(m, train=False)

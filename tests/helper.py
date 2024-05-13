@@ -73,8 +73,8 @@ def get_test_config() -> Config:
     """
     cfg = load_config("./tests/test_data/configs/test_config.yaml")
 
-    cfg.name = "Test"
-    cfg.log_dir = "./tests/test_data/logs/"
-    cfg.print_prio = "CRITICAL"
+    cfg["name"] = "Test"
+    cfg["log_dir"] = "./tests/test_data/logs/"
+    cfg["print_prio"] = "CRITICAL"
 
     return cfg

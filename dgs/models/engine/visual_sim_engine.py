@@ -111,11 +111,11 @@ class VisualSimilarityEngine(EngineModule):
         self.val_dl = val_loader
 
         self.validate_params(test_validations, "params_test")
-        self.topk_cmc: list[int] = self.params_test.get("topk_cmc", DEF_VAL.engine.visual.topk_cmc)
+        self.topk_cmc: list[int] = self.params_test.get("topk_cmc", DEF_VAL["engine"]["visual"]["topk_cmc"])
 
         # get metric and kwargs
         self.metric = get_metric(self.params_test["metric"])(
-            **self.params_test.get("metric_kwargs", DEF_VAL.engine.visual.metric_kwargs)
+            **self.params_test.get("metric_kwargs", DEF_VAL["engine"]["visual"]["metric_kwargs"])
         )
 
         if self.is_training:
@@ -123,7 +123,7 @@ class VisualSimilarityEngine(EngineModule):
 
             self.nof_classes: int = self.params_train["nof_classes"]
 
-            self.topk_acc: list[int] = self.params_train.get("topk_acc", DEF_VAL.engine.visual.topk_acc)
+            self.topk_acc: list[int] = self.params_train.get("topk_acc", DEF_VAL["engine"]["visual"]["topk_acc"])
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Get the target pIDs from the data."""
@@ -253,12 +253,12 @@ class VisualSimilarityEngine(EngineModule):
         q_embed, q_t_ids = self._extract_data(
             dl=self.test_dl,
             desc="Query",
-            write_embeds=self.params_test.get("write_embeds", DEF_VAL.engine.visual.write_embeds)[0],
+            write_embeds=self.params_test.get("write_embeds", DEF_VAL["engine"]["visual"]["write_embeds"])[0],
         )
         g_embed, g_t_ids = self._extract_data(
             dl=self.val_dl,
             desc="Gallery",
-            write_embeds=self.params_test.get("write_embeds", DEF_VAL.engine.visual.write_embeds)[1],
+            write_embeds=self.params_test.get("write_embeds", DEF_VAL["engine"]["visual"]["write_embeds"])[1],
         )
 
         self.logger.debug("Use metric to compute the distance matrix.")
@@ -306,7 +306,7 @@ class VisualSimilarityEngine(EngineModule):
         embeds, _ = self._extract_data(
             dl=self.test_dl,
             desc="Predict",
-            write_embeds=self.params_test.get("write_embeds", DEF_VAL.engine.visual.write_embeds)[0],
+            write_embeds=self.params_test.get("write_embeds", DEF_VAL["engine"]["visual"]["write_embeds"])[0],
         )
         self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
         self.logger.info(f"#### Prediction of {self.name} complete ####")

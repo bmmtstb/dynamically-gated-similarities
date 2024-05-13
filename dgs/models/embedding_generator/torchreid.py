@@ -95,7 +95,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
 
         EmbeddingGeneratorModule.__init__(self, config=new_cfg, path=path)
 
-        self.model_weights = self.params.get("weights", DEF_VAL.embed_gen.torchreid.weights)
+        self.model_weights = self.params.get("weights", DEF_VAL["embed_gen"]["torchreid"]["weights"])
 
         model = self._init_model(self.model_weights == "pretrained")
         self.add_module(name="model", module=model)

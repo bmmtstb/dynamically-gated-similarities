@@ -6,10 +6,11 @@ import os.path
 import time
 from datetime import datetime
 
-import torch
+import torch as t
 from lapsolver import solve_dense
 from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
+from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
 from dgs.models.dataset.posetrack21 import generate_pt21_submission_file, submission_data_from_state
@@ -98,11 +99,11 @@ class DGSEngine(EngineModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
 
-        self.save_images: bool = self.params_test.get("save_images", DEF_VAL.engine.dgs.save_images)
+        self.save_images: bool = self.params_test.get("save_images", DEF_VAL["engine"]["dgs"]["save_images"])
 
         self.tracks = Tracks(
-            N=self.params_test.get("max_track_length", DEF_VAL.track.N),
-            thresh=self.params_test.get("inactivity_threshold", DEF_VAL.tracks.inactivity_threshold),
+            N=self.params_test.get("max_track_length", DEF_VAL["track"]["N"]),
+            thresh=self.params_test.get("inactivity_threshold", DEF_VAL["tracks"]["inactivity_threshold"]),
         )
 
     def get_data(self, ds: State) -> any:
@@ -141,7 +142,7 @@ class DGSEngine(EngineModule):
             # Because the algorithm returns the lowest scores, we need to compute 1-sim as cost matrix.
             # The result is a list of N 2-tuples containing the position
             time_match_start = time.time()
-            cost_matrix = torch.ones_like(similarity) - similarity
+            cost_matrix = t.ones_like(similarity) - similarity
             # lapsolver uses numpy arrays instead of torch, therefore, convert but loose computational graph
             cost_matrix = torch_to_numpy(cost_matrix)
             rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
@@ -170,7 +171,7 @@ class DGSEngine(EngineModule):
 
         return batch_times
 
-    @torch.no_grad()
+    @t.no_grad()
     def test(self) -> dict[str, any]:
         """Test the DGS Tracker"""
         # pylint: disable=too-many-statements
@@ -188,14 +189,23 @@ class DGSEngine(EngineModule):
         self.logger.debug(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
         self.logger.debug("Loading, extracting, and predicting data, this might take a while...")
 
-        for detections in tqdm(self.test_dl, desc="DataLoader"):
+        for detections in tqdm(self.test_dl, desc="DataLoader", leave=False):
             for detection in detections:
 
                 N: int = len(detections)
 
                 batch_times = self._track_step(detections=detection)
 
-                active = collate_states(self.tracks.get_active_states())
+                # get active states and skip adding if there are no active states
+                active_list = self.tracks.get_active_states()
+                if len(active_list) == 0:
+                    empty = detection.copy()
+                    empty.data["bbox"] = tvte.BoundingBoxes(
+                        t.empty((0, 4), device=self.device), canvas_size=(0, 0), format="XYWH"
+                    )
+                    assert empty.B == 0
+                    active_list = [empty]
+                active = collate_states(active_list)
                 # get submission data
                 new_img_data, new_anno_data = submission_data_from_state(active)
                 img_data.append(new_img_data)
@@ -214,16 +224,16 @@ class DGSEngine(EngineModule):
                     active.draw(
                         save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
                         show_kp=(
-                            self.params_test.get("show_keypoints", DEF_VAL.engine.dgs.show_keypoints)
+                            self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"])
                             if detection.B > 0
                             else False
                         ),
                         show_skeleton=(
-                            self.params_test.get("show_skeleton", DEF_VAL.engine.dgs.show_skeleton)
+                            self.params_test.get("show_skeleton", DEF_VAL["engine"]["dgs"]["show_skeleton"])
                             if detection.B > 0
                             else False
                         ),
-                        **self.params_test.get("draw_kwargs", DEF_VAL.engine.dgs.draw_kwargs),
+                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
 
                 frame_idx += 1
@@ -238,7 +248,7 @@ class DGSEngine(EngineModule):
 
         return results
 
-    @torch.no_grad()
+    @t.no_grad()
     def predict(self) -> None:
         """Given test data, predict the results without evaluation."""
         # set model to evaluation mode and freeze / close all layers
@@ -252,8 +262,8 @@ class DGSEngine(EngineModule):
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
         detections: list[State]
         # batch get data from the data loader
-        for detections in tqdm(self.test_dl, desc="DataLoader", total=len(self.test_dl)):
-            for detection in tqdm(detections, total=len(detections), desc="Tracker", leave=False):
+        for detections in tqdm(self.test_dl, desc="DataLoader"):
+            for detection in tqdm(detections, desc="Tracker", leave=False):
                 _ = self._track_step(detections=detection)
 
                 active = collate_states(self.tracks.get_active_states())
@@ -267,20 +277,20 @@ class DGSEngine(EngineModule):
                     active = collate_states(self.tracks.get_active_states())
                     active.draw(
                         save_path=out_fp,
-                        show_kp=self.params_test.get("show_keypoints", DEF_VAL.engine.dgs.show_keypoints),
-                        show_skeleton=self.params_test.get("show_skeleton", DEF_VAL.engine.dgs.show_skeleton),
-                        **self.params_test.get("draw_kwargs", DEF_VAL.engine.dgs.draw_kwargs),
+                        show_kp=self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"]),
+                        show_skeleton=self.params_test.get("show_skeleton", DEF_VAL["engine"]["dgs"]["show_skeleton"]),
+                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
                 else:
                     detection.draw(
                         save_path=out_fp,
                         show_kp=False,
                         show_skeleton=False,
-                        **self.params_test.get("draw_kwargs", DEF_VAL.engine.dgs.draw_kwargs),
+                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
 
-                for t in self.tracks.values():
-                    t[-1].clean()
+                for track in self.tracks.values():
+                    track[-1].clean()
                 # move to the next frame
                 frame_idx += 1
 
@@ -292,5 +302,5 @@ class DGSEngine(EngineModule):
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 
-    def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:
+    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:
         raise NotImplementedError

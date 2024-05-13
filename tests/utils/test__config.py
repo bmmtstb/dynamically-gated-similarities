@@ -4,12 +4,9 @@ import unittest
 from copy import deepcopy
 from unittest.mock import patch
 
-from easydict import EasyDict
-
 from dgs.models.module import BaseModule
 from dgs.utils.config import (
     DEF_VAL,
-    easydict_to_dict,
     fill_in_defaults,
     get_sub_config,
     insert_into_config,
@@ -19,8 +16,8 @@ from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
 from dgs.utils.types import Config
 from helper import get_test_config
 
-EMPTY_CONFIG: Config = EasyDict({})
-SIMPLE_CONFIG: Config = EasyDict({"foo": "foo foo", "second": "value"})
+EMPTY_CONFIG: Config = {}
+SIMPLE_CONFIG: Config = {"foo": "foo foo", "second": "value"}
 SUB_DICT: Config = {
     "x": 1,
     "y": 2,
@@ -29,25 +26,23 @@ SUB_DICT: Config = {
         "pickaxe": {"iron": 10, "diamond": 100.0},
     },
 }
-NESTED_CONFIG: Config = EasyDict(
-    {
-        "foo": 3,
-        "bar": SUB_DICT,
-        "dog": SIMPLE_CONFIG,
-    }
-)
+NESTED_CONFIG: Config = {
+    "foo": 3,
+    "bar": SUB_DICT,
+    "dog": SIMPLE_CONFIG,
+}
 TEST_CONFIG: Config = get_test_config()
 
 
 class TestGetSubConfig(unittest.TestCase):
     def test_default_config_yaml(self):
-        self.assertTrue(isinstance(DEF_VAL, EasyDict))
+        self.assertTrue(isinstance(DEF_VAL, dict))
         self.assertTrue(len(DEF_VAL.keys()) > 1)
 
     def test_sub_config_still_correct_type(self):
         for cfg, path, new_type in [
-            (NESTED_CONFIG, ["bar"], EasyDict),
-            (NESTED_CONFIG, [], EasyDict),
+            (NESTED_CONFIG, ["bar"], dict),
+            (NESTED_CONFIG, [], dict),
             ({"bar": {"x": 1}}, ["bar", "x"], int),
             ({"bar": {"x": 1}}, ["bar"], dict),
             ({"bar": {"x": 1}}, [], dict),
@@ -115,7 +110,7 @@ class TestFillInConfig(unittest.TestCase):
                 ),
                 (deepcopy(EMPTY_CONFIG), None, deepcopy(EMPTY_CONFIG), "get replaced by None", True),
                 (
-                    EasyDict({"bar": {"x": 1}}),
+                    {"bar": {"x": 1}},
                     deepcopy(NESTED_CONFIG),
                     deepcopy(NESTED_CONFIG),
                     "on same value replace nested recursively",
@@ -123,19 +118,14 @@ class TestFillInConfig(unittest.TestCase):
                 ),
                 ({"a": {"new": 1}}, {"a": 1, "b": 2}, {"a": {"new": 1}, "b": 2}, "Overwrite value with nested"),
                 ({"a": 1, "b": 2}, {"a": {"old": 1}}, {"a": 1, "b": 2}, "Overwrite nested with value"),
-                (EasyDict({"i": 1, "j": 2}), {"i": 0}, EasyDict({"i": 1, "j": 2}), "ED and D -> ED, duplicate"),
-                (
-                    {"i": 1, "j": 2},
-                    EasyDict({"i": 0, "k": 3}),
-                    EasyDict({"i": 1, "j": 2, "k": 3}),
-                    "D and ED -> ED, add",
-                ),
+                ({"i": 1, "j": 2}, {"i": 0}, {"i": 1, "j": 2}, "D and D -> D, duplicate"),
+                ({"i": 1, "j": 2}, {"i": 0, "k": 3}, {"i": 1, "j": 2, "k": 3}, "D and D -> D, add"),
                 ({"i": 1, "j": 2}, {"k": 3}, {"i": 1, "j": 2, "k": 3}, "D and D -> D, no overlap"),
                 (
-                    EasyDict({"i": 1, "j": 2, "k": EasyDict({"a": 0})}),
-                    EasyDict({"k": 0, "i": EasyDict({"b": 0})}),
-                    EasyDict({"i": 1, "j": 2, "k": EasyDict({"a": 0})}),
-                    "ED and ED -> ED, nested values",
+                    {"i": 1, "j": 2, "k": {"a": 0}},
+                    {"k": 0, "i": {"b": 0}},
+                    {"i": 1, "j": 2, "k": {"a": 0}},
+                    "D and D -> D, nested values",
                 ),
                 (
                     deepcopy(SIMPLE_CONFIG),
@@ -170,7 +160,7 @@ class TestFillInConfig(unittest.TestCase):
             self.assertNotIn(value, TEST_CONFIG)
 
     def test_fill_in_default_nested_update_value(self):
-        current = EasyDict({"bar": {"deeper": {"pickaxe": {"iron": 100}}}})
+        current = {"bar": {"deeper": {"pickaxe": {"iron": 100}}}}
         default = deepcopy(NESTED_CONFIG)
         result = deepcopy(NESTED_CONFIG)
         result["bar"]["deeper"]["pickaxe"]["iron"] = 100
@@ -179,7 +169,7 @@ class TestFillInConfig(unittest.TestCase):
         self.assertEqual(NESTED_CONFIG["bar"]["deeper"]["pickaxe"]["iron"], 10)
 
     def test_fill_in_default_overwrite_dict(self):
-        current = EasyDict({"bar": None})
+        current = {"bar": None}
         default = deepcopy(NESTED_CONFIG)
         result = deepcopy(NESTED_CONFIG)
         result["bar"] = None
@@ -188,7 +178,7 @@ class TestFillInConfig(unittest.TestCase):
         self.assertEqual(NESTED_CONFIG["bar"]["deeper"]["pickaxe"]["iron"], 10)
 
     def test_fill_in_default_additional_value_in_current(self):
-        current = EasyDict({"bar": {"deeper": {"pickaxe": {"copper": 100}}}})
+        current = {"bar": {"deeper": {"pickaxe": {"copper": 100}}}}
         default = deepcopy(NESTED_CONFIG)
         result = deepcopy(NESTED_CONFIG)
         result["bar"]["deeper"]["pickaxe"]["copper"] = 100
@@ -198,7 +188,7 @@ class TestFillInConfig(unittest.TestCase):
 
     def test_fill_in_default_additional_value_in_default(self):
         current = deepcopy(NESTED_CONFIG)
-        default = EasyDict({"bar": {"deeper": {"pickaxe": {"copper": 100}}}})
+        default = {"bar": {"deeper": {"pickaxe": {"copper": 100}}}}
         result = deepcopy(NESTED_CONFIG)
         result["bar"]["deeper"]["pickaxe"]["copper"] = 100
 
@@ -212,18 +202,8 @@ class TestFillInConfig(unittest.TestCase):
 
 
 class TestLoadConfig(unittest.TestCase):
-    def test_load_config_easydict(self):
-        cfg = load_config("./tests/test_data/configs/test_config.yaml")  # easydict=True
-        self.assertIsInstance(cfg, EasyDict)
-        self.assertEqual(cfg.device, "cpu")
-        self.assertTrue(cfg.dummy_config.kwargs.more_data, "Is not a nested EasyDict")
-        self.assertListEqual(cfg.dummy_config.kwargs.even_more_data, [1, 2, 3, 4])
-        # no tuples in easydicts!
-        # self.assertEqual(cfg.dummy_config.kwargs.tuple_data, (1, 2, 3))
-        self.assertEqual(cfg.dummy_config.kwargs.none_data, None)
-
     def test_load_config_dict(self):
-        cfg = load_config("./tests/test_data/configs/test_config.yaml", easydict=False)
+        cfg = load_config("./tests/test_data/configs/test_config.yaml")
         self.assertIsInstance(cfg, dict)
         self.assertEqual(cfg["device"], "cpu")
         self.assertTrue(cfg["dummy_config"]["kwargs"]["more_data"], "Nesting did not get saved correctly.")
@@ -234,55 +214,53 @@ class TestLoadConfig(unittest.TestCase):
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_configs_dir(self):
         default_cfg = get_test_config()
-        for is_easydict in [True, False]:
-            abs_path = "./configs/"
-            paths = [
-                os.path.normpath(os.path.join(abs_path, child_path))
-                for child_path in os.listdir(abs_path)
-                if child_path.endswith(".yaml") or child_path.endswith(".yml")
-            ]
-            for path in paths:
-                with self.subTest(msg=f"path: {path}"):
-                    # make sure to change log_dir, so tests do not create empty log folders
-                    cfg = fill_in_defaults(
-                        {"log_dir": f"./tests/test_data/TEST_loader/{path.split('.')[0]}/"},
-                        load_config(path, easydict=is_easydict),
-                    )
+        abs_path = "./configs/"
+        paths = [
+            os.path.normpath(os.path.join(abs_path, child_path))
+            for child_path in os.listdir(abs_path)
+            if child_path.endswith(".yaml") or child_path.endswith(".yml")
+        ]
+        for path in paths:
+            with self.subTest(msg=f"path: {path}"):
+                # make sure to change log_dir, so tests do not create empty log folders
+                cfg = fill_in_defaults(
+                    {"log_dir": f"./tests/test_data/TEST_loader/{path.split('.')[0]}/"},
+                    load_config(path),
+                )
 
-                    self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
-                    self.assertIn("name", cfg)
-                    name = cfg["name"]
-                    cfg_w_def = fill_in_defaults(cfg, default_cfg=default_cfg)
-                    b = BaseModule(cfg_w_def, [])
-                    self.assertIsInstance(b, BaseModule)
-                    self.assertEqual(b.name, name)
+                self.assertIsInstance(cfg, dict)
+                self.assertIn("name", cfg)
+                name = cfg["name"]
+                cfg_w_def = fill_in_defaults(cfg, default_cfg=default_cfg)
+                b = BaseModule(cfg_w_def, [])
+                self.assertIsInstance(b, BaseModule)
+                self.assertEqual(b.name, name)
         shutil.rmtree("./tests/test_data/TEST_loader/", ignore_errors=True)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_load_all_yaml_in_test_data(self):
         default_cfg = get_test_config()
-        for is_easydict in [True, False]:
-            abs_path = "./tests/test_data/configs/"
-            paths = [
-                os.path.normpath(os.path.join(abs_path, child_path))
-                for child_path in os.listdir(abs_path)
-                if child_path.endswith(".yaml") or child_path.endswith(".yml")
-            ]
-            self.assertTrue(len(paths) > 2)
-            for path in paths:
-                with self.subTest(msg=f"path: {path}"):
-                    # make sure to change log_dir, so tests do not create empty log folders
-                    cfg = fill_in_defaults(
-                        {"log_dir": f"./tests/test_data/TEST_loader/{path.split('.')[0]}/"},
-                        load_config(path, easydict=is_easydict),
-                    )
-                    self.assertIsInstance(cfg, EasyDict if is_easydict else dict)
-                    self.assertIn("name", cfg)
-                    name = cfg["name"]
-                    cfg_w_def = fill_in_defaults(cfg, default_cfg=default_cfg)
-                    b = BaseModule(cfg_w_def, [])
-                    self.assertIsInstance(b, BaseModule)
-                    self.assertEqual(b.name, name)
+        abs_path = "./tests/test_data/configs/"
+        paths = [
+            os.path.normpath(os.path.join(abs_path, child_path))
+            for child_path in os.listdir(abs_path)
+            if child_path.endswith(".yaml") or child_path.endswith(".yml")
+        ]
+        self.assertTrue(len(paths) > 2)
+        for path in paths:
+            with self.subTest(msg=f"path: {path}"):
+                # make sure to change log_dir, so tests do not create empty log folders
+                cfg = fill_in_defaults(
+                    {"log_dir": f"./tests/test_data/TEST_loader/{path.split('.')[0]}/"},
+                    load_config(path),
+                )
+                self.assertIsInstance(cfg, dict)
+                self.assertIn("name", cfg)
+                name = cfg["name"]
+                cfg_w_def = fill_in_defaults(cfg, default_cfg=default_cfg)
+                b = BaseModule(cfg_w_def, [])
+                self.assertIsInstance(b, BaseModule)
+                self.assertEqual(b.name, name)
         shutil.rmtree("./tests/test_data/TEST_loader/", ignore_errors=True)
 
     def test_load_config_exception(self):
@@ -373,47 +351,6 @@ class TestInsertIntoConfig(unittest.TestCase):
                 else:
                     self.assertEqual(get_sub_config(default, path), value)
         self.assertNotIn("override", test_cfg)
-
-
-class TestEasyDictToDict(unittest.TestCase):
-
-    def test_easydict_to_dict_simple(self):
-        for easy_dict, result in [
-            (EMPTY_CONFIG, {}),
-            (EasyDict({"a": 1, "b": 2}), {"a": 1, "b": 2}),
-            (SIMPLE_CONFIG, SIMPLE_CONFIG.__dict__),
-            (EasyDict(deepcopy(SUB_DICT)), SUB_DICT),
-        ]:
-            with self.subTest(msg="easy_dict: {}, result: {}".format(easy_dict, result)):
-                self.assertEqual(easydict_to_dict(easy_dict), result)
-
-    def test_dict_to_dict_stays(self):
-        for dict_ in [{"dummy": 1}, SUB_DICT]:
-            with self.subTest(msg="dict_: {}".format(dict_)):
-                # noinspection PyTypeChecker
-                self.assertEqual(easydict_to_dict(dict_), dict_)
-
-    def test_nested_easydict_in_others(self):
-        ed = EasyDict(
-            {
-                "a": [EasyDict({"a1": 1}), 2, 3],
-                "b": (
-                    1,
-                    2,
-                    EasyDict({"b3": [3, 4, EasyDict({"b5": 5})]}),
-                ),
-            }
-        )
-        output = {
-            "a": [{"a1": 1}, 2, 3],
-            "b": [
-                1,
-                2,
-                {"b3": [3, 4, {"b5": 5}]},
-            ],
-        }
-
-        self.assertEqual(easydict_to_dict(ed), output)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ from copy import deepcopy
 from typing import Union
 
 import yaml
-from easydict import EasyDict
 from yaml.constructor import SafeConstructor
 
 from dgs.utils.exceptions import InvalidConfigException, InvalidPathException
@@ -26,8 +25,6 @@ def construct_yaml_tuple(self, node):  # pragma: no cover
     seq = self.construct_sequence(node)
     # only make "leaf sequences" into tuples, you can add dict
     # and other types as necessary
-    if seq and isinstance(seq[0], tuple):
-        return seq
     return tuple(seq)
 
 
@@ -38,18 +35,15 @@ SafeConstructor.add_constructor("tag:yaml.org,2002:python/tuple", construct_yaml
 
 def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
     """
-    Given a full configuration file in nested dict style, EasyDict style, or similar,
+    Given a full configuration file in nested dict style,
     return the given subtree by using the items in path as node keys.
 
-    Works with regular dicts and with EasyDict.
-
     Args:
-        config: Configuration file, EasyDict stile or plain nested dict
+        config: Configuration file as nested dict.
         path: Path of a subtree within this config dictionary
 
     Examples:
         With a given configuration, this would look something like this.
-        Keep in mind that most configs use the type EasyDict, but works the same.
 
         >>> cfg: Config = {
             "bar": {
@@ -74,7 +68,7 @@ def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
     raise KeyError(f"Key {path[0]} does not exist in current configuration {config}.")
 
 
-def load_config(filepath: FilePath, easydict: bool = True) -> Config:
+def load_config(filepath: FilePath) -> Config:
     """
     Load a config.yaml file as nested dictionary.
 
@@ -83,10 +77,8 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
             Path should start at project root or be a "real" system path (object).
 
             It is expected that all the configuration files are stored in the `configs` folder, but any path is valid.
-        easydict: Whether to output a plain dictionary or an EasyDict object, which behaves mostly the same.
-            Defaults to true, because every dict function should work with an EasyDict.
     Returns:
-        The loaded configuration as a nested dictionary or `EasyDict` object.
+        The loaded configuration as a nested dictionary object.
     """
     try:
         fp = to_abspath(filepath)
@@ -95,8 +87,6 @@ def load_config(filepath: FilePath, easydict: bool = True) -> Config:
 
     with open(fp, encoding="utf-8") as file:
         config = yaml.safe_load(file)
-    if easydict:
-        return EasyDict(config)
     return config
 
 
@@ -105,15 +95,11 @@ def save_config(filepath: FilePath, config: Config) -> None:  # pragma: no cover
 
     Args:
         filepath: The path at which the configuration file should be stored.
-        config: The configuration, either as regular dict or :class:`EasyDict`.
+        config: The (nested) configuration, as (nested) regular dicts.
     """
     mkdir_if_missing(os.path.dirname(filepath))
     if not (filepath.endswith(".yaml") or filepath.endswith(".yml")):
         filepath += ".yaml"
-
-    # saving an EasyDict as yaml is not possible, therefore transform back to regular dict (recursive!)
-    if isinstance(config, EasyDict):
-        config = easydict_to_dict(config)
 
     with open(filepath, "w", encoding="utf-8") as file:
         yaml.dump(config, file)
@@ -127,8 +113,8 @@ def fill_in_defaults(config: Config, default_cfg: Config, copy: bool = True) -> 
     Additionally, keys only present in the default configuration will be added to the current configuration.
 
     Args:
-        config: Current configuration as EasyDict or nested dict
-        default_cfg: Default configuration as EasyDict or nested dict
+        config: Current configuration as nested dict
+        default_cfg: Default configuration as nested dict
         copy: Whether to copy ``default_cgf`` before updating.
             Default True.
 
@@ -138,7 +124,6 @@ def fill_in_defaults(config: Config, default_cfg: Config, copy: bool = True) -> 
 
     def deep_update(default_dict: Config, new_dict: Config) -> Config:
         """Modify dict.update() to work recursively for nested dicts.
-        Due to update being overwritten in the EasyDict package, this works for dict and EasyDict.
 
         Overwrites dict1.update(dict2).
 
@@ -159,8 +144,8 @@ def fill_in_defaults(config: Config, default_cfg: Config, copy: bool = True) -> 
                 default_dict[key_new] = val_new
         return default_dict
 
-    if not isinstance(config, EasyDict | dict):
-        raise InvalidConfigException(f"Config is expected to be dict or EasyDict, but is {type(config)}.")
+    if not isinstance(config, dict):
+        raise InvalidConfigException(f"Config is expected to be a dict, but is {type(config)}.")
 
     # make sure to create a copy of default config, otherwise values might get overwritten involuntarily!
     new_config: Config = deep_update(
@@ -168,8 +153,6 @@ def fill_in_defaults(config: Config, default_cfg: Config, copy: bool = True) -> 
         config,
     )
 
-    if isinstance(config, EasyDict) or isinstance(default_cfg, EasyDict):
-        return EasyDict(new_config)
     return new_config
 
 
@@ -195,19 +178,6 @@ def insert_into_config(path: NodePath, value: Config, original: Config, copy: bo
         value = {p: value}
 
     return fill_in_defaults(value, original, copy=copy)
-
-
-def easydict_to_dict(ed: Union[dict, EasyDict]) -> dict:
-    """Given an :class:`EasyDict` convert it to a regular dict recursively"""
-    if isinstance(ed, EasyDict):
-        ed = dict(ed)
-    if isinstance(ed, dict):
-        for key, value in ed.items():
-            ed[key] = easydict_to_dict(value)
-    elif isinstance(ed, (list, tuple)):  # there are no tuples in an easydict
-        ed = [easydict_to_dict(val) for val in ed]
-
-    return ed
 
 
 DEF_VAL: Config = load_config("./dgs/default_values.yaml")

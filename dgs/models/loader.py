@@ -170,16 +170,18 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
         assert isinstance(ds, TorchDataset)
         params = get_sub_config(config=config, path=path)
 
-    batch_size: int = params.get("batch_size", DEF_VAL.dataloader.batch_size)
-    drop_last: bool = params.get("drop_last", DEF_VAL.dataloader.drop_last)
-    shuffle: bool = params.get("shuffle", DEF_VAL.dataloader.shuffle)
+    batch_size: int = params.get("batch_size", DEF_VAL["dataloader"]["batch_size"])
+    drop_last: bool = params.get("drop_last", DEF_VAL["dataloader"]["drop_last"])
+    shuffle: bool = params.get("shuffle", DEF_VAL["dataloader"]["shuffle"])
 
     data_loader = TorchDataLoader(
         dataset=ds,
         batch_size=batch_size,
         drop_last=drop_last,
-        num_workers=params.get("workers", DEF_VAL.dataloader.workers),
+        num_workers=params.get("workers", DEF_VAL["dataloader"]["workers"]),
         shuffle=shuffle,
-        collate_fn=collate_lists if params.get("return_lists", DEF_VAL.dataloader.return_lists) else collate_states,
+        collate_fn=(
+            collate_lists if params.get("return_lists", DEF_VAL["dataloader"]["return_lists"]) else collate_states
+        ),
     )
     return data_loader

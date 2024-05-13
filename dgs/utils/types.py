@@ -5,14 +5,13 @@ definition of regularly used types
 from typing import Callable, Union
 
 import torch
-from easydict import EasyDict
 from torch import nn
 from torch.optim.lr_scheduler import LRScheduler
 from torch.types import Device as TorchDevice
 from torchvision.tv_tensors import Image as tv_Image, Mask as tv_Mask, Video as tv_Video
 
 # Configuration
-Config = Union[dict[str, any], EasyDict]  # is actually an EasyDict but can't use that as variable type hint
+Config = dict[str, any]
 """A nested configuration, describing a module or the whole tracker."""
 NodePath = list[str]
 """A list of key-names used for traversing through a config."""

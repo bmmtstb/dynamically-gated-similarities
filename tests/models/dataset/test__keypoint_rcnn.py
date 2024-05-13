@@ -198,7 +198,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 out: State = out_list[0]
                 self.assertTrue(isinstance(out, State))
                 self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
-                self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL.images.crop_size)))
+                self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL["images"]["crop_size"])))
                 i += 1
                 if i >= 2:
                     break
@@ -233,7 +233,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 for out in out_list:
                     self.assertTrue(isinstance(out, State))
                     self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
-                    self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL.images.crop_size)))
+                    self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL["images"]["crop_size"])))
                 i += 1
                 if i >= 2:
                     break

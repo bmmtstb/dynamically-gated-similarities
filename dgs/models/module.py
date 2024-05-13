@@ -125,7 +125,7 @@ class BaseModule(ABC):
             os.path.abspath(
                 os.path.join(
                     PROJECT_ROOT,
-                    self.config.get("log_dir", DEF_VAL.base.log_dir),
+                    self.config.get("log_dir", DEF_VAL["base"]["log_dir"]),
                     f"./{date.today().strftime('%Y%m%d')}/",
                 )
             )
@@ -249,7 +249,7 @@ class BaseModule(ABC):
             return logger
 
         # set level
-        prio = self.config.get("print_prio", DEF_VAL.base.print_prio)
+        prio = self.config.get("print_prio", DEF_VAL["base"]["print_prio"])
         log_level = PRINT_PRIORITY[prio] if isinstance(prio, str) else prio
         logger.setLevel(log_level)
 
@@ -290,7 +290,7 @@ class BaseModule(ABC):
     @property
     def precision(self) -> torch.dtype:
         """Get the (floating point) precision used in multiple parts of this module."""
-        precision = self.config.get("precision", DEF_VAL.base.precision)
+        precision = self.config.get("precision", DEF_VAL["base"]["precision"])
         if isinstance(precision, torch.dtype):
             return precision
         if precision == int:
