@@ -171,6 +171,7 @@ cython_debug/
 *.pt
 *.pth
 *.weights
+*.pickle
 
 # automatically generated files for docs
 /docs/dgs_autosummary

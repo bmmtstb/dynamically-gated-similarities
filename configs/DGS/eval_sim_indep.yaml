@@ -19,19 +19,22 @@ test:
 dl_rcnn:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/"
-    # data_path:  # will be set in python script
     base_path: "./data/PoseTrack21/images/val/"
     batch_size: 8
     threshold: 0.75
     return_lists: true
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    # data_path:  # will be set in python script
 
 dl_gt:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
-    # data_path: # will be set in python script
+    crops_folder: "./data/PoseTrack21/crops/256x192/val/"
     base_path: "./data/PoseTrack21/posetrack_data/val/"
     batch_size: 8
     return_lists: true
+    # data_path: # will be set in python script
 
 # ####### #
 # MODULES #
