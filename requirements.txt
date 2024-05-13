@@ -31,6 +31,7 @@ opencv-python
 Pillow
 pylint
 pyyaml==6.0.*
+scipy
 sphinx  # sphinx is used to build the docs
 sphinxcontrib.datatemplates
 tb-nightly  # use tb nightly, due to torchreid installing it and it being incompatible with the regular tensorboard

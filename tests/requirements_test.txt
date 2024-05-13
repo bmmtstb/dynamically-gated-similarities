@@ -13,6 +13,7 @@ numpy
 opencv-python
 pylint
 pyyaml
+scipy
 tb-nightly
 terminaltables
 torchreid==0.2.5
