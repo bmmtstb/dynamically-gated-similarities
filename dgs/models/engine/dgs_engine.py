@@ -128,10 +128,16 @@ class DGSEngine(EngineModule):
 
         if len(track_state) == 0 and N > 0:
             # No Tracks yet - every detection will be a new track!
+            # Make sure to compute the embeddings for every detection, to ensure correct behavior of collate later on
+            time_sim_start = time.time()
+            self.model.forward(ds=detections, target=detections)
+            batch_times["similarity"] = time.time() - time_sim_start
+            # There are no tracks yet, therefore every detection is a new state!
             time_match_start = time.time()
             new_states += detections.split()
             batch_times["match"] = time.time() - time_match_start
         elif N > 0:
+            assert all("embedding" in ts for ts in track_state), "Not all States in track_states have embeddings"
             time_sim_start = time.time()
             similarity = self.model.forward(ds=detections, target=collate_states(track_state))
             batch_times["similarity"] = time.time() - time_sim_start

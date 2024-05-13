@@ -58,6 +58,8 @@ linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
 ]
 # custom shortcuts
 rst_prolog = """
+.. |AP| replace:: ``AlphaPose``
+.. _AP: https://github.com/MVIG-SJTU/AlphaPose/
 .. |PT21| replace:: ``PoseTrack21``
 .. _PT21: https://openaccess.thecvf.com//content/CVPR2022/html/Doring_PoseTrack21_A_Dataset_for_Person_Search_Multi-Object_Tracking_and_Multi-Person_CVPR_2022_paper.html
 .. |torchreid| replace:: ``torchreid``
@@ -66,9 +68,7 @@ rst_prolog = """
 
 # tell autodoc that we don't want these packages to be imported
 autodoc_mock_imports = [
-    "alphapose",
     "detector",
-    "halpecocotools",
     "opencv-python",
     "lapsolver",
     "posetrack21",

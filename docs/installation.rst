@@ -38,15 +38,6 @@ If you want to train your own models, make sure to check out the _`dataset insta
 AlphaPose Backbone
 ~~~~~~~~~~~~~~~~~~
 
-WIP: Currently inactive!
-
-If you are planning on using the default AlphaPose Backend,
-follow the _`models installation guide <ap install models>` over at AlphaPose.
-And yes, these files have to be inserted into the submodule structure in
-`./dependencies/AlphaPose_Fork/`.
-You don't have to set up the AP tracker, if you plan on only using the DGS tracker.
-
-
-
-:: _ap install: `https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/INSTALL.md`
-:: _ap install models: `https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/INSTALL.md#models`
+Currently it is only possible to use AP as predictor using a separate AlphaPose installation,
+and then import the json prediction-files.
+There is a WIP-version of a AlphaPose backbone on the ``alpha_pose`` branch.

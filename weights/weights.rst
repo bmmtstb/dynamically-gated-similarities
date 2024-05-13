@@ -3,6 +3,11 @@
 Weights
 ========
 
+Re-ID and torchreid
+-------------------
+
+The |torchreid|_ package provides multiple Re-ID models in their
+`model zoo <https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO.html>`_
 
 AlphaPose
 ---------
