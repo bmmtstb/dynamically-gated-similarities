@@ -22,6 +22,7 @@ torchaudio==2.3.*
 av
 black
 coverage[toml]
+gdown  # torchreid does not import it properly
 imagesize
 lapsolver
 matplotlib
@@ -43,6 +44,7 @@ tqdm
 
 # Torchreid - install requirements and Set up torchreid and cythonize
 # somehow installing requirements does not work just by calling setup
+-r dependencies/torchreid/requirements.txt
 #-e dependencies/torchreid/
 # install PoseTrack21 evaluation toolkit
 # fixme is this still required ?

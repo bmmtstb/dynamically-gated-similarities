@@ -2,17 +2,11 @@
 # regular pip dependencies #
 # ######################## #
 
-# av is for FFmpeg libraries and loading videos
-av
-coverage[toml]
-imagesize
 matplotlib
 numpy
-pyyaml
+scipy
 sphinx
 sphinxcontrib.datatemplates
-tb-nightly
-terminaltables
 tqdm
 
 # ############################# #

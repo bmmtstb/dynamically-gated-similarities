@@ -7,7 +7,9 @@ See https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md#rei
 PoseTrack21 format:
 
 * Bounding boxes have format XYWH
-* The 17 key points and their respective visibilities are stored in one list of len 51 [x_i, y_i, vis_i, ...]
+* The 17 key points and their respective visibilities are stored in one list of len 51.
+  The list contains the x- and y-coordinate and the visibility: \n
+  [``x``\ :sub:`i`, ``y``\ :sub:`i`, ``vis``\ :sub:`i`, ...]
 """
 
 import glob

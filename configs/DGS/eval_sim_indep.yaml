@@ -20,7 +20,7 @@ dl_rcnn:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/"
     base_path: "./data/PoseTrack21/images/val/"
-    batch_size: 8
+    batch_size: 64
     threshold: 0.75
     return_lists: true
     crop_size: !!python/tuple [256, 192]
@@ -32,7 +32,7 @@ dl_gt:
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"
     base_path: "./data/PoseTrack21/posetrack_data/val/"
-    batch_size: 8
+    batch_size: 1
     return_lists: true
     # data_path: # will be set in python script
 
@@ -43,12 +43,6 @@ dl_gt:
 combine_sim:
     module_name: "constant_alpha"
     alpha: [1.0]
-
-vis_embed_gen:
-    module_name: "torchreid"
-    model_name: "osnet_x1_0"
-    weights: "pretrained"
-    nof_classes: 5474  # PT21
 
 # BOX - IoU
 
@@ -74,7 +68,7 @@ pose_sim:
     format: "coco"
 
 
-# Visual - v1
+# Visual - v1 - OSNet_x1_0 pretrained on ImageNet
 
 dgs_vis_1:
     module_name: "DGS"
@@ -84,10 +78,17 @@ dgs_vis_1:
 
 v1_sim:
     module_name: "torchreid"
-    metric: "CosineSimilarityMetric"
-    embedding_generator_path: ["vis_embed_gen"]
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["v1_embed_gen"]
 
-# Visual - v2
+v1_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    weights: "./weights/osnet_x1_0_imagenet.pth"
+    nof_classes: 1000
+
+
+# Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
 
 dgs_vis_2:
     module_name: "DGS"
@@ -98,9 +99,15 @@ dgs_vis_2:
 v2_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vis_embed_gen" ]
+    embedding_generator_path: ["v2_embed_gen" ]
 
-# Visual - v3
+v2_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_imagenet.pth"
+    nof_classes: 1000
+
+# Visual - v3 - resnet50 from same-domain Re-ID
 
 dgs_vis_3:
     module_name: "DGS"
@@ -112,4 +119,31 @@ v3_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanSqDist"
     embedding_generator_path: ["vis_embed_gen"]
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["v3_embed_gen"]
+
+v3_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet50"
+    weights: "pretrained"
+    nof_classes: 1000
+
+# Visual - v4 - resnet152 from same-domain Re-ID
+
+dgs_vis_4:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "v4_sim" ]
+    combined_softmax: true
+
+v4_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["v4_embed_gen"]
+
+v4_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet152"
+    weights: "pretrained"
+    nof_classes: 1000
 

@@ -68,7 +68,6 @@ rst_prolog = """
 
 # tell autodoc that we don't want these packages to be imported
 autodoc_mock_imports = [
-    "detector",
     "opencv-python",
     "lapsolver",
     "posetrack21",

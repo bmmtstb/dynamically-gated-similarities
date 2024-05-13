@@ -10,30 +10,44 @@ This will also install the required submodules. This will take a while!
 .. note::
 	This will install PyTorch with support for CUDA 12.1, you might want to change that for your environment.
 
-.. note::
-	Due to pip not being able to install packages in a specific order,
-	make sure to install the ``requirements.txt`` file line by line (excluding comments and empty lines).
-	Therefore, you can not use inline comments behind a package.
-
 ::
 	python3.10 -m venv venv
-	grep -E -v '^[\s\t]*#.*$|^[\s\t]*$' requirements.txt | xargs -L 1 pip install
+	pip install -r requirements.txt
 
-This will install the `torchreid` and `posetrack21` (pt21 evaluation toolkit) packages.
-For all of those, the git submodules in the `./dependencies/`-folder are used.
-This has multiple reasons:
 
-- We only need the eval part of `posetrack21`. (As long as the dataset is downloaded separately).
+To properly install the |torchreid|_-package, we need to run the setup script in the submodules / dependencies.
+The respective requirements of |torchreid| has been installed by this packages requirements file already.
 
-Models - WIP
-------------
+::
+	cd ./dependencies/torchreid/
+	python setup.py develop
 
-There are a few examples in the `./scripts/` directory, with their explanations in _`scripts_page`.
+Now there are two evaluation tools installed:
 
-Additionally check the information in _`weights` to download more example model weights.
+- The |PT21|_ evaluation toolkit, named ``posetrack21``.
+  Note, that you need to download the |PT21|_ dataset first.
+  Have a look at the respective repository for how to do so.
+- The ``poseval`` -package has been installed by the requirements and can be used for evaluation too.
 
-If you want to train your own models, make sure to check out the _`dataset installation guide <dataset>`.
+Next Steps
+----------
 
+There are a few examples in the `./scripts/` directory, with their explanations _`here <scripts_page>`.
+
+Check the information in _`weights <weights>` to download (more) example model weights or use your own.
+
+There are multiple example configurations in the `./configs/` directory,
+with some additional explanation _`here <configs>`.
+
+If you want to train your own models, use _`custom datasets<dataset>`, or validate results,
+make sure to check out the rest of the docs.
+There are methods to register new modules for every type of existing module,
+which simplifies the usage of custom modules in the configuration files.
+
+Backbone Models
+---------------
+
+TODO
 
 AlphaPose Backbone
 ~~~~~~~~~~~~~~~~~~
