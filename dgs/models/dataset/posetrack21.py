@@ -657,6 +657,9 @@ class PoseTrack21_BBox(BBoxDataset):
         self.get_image_crops(ds)
         return ds
 
+    # def __getitems__(self, indices: list[int]) -> State:
+    #     """Get a batch of items at once from the dataset. Does only work for non concatenated datasets."""
+
 
 class PoseTrack21_Image(ImageDataset):
     """Load a single precomputed json file from the |PT21| dataset where every index represents one image.

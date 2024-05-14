@@ -24,7 +24,6 @@ J = 20
 B = 10
 IMG_NAME = "866-200x300.jpg"
 
-
 DUMMY_IMAGE_TENSOR: torch.Tensor = torch.ones((1, 3, 10, 20)).byte()
 DUMMY_IMAGE: tv_tensors.Image = tv_tensors.Image(DUMMY_IMAGE_TENSOR)
 
@@ -47,6 +46,7 @@ DUMMY_FP_BATCH: FilePaths = tuple(DUMMY_FP_STRING for _ in range(B))
 
 
 class TestValidateImage(unittest.TestCase):
+
     def test_validate_image(self):
         for image, dims, output in [
             (DUMMY_IMAGE_TENSOR, 4, DUMMY_IMAGE),
@@ -91,6 +91,7 @@ class TestValidateImage(unittest.TestCase):
 
 
 class TestValidateImages(unittest.TestCase):
+
     def test_validate_images(self):
         for images, output in [
             ([], []),
@@ -167,6 +168,7 @@ class TestValidateKeyPoints(unittest.TestCase):
 
 
 class TestValidateBBoxes(unittest.TestCase):
+
     def test_validate_bboxes(self):
         for bboxes, dims, box_format, output in [
             (DUMMY_BBOX, 2, None, DUMMY_BBOX),
@@ -208,6 +210,7 @@ class TestValidateBBoxes(unittest.TestCase):
 
 
 class TestValidateDimensions(unittest.TestCase):
+
     def test_validate_dimensions(self):
         for tensor, dims, l, output in [
             (torch.ones((1, 1)), 2, None, torch.ones((1, 1))),
@@ -245,6 +248,7 @@ class TestValidateDimensions(unittest.TestCase):
 
 
 class TestValidateFilePaths(unittest.TestCase):
+
     def test_validate_file_path(self):
         full_path = tuple([os.path.normpath(os.path.join(PROJECT_ROOT, DUMMY_FP_STRING))])
         for file_path in [
@@ -302,6 +306,7 @@ class TestValidateFilePaths(unittest.TestCase):
 
 
 class TestValidateIDs(unittest.TestCase):
+
     def test_validate_ids(self):
         for tensor, output in [
             (1, torch.ones(1).to(dtype=torch.long)),
@@ -335,6 +340,7 @@ class TestValidateIDs(unittest.TestCase):
 
 
 class TestValidateHeatmaps(unittest.TestCase):
+
     def test_validate_heatmaps(self):
         for tensor, dims, n_j, output in [
             (DUMMY_HM_TENSOR, None, None, DUMMY_HM),
@@ -364,6 +370,7 @@ class TestValidateHeatmaps(unittest.TestCase):
 
 
 class TestValidateValue(unittest.TestCase):
+
     def test_validate_value(self):
         for value, data, validation, result in [
             (None, ..., "None", True),
@@ -433,6 +440,8 @@ class TestValidateValue(unittest.TestCase):
         for value, data, validation, exception_type in [
             (None, None, "dummy", KeyError),
             ([1, 2, 3], "a", "shorter", ValidationException),
+            # forall followed by tuple with multiple values
+            ([1, 2, 3], (int, ("gt", 0)), "forall", ValidationException),
         ]:
             with self.subTest(msg=f"value: {value}, data: {data}, validation: {validation}"):
                 with self.assertRaises(exception_type):
@@ -454,6 +463,8 @@ class TestValidateValue(unittest.TestCase):
             (None, ("not", "not None"), "all", True),
             (None, ["None", ("not", "not None")], "all", True),
             (1, [("gte", 1), "not None", ("lte", 1.1), ("eq", 1), int], "all", True),
+            ([1, 2, 3], list, "all", True),
+            ([1, 2, 3], [list, ("forall", [int, ("gt", 0)]), ("forall", ("gt", 0)), ("forall", int)], "all", True),
         ]:
             with self.subTest(msg=f"value {value}, validation {validation}"):
                 self.assertEqual(validate_value(value, data, validation), valid)

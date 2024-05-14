@@ -31,7 +31,7 @@ rcnn_validations: Validations = {
     # optional
     "threshold": ["optional", float, ("within", (0.0, 1.0))],
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
-    "crop_size": ["optional", tuple, ("len", 2), ("forall", (int, ("gt", 0)))],
+    "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
 }
 
 
@@ -71,6 +71,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         Notes:
             Does not add the original image to the new State, to reduce memory / GPU usage.
+            With the filepath given in the state, the image can be reloaded if required.
         """
 
         outputs = self.model(images)
@@ -91,6 +92,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 .reshape((-1, 17, 3))
                 .split([2, 1], dim=-1)
             )
+            assert kps.shape[-2:] == (17, 2), kps.shape[-2:]
 
             crops, loc_kps = extract_crops_from_images(
                 imgs=[tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))],
@@ -99,6 +101,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 crop_size=self.params.get("crop_size", DEF_VAL["images"]["crop_size"]),
                 crop_mode=self.params.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
             )
+
+            assert loc_kps is not None
 
             if crops.ndim == 3:
                 crops = tvte.wrap(crops.unsqueeze(0), like=crops)
@@ -187,7 +191,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 # directory of images
                 self.data = [
                     os.path.normpath(os.path.join(data_path, child_path))
-                    for child_path in tqdm(sorted(os.listdir(data_path)), desc="Loading images")
+                    for child_path in tqdm(sorted(os.listdir(data_path)), desc="Loading images", leave=False)
                     if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
                 ]
             else:
@@ -213,6 +217,24 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         states = self.images_to_states(images=images)
 
         for fp, state in zip(a, states):
+            state.filepath = tuple(fp for _ in range(state.B))
+
+        return states
+
+    def __getitems__(self, indices: list[int]) -> list[State]:
+        """Get a batch of predictions from the dataset. It is expected that all images have the same shape."""
+        fps: FilePaths = tuple(self.data[idx] for idx in indices)
+        # the torch model expects a list of 3D images
+        images = [
+            img.squeeze(0)
+            for img in convert_image_dtype(
+                tvte.Image(load_image(fps, device=self.device), device=self.device), dtype=torch.float32
+            ).split(1, dim=0)
+        ]
+
+        states = self.images_to_states(images=images)
+
+        for fp, state in zip(fps, states):
             state.filepath = tuple(fp for _ in range(state.B))
 
         return states

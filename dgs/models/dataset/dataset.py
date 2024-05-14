@@ -26,7 +26,7 @@ base_dataset_validations: Validations = {
     "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
     # optional
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
-    "crop_size": ["optional", tuple, ("len", 2), ("forall", (int, ("gt", 0)))],
+    "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "batch_size": ["optional", int, ("gt", 0)],
 }
 

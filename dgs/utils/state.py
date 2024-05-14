@@ -150,6 +150,8 @@ class State(UserDict):
         self.data["bbox"]: tv_tensors.BoundingBoxes = bbox.to(device=kwargs.get("device", bbox.device))
 
         for k, v in kwargs.items():
+            if v is None:
+                continue
             if hasattr(State, k) and getattr(State, k).fset is not None:
                 setattr(self, k, v)
             else:
