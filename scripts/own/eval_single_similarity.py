@@ -12,8 +12,8 @@ import os
 import torch
 from tqdm import tqdm
 
-from dgs.models.dgs.dgs import DGSModule
-from dgs.models.engine.dgs_engine import DGSEngine
+from dgs.models.dgs import DGSModule
+from dgs.models.engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
@@ -42,7 +42,9 @@ def run(config: Config, dl_key: str, paths: list[str]) -> None:
             orig_log_dir = config["log_dir"]
             config["log_dir"] += f"./{dl_key}/{dgs_key}/"
             # set the new path for the out file in the log_dir
-            config["test"]["out_path"] = f"{config['log_dir']}./{sub_datapath.split('.')[0]}.json"
+            config["test"]["out_path"] = os.path.abspath(
+                os.path.normpath(f"{config['log_dir']}./{sub_datapath.split('/')[-1].removesuffix('.json')}.json")
+            )
 
             with HidePrint():
                 # validation dataset
