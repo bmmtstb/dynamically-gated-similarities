@@ -16,29 +16,33 @@ from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
-from dgs.utils.torchtools import close_all_layers, memory_analysis
+from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_sim_indep.yaml"
 
 
-@memory_analysis
+# @memory_analysis
 @torch.no_grad()
 def run(config: Config, dl_key: str, paths: list[str]) -> None:
     """Main function to run the code."""
     # IoU, OKS, and visual similarity
-    for dgs_key in tqdm(["dgs_box", "dgs_pose", "dgs_vis_3", "dgs_vis_2", "dgs_vis_3"], desc="similarities"):
-        # for dgs_key in tqdm(["dgs_vis_3", "dgs_vis_2", "dgs_vis_3"], desc="similarities"):
+    # for dgs_key in tqdm(["dgs_vis_1", "dgs_vis_2", "dgs_vis_3", "dgs_vis_4"], desc="similarities"):
+    for dgs_key in tqdm(
+        ["dgs_box", "dgs_pose", "dgs_vis_1", "dgs_vis_2", "dgs_vis_3", "dgs_vis_4"], desc="similarities"
+    ):
 
         # get sub folders or files and analyse them one-by-one
         for sub_datapath in tqdm(paths, desc="ds_sub_dir"):
-
+            # set data and compute
             config[dl_key]["data_path"] = sub_datapath
 
             # make sure to have a unique log dir every time
             orig_log_dir = config["log_dir"]
             config["log_dir"] += f"./{dl_key}/{dgs_key}/"
+            # set the new path for the out file in the log_dir
+            config["test"]["out_path"] = f"{config['log_dir']}./{sub_datapath.split('.')[0]}.json"
 
             with HidePrint():
                 # validation dataset

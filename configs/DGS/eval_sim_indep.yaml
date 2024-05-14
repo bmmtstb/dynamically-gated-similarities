@@ -20,12 +20,13 @@ dl_rcnn:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/"
     base_path: "./data/PoseTrack21/images/val/"
-    batch_size: 64
+    batch_size: 16
     threshold: 0.75
     return_lists: true
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
     # data_path:  # will be set in python script
+    # out_path:  # will be set in python script
 
 dl_gt:
     module_name: "PoseTrack21_Image"
@@ -35,6 +36,7 @@ dl_gt:
     batch_size: 1
     return_lists: true
     # data_path: # will be set in python script
+    # out_path:  # will be set in python script
 
 # ####### #
 # MODULES #
@@ -117,8 +119,6 @@ dgs_vis_3:
 
 v3_sim:
     module_name: "torchreid"
-    metric: "NegSoftmaxEuclideanSqDist"
-    embedding_generator_path: ["vis_embed_gen"]
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["v3_embed_gen"]
 

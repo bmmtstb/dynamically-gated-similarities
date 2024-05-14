@@ -1,4 +1,4 @@
-"""
+r"""
 Load bboxes and poses from an existing .json file of the |PT21|_ dataset.
 
 See https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md#reid-pose-tracking for type definitions.

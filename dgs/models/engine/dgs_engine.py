@@ -137,7 +137,6 @@ class DGSEngine(EngineModule):
             new_states += detections.split()
             batch_times["match"] = time.time() - time_match_start
         elif N > 0:
-            assert all("embedding" in ts for ts in track_state), "Not all States in track_states have embeddings"
             time_sim_start = time.time()
             similarity = self.model.forward(ds=detections, target=collate_states(track_state))
             batch_times["similarity"] = time.time() - time_sim_start
@@ -245,7 +244,9 @@ class DGSEngine(EngineModule):
                 frame_idx += 1
 
         generate_pt21_submission_file(
-            outfile=os.path.join(self.log_dir, f"./results_{datetime.now().strftime('%Y%m%d_%H_%M')}.json"),
+            outfile=self.params_test.get(
+                "out_path", os.path.join(self.log_dir, f"./results_{datetime.now().strftime('%Y%m%d_%H_%M')}.json")
+            ),
             images=img_data,
             annotations=anno_data,
         )
