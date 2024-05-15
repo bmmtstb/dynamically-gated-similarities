@@ -64,6 +64,7 @@ omit = [
     "*/utils/torchtools.py",  # copied from torchreid
     "*/engine/*",  # engine cant really be tested without data
     "visualization.py",  # printing is hard to test
+    "alphapose.py",  # alphapose is not yet fully supported
 ]
 
 [tool.coverage.paths]

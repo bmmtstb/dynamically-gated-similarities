@@ -62,7 +62,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         self.register_module("model", self.model)
         self.configure_torch_module(module=self.model, train=False)
 
-        self.img_id: int = 1
+        self.img_id: torch.Tensor = torch.tensor(1, dtype=torch.long, device=self.device)
 
     @torch.no_grad()
     def images_to_states(self, images: Images) -> list[State]:
@@ -112,7 +112,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
             assert loc_kps is not None
 
-            if crops.ndim == 3:
+            # make sure the crops are 4-dimensional [B x C x H x W]
+            if crops.ndim == 3:  # pragma: no cover
                 crops = tvte.wrap(crops.unsqueeze(0), like=crops)
 
             B = len(bbox)
@@ -130,12 +131,12 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 "frame_id": torch.ones(B, device=self.device, dtype=torch.long) * self.img_id,
                 "person_id": torch.ones(B, device=self.device, dtype=torch.long) * -1,
             }
-            self.img_id += 1
+            self.img_id += torch.tensor(1, dtype=torch.long, device=self.device)
             states.append(State(**data))
 
         return states
 
-    def terminate(self) -> None:
+    def terminate(self) -> None:  # pragma: no cover
         if hasattr(self, "model"):
             self.model = None
 
@@ -225,7 +226,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         states = self.images_to_states(images=images)
 
         for fp, state in zip(a, states):
-            state.filepath = tuple(fp for _ in range(state.B))
+            state.filepath = tuple(fp for _ in range(max(state.B, 1)))
 
         return states
 
@@ -243,7 +244,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         states = self.images_to_states(images=images)
 
         for fp, state in zip(fps, states):
-            state.filepath = tuple(fp for _ in range(state.B))
+            state.filepath = tuple(fp for _ in range(max(state.B, 1)))
 
         return states
 

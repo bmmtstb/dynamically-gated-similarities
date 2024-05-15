@@ -173,5 +173,5 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
 
         return torch.tensordot(self.alpha_const, tensors.float(), dims=1)
 
-    def terminate(self) -> None:
+    def terminate(self) -> None:  # pragma: no cover
         del self.alpha, self.alpha_const, self.len_alpha

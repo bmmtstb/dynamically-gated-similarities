@@ -11,7 +11,7 @@ from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone, KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
 from dgs.models.loader import get_data_loader
 from dgs.utils.config import DEF_VAL, fill_in_defaults
-from dgs.utils.state import State
+from dgs.utils.state import EMPTY_STATE, State
 from helper import get_test_config, load_test_image
 
 IMG_FOLDER_PATH = os.path.abspath("./tests/test_data/images/")
@@ -99,6 +99,33 @@ class TestKPRCNNModel(unittest.TestCase):
                 with self.assertRaises(exception) as e:
                     _ = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(err_msg in str(e.exception), msg=e.exception)
+
+    def test_predict_empty(self):
+        cfg = fill_in_defaults(
+            {
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "kprcnn": {
+                    "threshold": 0.9,
+                    "data_path": [os.path.abspath(os.path.join(IMG_FOLDER_PATH, "866-256x256.jpg"))],
+                    "dataset_path": "",
+                },
+            },
+            get_test_config(),
+        )
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
+        out_list: list[State]
+
+        self.assertEqual(len(m), 1)
+
+        for out_list in m:
+            self.assertTrue(isinstance(out_list, list))
+            self.assertEqual(len(out_list), 1)
+
+            out: State = out_list[0]
+            self.assertEqual(out.B, 0)
+            es = EMPTY_STATE.copy()
+            es.filepath = cfg["kprcnn"]["data_path"][0]
+            self.assertEqual(out, es)
 
     def test_dataset_image(self):
         cfg = fill_in_defaults(

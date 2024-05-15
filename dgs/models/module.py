@@ -321,7 +321,7 @@ class BaseModule(ABC):
         module.to(device=self.device)
         return module
 
-    def terminate(self) -> None:
+    def terminate(self) -> None:  # pragma: no cover
         """Terminate this module and all of its submodules.
 
         If nothing has to be done, just pass.
