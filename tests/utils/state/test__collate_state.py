@@ -3,7 +3,15 @@ import unittest
 import torch
 from torchvision.tv_tensors import BoundingBoxes, Image, TVTensor
 
-from dgs.utils.state import collate_bboxes, collate_devices, collate_states, collate_tensors, collate_tvt_tensors, State
+from dgs.utils.state import (
+    collate_bboxes,
+    collate_devices,
+    collate_states,
+    collate_tensors,
+    collate_tvt_tensors,
+    EMPTY_STATE,
+    State,
+)
 
 N = 10
 J = 17
@@ -130,29 +138,29 @@ class TestCollate(unittest.TestCase):
 
 
 class TestCollateStates(unittest.TestCase):
+    bbox = BoundingBoxes(torch.ones(4), format="XYWH", canvas_size=(100, 100))
 
-    def test_states(self):
+    def test_collate_states(self):
         for validate in [True, False]:
-            bbox = BoundingBoxes(torch.ones(4), format="XYWH", canvas_size=(100, 100))
-
             s = State(
-                bbox=bbox, keypoints=torch.ones(1, J, j_dim), image=[Image(torch.ones(1, C, H, W))], validate=validate
+                bbox=self.bbox,
+                keypoints=torch.ones(1, J, j_dim),
+                image=[Image(torch.ones(1, C, H, W))],
+                validate=validate,
+            )
+            n_states = State(
+                bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
+                keypoints=torch.ones((N, J, j_dim)),
+                image=[Image(torch.ones(1, C, H, W)) for _ in range(N)],
+                validate=validate,
             )
 
             for states, result in [
                 ([s], s),
                 (s, s),
+                ([s for _ in range(N)], n_states),
                 (
-                    [s for _ in range(N)],
-                    State(
-                        bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
-                        keypoints=torch.ones((N, J, j_dim)),
-                        image=[Image(torch.ones(1, C, H, W)) for _ in range(N)],
-                        validate=validate,
-                    ),
-                ),
-                (
-                    [State(bbox=bbox, str="dummy", tuple=(1,), validate=validate) for _ in range(N)],
+                    [State(bbox=self.bbox, str="dummy", tuple=(1,), validate=validate) for _ in range(N)],
                     State(
                         bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
                         str=tuple("dummy" for _ in range(N)),
@@ -164,6 +172,28 @@ class TestCollateStates(unittest.TestCase):
                 with self.subTest(msg="s: {}, res: {}, val: {}".format(len(states), result.B, validate)):
                     self.assertTrue(collate_states(states) == result)
                     self.assertEqual(result.validate, validate)
+
+    def test_empty_states(self):
+        s = State(
+            bbox=self.bbox, keypoints=torch.ones(1, J, j_dim), image=[Image(torch.ones(1, C, H, W))], validate=False
+        )
+        n_states = State(
+            bbox=BoundingBoxes(torch.ones((N, 4)), format="XYWH", canvas_size=(100, 100)),
+            keypoints=torch.ones((N, J, j_dim)),
+            image=[Image(torch.ones(1, C, H, W)) for _ in range(N)],
+            validate=False,
+        )
+
+        for states, result in [
+            ([], EMPTY_STATE),
+            ([EMPTY_STATE], EMPTY_STATE),
+            (EMPTY_STATE, EMPTY_STATE),
+            ([EMPTY_STATE, EMPTY_STATE], EMPTY_STATE),
+            ([EMPTY_STATE, s], s),
+            ([v for sublist in [[s, EMPTY_STATE] for _ in range(N)] for v in sublist], n_states),  # [s,ES,s,ES,...]
+        ]:
+            with self.subTest(msg="s: {}, res: {}".format(len(states), result.B)):
+                self.assertTrue(collate_states(states) == result)
 
 
 if __name__ == "__main__":

@@ -725,6 +725,11 @@ class State(UserDict):
         return self
 
 
+EMPTY_STATE = State(
+    bbox=tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"), validate=False
+)
+
+
 def get_ds_data_getter(attributes: list[str]) -> DataGetter:
     """Given a list of attribute names,
     return a function, that gets those attributes from a given :class:`State`.
@@ -806,6 +811,12 @@ def collate_states(batch: Union[list[State], State]) -> State:
     """
     if isinstance(batch, State):
         return batch
+
+    # remove all empty states and return early for length 0 or 1
+    batch = [b for b in batch if b.B != 0]
+
+    if len(batch) == 0:
+        return EMPTY_STATE.copy()
 
     if len(batch) == 1:
         return batch[0]

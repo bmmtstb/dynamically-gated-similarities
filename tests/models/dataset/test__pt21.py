@@ -14,7 +14,7 @@ from dgs.models.dataset.posetrack21 import (
 from dgs.models.loader import get_data_loader
 from dgs.utils.config import load_config
 from dgs.utils.files import is_abs_dir, mkdir_if_missing
-from dgs.utils.state import State
+from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.utils import HidePrint
 from tests.utils.state import *
 
@@ -232,16 +232,21 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
                 self.assertTrue(isinstance(batch, State))
                 self.assertEqual(len(batch), B)
 
-                if B != 0:
-                    # check the number of dimensions
-                    self.assertEqual(batch.class_id.ndim, 1)
-                    self.assertTrue(all(img.ndim == 4 for img in batch.image))
-                    self.assertEqual(batch.image_crop.ndim, 4)
-                    self.assertEqual(batch.joint_weight.ndim, 3)
-                    self.assertEqual(batch.keypoints.ndim, 3)
-                    self.assertEqual(batch.keypoints_local.ndim, 3)
-                    self.assertEqual(batch.person_id.ndim, 1)
-                    self.assertEqual(batch.class_id.ndim, 1)
+                if B == 0:
+                    self.assertEqual(batch, EMPTY_STATE)
+                    for k in ["image_crop", "joint_weights", "keypoints", "keypoints_local", "person_id", "class_id"]:
+                        self.assertTrue(k not in batch)
+                    continue
+
+                # check the number of dimensions
+                self.assertEqual(batch.class_id.ndim, 1)
+                self.assertTrue(all(img.ndim == 4 for img in batch.image))
+                self.assertEqual(batch.image_crop.ndim, 4)
+                self.assertEqual(batch.joint_weight.ndim, 3)
+                self.assertEqual(batch.keypoints.ndim, 3)
+                self.assertEqual(batch.keypoints_local.ndim, 3)
+                self.assertEqual(batch.person_id.ndim, 1)
+                self.assertEqual(batch.class_id.ndim, 1)
 
                 # check that the first dimension is B
                 self.assertEqual(batch.class_id.size(0), B)

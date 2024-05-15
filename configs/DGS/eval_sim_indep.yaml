@@ -20,7 +20,7 @@ dl_rcnn:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/"
     base_path: "./data/PoseTrack21/images/val/"
-    batch_size: 32
+    batch_size: 16
     threshold: 0.75
     return_lists: true
     crop_size: !!python/tuple [256, 192]

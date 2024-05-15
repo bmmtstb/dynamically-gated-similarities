@@ -22,7 +22,7 @@ from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import IMAGE_FORMATS, VIDEO_FORMATS
 from dgs.utils.files import is_dir, is_file
 from dgs.utils.image import CustomToAspect, load_image
-from dgs.utils.state import State
+from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.types import Config, FilePath, FilePaths, Image, Images, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 
@@ -74,14 +74,22 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             With the filepath given in the state, the image can be reloaded if required.
         """
 
-        outputs = self.model(images)
+        # predict list of {boxes: XYWH[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
+        # every image in images can have multiple predictions
+        outputs: list[dict[str, torch.Tensor]] = self.model(images)
 
         states: list[State] = []
         canvas_size = (max(i.shape[-2] for i in images), max(i.shape[-1] for i in images))
 
         for output, image in zip(outputs, images):
-            # for every image (output), get the indices where the score is bigger than the threshold
+            # get the output for every image independently
+            # get the indices where the score ('certainty') is bigger than the given threshold
             indices = output["scores"] > self.threshold
+
+            # skip if there aren't any detections
+            if not torch.any(indices):
+                states.append(EMPTY_STATE.copy())
+                continue
 
             # bbox given in XYXY format
             bbox = tvte.BoundingBoxes(output["boxes"][indices], format="XYXY", canvas_size=canvas_size)
