@@ -1,0 +1,101 @@
+name: "Evaluate-Combinations"
+description: "Use the DGS tracker with a constant alpha module and a combination of two modules.
+A python script will change the alpha values of the modules in 10% increments from 10 to 90 respectively."
+
+device: "cuda:0"
+print_prio: "INFO"
+is_training: off
+log_dir: "./results/own/eval/"
+log_dir_add_date: false
+
+test:
+    inactivity_threshold: 15
+    max_track_length: 1
+    save_images: off
+    submission: ["submission"]
+
+# #### #
+# DATA #
+# #### #
+
+dl_rcnn:
+    module_name: "KeypointRCNNImageBackbone"
+    dataset_path: "./data/"
+    base_path: "./data/PoseTrack21/images/val/"
+    batch_size: 16
+    threshold: 0.75
+    return_lists: true
+    image_size: !!python/tuple [ 1024, 1024 ]
+    image_mode: "zero-pad"
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    # data_path:  # will be set in python script
+    # out_path:  # will be set in python script
+
+dl_gt:
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    crops_folder: "./data/PoseTrack21/crops/256x192/val/"
+    base_path: "./data/PoseTrack21/posetrack_data/val/"
+    batch_size: 1
+    return_lists: true
+    # data_path: # will be set in python script
+    # out_path:  # will be set in python script
+
+submission:
+    module_name: "PoseTrack21"
+    # file: # will be set in python script
+
+# ####### #
+# MODULES #
+# ####### #
+
+combine_sim:
+    module_name: "constant_alpha"
+    # alpha: # will be set by python script
+
+box_sim:
+    module_name: "iou"
+
+pose_sim:
+    module_name: "oks"
+    format: "coco"
+
+visual_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["vis_embed_gen"]
+
+vis_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    weights: "./weights/osnet_x1_0_imagenet.pth"
+    nof_classes: 1000
+
+
+# Combination 1 - IoU and OKS
+
+dgs_iou_oks:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: ["box_sim", "pose_sim"]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 2 - IoU and Visual
+
+dgs_iou_vis:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "box_sim", "visual_sim" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 3 - OKS and Visual
+
+dgs_oks_vis:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "pose_sim", "visual_sim" ]
+    similarity_softmax: true
+    combined_softmax: true
