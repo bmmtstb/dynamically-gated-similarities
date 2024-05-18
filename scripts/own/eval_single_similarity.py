@@ -18,13 +18,13 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
-from dgs.utils.utils import HidePrint, MemoryTracker
+from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_sim_indep.yaml"
 
 
 # @torch_memory_analysis
-@MemoryTracker(interval=7.5, top_n=20)
+# @MemoryTracker(interval=7.5, top_n=20)
 @torch.no_grad()
 def run(config: Config, dl_key: str, paths: list[str]) -> None:
     """Main function to run the code."""
@@ -55,7 +55,7 @@ def run(config: Config, dl_key: str, paths: list[str]) -> None:
                 )
             )
 
-            if os.path.exists(config["test"]["out_path"]):
+            if os.path.exists(config["submission"]["file"]):
                 # reset the original log dir
                 config["log_dir"] = orig_log_dir
                 continue

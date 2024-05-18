@@ -15,7 +15,7 @@ from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
 from dgs.models.submission import get_submission
 from dgs.models.submission.submission import SubmissionFile
-from dgs.utils.config import DEF_VAL
+from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import collate_states, EMPTY_STATE, State
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
@@ -110,9 +110,9 @@ class DGSEngine(EngineModule):
             thresh=self.params_test.get("inactivity_threshold", DEF_VAL["tracks"]["inactivity_threshold"]),
         )
 
-        self.submission = get_submission(self.params_test.get("submission")["module_name"])(
-            config=self.config, path=self.params_test.get("submission")
-        )
+        self.submission = get_submission(
+            get_sub_config(config=self.config, path=self.params_test.get("submission"))["module_name"]
+        )(config=self.config, path=self.params_test.get("submission"))
 
     def get_data(self, ds: State) -> any:
         return ds
