@@ -98,6 +98,10 @@ class BaseDataset(BaseModule, TorchDataset):
     dataset_path (FilePath):
         Path to the directory of the dataset.
         The value has to either be a local project path, or a valid absolute path.
+
+    Optional Params
+    ---------------
+
     force_img_reshape (bool, optional):
         Whether to accept that images in one folder might have different shapes.
         Default ``DEF_VAL.dataset.force_img_reshape``.

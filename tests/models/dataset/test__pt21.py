@@ -2,13 +2,10 @@ import os.path
 import shutil
 import unittest
 
-from torchvision import tv_tensors as tvte
-
 from dgs.models.dataset.posetrack21 import (
     get_pose_track_21,
     PoseTrack21_BBox,
     PoseTrack21_Image,
-    submission_data_from_state,
     validate_pt21_json,
 )
 from dgs.models.loader import get_data_loader
@@ -34,71 +31,72 @@ class TestPT21Helpers(unittest.TestCase):
             validate_pt21_json({"images": []})
         self.assertTrue("PoseTrack21 .json file has an annotations key" in str(e.exception), msg=e.exception)
 
-    def test_subm_data_from_state(self):
-        s = State(**DUMMY_DATA, validate=False)
-        img, anno = submission_data_from_state(s)
-        self.assertTrue(isinstance(img, dict))
-        self.assertTrue(isinstance(anno, list))
-        self.assertEqual(len(anno), 1)
-
-        states = State(**DUMMY_DATA_BATCH, validate=False)
-        img_, annos = submission_data_from_state(states)
-        self.assertTrue(isinstance(img, dict))
-        self.assertTrue(isinstance(anno, list))
-        self.assertEqual(len(annos), B)
-
-        self.assertEqual(img, img_)
-        self.assertTrue(all(a == anno[0] for a in annos))
-        self.assertEqual(len(annos[0]["kps"]), 17 * 3)
-
-        # early return with B == 0
-        empty_state = State(
-            bbox=tvte.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
-            validate=False,
-            filepath=DUMMY_FP_STRING,
-            image_id=torch.ones((1, 1)),
-            frame_id=torch.ones((1, 1)),
-        )
-        empty_img, empty_anno = submission_data_from_state(empty_state)
-        self.assertTrue(isinstance(img, dict))
-        self.assertTrue(isinstance(anno, list))
-        self.assertEqual(len(empty_anno), 0)
-        self.assertEqual(empty_img["file_name"], DUMMY_FP_STRING)
-        self.assertEqual(empty_img["id"], 1)
-        self.assertEqual(empty_img["frame_id"], 1)
-
-    def test_subm_data_from_s_except(self):
-        VALID_IMG_DATA = {"bbox": DUMMY_BBOX, "filepath": DUMMY_FP, "image_id": [1], "frame_id": [1]}
-        for data, exp_type, msg in [
-            ({"bbox": DUMMY_BBOX}, KeyError, "Expected key 'filepath' to be in State."),
-            (
-                {"bbox": DUMMY_BBOX, "filepath": DUMMY_FP, "image_id": [1, 2]},
-                ValueError,
-                "Expected 'image_id' (2) to have a length of exactly 1.",
-            ),
-            (
-                {"bbox": DUMMY_BBOX_BATCH, "filepath": DUMMY_FP_BATCH, "image_id": [1, 2]},
-                ValueError,
-                "State has different image_ids, expected all image_ids to match. got: '[1, 2]'.",
-            ),
-            (
-                {"bbox": DUMMY_BBOX_BATCH, "filepath": DUMMY_FP_BATCH, "image_id": [1, 1, 1]},
-                ValueError,
-                f"Expected 'image_id' (3) to have the same length as the State ({B}).",
-            ),
-            # anno validation
-            (VALID_IMG_DATA, KeyError, f"Expected key 'person_id' to be in State."),
-            (
-                {**VALID_IMG_DATA, "person_id": torch.tensor([1, 2])},
-                ValueError,
-                f"Expected 'person_id' (2) to have the same length as the State (1).",
-            ),
-        ]:
-            with self.subTest(msg="msg: {}, exp_type: {}, data: {}".format(msg, exp_type, data)):
-                s = State(**data, validate=False)
-                with self.assertRaises(exp_type) as e:
-                    _ = submission_data_from_state(s)
-                self.assertTrue(msg in str(e.exception), msg=e.exception)
+    # def test_subm_data_from_state(self):
+    #     s = State(**DUMMY_DATA, validate=False)
+    #     img, anno = submission_data_from_state(s)
+    #     self.assertTrue(isinstance(img, dict))
+    #     self.assertTrue(isinstance(anno, list))
+    #     self.assertEqual(len(anno), 1)
+    #
+    #     states = State(**DUMMY_DATA_BATCH, validate=False)
+    #     img_, annos = submission_data_from_state(states)
+    #     self.assertTrue(isinstance(img, dict))
+    #     self.assertTrue(isinstance(anno, list))
+    #     self.assertEqual(len(annos), B)
+    #
+    #     self.assertEqual(img, img_)
+    #     self.assertTrue(all(a == anno[0] for a in annos))
+    #     self.assertEqual(len(annos[0]["kps"]), 17 * 3)
+    #
+    #     # early return with B == 0
+    #     empty_state = State(
+    #         bbox=tvte.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+    #         validate=False,
+    #         filepath=DUMMY_FP_STRING,
+    #         image_id=torch.ones((1, 1)),
+    #         frame_id=torch.ones((1, 1)),
+    #     )
+    #     empty_img, empty_anno = submission_data_from_state(empty_state)
+    #     self.assertTrue(isinstance(img, dict))
+    #     self.assertTrue(isinstance(anno, list))
+    #     self.assertEqual(len(empty_anno), 0)
+    #     self.assertEqual(empty_img["file_name"], DUMMY_FP_STRING)
+    #     self.assertEqual(empty_img["id"], 1)
+    #     self.assertEqual(empty_img["frame_id"], 1)
+    #
+    # def test_subm_data_from_s_except(self):
+    #     VALID_IMG_DATA = {"bbox": DUMMY_BBOX, "filepath": DUMMY_FP, "image_id": [1], "frame_id": [1]}
+    #     for data, exp_type, msg in [
+    #         ({"bbox": DUMMY_BBOX}, KeyError, "Expected key 'filepath' to be in State."),
+    #         (
+    #             {"bbox": DUMMY_BBOX, "filepath": DUMMY_FP, "image_id": [1, 2]},
+    #             ValueError,
+    #             "Expected 'image_id' (2) to have a length of exactly 1.",
+    #         ),
+    #         (
+    #             {"bbox": DUMMY_BBOX_BATCH, "filepath": DUMMY_FP_BATCH, "image_id": [1, 2]},
+    #             ValueError,
+    #             "State has different image_ids, expected all image_ids to match. got: '[1, 2]'.",
+    #         ),
+    #         (
+    #             {"bbox": DUMMY_BBOX_BATCH, "filepath": DUMMY_FP_BATCH, "image_id": [1, 1, 1]},
+    #             ValueError,
+    #             f"Expected 'image_id' (3) to have the same length as the State ({B}).",
+    #         ),
+    #         # anno validation
+    #         (VALID_IMG_DATA, KeyError, f"Expected key 'person_id' to be in State."),
+    #         (
+    #             {**VALID_IMG_DATA, "person_id": torch.tensor([1, 2])},
+    #             ValueError,
+    #             f"Expected 'person_id' (2) to have the same length as the State (1).",
+    #         ),
+    #     ]:
+    #         with self.subTest(msg="msg: {}, exp_type: {}, data: {}".format(msg, exp_type, data)):
+    #             s = State(**data, validate=False)
+    #             with self.assertRaises(exp_type) as e:
+    #                 _ = submission_data_from_state(s)
+    #             self.assertTrue(msg in str(e.exception), msg=e.exception)
+    #
 
 
 class TestPoseTrack21BBoxDataset(unittest.TestCase):

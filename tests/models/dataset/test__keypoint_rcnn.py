@@ -11,7 +11,7 @@ from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone, KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
 from dgs.models.loader import get_data_loader
 from dgs.utils.config import DEF_VAL, fill_in_defaults
-from dgs.utils.state import EMPTY_STATE, State
+from dgs.utils.state import State
 from helper import get_test_config, load_test_image
 
 IMG_FOLDER_PATH = os.path.abspath("./tests/test_data/images/")
@@ -123,9 +123,11 @@ class TestKPRCNNModel(unittest.TestCase):
 
             out: State = out_list[0]
             self.assertEqual(out.B, 0)
-            es = EMPTY_STATE.copy()
-            es.filepath = cfg["kprcnn"]["data_path"][0]
-            self.assertEqual(out, es)
+            self.assertEqual(out.filepath, (cfg["kprcnn"]["data_path"][0],))
+            self.assertEqual(len(out["image_id"]), 1)
+            self.assertEqual(len(out["frame_id"]), 1)
+            for key in ["keypoints", "keypoints_local", "image", "skeleton_name", "scores"]:
+                self.assertTrue(key not in out)
 
     def test_dataset_image(self):
         cfg = fill_in_defaults(

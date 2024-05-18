@@ -7,7 +7,6 @@ References:
 
 import os
 from abc import ABC
-from typing import Union
 
 import torch
 from torch import nn
@@ -86,9 +85,20 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             # get the indices where the score ('certainty') is bigger than the given threshold
             indices = output["scores"] > self.threshold
 
+            B: int = int(torch.count_nonzero(indices).item())
+
+            data = {
+                "validate": False,
+                "image_id": torch.ones(max(B, 1), device=self.device, dtype=torch.long) * self.img_id,
+                "frame_id": torch.ones(max(B, 1), device=self.device, dtype=torch.long) * self.img_id,
+            }
+            self.img_id += torch.tensor(1, dtype=torch.long, device=self.device)
+
             # skip if there aren't any detections
-            if not torch.any(indices):
-                states.append(EMPTY_STATE.copy())
+            if B == 0:
+                es = EMPTY_STATE.copy()
+                es.update(data)
+                states.append(es)
                 continue
 
             # bbox given in XYXY format
@@ -112,26 +122,21 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
             assert loc_kps is not None
 
-            # make sure the crops are 4-dimensional [B x C x H x W]
-            if crops.ndim == 3:  # pragma: no cover
-                crops = tvte.wrap(crops.unsqueeze(0), like=crops)
+            data = dict(
+                data,
+                **{
+                    "skeleton_name": tuple("coco" for _ in range(B)),
+                    "scores": output["scores"][indices].unsqueeze(-1).repeat(1, 17),  # B x 17
+                    "score": output["scores"][indices],
+                    "bbox": bbox,
+                    "image_crop": crops,
+                    "keypoints": kps,
+                    "keypoints_local": loc_kps,
+                    "joint_weight": vis,
+                    "person_id": torch.ones(B, device=self.device, dtype=torch.long) * -1,  # set as -1
+                },
+            )
 
-            B = len(bbox)
-
-            data = {
-                "validate": False,
-                "bbox": bbox,
-                "image_crop": crops,
-                "keypoints": kps,
-                "keypoints_local": loc_kps,
-                "joint_weight": vis,
-                "scores": output["scores"],
-                "skeleton_name": tuple("coco" for _ in range(B)),
-                "image_id": torch.ones(B, device=self.device, dtype=torch.long) * self.img_id,
-                "frame_id": torch.ones(B, device=self.device, dtype=torch.long) * self.img_id,
-                "person_id": torch.ones(B, device=self.device, dtype=torch.long) * -1,
-            }
-            self.img_id += torch.tensor(1, dtype=torch.long, device=self.device)
             states.append(State(**data))
 
         return states
@@ -180,10 +185,6 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         self.data = []
         data_path = self.params["data_path"]
         if isinstance(data_path, list):
-            assert all(isinstance(p, str) for p in data_path), "Path is a list but not all values are string"
-            assert all(
-                any(p.lower().endswith(end) for end in IMAGE_FORMATS) for p in data_path
-            ), "Not all values are images"
             self.data = sorted(data_path)
         elif isinstance(data_path, str):
             data_path = self.get_path_in_dataset(data_path)
@@ -210,23 +211,22 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 f"Unknown path object, expected filepath, dirpath, or list of filepaths. Got {type(data_path)}"
             )
 
-    def arbitrary_to_ds(self, a: Union[FilePath, FilePaths], idx: int) -> list[State]:
+    def arbitrary_to_ds(self, a: FilePath, idx: int) -> list[State]:
         """Given a filepath, predict the bounding boxes and key-points of the respective image.
         Return a State containing all the available information.
         Because the state is known, the image is not saved in the State, to reduce the space-overhead on the GPU.
+
+        Args:
+            a: A single path to an image file.
+            idx: The index of the file path within ``self.data``.
         """
-        if isinstance(a, str):
-            a = (a,)
         # the torch model expects a list of 3D images
-        images = [
-            convert_image_dtype(tvte.Image(load_image(fp).squeeze(0), device=self.device), dtype=torch.float32)
-            for fp in a
-        ]
+        images = [convert_image_dtype(tvte.Image(load_image(a).squeeze(0), device=self.device), dtype=torch.float32)]
 
         states = self.images_to_states(images=images)
 
-        for fp, state in zip(a, states):
-            state.filepath = tuple(fp for _ in range(max(state.B, 1)))
+        for state in states:
+            state.filepath = tuple(a for _ in range(max(state.B, 1)))
 
         return states
 
@@ -289,14 +289,12 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
         """Given a frame of a video, return the resulting state after running the RCNN model."""
         if not isinstance(a, torch.Tensor):
             raise NotImplementedError
-        if a.ndim == 3:
-            a = a.unsqueeze(0)
         # the torch RCNN model expects a list of 3D images
-        images = [convert_image_dtype(img, torch.float32) for img in a]
+        images = [convert_image_dtype(a, torch.float32)]
 
         states = self.images_to_states(images=images)
 
-        for img, state in zip(a, states):
-            state.image = [img.unsqueeze(0) for _ in range(state.B)]
+        for img, state in zip(images, states):
+            state.image = [tvte.wrap(img.unsqueeze(0), like=img) for _ in range(state.B)]
 
         return states

@@ -52,7 +52,7 @@ test_validations: Validations = {
 }
 
 
-class EngineModule(BaseModule):
+class EngineModule(BaseModule, nn.Module):
     """Module for training, validating, and testing other Modules.
 
     Most of the settings are defined within the configuration file in the `training` section.
@@ -128,7 +128,6 @@ class EngineModule(BaseModule):
     loss: nn.Module
     optimizer: optim.Optimizer
     model: nn.Module
-    module: nn.Module
     writer: SummaryWriter
 
     curr_epoch: int = 0
@@ -150,7 +149,8 @@ class EngineModule(BaseModule):
         train_loader: TorchDataLoader = None,
         **_kwargs,
     ):
-        super().__init__(config, [])
+        BaseModule.__init__(self, config=config, path=[])
+        nn.Module.__init__(self)
 
         # Set up test attributes
         self.params_test: Config = get_sub_config(config, ["test"])
@@ -158,7 +158,8 @@ class EngineModule(BaseModule):
         self.test_dl = test_loader
 
         # Set up general attributes
-        self.model = self.configure_torch_module(model, train=self.is_training)
+        self.register_module("model", model)
+        self.model = self.configure_torch_module(self.model, train=self.is_training)
 
         # Logging
         self.writer = SummaryWriter(
@@ -239,7 +240,7 @@ class EngineModule(BaseModule):
             self.logger.info(f"Config Description: {self.config['description']}")
 
         if self.is_training:
-            self.train()
+            self.train_model()
 
         self.test()
 
@@ -264,7 +265,7 @@ class EngineModule(BaseModule):
         raise NotImplementedError
 
     @enable_keyboard_interrupt
-    def train(self) -> None:
+    def train_model(self) -> None:
         """Train the given model using the given loss function, optimizer, and learning-rate schedulers.
 
         After every epoch, the current model is tested and the current model is saved.
@@ -429,9 +430,11 @@ class EngineModule(BaseModule):
         if hasattr(self, "writer"):
             self.writer.flush()
             self.writer.close()
-        for attr in ["model", "optimizer", "lr_sched", "test_dl", "train_dl", "val_dl", "metric", "loss"]:
+        for attr in ["model", "optimizer", "lr_sched", "test_dl", "train_dl", "val_dl", "metric", "loss", "module"]:
             if hasattr(self, attr):
                 delattr(self, attr)
+        torch.cuda.empty_cache()
+        super().terminate()
 
     def _normalize_test(self, tensor: torch.Tensor) -> torch.Tensor:
         """If ``params_test.normalize`` is True, we want to obtain the normalized prediction and target."""

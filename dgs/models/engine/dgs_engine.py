@@ -4,26 +4,26 @@ Engine for a full model of the dynamically gated similarity tracker.
 
 import os.path
 import time
-from datetime import datetime
 
 import torch as t
 from lapsolver import solve_dense
 from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
-from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
-from dgs.models.dataset.posetrack21 import generate_pt21_submission_file, submission_data_from_state
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
+from dgs.models.submission import get_submission
+from dgs.models.submission.submission import SubmissionFile
 from dgs.utils.config import DEF_VAL
-from dgs.utils.state import collate_states, State
+from dgs.utils.state import collate_states, EMPTY_STATE, State
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
 
 dgs_eng_test_validations: Validations = {
+    "submission_key": [("any", ["str", ("all", [list, ("forall", str)])])],
     # optional
     "inactivity_threshold": ["optional", int, ("gt", 0)],
     "max_track_length": ["optional", int],
@@ -49,6 +49,9 @@ class DGSEngine(EngineModule):
 
     Test Params
     -----------
+
+    submission_key (Union[str, NodePath]):
+        The key or the path of keys in the configuration containing the information about the submission file.
 
     Optional Test Params
     --------------------
@@ -91,6 +94,7 @@ class DGSEngine(EngineModule):
 
     model: DGSModule
     tracks: Tracks
+    submission: SubmissionFile
 
     def __init__(
         self, config: Config, model: nn.Module, test_loader: TorchDataLoader, train_loader: TorchDataLoader = None
@@ -104,6 +108,10 @@ class DGSEngine(EngineModule):
         self.tracks = Tracks(
             N=self.params_test.get("max_track_length", DEF_VAL["track"]["N"]),
             thresh=self.params_test.get("inactivity_threshold", DEF_VAL["tracks"]["inactivity_threshold"]),
+        )
+
+        self.submission = get_submission(self.params_test.get("submission")["module_name"])(
+            config=self.config, path=self.params_test.get("submission")
         )
 
     def get_data(self, ds: State) -> any:
@@ -184,8 +192,6 @@ class DGSEngine(EngineModule):
         results: dict[str, any] = {}
         detections: list[State]
         frame_idx: int = 0
-        img_data: list[dict[str, any]] = []
-        anno_data: list[dict[str, any]] = []
 
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
@@ -203,18 +209,18 @@ class DGSEngine(EngineModule):
 
                 # get active states and skip adding if there are no active states
                 active_list = self.tracks.get_active_states()
-                if len(active_list) == 0:
-                    empty = detection.copy()
-                    empty.data["bbox"] = tvte.BoundingBoxes(
-                        t.empty((0, 4), device=self.device), canvas_size=(0, 0), format="XYWH"
-                    )
-                    assert empty.B == 0
-                    active_list = [empty]
-                active = collate_states(active_list)
-                # get submission data
-                new_img_data, new_anno_data = submission_data_from_state(active)
-                img_data.append(new_img_data)
-                anno_data += new_anno_data
+
+                # handle empty active list, by setting the filepath, image_id, and frame_id
+                if len(active_list) == 0 or all(a.B == 0 for a in active_list):
+                    active = EMPTY_STATE.copy()
+                    active.filepath = detection.filepath
+                    active["image_id"] = detection["image_id"]
+                    active["frame_id"] = detection["frame_id"]
+                else:
+                    active = collate_states(active_list)
+
+                # store current submission data
+                self.submission.append(active)
 
                 # print debug info
                 # Add timings and other metrics to the writer
@@ -243,13 +249,7 @@ class DGSEngine(EngineModule):
 
                 frame_idx += 1
 
-        generate_pt21_submission_file(
-            outfile=self.params_test.get(
-                "out_path", os.path.join(self.log_dir, f"./results_{datetime.now().strftime('%Y%m%d_%H_%M')}.json")
-            ),
-            images=img_data,
-            annotations=anno_data,
-        )
+        self.submission.save()
 
         self.logger.debug(f"#### Finished Evaluating {self.name} ####")
 
@@ -262,8 +262,6 @@ class DGSEngine(EngineModule):
         self.set_model_mode("eval")
         close_all_layers(self.model)
         frame_idx: int = 0
-        img_data: list[dict[str, any]] = []
-        anno_data: list[dict[str, any]] = []
 
         self.logger.info(f"#### Start Prediction {self.name} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
@@ -274,10 +272,9 @@ class DGSEngine(EngineModule):
                 _ = self._track_step(detections=detection)
 
                 active = collate_states(self.tracks.get_active_states())
-                # get submission data
-                new_img_data, new_anno_data = submission_data_from_state(active)
-                img_data.append(new_img_data)
-                anno_data += new_anno_data
+
+                # store current submission data
+                self.submission.append(active)
 
                 out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
                 if detection.B > 0:
@@ -301,13 +298,13 @@ class DGSEngine(EngineModule):
                 # move to the next frame
                 frame_idx += 1
 
-        generate_pt21_submission_file(
-            outfile=os.path.join(self.log_dir, f"./prediction_{datetime.now().strftime('%Y%m%d_%H_%M')}.json"),
-            images=img_data,
-            annotations=anno_data,
-        )
+        self.submission.save()
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 
     def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:
         raise NotImplementedError
+
+    def terminate(self) -> None:
+        del self.tracks
+        super().terminate()

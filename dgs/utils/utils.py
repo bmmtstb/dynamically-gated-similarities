@@ -4,6 +4,10 @@ General utility functions.
 
 import os.path
 import sys
+import threading
+import time
+import tracemalloc
+from functools import wraps
 from typing import Union
 
 import numpy as np
@@ -55,6 +59,10 @@ def extract_crops_from_images(
         crop_mode (str): Defines the resize mode in the transform function.
             Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`.
             Default ``DEF_VAL.images.mode``.
+
+    Returns:
+        The 4D image crop(s) with the same format as the image, as tv_tensors of shape ``[N x C x H x W]``.
+        The local key points are returned iff ``kps`` was not ``None``.
     """
     if len(imgs) == 0:
         return tvte.Image(torch.empty(0, 3, 1, 1)), None
@@ -173,3 +181,71 @@ class HidePrint:
 def ids_to_one_hot(ids: Union[torch.Tensor, torch.Tensor], nof_classes: int) -> torch.Tensor:
     """Given a tensor containing the class ids as LongTensor, return the one hot representation as LongTensor."""
     return F.one_hot(ids.long(), nof_classes)  # pylint: disable=not-callable
+
+
+class MemoryTracker:
+    """A Wrapper for tracking RAM usage.
+
+    Args:
+        interval: How long to sleep after every iteration in seconds.
+            Default 1.0 seconds.
+        top_n: How many elements to print.
+            Default 10.
+
+    Examples:
+        >>> @MemoryTracker(interval=0.1)
+            def memory_intensive_function():
+                # Simulate some memory allocations
+                data = []
+                for i in range(100000):
+                    data.append(i)
+                    if i % 10000 == 0:
+                        time.sleep(0.01)
+    """
+
+    def __init__(self, interval: float = 1.0, top_n: int = 10) -> None:
+        self.interval: float = interval
+        self.top_n: int = top_n
+
+        self.running: bool = False
+        self.thread = None
+
+    def _track_memory(self):
+        """Track the memory usage and print it to the console."""
+        while self.running:
+            snapshot = tracemalloc.take_snapshot()
+            line_nos = snapshot.statistics("lineno")
+
+            print(f"\nTop {self.top_n} memory usage:")
+            for i, stat in enumerate(line_nos[: self.top_n]):
+                print(f"{i}: {stat}")
+                for line in stat.traceback.format():
+                    print(f"\t{line}")
+            print("\n")
+            time.sleep(self.interval)
+
+    def start(self):
+        """Start the memory tracker."""
+        tracemalloc.start()
+        self.running = True
+        self.thread = threading.Thread(target=self._track_memory)
+        self.thread.start()
+
+    def stop(self):
+        """Stop the memory tracker."""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        tracemalloc.stop()
+
+    def __call__(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            self.start()
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                self.stop()
+            return result
+
+        return wrapper

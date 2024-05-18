@@ -145,4 +145,4 @@ def write_json(obj: dict, filepath: FilePath):  # pragma: no cover
     """
     mkdir_if_missing(os.path.dirname(filepath))
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(obj, f, indent=4, separators=(",", ": "))
+        json.dump(obj, f, indent=None, separators=(",", ":"))

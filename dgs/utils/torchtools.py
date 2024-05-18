@@ -507,7 +507,7 @@ def init_instance_params(instance: nn.Module) -> None:
                 nn.init.constant_(instance.bias, 0)
 
 
-def memory_analysis(
+def torch_memory_analysis(
     f: callable, file_name: FilePath = "./memory_snapshot.pickle", max_events: int = 100_000_000
 ) -> callable:  # pragma: no cover
     """A decorator for torch memory analysis using :func:`torch.cuda.memory._record_memory_history`."""

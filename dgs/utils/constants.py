@@ -96,6 +96,27 @@ SKELETONS: dict[str, list[tuple[int, int]]] = {
         (13, 15),  # l_knee l_ankle
         (14, 16),  # r_knee r_ankle
     ],
+    "PT21": [
+        (16, 14),  #
+        (14, 12),  #
+        (17, 15),  #
+        (15, 13),  #
+        (12, 13),  #
+        (6, 12),  #
+        (7, 13),  #
+        (6, 7),  #
+        (6, 8),  #
+        (7, 9),  #
+        (8, 10),  #
+        (9, 11),  #
+        (2, 3),  #
+        (1, 2),  #
+        (1, 3),  #
+        (2, 4),  #
+        (3, 5),  #
+        (4, 6),  #
+        (5, 7),  #
+    ],
 }
 
 COLORS: list[str] = list(mcolors.CSS4_COLORS.keys())
@@ -105,6 +126,25 @@ KEY_POINT_NAMES: dict[str, list[str]] = {
         "nose",  # 0
         "left_eye",  # 1
         "right_eye",  # 2
+        "left_ear",  # 3
+        "right_ear",  # 4
+        "left_shoulder",  # 5
+        "right_shoulder",  # 6
+        "left_elbow",  # 7
+        "right_elbow",  # 8
+        "left_wrist",  # 9
+        "right_wrist",  # 10
+        "left_hip",  # 11
+        "right_hip",  # 12
+        "left_knee",  # 13
+        "right_knee",  # 14
+        "left_ankle",  # 15
+        "right_ankle",  # 16
+    ],
+    "PT21": [
+        "nose",  # 0
+        "head_bottom",  # 1
+        "head_top",  # 2
         "left_ear",  # 3
         "right_ear",  # 4
         "left_shoulder",  # 5
@@ -162,3 +202,13 @@ VIDEO_FORMATS: list[str] = [
 ]
 """A list of video formats supported by torchvision. Which uses 'pyav' which is based on 'ffmpeg'."""
 # fmt: on
+
+PT21_CATEGORIES: list[dict] = [
+    {
+        "supercategory": "person",
+        "id": 1,
+        "name": "person",
+        "keypoints": KEY_POINT_NAMES["PT21"],
+        "skeleton": [list(pair) for pair in SKELETONS["PT21"]],
+    }
+]

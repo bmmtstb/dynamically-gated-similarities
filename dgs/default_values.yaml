@@ -44,6 +44,9 @@ images:
     aspect_mode: "zero-pad"
     aspect_round_decimals: 2
 
+submission:
+    file: "./submission.json"
+
 # ############## #
 # LOSS FUNCTIONS #
 # ############## #
@@ -59,6 +62,7 @@ base:
     print_prio: "INFO"
     description: ""
     log_dir: "./results/"
+    log_dir_add_date: true
     precision: "float32"
 
 

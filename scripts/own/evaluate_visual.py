@@ -10,7 +10,7 @@ from datetime import timedelta
 import torch
 from tqdm import tqdm
 
-from dgs.models.engine import VisualSimilarityEngine
+from dgs.models.engine.visual_sim_engine import VisualSimilarityEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.files import to_abspath

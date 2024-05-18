@@ -20,13 +20,14 @@ from dgs.utils.types import Config, FilePath, NodePath, Validations
 from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
-    "device": [("any", [("in", ["cuda", "cpu"]), ("instance", torch.device)])],
+    "device": [("any", [("in", ["cuda", "cpu"]), ("instance", torch.device), ("startswith", "cuda:")])],
     "is_training": [bool],
     "name": [str, ("longer", 2)],
     # optional
     "print_prio": ["optional", str, ("in", PRINT_PRIORITY)],
     "description": ["optional", str],
     "log_dir": ["optional", str],
+    "log_dir_add_date": ["optional", bool],
     "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), torch.dtype])],
 }
 
@@ -92,8 +93,12 @@ class BaseModule(ABC):
         Default: ``DEF_VAL.base.description`` .
     log_dir (FilePath, optional):
         Path to directory where all the files of this run are saved.
-        The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/") in every case.
+        The date will be added to the path if ``log_dir_add_date`` is ``True``.
         Default: ``DEF_VAL.base.log_dir`` .
+    log_dir_add_date (bool, optional):
+        Whether to append the date to the ``log_dir``.
+        If ``True``, The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/").
+        Default: ``DEF_VAL.base.log_dir_add_date`` .
     precision (Union[type, str, torch.dtype], optional)
         The precision at which this module should operate.
         Default: ``DEF_VAL.base.precision`` .
@@ -126,7 +131,11 @@ class BaseModule(ABC):
                 os.path.join(
                     PROJECT_ROOT,
                     self.config.get("log_dir", DEF_VAL["base"]["log_dir"]),
-                    f"./{date.today().strftime('%Y%m%d')}/",
+                    (
+                        f"./{date.today().strftime('%Y%m%d')}/"
+                        if self.config.get("log_dir_add_date", DEF_VAL["base"]["log_dir_add_date"])
+                        else ""
+                    ),
                 )
             )
         )
@@ -318,7 +327,7 @@ class BaseModule(ABC):
         else:
             module.eval()
         # send model to device(s) - multiple devices not supported
-        module.to(device=self.device)
+        module = module.to(device=self.device)
         return module
 
     def terminate(self) -> None:  # pragma: no cover
@@ -330,3 +339,4 @@ class BaseModule(ABC):
         for handler in self.logger.handlers:
             self.logger.removeHandler(handler)
         del self.logger
+        torch.cuda.empty_cache()

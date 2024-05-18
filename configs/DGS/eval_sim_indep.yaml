@@ -1,16 +1,18 @@
-name: "Evaluate-IoU"
+name: "Evaluate-Single"
 description: "Use the DGS tracker with a constant alpha module. 
 With IoU as its only Similarity with an alpha value of 1."
 
-device: "cuda"
+device: "cuda:0"
 print_prio: "INFO"
 is_training: off
 log_dir: "./results/own/eval/"
+log_dir_add_date: false
 
 test:
     inactivity_threshold: 15
     max_track_length: 1
     save_images: off
+    submission: ["submission"]
 
 # #### #
 # DATA #
@@ -23,6 +25,8 @@ dl_rcnn:
     batch_size: 16
     threshold: 0.75
     return_lists: true
+    image_size: !!python/tuple [ 1024, 1024 ]
+    image_mode: "zero-pad"
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
     # data_path:  # will be set in python script
@@ -37,6 +41,10 @@ dl_gt:
     return_lists: true
     # data_path: # will be set in python script
     # out_path:  # will be set in python script
+
+submission:
+    module_name: "PoseTrack21"
+    # file: # will be set in python script
 
 # ####### #
 # MODULES #
@@ -147,3 +155,21 @@ v4_embed_gen:
     weights: "pretrained"
     nof_classes: 1000
 
+# Visual - vXXX - 
+
+dgs_vis_XXX:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "vXXX_sim" ]
+    combined_softmax: true
+
+vXXX_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["vXXX_embed_gen"]
+
+vXXX_embed_gen:
+    module_name: "torchreid"
+    model_name: ""
+    weights: "./weights/"
+    nof_classes: 1000

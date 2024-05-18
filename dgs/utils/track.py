@@ -509,11 +509,17 @@ class Tracks(UserDict):
 
         # add the new state to the new tracks
         for tid, new_state in zip(new_tids, new):
-            self._update_track(tid=tid, add_state=new_state)
+            if new_state.B != 0:
+                self._update_track(tid=tid, add_state=new_state)
+            else:
+                inactive_ids.add(tid)
 
         # add state to Track and remove track from inactive if present
         for tid, new_state in tracks.items():
-            self._update_track(tid=tid, add_state=new_state)
+            if new_state.B != 0:
+                self._update_track(tid=tid, add_state=new_state)
+            else:
+                inactive_ids.add(tid)
 
         self._handle_inactive(tids=inactive_ids)
 

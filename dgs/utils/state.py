@@ -286,6 +286,7 @@ class State(UserDict):
     @property
     def filepath(self) -> FilePaths:
         """If data filepath has a single entry, return the filepath as a string, otherwise return the list."""
+        assert "filepath" in self, "filepath not set"
         assert isinstance(self.data["filepath"], tuple), f"filepath must be a tuple but got {self.data['filepath']}"
         return self.data["filepath"]
 

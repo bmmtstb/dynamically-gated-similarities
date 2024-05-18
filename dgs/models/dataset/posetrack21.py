@@ -23,14 +23,13 @@ import numpy as np
 import torch as t
 from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors as tvte
-from torchvision.transforms.v2.functional import convert_bounding_box_format
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, dataloader_validations, ImageDataset
 from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataset
 from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import PROJECT_ROOT
-from dgs.utils.files import mkdir_if_missing, read_json, to_abspath, write_json
+from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.state import collate_bboxes, collate_tensors, State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_and_save
@@ -53,8 +52,6 @@ __all__ = [
     "PoseTrack21_BBox",
     "PoseTrack21_Image",
     "PoseTrack21Torchreid",
-    "generate_pt21_submission_file",
-    "submission_data_from_state",
 ]
 
 pt21_json_validations: Validations = {
@@ -328,119 +325,6 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
         individually=True,  # the train annotations have different sizes and have to be looked at individually
         **kwargs,
     )
-
-
-def submission_data_from_state(s: State) -> tuple[dict[str, any], list[dict[str, any]]]:
-    """Given a :class:`.State`, extract data for the 'images' and 'annotations' list used in the pt21 submission.
-
-    See :func:`.generate_pt21_submission_file` for more details on the submission format.
-
-    Returns:
-        The image and annotation data as dictionaries.
-        The annotation data is a list of dicts, because every image can have multiple detections / annotations.
-    """
-    # pylint: disable=too-many-branches
-    # validate the image data
-    for key in ["filepath", "image_id", "frame_id"]:
-        if key not in s:
-            raise KeyError(f"Expected key '{key}' to be in State.")
-        if isinstance(s[key], str):
-            # str -> tuple of str, this will always be correct, add at least one value for later usage
-            s[key] = (s[key] for _ in range(max(1, s.B)))
-        elif s.B > 1:
-            if (l := len(s[key])) != s.B:
-                raise ValueError(f"Expected '{key}' ({l}) to have the same length as the State ({s.B}).")
-            if any(s[key][i] != s[key][0] for i in range(1, s.B)):
-                raise ValueError(f"State has different {key}s, expected all {key}s to match. got: '{s[key]}'.")
-        elif (l := len(s[key])) != 1:
-            raise ValueError(f"Expected '{key}' ({l}) to have a length of exactly 1.")
-    # add frame id if missing as duplicate of image id
-    if "frame_id" not in s:
-        s["frame_id"] = s["image_id"]
-
-    # get the image data
-    image_data = {
-        "file_name": s.filepath[0],
-        "id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
-        "frame_id": int(s["frame_id"][0].item() if isinstance(s["frame_id"], t.Tensor) else s["frame_id"][0]),
-    }
-    if s.B == 0:
-        return image_data, []
-
-    # validate the annotation data
-    for key in ["person_id", "pred_tid", "bbox", "keypoints", "joint_weight"]:
-        if key not in s:
-            raise KeyError(f"Expected key '{key}' to be in State.")
-        if (l := len(s[key])) != s.B:
-            raise ValueError(f"Expected '{key}' ({l}) to have the same length as the State ({s.B}).")
-
-    # get the annotation data
-    anno_data = []
-    bboxes = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
-    for i in range(s.B):
-        kps = t.cat([s.keypoints[i], s.joint_weight[i]], dim=-1)
-        anno_data.append(
-            {
-                "bboxes": bboxes[i].flatten().tolist(),
-                "kps": kps.flatten().tolist(),
-                "scores": s["scores"][i].flatten().tolist() if "scores" in s else [0.0 for _ in range(17)],
-                "image_id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
-                "person_id": int(s.person_id[i].item()),
-                "track_id": int(s["pred_tid"][i].item()),
-            }
-        )
-
-    return image_data, anno_data
-
-
-def generate_pt21_submission_file(
-    outfile: FilePath, images: list[dict[str, any]], annotations: list[dict[str, any]]
-) -> None:  # pragma: no cover
-    """Given data, generate a |PT21| submission file.
-
-    References:
-        https://github.com/anDoer/PoseTrack21/blob/main/doc/dataset_structure.md
-
-        https://github.com/leonid-pishchulin/poseval
-
-    Args:
-        outfile: The path to the target file
-        images: A list containing the IDs and file names of the images
-        annotations: A list containing the per-bbox predicted annotations.
-
-    Notes:
-        The structure of the PT21 submission file is similar to the structure of the inputs::
-
-            {
-                "images": [
-                    {
-                        "file_name": "images/train/000001_bonn_train/000000.jpg",
-                        "id": 10000010000,
-                        "frame_id": 10000010000
-                    },
-                ],
-                "annotations": [
-                    {
-                        "bbox": [x1,  y1, w, h],
-                        "image_id": 10000010000,
-                        "keypoints": [x1, y1, vis1, ..., x17, y17, vis17],
-                        "scores": [s1, ..., s17],
-                        "person_id": 1024,
-                        "track_id": 0
-                    },
-                ]
-            }
-
-        Additionally, note that the visibilities are ignored during evaluation.
-
-    """
-    data = {"images": images, "annotations": annotations}
-    try:
-        write_json(obj=data, filepath=outfile)
-    except TypeError as e:
-        print(f"images: {images}")
-        print(f"annotations: {annotations}")
-        raise TypeError from e
 
 
 def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> Union[BaseDataset, TorchDataset]:
