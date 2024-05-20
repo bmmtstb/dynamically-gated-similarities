@@ -17,7 +17,7 @@ embedding_validations: Validations = {
     "embedding_size": [int, ("gt", 0)],
     "nof_classes": [int, ("gt", 0)],
     # optional
-    "embedding_key": ["optional" ,str]
+    "embedding_key": ["optional", str],
 }
 
 
