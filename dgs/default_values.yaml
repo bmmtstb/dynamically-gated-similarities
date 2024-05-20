@@ -88,6 +88,7 @@ engine:
         topk_cmc: [ 1, 5, 10, 20 ]
         metric_kwargs: {}
         write_embeds: [False, False]
+        image_key: "image_crop"
 
     dgs:
         save_images: true
@@ -113,6 +114,7 @@ dgs:
 embed_gen:
     torchreid:
         weights: "pretrained"
+        image_key: "image_crop"
 
     pose:
         LPBEG:

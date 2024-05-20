@@ -31,6 +31,7 @@ test_validations: Validations = {
     "metric_kwargs": ["optional", dict],
     "topk_cmc": ["optional", ("forall", [int, ("gt", 0)])],
     "write_embeds": ["optional", ("len", 2), ("forall", bool)],
+    "image_key": ["optional", str],
 }
 
 
@@ -85,6 +86,9 @@ class VisualSimilarityEngine(EngineModule):
         Whether to write the embeddings for the Query and Gallery Dataset to the tensorboard writer.
         Only really feasible for smaller datasets ~1k embeddings.
         Default ``DEF_VAL.engine.visual.write_embeds``.
+    image_key (str, optional):
+        Which key to use when loading the image from the state in :meth:`get_data`.
+        Default ``DEF_VAL.engine.visual.image_key``.
     """
 
     # The heart of the project might get a little larger...
@@ -118,6 +122,8 @@ class VisualSimilarityEngine(EngineModule):
             **self.params_test.get("metric_kwargs", DEF_VAL["engine"]["visual"]["metric_kwargs"])
         )
 
+        self.image_key: str = self.params.get("image_key", DEF_VAL["engine"]["visual"]["image_key"])
+
         if self.is_training:
             self.validate_params(train_validations, attrib_name="params_train")
 
@@ -131,7 +137,7 @@ class VisualSimilarityEngine(EngineModule):
 
     def get_data(self, ds: State) -> torch.Tensor:
         """Get the image crop from the data."""
-        return ds["image_crop"]
+        return ds[self.image_key]
 
     @enable_keyboard_interrupt
     def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:

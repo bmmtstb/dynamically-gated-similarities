@@ -47,14 +47,14 @@ class ObjectKeypointSimilarity(SimilarityModule):
         self.validate_params(oks_validations)
 
         # get sigma
-        sigma: torch.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=torch.float32)
+        sigma: torch.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=self.precision)
         # With k = 2 * sigma -> shape [J]
         # We know that k is constant and k^2 is only ever required. Therefore, save it as parameter / buffer.
         self.register_buffer("k2", torch.square(torch.mul(2, sigma)))
 
         # Create a small value for epsilon to make sure that we do not divide by zero later on.
         self.register_buffer(
-            "eps", torch.tensor(torch.finfo(torch.float32).eps, device=self.device, dtype=torch.float32)
+            "eps", torch.tensor(torch.finfo(self.precision).eps, device=self.device, dtype=self.precision)
         )
         # Set up a transform function to convert the bounding boxes if they have the wrong format
         self.transform = ConvertBoundingBoxFormat("XYXY")

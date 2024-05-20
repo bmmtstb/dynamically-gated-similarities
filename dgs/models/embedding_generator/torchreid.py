@@ -37,6 +37,7 @@ torchreid_validations: Config = {
             [("eq", "pretrained"), "file exists", "file exists in project", ("file exists in folder", "./weights/")],
         ),
     ],
+    "image_key": ["optional", str],
 }
 
 
@@ -68,9 +69,15 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         The name of the torchreid model used.
         Has to be one of ``~torchreid.models.__model_factory.keys()``.
 
+    Optional Params
+    ---------------
+
     weights (Union[str, FilePath], optional):
         A path to the model weights or the string 'pretrained' for the default pretrained torchreid model.
         Default ``DEF_VAL.embed_gen.torchreid.weights``.
+    image_key (str, optional):
+        The key of the image to use when generating the embedding.
+        Default ``DEF_VAL.embed_gen.torchreid.image_key ``.
 
     Important Inherited Params
     --------------------------
@@ -99,6 +106,8 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
 
         model = self._init_model(self.model_weights == "pretrained")
         self.add_module(name="model", module=model)
+
+        self.image_key = self.params.get("image_key", DEF_VAL["embed_gen"]["torchreid"]["image_key"])
 
     def _init_model(self, pretrained: bool) -> nn.Module:
         """Initialize torchreid model"""
@@ -178,6 +187,6 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         Returns:
             A batch of embeddings as tensor of shape: ``[B x E]``.
         """
-        if "embedding" in ds:
-            return ds["embedding"]
-        return self.model(ds.image_crop)
+        if self.embedding_key_exists(ds):
+            return ds[self.embedding_key]
+        return self.model(getattr(ds, self.image_key) if hasattr(ds, self.image_key) else ds[self.image_key])

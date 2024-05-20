@@ -77,7 +77,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
         func = self._init_func()
         self.add_module(name="func", module=func)
 
-        self.final = nn.Sequential()
+        self.final = nn.Sequential().to(device=self.device)
         if self.params.get("softmax", DEF_VAL["similarity"]["torchreid"]["softmax"]):
             self.final.append(nn.Softmax(dim=-1))
 
@@ -91,17 +91,17 @@ class TorchreidVisualSimilarity(SimilarityModule):
 
     def get_data(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the current embedding or compute it using the image crop."""
-        if "embedding" in ds:
-            return ds["embedding"]
-        ds["embedding"] = self.model.predict_embeddings(ds.image_crop)
-        return ds["embedding"]
+        if self.model.embedding_key in ds:
+            return ds[self.model.embedding_key]
+        ds[self.model.embedding_key] = self.model.predict_embeddings(ds.image_crop)
+        return ds[self.model.embedding_key]
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the target embedding or compute it using the image crop."""
-        if "embedding" in ds:
-            return ds["embedding"]
-        ds["embedding"] = self.model.predict_embeddings(ds.image_crop)
-        return ds["embedding"]
+        if self.model.embedding_key in ds:
+            return ds[self.model.embedding_key]
+        ds[self.model.embedding_key] = self.model.predict_embeddings(ds.image_crop)
+        return ds[self.model.embedding_key]
 
     def forward(self, data: State, target: State) -> torch.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.
@@ -131,8 +131,8 @@ class TorchreidVisualSimilarity(SimilarityModule):
         """
         pred_embeds = self.get_data(ds=data)
         targ_embeds = self.get_target(ds=target)
-        assert "embedding" in data.data, "embedding of data should be saved"
-        assert "embedding" in target.data, "embedding of target should be saved"
+        assert self.model.embedding_key in data.data, "embedding of data should be saved"
+        assert self.model.embedding_key in target.data, "embedding of target should be saved"
 
         dist = self.func(pred_embeds, targ_embeds)
 

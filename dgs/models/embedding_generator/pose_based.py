@@ -205,6 +205,8 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             ``ids`` is the probability to predict a class.
             The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
+        if self.embedding_key_exists(ds):
+            return ds[self.embedding_key]
         # extract key points and bboxes from data and get them into the right shape
         kp = ds.keypoints
         bboxes = ds.bbox
@@ -331,6 +333,8 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             ``ids`` is the probability to predict a class.
             The ids are given as a tensor of shape ``[B x num_classes]`` with values in range `[0, 1]`.
         """
+        if self.embedding_key_exists(ds):
+            return ds[self.embedding_key]
         # extract key points and bboxes from data
         kp = ds.keypoints
         bboxes = ds.bbox
