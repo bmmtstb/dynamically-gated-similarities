@@ -30,7 +30,7 @@ if __name__ == "__main__":
         for ap_file in tqdm(ap_files, total=len(ap_files)):
 
             ap_base_path, dataset_name = os.path.split(os.path.dirname(ap_file))
-            new_filename: FilePath = os.path.join(ap_base_path, f"./files/{dataset_name}.json")
+            new_filename: FilePath = os.path.join(ap_base_path, f"./results_json/{dataset_name}.json")
 
             if is_abs_file(new_filename):
                 # print(f"skipped file due to existence: {new_filename}")

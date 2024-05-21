@@ -112,6 +112,8 @@ dgs:
     combined_softmax: true
 
 embed_gen:
+    embedding_key: "embedding"
+    
     torchreid:
         weights: "pretrained"
         image_key: "image_crop"

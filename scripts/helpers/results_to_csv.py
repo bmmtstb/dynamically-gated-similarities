@@ -28,16 +28,6 @@ JOINTS = [
     "total",
 ]
 
-
-FOLDERS: list[str] = [
-    "FastPose",
-    "HRNet",
-    "SimpleBaseline",
-    "DetectAndTrack_FastPose",
-    "DetectAndTrack_HRNet",
-    "DetectAndTrack_SimpleBaseline",
-]
-
 PT21_METRICS: list[str] = [
     "DetPr",
     "DetRe",
@@ -62,7 +52,7 @@ PT21_METRICS: list[str] = [
     "HOTA_FN(0)",
 ]
 
-BASE_DIR: str = "./results/ap_results/"
+BASE_DIR: str = "./results/own/eval/"
 
 if __name__ == "__main__":
 
@@ -70,31 +60,40 @@ if __name__ == "__main__":
     # POSEVAL #
     # ####### #
 
-    with open(os.path.join(BASE_DIR, "./results_poseval.csv"), "w", encoding="utf-8") as csvfile:
+    poseval_out_file = os.path.join(BASE_DIR, "./results_poseval.csv")
+    with open(poseval_out_file, "w", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Dataset", "Type"] + JOINTS)
+        csv_writer.writerow(["Dataset", "Key", "Type"] + JOINTS)
 
-        for folder in FOLDERS:
-            ap_data = read_json(f"./results/ap_results/{folder}/eval_data/total_AP_metrics.json")
-            mot_data = read_json(f"./results/ap_results/{folder}/eval_data/total_MOT_metrics.json")
+        AP_metrics = glob(f"{BASE_DIR}/**/eval_data/total_AP_metrics.json", recursive=True)
+
+        for AP_file in AP_metrics:
+            data_folder = os.path.dirname(os.path.dirname(os.path.realpath(AP_file)))
+            MOT_file = os.path.join(data_folder, "./eval_data/total_MOT_metrics.json")
+            ds, conf_key = os.path.split(data_folder)[-2:]
+
+            ap_data = read_json(AP_file)
+            mot_data = read_json(MOT_file)
 
             # ap
             for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
-                csv_writer.writerow([folder, new_k] + ap_data[k])
+                csv_writer.writerow([ds, conf_key, new_k] + ap_data[k])
             # mot
             for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
-                csv_writer.writerow([folder, new_k] + mot_data[k])
+                csv_writer.writerow([ds, conf_key, new_k] + mot_data[k])
+    print(f"Wrote poseval results to: {poseval_out_file}")
 
     # ######### #
     # PT21 EVAL #
     # ######### #
 
-    with open(os.path.join(BASE_DIR, "./results_pt21.csv"), "w", encoding="utf-8") as csvfile:
+    pt21_out_file = os.path.join(BASE_DIR, "./results_pt21.csv")
+    with open(pt21_out_file, "w", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(["Name"] + PT21_METRICS)
 
         # Search for pose_hota_results.txt files recursively in the ./files/ directory
-        files = glob(f"{BASE_DIR}/**/files/pose_hota_results.txt")
+        files = glob(f"{BASE_DIR}/**/results_json/pose_hota_results.txt", recursive=True)
 
         for file_path in files:
             parent_folder_name = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
@@ -108,3 +107,4 @@ if __name__ == "__main__":
                 values = [v.strip() for v in values[1:]]  # summary is empty
                 assert len(values) == len(PT21_METRICS)
                 csv_writer.writerow([parent_folder_name] + values)
+    print(f"Wrote PT21 results to: {pt21_out_file}")

@@ -52,7 +52,7 @@ def run(config: Config, dl_key: str, paths: list[str]) -> None:
                 pbar_alpha.set_postfix_str(f"[{alpha_1}, {100 - alpha_1}]")
 
                 # set alpha values
-                config["combine_sim"]["alpha"] = [alpha_1, 100 - alpha_1]
+                config["combine_sim"]["alpha"] = [alpha_1 / 100.0, (100.0 - alpha_1) / 100.0]
 
                 # make sure to have a unique log dir every time
                 orig_log_dir = config["log_dir"]
