@@ -77,6 +77,10 @@ def module_loader(
         from dgs.models.similarity import get_similarity_module
 
         m = get_similarity_module(module_name)
+    elif module_class == "submission":
+        from dgs.models.submission import get_submission
+
+        m = get_submission(module_name)
     else:
         raise NotImplementedError(f"Something went wrong while loading the module '{module_class}'")
 
@@ -146,6 +150,10 @@ def register_module(name, new_module: Union[Type[M], Type[torch.nn.Module]], ins
         from dgs.models.similarity import register_similarity_module
 
         register_similarity_module(name=name, new_similarity=new_module)
+    elif inst_class_name == "submission":
+        from dgs.models.submission import register_submission
+
+        register_submission(name=name, new_sub=new_module)
     else:
         raise ValueError(f"The instance class name '{inst_class_name}' could not be found.")
 
