@@ -28,7 +28,7 @@ if __name__ == "__main__":
     config: Config = load_config(CONFIG_FILE)
 
     h, w = config[DL_KEY]["crop_size"]
-    datasets: list = glob(f"./data/PoseTrack21/images/val/**/")
+    datasets: list = glob("./data/PoseTrack21/images/val/**/")
 
     for dataset_path in (pbar_dataset := tqdm(datasets, desc="datasets", leave=False)):
         ds_name = os.path.basename(os.path.realpath(dataset_path))

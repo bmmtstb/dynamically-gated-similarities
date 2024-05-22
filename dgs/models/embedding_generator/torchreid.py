@@ -77,7 +77,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         Default ``DEF_VAL.embed_gen.torchreid.weights``.
     image_key (str, optional):
         The key of the image to use when generating the embedding.
-        Default ``DEF_VAL.embed_gen.torchreid.image_key ``.
+        Default ``DEF_VAL.embed_gen.torchreid.image_key``.
 
     Important Inherited Params
     --------------------------
@@ -85,6 +85,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
     nof_classes (int):
         The number of classes in the dataset.
         Used during training to predict the id.
+
     """
 
     model: nn.Module

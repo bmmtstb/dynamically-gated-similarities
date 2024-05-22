@@ -77,7 +77,8 @@ class TorchreidVisualSimilarity(SimilarityModule):
         func = self._init_func()
         self.add_module(name="func", module=func)
 
-        self.final = nn.Sequential().to(device=self.device)
+        self.final = nn.Sequential()
+        self.final = self.final.to(device=self.device)
         if self.params.get("softmax", DEF_VAL["similarity"]["torchreid"]["softmax"]):
             self.final.append(nn.Softmax(dim=-1))
 
