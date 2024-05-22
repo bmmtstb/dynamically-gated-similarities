@@ -87,12 +87,12 @@ if __name__ == "__main__":
 
     print("Evaluating on the PT21 ground-truth evaluation dataset")
     cfg = load_config(CONFIG_FILE)
-    base_path = cfg["dl_gt"]["base_path"]
+    base_path = cfg["dgs_gt"]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dl_gt", paths=data_paths)
+    run(config=cfg, dl_key="dgs_gt", paths=data_paths)
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     cfg = load_config(CONFIG_FILE)
-    base_path = cfg["dl_rcnn"]["base_path"]
+    base_path = cfg["dgs_rcnn"]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_dir()]
-    run(config=cfg, dl_key="dl_rcnn", paths=data_paths)
+    run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)

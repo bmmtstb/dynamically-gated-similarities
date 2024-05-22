@@ -28,19 +28,23 @@ for dataset_dir in "$base_dir"/*; do
 
     echo "Running evaluation $name for dataset $dataset :"
 
-    # Run pose evaluation from poseval (originally used by AP)
-    python -m poseval.evaluate \
-        --groundTruth ./data/PoseTrack21/posetrack_data/val/ \
-        --predictions ./"$base_dir"/"$dataset"/"$name"/results_json/ \
-        --outputDir ./"$base_dir"/"$dataset"/"$name"/eval_data/ \
-        --evalPoseTracking --evalPoseEstimation --saveEvalPerSequence
+    if [ ! -f "$name_dir/eval_data/total_AP_metrics.json"]; then
+      # Run pose evaluation from poseval (originally used by AP)
+      python -m poseval.evaluate \
+          --groundTruth ./data/PoseTrack21/posetrack_data/val/ \
+          --predictions ./"$base_dir"/"$dataset"/"$name"/results_json/ \
+          --outputDir ./"$base_dir"/"$dataset"/"$name"/eval_data/ \
+          --evalPoseTracking --evalPoseEstimation --saveEvalPerSequence
+    fi
 
-    # Run PoseTrack21 challenge evaluation
-    python ./dependencies/PoseTrack21/eval/posetrack21/scripts/run_posetrack_challenge.py \
-        --GT_FOLDER ./data/PoseTrack21/posetrack_data/val/ \
-        --TRACKERS_FOLDER ./"$base_dir"/"$dataset"/"$name"/results_json/ \
-        --USE_PARALLEL True --NUM_PARALLEL_CORES 4 \
-        --PRINT_RESULTS True --OUTPUT_DETAILED True
+    if [! -f "$results_json_dir/pose_hota_results.txt"]; then
+      # Run PoseTrack21 challenge evaluation
+      python ./dependencies/PoseTrack21/eval/posetrack21/scripts/run_posetrack_challenge.py \
+          --GT_FOLDER ./data/PoseTrack21/posetrack_data/val/ \
+          --TRACKERS_FOLDER ./"$base_dir"/"$dataset"/"$name"/results_json/ \
+          --USE_PARALLEL True --NUM_PARALLEL_CORES 4 \
+          --PRINT_RESULTS True --OUTPUT_DETAILED True
 
-    done
+      done
+    fi
 done

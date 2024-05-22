@@ -62,7 +62,7 @@ class PoseTrack21Submission(SubmissionFile):
     def append(self, s: State, *_args, **_kwargs) -> None:
         """Given data, append to the created |PT21| submission file."""
         self.data["images"].append(self.get_image_data(s))
-        self.data["annotations"].append(self.get_anno_data(s))
+        self.data["annotations"] += self.get_anno_data(s)
 
     def save(self) -> None:
         """Save the submission data in a file."""
@@ -97,6 +97,7 @@ class PoseTrack21Submission(SubmissionFile):
         image_data = {
             "file_name": s.filepath[0],
             "id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
+            "image_id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
             "frame_id": int(s["frame_id"][0].item() if isinstance(s["frame_id"], t.Tensor) else s["frame_id"][0]),
         }
         return image_data
