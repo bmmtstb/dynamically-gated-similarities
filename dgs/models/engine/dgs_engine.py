@@ -306,5 +306,7 @@ class DGSEngine(EngineModule):
         raise NotImplementedError
 
     def terminate(self) -> None:
+        self.submission.terminate()
+        self.model.terminate()
         del self.tracks
         super().terminate()

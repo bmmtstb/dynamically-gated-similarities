@@ -22,7 +22,7 @@ from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint
 
-CONFIG_FILE = "./configs/DGS/eval_sim_indep.yaml"
+CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
 
 # @torch_memory_analysis
@@ -31,10 +31,20 @@ CONFIG_FILE = "./configs/DGS/eval_sim_indep.yaml"
 def run(config: Config, dl_key: str, paths: list[str]) -> None:
     """Main function to run the code."""
     # IoU, OKS, and visual similarity
-    # for dgs_key in tqdm(["dgs_vis_1", "dgs_vis_2", "dgs_vis_3", "dgs_vis_4"], desc="similarities"):
     for dgs_key in (
         pbar_key := tqdm(
-            ["dgs_box", "dgs_pose", "dgs_vis_1", "dgs_vis_2", "dgs_vis_3", "dgs_vis_4"], desc="similarities"
+            [
+                "iou",
+                "oks",
+                "OSNet",
+                "OSNetAIN",
+                "Resnet50",
+                "Resnet152",
+                "OSNetAIN_CrossDomainDuke",
+                "OSNetIBN_CrossDomainDuke",
+                "OSNetAIN_CrossDomainMSMT17",
+            ],
+            desc="similarities",
         )
     ):
         pbar_key.set_postfix_str(dgs_key)
@@ -94,5 +104,5 @@ if __name__ == "__main__":
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     cfg = load_config(CONFIG_FILE)
     base_path = cfg["dgs_rcnn"]["base_path"]
-    data_paths = [f.path for f in os.scandir(base_path) if f.is_dir()]
+    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
     run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)

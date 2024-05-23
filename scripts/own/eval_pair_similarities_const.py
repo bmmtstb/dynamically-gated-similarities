@@ -28,7 +28,7 @@ from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint
 
-CONFIG_FILE = "./configs/DGS/eval_sim_combinations.yaml"
+CONFIG_FILE = "./configs/DGS/eval_const_pairwise_similarities.yaml"
 
 
 # @torch_memory_analysis
@@ -37,10 +37,10 @@ CONFIG_FILE = "./configs/DGS/eval_sim_combinations.yaml"
 def run(config: Config, dl_key: str, paths: list[str]) -> None:
     """Main function to run the code."""
     # Combinations of IoU, OKS, and visual similarity
-    for dgs_key in (pbar_key := tqdm(["dgs_iou_oks", "dgs_iou_vis", "dgs_oks_vis"], desc="combinations")):
+    for dgs_key in (pbar_key := tqdm(["iou_oks", "iou_OSNet", "oks_OSNet"], desc="combinations")):
         pbar_key.set_postfix_str(dgs_key)
 
-        config["name"] = f"Evaluate-Combinations-{dgs_key}"
+        config["name"] = f"Evaluate-Pairwise-Combinations-{dgs_key}"
 
         # get sub folders or files and analyse them one-by-one
         for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
@@ -103,5 +103,5 @@ if __name__ == "__main__":
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     cfg = load_config(CONFIG_FILE)
     base_path = cfg["dgs_rcnn"]["base_path"]
-    data_paths = [f.path for f in os.scandir(base_path) if f.is_dir()]
+    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
     run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)

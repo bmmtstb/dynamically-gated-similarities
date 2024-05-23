@@ -52,3 +52,8 @@ class SubmissionFile(BaseModule):
 
     def save(self) -> None:
         """Save the submission data to the submission file."""
+
+    def terminate(self) -> None:
+        """Terminate the submission file creation."""
+        if self.data:
+            del self.data

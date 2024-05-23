@@ -90,13 +90,14 @@ if __name__ == "__main__":
     pt21_out_file = os.path.join(BASE_DIR, "./results_pt21.csv")
     with open(pt21_out_file, "w", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Name"] + PT21_METRICS)
+        csv_writer.writerow(["Dataset", "Key"] + PT21_METRICS)
 
         # Search for pose_hota_results.txt files recursively in the ./files/ directory
         files = glob(f"{BASE_DIR}/**/results_json/pose_hota_results.txt", recursive=True)
 
         for file_path in files:
-            parent_folder_name = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
+            ds_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(file_path))))
+            meth_key = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
 
             # Read data from input file and format as CSV
             with open(file_path, encoding="utf-8") as f:
@@ -106,5 +107,5 @@ if __name__ == "__main__":
                 values = line.split("&")
                 values = [v.strip() for v in values[1:]]  # summary is empty
                 assert len(values) == len(PT21_METRICS)
-                csv_writer.writerow([parent_folder_name] + values)
+                csv_writer.writerow([ds_name, meth_key] + values)
     print(f"Wrote PT21 results to: {pt21_out_file}")

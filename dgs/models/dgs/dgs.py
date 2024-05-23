@@ -108,3 +108,10 @@ class DGSModule(BaseModule, nn.Module):
         # every input should be allowed to get assigned to a new track
         new_track = torch.zeros((nof_det, nof_det), dtype=self.precision, device=self.device)
         return torch.cat([combined, new_track], dim=-1)
+
+    def terminate(self) -> None:
+        """Terminate the DGS module and delete the torch modules."""
+        del self.sim_mods
+        del self.combine
+        del self.combined_softmax
+        del self.similarity_softmax

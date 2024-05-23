@@ -1,4 +1,4 @@
-name: "Evaluate-Combinations"
+name: "Evaluate-Pairwise-Combinations"
 description: "Use the DGS tracker with a constant alpha module and a combination of two modules.
 A python script will change the alpha values of the modules in 10% increments from 10 to 90 respectively."
 
@@ -19,17 +19,17 @@ test:
 # #### #
 
 dgs_rcnn:
-    module_name: "KeypointRCNNImageBackbone"
-    dataset_path: "./data/"
-    base_path: "./data/PoseTrack21/images/val/"
-    batch_size: 16
-    threshold: 0.75
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_prediction/"
+    base_path: "./data/PoseTrack21/posetrack_data/rcnn_prediction/"
+    batch_size: 8
     return_lists: true
+    # data_path:  # will be set in python script
     image_size: !!python/tuple [ 1024, 1024 ]
     image_mode: "zero-pad"
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
-    # data_path:  # will be set in python script
 
 dgs_gt:
     module_name: "PoseTrack21_Image"
@@ -39,6 +39,10 @@ dgs_gt:
     batch_size: 1
     return_lists: true
     # data_path: # will be set in python script
+    image_size: !!python/tuple [ 1024, 1024 ]
+    image_mode: "zero-pad"
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
 
 submission:
     module_name: "PoseTrack21"
@@ -59,41 +63,70 @@ pose_sim:
     module_name: "oks"
     format: "coco"
 
-visual_sim:
+visual_sim_OSNet:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vis_embed_gen"]
+    embedding_generator_path: ["vis_embed_gen_OSNet"]
 
-vis_embed_gen:
+vis_embed_gen_OSNet:
     module_name: "torchreid"
     model_name: "osnet_x1_0"
     weights: "./weights/osnet_x1_0_imagenet.pth"
     nof_classes: 1000
 
+visual_sim_OSNetAIN:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["vis_embed_gen_OSNetAIN"]
+
+vis_embed_gen_OSNetAIN:
+    module_name: "torchreid"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_imagenet.pth"
+    nof_classes: 1000
+
 
 # Combination 1 - IoU and OKS
 
-dgs_iou_oks:
+iou_oks:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim", "pose_sim"]
     similarity_softmax: true
     combined_softmax: true
 
-# Combination 2 - IoU and Visual
+# Combination 2 - IoU and Visual - OSNet
 
-dgs_iou_vis:
+iou_OSNet:
     module_name: "DGS"
     combine: "combine_sim"
-    names: [ "box_sim", "visual_sim" ]
+    names: [ "box_sim", "visual_sim_OSNet" ]
     similarity_softmax: true
     combined_softmax: true
 
-# Combination 3 - OKS and Visual
+# Combination 3 - OKS and Visual - OSNet
 
-dgs_oks_vis:
+oks_OSNet:
     module_name: "DGS"
     combine: "combine_sim"
-    names: [ "pose_sim", "visual_sim" ]
+    names: [ "pose_sim", "visual_sim_OSNet" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 4 - IoU and Visual - OSNetAIN
+
+iou_OSNetAIN:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "box_sim", "visual_sim_OSNetAIN" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 5 - OKS and Visual - OSNetAIN
+
+oks_OSNetAIN:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "pose_sim", "visual_sim_OSNetAIN" ]
     similarity_softmax: true
     combined_softmax: true

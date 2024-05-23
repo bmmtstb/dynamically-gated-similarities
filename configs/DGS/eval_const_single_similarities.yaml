@@ -19,17 +19,17 @@ test:
 # #### #
 
 dgs_rcnn:
-    module_name: "KeypointRCNNImageBackbone"
-    dataset_path: "./data/"
-    base_path: "./data/PoseTrack21/images/val/"
-    batch_size: 16
-    threshold: 0.75
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_prediction/"
+    base_path: "./data/PoseTrack21/posetrack_data/rcnn_prediction/"
+    batch_size: 8
     return_lists: true
+    # data_path:  # will be set in python script
     image_size: !!python/tuple [ 1024, 1024 ]
     image_mode: "zero-pad"
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
-    # data_path:  # will be set in python script
 
 dgs_gt:
     module_name: "PoseTrack21_Image"
@@ -39,6 +39,10 @@ dgs_gt:
     batch_size: 1
     return_lists: true
     # data_path: # will be set in python script
+    image_size: !!python/tuple [ 1024, 1024 ]
+    image_mode: "zero-pad"
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
 
 submission:
     module_name: "PoseTrack21"
@@ -54,7 +58,7 @@ combine_sim:
 
 # BOX - IoU
 
-dgs_box:
+iou:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim"]
@@ -65,7 +69,7 @@ box_sim:
 
 # Pose - OKS
 
-dgs_pose:
+oks:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim" ]
@@ -78,7 +82,7 @@ pose_sim:
 
 # Visual - v1 - OSNet_x1_0 pretrained on ImageNet
 
-dgs_vis_1:
+OSNet:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v1_sim" ]
@@ -98,7 +102,7 @@ v1_embed_gen:
 
 # Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
 
-dgs_vis_2:
+OSNetAIN:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v2_sim" ]
@@ -117,7 +121,7 @@ v2_embed_gen:
 
 # Visual - v3 - resnet50 from same-domain Re-ID
 
-dgs_vis_3:
+Resnet50:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v3_sim" ]
@@ -136,7 +140,7 @@ v3_embed_gen:
 
 # Visual - v4 - resnet152 from same-domain Re-ID
 
-dgs_vis_4:
+Resnet152:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v4_sim" ]
@@ -153,21 +157,59 @@ v4_embed_gen:
     weights: "pretrained"
     nof_classes: 1000
 
-# Visual - vXXX - 
+# Visual - v5 - OSNetAIN from cross domain ReID Duke-> Market
 
-dgs_vis_XXX:
+OSNetAIN_CrossDomainDuke:
     module_name: "DGS"
     combine: "combine_sim"
-    names: [ "vXXX_sim" ]
+    names: [ "v5_sim" ]
     combined_softmax: true
 
-vXXX_sim:
+v5_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vXXX_embed_gen"]
+    embedding_generator_path: ["v5_embed_gen"]
 
-vXXX_embed_gen:
+v5_embed_gen:
     module_name: "torchreid"
-    model_name: ""
-    weights: "./weights/"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_dukemtmcreid_256x128_amsgrad_ep90_lr0.0015_coslr_b64_fb10_softmax_labsmth_flip_jitter.pth"
+    nof_classes: 1000
+
+# Visual - v6 - OSNetIBN from cross domain ReID Duke-> Market
+
+OSNetIBN_CrossDomainDuke:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "v6_sim" ]
+    combined_softmax: true
+
+v6_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["v6_embed_gen"]
+
+v6_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_ibn_x1_0"
+    weights: "./weights/osnet_ibn_x1_0_duke_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip.pth"
+    nof_classes: 1000
+
+# Visual - v7 - OSNetIBN from cross domain ReID Duke-> Market
+
+OSNetAIN_CrossDomainMSMT17:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "v7_sim" ]
+    combined_softmax: true
+
+v7_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["v7_embed_gen"]
+
+v7_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_msmt17_256x128_amsgrad_ep50_lr0.0015_coslr_b64_fb10_softmax_labsmth_flip_jitter.pth"
     nof_classes: 1000
