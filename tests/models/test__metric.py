@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import torch
 from torch import nn
+from torch.nn.functional import softmax as tf_softmax
 from torchvision import tv_tensors as tv_te
 
 from dgs.models.metric import get_metric, METRICS, register_metric
@@ -181,16 +182,22 @@ class TestMetrics(unittest.TestCase):
                 torch.tensor([[1, 0], [1, 1], [0, 1]]),
                 torch.ones((1, 2)),
                 torch.ones((3, 1)),
-                nn.functional.softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+                tf_softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+            ),
+            (
+                torch.tensor([[1, 0], [1, 1], [0, 1]]),
+                torch.ones((4, 2)),
+                tf_softmax(torch.ones((3, 4)), dim=-1),
+                tf_softmax(torch.tensor([[0, 1, 0]]).repeat(4, 1).float(), dim=-1),
             ),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
                 m = NegativeSoftmaxEuclideanDistance()
-                sim = m(t1.float(), t2.float())
-                sim_inv = m(t2.float(), t1.float())
-                self.assertEqual(sim.shape, res.shape)
-                self.assertTrue(torch.allclose(sim.float(), res.float()), (sim, res))
-                self.assertTrue(torch.allclose(sim_inv.float(), res_inv.float()), (sim_inv, res_inv))
+                dist = m(t1.float(), t2.float())
+                dist_inv = m(t2.float(), t1.float())
+                self.assertEqual(dist.shape, res.shape)
+                self.assertTrue(torch.allclose(dist.float(), res.float()), (dist, res))
+                self.assertTrue(torch.allclose(dist_inv.float(), res_inv.float()), (dist_inv, res_inv))
 
     def test_neg_softmax_squared_euclidean(self):
         for t1, t2, res, res_inv in [
@@ -201,7 +208,13 @@ class TestMetrics(unittest.TestCase):
                 torch.tensor([[1, 0], [1, 1], [0, 1]]),
                 torch.ones((1, 2)),
                 torch.ones((3, 1)),
-                nn.functional.softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+                tf_softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+            ),
+            (
+                torch.tensor([[1, 0], [1, 1], [0, 1]]),
+                torch.ones((4, 2)),
+                tf_softmax(torch.ones((3, 4)), dim=-1),
+                tf_softmax(torch.tensor([[0, 1, 0]]).repeat(4, 1).float(), dim=-1),
             ),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
