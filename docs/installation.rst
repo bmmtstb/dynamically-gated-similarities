@@ -1,6 +1,11 @@
 Installation
 ============
 
+Clone the repository, but make sure to recursively clone the submodules too.
+
+::
+	git clone --recursive git@github.com:bmmtstb/dynamically-gated-similarities
+
 Packages and Environment
 ------------------------
 
@@ -15,11 +20,13 @@ This will also install the required submodules. This will take a while!
 	pip install -r requirements.txt
 
 
-To properly install the |torchreid|_-package, we need to run the setup script in the submodules / dependencies.
+To properly install the ``lapsolver`` and |torchreid|_-package, we need to run the setup scripts in the submodules / dependencies.
 The respective requirements of |torchreid| has been installed by this packages requirements file already.
 
 ::
-	cd ./dependencies/torchreid/
+	cd ./dependencies/py-lapsolver/
+	python setup.py develop
+	cd ../torchreid
 	python setup.py develop
 
 Now there are two evaluation tools installed:

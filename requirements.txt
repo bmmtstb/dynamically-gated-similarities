@@ -21,7 +21,6 @@ black
 coverage[toml]
 gdown  # torchreid does not import it properly
 imagesize
-lapsolver
 matplotlib
 munkres  # munkres is a package for the hungarian (matching) algorithm
 numpy
