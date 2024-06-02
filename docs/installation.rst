@@ -6,6 +6,8 @@ Clone the repository, but make sure to recursively clone the submodules too.
 ::
 	git clone --recursive git@github.com:bmmtstb/dynamically-gated-similarities
 
+If you cloned the repository already, use ``git submodule update --init --recursive``.
+
 Packages and Environment
 ------------------------
 
@@ -17,11 +19,17 @@ This will also install the required submodules. This will take a while!
 
 ::
 	python3.10 -m venv venv
+
+Activate the environment according to you OS, then install the base requirements.
+
+::
 	pip install -r requirements.txt
 
 
 To properly install the ``lapsolver`` and |torchreid|_-package, we need to run the setup scripts in the submodules / dependencies.
-The respective requirements of |torchreid| has been installed by this packages requirements file already.
+Both are submodules, make sure that they have been cloned properly. There seemed to be multiple issues with the sub-sub-module ``lapsopver/pybind11``. If there is no ``CMakeLists.txt``-file in there, make sure to run ```git submodule init && git submodule update``` in that folder.
+
+Some of the respective requirements of |torchreid| have been installed by this packages requirements file already, because the setup script seems broken right now.
 
 ::
 	cd ./dependencies/py-lapsolver/
