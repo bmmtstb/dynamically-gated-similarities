@@ -46,14 +46,36 @@ if __name__ == "__main__":
         submission: PoseTrack21Submission = module_loader(config=config, module_class="submission", key="submission")
 
         gt_data = read_json(f"./data/PoseTrack21/posetrack_data/val/{ds_name}.json")
-        n_frames: int = gt_data["images"][0]["nframes"]
-        vid_id: int = gt_data["images"][0]["vid_id"]
 
         # create img output folder
         mkdir_if_missing(os.path.dirname(f"./data/PoseTrack21/crops/{h}x{w}/rcnn_prediction/{ds_name}/"))
 
         batch: list[State]
-        for batch in tqdm(dataloader, desc="batch", leave=False):
+        for i, batch in tqdm(enumerate(dataloader), desc="batch", leave=False):
+            n_frames: int = gt_data["images"][i]["nframes"]
+            vid_id: int = gt_data["images"][i]["vid_id"]
+            img_id: int = gt_data["images"][i]["image_id"]
+            ignore_regions_x: list[list, list] = gt_data["images"][i]["ignore_regions_x"]
+            ignore_regions_y: list[list, list] = gt_data["images"][i]["ignore_regions_y"]
+
+            # img_size = imagesize.get(os.path.join("./data/PoseTrack21/", gt_data["images"][i]))[::-1]
+            # if len(ignore_regions_x) == 2:
+            #     ignore_regions_bboxes = tvte.BoundingBoxes(
+            #         data=torch.tensor(
+            #             [ignore_regions_x[0], ignore_regions_y[0], ignore_regions_x[1], ignore_regions_y[1]],
+            #             dtype=torch.float32,
+            #             device=batch[0].device,
+            #         ),
+            #         canvas_size=img_size,
+            #         format="XYXY",
+            #     )
+            # else:
+            #     ignore_regions_bboxes = tvte.BoundingBoxes(
+            #         data=torch.empty((0, 4), dtype=torch.float32, device=batch[0].device),
+            #         canvas_size=img_size,
+            #         format="XYXY",
+            #     )
+
             for s in batch:
                 # images
                 # {
@@ -69,20 +91,25 @@ if __name__ == "__main__":
                 # }
 
                 # validate image data
-                image = submission.get_image_data(s)
+                _ = submission.get_image_data(s)
+
+                assert all(s.filepath[0] == s.filepath[i] for i in range(len(s.filepath)))
+                fp = "/".join(s.filepath[0].split("/")[-4:])
 
                 B = s.B
 
-                assert all(s.filepath[0] == s.filepath[i] for i in range(len(s.filepath)))
-                fp = "./" + "/".join(s.filepath[0].split("/")[-4:])
-
-                image["is_labeled"] = True
-                image["nframes"] = n_frames
-                image["vid_id"] = vid_id
-                image["file_name"] = fp
-                image["has_labeled_person"] = B != 0
-                image["ignore_regions_y"] = []
-                image["ignore_regions_x"] = []
+                # create dict with all the image data
+                image = {
+                    "is_labeled": True,
+                    "nframes": n_frames,
+                    "image_id": img_id,
+                    "id": img_id,
+                    "vid_id": vid_id,
+                    "file_name": fp,
+                    "has_labeled_person": B != 0,
+                    "ignore_regions_x": ignore_regions_x,
+                    "ignore_regions_y": ignore_regions_y,
+                }
 
                 submission.data["images"].append(image)
 
@@ -101,6 +128,7 @@ if __name__ == "__main__":
                 #     "track_id": 1
                 # }
                 s["pred_tid"] = torch.ones_like(s.person_id, dtype=torch.long, device=s.device) * -1  # set to -1
+                # set to number to remove duplicates in crop files
                 s["person_id"] = torch.arange(start=1, end=B + 1, dtype=torch.long, device=s.device)
 
                 annos = submission.get_anno_data(s)

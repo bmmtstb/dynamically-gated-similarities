@@ -93,9 +93,12 @@ class PoseTrack21Submission(SubmissionFile):
         if "frame_id" not in s:
             s["frame_id"] = s["image_id"]
 
+        # get the file_name in the PT21 directory
+        file_name = f".{s.filepath[0].split('PoseTrack21')[-1]}"
+
         # get the image data
         image_data = {
-            "file_name": s.filepath[0],
+            "file_name": file_name,
             "id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
             "image_id": int(s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]),
             "frame_id": int(s["frame_id"][0].item() if isinstance(s["frame_id"], t.Tensor) else s["frame_id"][0]),
