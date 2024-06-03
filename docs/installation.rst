@@ -43,12 +43,14 @@ And finally, make sure to install the dgs module itself.
 	cd ../..
 	pip install -e .
 
-Now there are two evaluation tools installed:
+Now the dgs module is installed, including two evaluation tools:
 
 - The |PT21|_ evaluation toolkit, named ``posetrack21``.
   Note, that you need to download the |PT21|_ dataset first.
+  (It might be possible to use it for PT17 or PT18 data, but no guarantees.)
   Have a look at the respective repository for how to do so.
 - The ``poseval`` -package has been installed by the requirements and can be used for evaluation too.
+  For more information, visit the respective _`GitHub <https://github.com/leonid-pishchulin/poseval>` page.
 
 Next Steps
 ----------
@@ -69,6 +71,11 @@ Backbone Models
 ---------------
 
 TODO
+
+Pytorch Keypoint-RCNN
+~~~~~~~~~~~~~~~~~~~~~
+
+See :class:`KeypointRCNNImageBackbone`.
 
 AlphaPose Backbone
 ~~~~~~~~~~~~~~~~~~
