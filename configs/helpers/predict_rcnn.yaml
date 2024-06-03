@@ -23,6 +23,7 @@ RCNN_Backbone:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
     # data_path:  # will be set in python script
+    bbox_min_size: 50.0
 
 submission:
     module_name: "PoseTrack21"
