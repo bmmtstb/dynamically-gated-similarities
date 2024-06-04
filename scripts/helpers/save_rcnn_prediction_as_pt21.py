@@ -147,7 +147,7 @@ if __name__ == "__main__":
                     for a_i, anno in enumerate(annos):
                         annos[a_i]["bbox"] = anno["bboxes"]
                         annos[a_i]["bbox_head"] = anno["bboxes"]
-                        annos[a_i]["id"] = anno["image_id"]
+                        annos[a_i]["id"] = img_id
                         annos[a_i]["category_id"] = 1
                         # remove unnecessary keys
                         annos[a_i].pop("bboxes", None)
@@ -160,7 +160,7 @@ if __name__ == "__main__":
                     for i in range(s.B):
                         img_path = (
                             f"./data/PoseTrack21/crops/{h}x{w}/rcnn_prediction_{thresh_name}/"
-                            f"{ds_name}/{s['image_id'][i]}_{s['person_id'][i]}.jpg"
+                            f"{ds_name}/{img_id}_{s['person_id'][i]}.jpg"
                         )
                         if os.path.exists(img_path):
                             continue
