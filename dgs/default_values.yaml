@@ -43,6 +43,7 @@ images:
     jpeg_quality: 90
     aspect_mode: "zero-pad"
     aspect_round_decimals: 2
+    bbox_min_size: 50.0
 
 submission:
     file: "./submission.json"

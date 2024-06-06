@@ -43,7 +43,7 @@ for dataset_dir in "$base_dir"/*; do
               --GT_FOLDER ./data/PoseTrack21/posetrack_data/val/ \
               --TRACKERS_FOLDER ./"$base_dir"/"$dataset"/"$name"/results_json/ \
               --USE_PARALLEL True --NUM_PARALLEL_CORES 4 \
-              --PRINT_RESULTS True --OUTPUT_DETAILED True
+              --PRINT_RESULTS False --OUTPUT_DETAILED True
 
         fi
     done

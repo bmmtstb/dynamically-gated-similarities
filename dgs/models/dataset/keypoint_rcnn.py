@@ -13,6 +13,7 @@ from torch import nn
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
+from torchvision.transforms import v2
 from torchvision.transforms.functional import convert_image_dtype
 from tqdm import tqdm
 
@@ -31,6 +32,7 @@ rcnn_validations: Validations = {
     "threshold": ["optional", float, ("within", (0.0, 1.0))],
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
+    "bbox_min_size": ["optional", float, ("gte", 1.0)],
 }
 
 
@@ -42,10 +44,29 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
     Params
     ------
 
-    threshold (float):
+    data_path (FilePath):
+        A single path or a list of paths.
+        The path is either a directory, a single image file, or a list of image filepaths.
+
+    Optional Params
+    ---------------
+
+    threshold (float, optional):
         Detections with a score lower than the threshold will be ignored.
         Default ``DEF_VAL.dataset.kprcnn.threshold``.
-
+    crop_size (:obj:`ImgSize`, optional):
+        The size, the image crop should have.
+        Default ``DEF_VAL.images.crop_size``.
+    crop_mode (str, optional):
+        The mode to use when cropping the image.
+        Default ``DEF_VAL.images.crop_mode``.
+    bbox_min_size (float, optional):
+        The minimum side length a bounding box should have in pixels.
+        Smaller detections will be discarded.
+        Works in addition to the ``threshold`` parameter.
+        If you do not want to discard smaller bounding boxes, make sure to set ``bbox_min_size`` to ``1.0``.
+        The size of the bounding boxes is in relation to the original image.
+        Default ``DEF_VAL.images.bbox_min_size``.
     """
 
     def __init__(self, config: Config, path: NodePath) -> None:
@@ -62,6 +83,17 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         self.configure_torch_module(module=self.model, train=False)
 
         self.img_id: torch.Tensor = torch.tensor(1, dtype=torch.long, device=self.device)
+
+        bbox_min_size: float = float(self.params.get("bbox_min_size", DEF_VAL["images"]["bbox_min_size"]))
+        self.bbox_cleaner = v2.Compose(
+            [
+                v2.ClampBoundingBoxes(),
+                v2.SanitizeBoundingBoxes(
+                    min_size=bbox_min_size,
+                    labels_getter=lambda y: (y["keypoints"], y["scores"], y["keypoints_scores"], y["labels"]),
+                ),
+            ]
+        )
 
     @torch.no_grad()
     def images_to_states(self, images: Images) -> list[State]:
@@ -82,9 +114,19 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         for output, image in zip(outputs, images):
             # get the output for every image independently
-            # get the indices where the score ('certainty') is bigger than the given threshold
-            indices = output["scores"] > self.threshold
 
+            # bbox given in XYXY format
+            output["boxes"] = tvte.BoundingBoxes(output["boxes"], format="XYXY", canvas_size=canvas_size)
+
+            # first sanitize and clamp the bboxes, while cleaning up the respective other data as well
+            sanitized = self.bbox_cleaner(output)
+            scores = sanitized["scores"]
+
+            # after that get the indices where the score ('certainty') is bigger than the given threshold
+            indices = scores > self.threshold
+
+            # get updated B and bboxes, after double sanitizing
+            bbox = tvte.BoundingBoxes(sanitized["boxes"][indices], format="XYXY", canvas_size=canvas_size)
             B: int = int(torch.count_nonzero(indices).item())
 
             data = {
@@ -92,7 +134,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 "image_id": torch.ones(max(B, 1), device=self.device, dtype=torch.long) * self.img_id,
                 "frame_id": torch.ones(max(B, 1), device=self.device, dtype=torch.long) * self.img_id,
             }
-            self.img_id += torch.tensor(1, dtype=torch.long, device=self.device)
+            self.img_id += torch.tensor(1, dtype=torch.long, device=self.device)  # increment counter
 
             # skip if there aren't any detections
             if B == 0:
@@ -101,11 +143,9 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 states.append(es)
                 continue
 
-            # bbox given in XYXY format
-            bbox = tvte.BoundingBoxes(output["boxes"][indices], format="XYXY", canvas_size=canvas_size)
             # keypoints in [x,y,v] format -> kp, vis
             kps, vis = (
-                output["keypoints"][indices]
+                sanitized["keypoints"][indices]
                 .to(device=self.device, dtype=self.precision)
                 .reshape((-1, 17, 3))
                 .split([2, 1], dim=-1)
@@ -113,7 +153,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             assert kps.shape[-2:] == (17, 2), kps.shape[-2:]
 
             crops, loc_kps = extract_crops_from_images(
-                imgs=[tvte.Image(image.unsqueeze(0)) for _ in range(len(bbox))],
+                imgs=[tvte.Image(image.unsqueeze(0)) for _ in range(B)],
                 bboxes=bbox,
                 kps=kps,
                 crop_size=self.params.get("crop_size", DEF_VAL["images"]["crop_size"]),
@@ -126,8 +166,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 data,
                 **{
                     "skeleton_name": tuple("coco" for _ in range(B)),
-                    "scores": output["scores"][indices].unsqueeze(-1).repeat(1, 17),  # B x 17
-                    "score": output["scores"][indices],
+                    "scores": sanitized["keypoints_scores"][indices, :],  # B x 17
+                    "score": scores[indices],
                     "bbox": bbox,
                     "image_crop": crops,
                     "keypoints": kps,
@@ -154,26 +194,9 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
 
     References:
         https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html
-
-    Params
-    ------
-
-    threshold (float):
-        Detections with a score lower than the threshold will be ignored.
-        Default ``DEF_VAL.dataset.kprcnn.threshold``.
-
-    Optional Params
-    ---------------
-
-    crop_size (:obj:`ImgSize`):
-        The size, the image crop should have.
-        Default ``DEF_VAL.images.crop_size``.
-
-    crop_mode (str):
-        The mode to use when cropping the image.
-        Default ``DEF_VAL.images.crop_mode``.
-
     """
+
+    __doc__ += KeypointRCNNBackbone.__doc__
 
     data: list[FilePath]
 
@@ -257,25 +280,9 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
 
     References:
         https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html
-
-    Params
-    ------
-
-    threshold (float):
-        Detections with a score lower than the threshold will be ignored.
-        Default ``DEF_VAL.dataset.kprcnn.threshold``.
-
-    Optional Params
-    ---------------
-
-    crop_size (:obj:`.ImgSize`):
-        The size, the image crop should have.
-        Default ``DEF_VAL.images.crop_size``.
-
-    crop_mode (str):
-        The mode to use when cropping the image.
-        Default ``DEF_VAL.images.crop_mode``.
     """
+
+    __doc__ += KeypointRCNNBackbone.__doc__
 
     data: VideoReader
 
