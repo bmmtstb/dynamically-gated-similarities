@@ -30,6 +30,9 @@ rcnn_validations: Validations = {
     "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
     # optional
     "threshold": ["optional", float, ("within", (0.0, 1.0))],
+    "force_reshape": ["optional", bool],
+    "image_mode": ["optional", str, ("in", CustomToAspect.modes)],
+    "image_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "bbox_min_size": ["optional", float, ("gte", 1.0)],
@@ -54,6 +57,16 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
     threshold (float, optional):
         Detections with a score lower than the threshold will be ignored.
         Default ``DEF_VAL.dataset.kprcnn.threshold``.
+    force_reshape (bool, optional):
+        Whether to force reshape all the input images.
+        Change the size and mode via ``image_mode`` and ``image_size`` parameters, iff ``force_reshape`` is `True`.
+        Default ``DEF_VAL.images.force_reshape``.
+    image_size (:obj:`ImgSize`, optional):
+        The size, the loaded image should have, iff ``force_reshape`` is `True`.
+        Default ``DEF_VAL.images.image_size``.
+    image_mode (str, optional):
+        The mode to use when loading the image, iff ``force_reshape`` is `True`.
+        Default ``DEF_VAL.images.image_mode``.
     crop_size (:obj:`ImgSize`, optional):
         The size, the image crop should have.
         Default ``DEF_VAL.images.crop_size``.
@@ -94,6 +107,11 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 ),
             ]
         )
+
+        # image loading params
+        self.force_reshape: bool = self.params.get("force_reshape", DEF_VAL["images"]["force_reshape"])
+        self.image_size: bool = self.params.get("image_size", DEF_VAL["images"]["image_size"])
+        self.image_mode: bool = self.params.get("image_mode", DEF_VAL["images"]["image_mode"])
 
     @torch.no_grad()
     def images_to_states(self, images: Images) -> list[State]:
@@ -244,7 +262,21 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             idx: The index of the file path within ``self.data``.
         """
         # the torch model expects a list of 3D images
-        images = [convert_image_dtype(tvte.Image(load_image(a).squeeze(0), device=self.device), dtype=torch.float32)]
+        images = [
+            convert_image_dtype(
+                tvte.Image(
+                    load_image(
+                        filepath=a,
+                        force_reshape=self.force_reshape,
+                        output_size=self.image_size,
+                        mode=self.image_mode,
+                        device=self.device,
+                    ).squeeze(0),
+                    device=self.device,
+                ),
+                dtype=torch.float32,
+            )
+        ]
 
         states = self.images_to_states(images=images)
 
@@ -297,6 +329,7 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
         if not isinstance(a, torch.Tensor):
             raise NotImplementedError
         # the torch RCNN model expects a list of 3D images
+        # TODO: should these images be force reshaped too?
         images = [convert_image_dtype(a, torch.float32)]
 
         states = self.images_to_states(images=images)

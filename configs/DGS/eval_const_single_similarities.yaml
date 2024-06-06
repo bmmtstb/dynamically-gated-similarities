@@ -21,8 +21,8 @@ test:
 dgs_rcnn:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
-    # crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_prediction/"
-    # base_path: "./data/PoseTrack21/posetrack_data/rcnn_prediction/"
+    # crops_folder:  # will be set in python script
+    # base_path:  # will be set in python script
     batch_size: 8
     return_lists: true
     # data_path:  # will be set in python script

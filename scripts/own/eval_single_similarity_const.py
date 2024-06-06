@@ -28,7 +28,7 @@ CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
 @torch.no_grad()
-def run(config: Config, dl_key: str, paths: list[str]) -> None:
+def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
     """Main function to run the code."""
     # IoU, OKS, and visual similarity
     for dgs_key in (
@@ -59,7 +59,7 @@ def run(config: Config, dl_key: str, paths: list[str]) -> None:
 
             # change config data
             config[dl_key]["data_path"] = sub_datapath
-            config["log_dir"] += f"./{dl_key}/{dgs_key}/"
+            config["log_dir"] += f"./{out_key}/{dgs_key}/"
             # set the new path for the out file in the log_dir
             config["submission"]["file"] = os.path.abspath(
                 os.path.normpath(
@@ -102,11 +102,11 @@ if __name__ == "__main__":
     run(config=cfg, dl_key="dgs_gt", paths=data_paths)
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    for threshold in tqdm([0.85, 0.9, 0.95, 0.99], desc="thresholds"):
-        thresh_name = f"{int(threshold * 100):03d}"
+    for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
+        pbar_thresh.set_postfix_str(os.path.basename(thresh))
         cfg = load_config(CONFIG_FILE)
-        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{thresh_name}/"
+        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{thresh}/"
         cfg["dgs_rcnn"]["base_path"] = base_path
-        cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh_name}/"
+        cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh}/"
         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
         run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)

@@ -36,6 +36,7 @@ video_dataset:
     video_backend: "pyav"
 
 images:
+    force_reshape: false
     image_size: !!python/tuple [1024, 1024]
     image_mode: "zero-pad"
     crop_size: !!python/tuple [256, 256]

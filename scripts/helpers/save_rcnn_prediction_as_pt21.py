@@ -29,7 +29,9 @@ if __name__ == "__main__":
 
     h, w = config[DL_KEY]["crop_size"]
 
-    for threshold in [0.85, 0.9, 0.95, 0.99]:
+    for threshold in (pbar_thresh := tqdm([0.85, 0.90, 0.95, 0.99], desc="Threshold")):
+        pbar_thresh.set_postfix_str(str(threshold))
+
         thresh_name = f"{int(threshold * 100):03d}"
         config[DL_KEY]["threshold"] = threshold
 
@@ -54,7 +56,11 @@ if __name__ == "__main__":
                 config=config, module_class="submission", key="submission"
             )
 
+            # GT data
             gt_data = read_json(f"./data/PoseTrack21/posetrack_data/val/{ds_name}.json")
+            gt_img_id_map = [img["image_id"] for img in gt_data["images"]]  # zero-indexed!
+            gt_n_frames: int = gt_data["images"][0]["nframes"]
+            gt_vid_id: int = gt_data["images"][0]["vid_id"]
 
             # create img output folder
             mkdir_if_missing(
@@ -62,31 +68,7 @@ if __name__ == "__main__":
             )
 
             batch: list[State]
-            for i, batch in tqdm(enumerate(dataloader), desc="batch", leave=False):
-                n_frames: int = gt_data["images"][i]["nframes"]
-                vid_id: int = gt_data["images"][i]["vid_id"]
-                img_id: int = gt_data["images"][i]["image_id"]
-                ignore_regions_x: list[list, list] = gt_data["images"][i]["ignore_regions_x"]
-                ignore_regions_y: list[list, list] = gt_data["images"][i]["ignore_regions_y"]
-
-                # skip if detection is mostly in any ignore region
-                # img_size = imagesize.get(os.path.join("./data/PoseTrack21/", gt_data["images"][i]))[::-1]
-                # if len(ignore_regions_x) == 2:
-                #     ignore_regions_bboxes = tvte.BoundingBoxes(
-                #         data=torch.tensor(
-                #             [ignore_regions_x[0], ignore_regions_y[0], ignore_regions_x[1], ignore_regions_y[1]],
-                #             dtype=torch.float32,
-                #             device=batch[0].device,
-                #         ),
-                #         canvas_size=img_size,
-                #         format="XYXY",
-                #     )
-                # else:
-                #     ignore_regions_bboxes = tvte.BoundingBoxes(
-                #         data=torch.empty((0, 4), dtype=torch.float32, device=batch[0].device),
-                #         canvas_size=img_size,
-                #         format="XYXY",
-                #     )
+            for batch in tqdm(dataloader, desc="batch", leave=False):
 
                 for s in batch:
                     # images
@@ -110,13 +92,20 @@ if __name__ == "__main__":
 
                     B = s.B
 
+                    own_iid = int(s["image_id"][0].item())  # one-indexed
+
+                    gt_img_id: int = gt_img_id_map[own_iid - 1]
+
+                    ignore_regions_x: list[list, list] = gt_data["images"][own_iid - 1]["ignore_regions_x"]
+                    ignore_regions_y: list[list, list] = gt_data["images"][own_iid - 1]["ignore_regions_y"]
+
                     # create dict with all the image data
                     image = {
                         "is_labeled": True,
-                        "nframes": n_frames,
-                        "image_id": img_id,
-                        "id": img_id,
-                        "vid_id": vid_id,
+                        "nframes": gt_n_frames,
+                        "image_id": gt_img_id,
+                        "id": gt_img_id,
+                        "vid_id": gt_vid_id,
                         "file_name": fp,
                         "has_labeled_person": B != 0,
                         "ignore_regions_x": ignore_regions_x,
@@ -147,7 +136,8 @@ if __name__ == "__main__":
                     for a_i, anno in enumerate(annos):
                         annos[a_i]["bbox"] = anno["bboxes"]
                         annos[a_i]["bbox_head"] = anno["bboxes"]
-                        annos[a_i]["id"] = img_id
+                        annos[a_i]["image_id"] = gt_img_id
+                        annos[a_i]["id"] = gt_img_id
                         annos[a_i]["category_id"] = 1
                         # remove unnecessary keys
                         annos[a_i].pop("bboxes", None)
@@ -160,7 +150,7 @@ if __name__ == "__main__":
                     for i in range(s.B):
                         img_path = (
                             f"./data/PoseTrack21/crops/{h}x{w}/rcnn_prediction_{thresh_name}/"
-                            f"{ds_name}/{img_id}_{s['person_id'][i]}.jpg"
+                            f"{ds_name}/{gt_img_id}_{s['person_id'][i]}.jpg"
                         )
                         if os.path.exists(img_path):
                             continue
