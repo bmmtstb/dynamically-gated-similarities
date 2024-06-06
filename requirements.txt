@@ -40,8 +40,7 @@ tqdm
 
 # Torchreid - install requirements later manually run the setup torchreid and cythonize
 # somehow installing requirements does not work just by calling setup
--r dependencies/torchreid/requirements.txt
+-r ./dependencies/torchreid/requirements.txt
 # install PoseTrack21 evaluation toolkit
-# fixme is this still required ?
--e dependencies/PoseTrack21/eval/posetrack21/
+-e ./dependencies/PoseTrack21/eval/posetrack21/
 git+https://github.com/svenkreiss/poseval

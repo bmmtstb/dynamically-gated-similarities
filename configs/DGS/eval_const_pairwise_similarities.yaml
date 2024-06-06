@@ -48,9 +48,9 @@ submission:
     module_name: "PoseTrack21"
     # file: # will be set in python script
 
-# ####### #
-# MODULES #
-# ####### #
+# ################################ #
+# SIMILARITY AND EMBED_GEN MODULES #
+# ################################ #
 
 combine_sim:
     module_name: "constant_alpha"
@@ -85,6 +85,32 @@ vis_embed_gen_OSNetAIN:
     weights: "./weights/osnet_ain_x1_0_imagenet.pth"
     nof_classes: 1000
 
+vis_sim_Resnet50:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["vis_embed_gen_Resnet50"]
+
+vis_embed_gen_Resnet50:
+    module_name: "torchreid"
+    model_name: "resnet50"
+    weights: "pretrained"
+    nof_classes: 1000
+
+vis_sim_Resnet152:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["vis_embed_gen_Resnet152"]
+
+vis_embed_gen_Resnet152:
+    module_name: "torchreid"
+    model_name: "resnet50"
+    weights: "pretrained"
+    nof_classes: 1000
+
+
+# ########### #
+# DGS MODULES #
+# ########### #
 
 # Combination 1 - IoU and OKS
 
@@ -128,5 +154,41 @@ oks_OSNetAIN:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim", "visual_sim_OSNetAIN" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 6 - IoU and Visual - Resnet50
+
+iou_Resnet50:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "box_sim", "visual_sim_Resnet50" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 7 - OKS and Visual - Resnet50
+
+oks_Resnet50:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "pose_sim", "visual_sim_Resnet50" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 8 - IoU and Visual - Resnet152
+
+iou_Resnet152:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "box_sim", "visual_sim_Resnet152" ]
+    similarity_softmax: true
+    combined_softmax: true
+
+# Combination 9 - OKS and Visual - Resnet152
+
+oks_Resnet152:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "pose_sim", "visual_sim_Resnet152" ]
     similarity_softmax: true
     combined_softmax: true

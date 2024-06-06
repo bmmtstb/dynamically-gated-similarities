@@ -29,6 +29,17 @@ from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_const_pairwise_similarities.yaml"
+MODULES = [
+    "iou_oks",
+    "iou_OSNet",
+    "oks_OSNet",
+    "iou_OSNetAIN",
+    "oks_OSNetAIN",
+    "iou_Resnet50",
+    "oks_Resnet50",
+    "iou_Resnet152",
+    "oks_Resnet152",
+]
 
 
 # @torch_memory_analysis
@@ -37,7 +48,7 @@ CONFIG_FILE = "./configs/DGS/eval_const_pairwise_similarities.yaml"
 def run(config: Config, dl_key: str, paths: list[str]) -> None:
     """Main function to run the code."""
     # Combinations of IoU, OKS, and visual similarity
-    for dgs_key in (pbar_key := tqdm(["iou_oks", "iou_OSNet", "oks_OSNet"], desc="combinations")):
+    for dgs_key in (pbar_key := tqdm(MODULES, desc="combinations")):
         pbar_key.set_postfix_str(dgs_key)
 
         config["name"] = f"Evaluate-Pairwise-Combinations-{dgs_key}"
