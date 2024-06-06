@@ -34,7 +34,7 @@ CONFIG_FILE = "./configs/DGS/eval_const_triplet_similarities.yaml"
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
 @torch.no_grad()
-def run(config: Config, dl_key: str, paths: list[str]) -> None:
+def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
     """Main function to run the code."""
 
     combinations = []
@@ -71,7 +71,7 @@ def run(config: Config, dl_key: str, paths: list[str]) -> None:
                 orig_log_dir = config["log_dir"]
 
                 # change config data
-                config["log_dir"] += f"./{dl_key}/{dgs_key}_{'_'.join(str(c) for c in combination)}/"
+                config["log_dir"] += f"./{out_key}/{dgs_key}_{'_'.join(str(c) for c in combination)}/"
                 # set the new path for the out file in the log_dir
                 config["submission"]["file"] = os.path.abspath(
                     os.path.normpath(
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     cfg = load_config(CONFIG_FILE)
     base_path = cfg["dgs_gt"]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dgs_gt", paths=data_paths)
+    run(config=cfg, dl_key="dgs_gt", paths=data_paths, out_key="dgs_gt")
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
@@ -121,4 +121,4 @@ if __name__ == "__main__":
         cfg["dgs_rcnn"]["base_path"] = base_path
         cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh}/"
         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-        run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)
+        run(config=cfg, dl_key="dgs_rcnn", paths=data_paths, out_key=f"dgs_rcnn_{thresh}")
