@@ -29,6 +29,17 @@ from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_const_pairwise_similarities.yaml"
+MODULES = [
+    "iou_oks",
+    "iou_OSNet",
+    "oks_OSNet",
+    "iou_OSNetAIN",
+    "oks_OSNetAIN",
+    "iou_Resnet50",
+    "oks_Resnet50",
+    "iou_Resnet152",
+    "oks_Resnet152",
+]
 
 
 # @torch_memory_analysis
@@ -37,7 +48,7 @@ CONFIG_FILE = "./configs/DGS/eval_const_pairwise_similarities.yaml"
 def run(config: Config, dl_key: str, paths: list[str]) -> None:
     """Main function to run the code."""
     # Combinations of IoU, OKS, and visual similarity
-    for dgs_key in (pbar_key := tqdm(["iou_oks", "iou_OSNet", "oks_OSNet"], desc="combinations")):
+    for dgs_key in (pbar_key := tqdm(MODULES, desc="combinations")):
         pbar_key.set_postfix_str(dgs_key)
 
         config["name"] = f"Evaluate-Pairwise-Combinations-{dgs_key}"
@@ -101,7 +112,11 @@ if __name__ == "__main__":
     run(config=cfg, dl_key="dgs_gt", paths=data_paths)
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    cfg = load_config(CONFIG_FILE)
-    base_path = cfg["dgs_rcnn"]["base_path"]
-    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)
+    for threshold in tqdm([0.85, 0.9, 0.95, 0.99], desc="thresholds"):
+        thresh_name = f"{int(threshold * 100):03d}"
+        cfg = load_config(CONFIG_FILE)
+        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{thresh_name}/"
+        cfg["dgs_rcnn"]["base_path"] = base_path
+        cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh_name}/"
+        data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+        run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)
