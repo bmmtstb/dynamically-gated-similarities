@@ -99,7 +99,7 @@ if __name__ == "__main__":
     cfg = load_config(CONFIG_FILE)
     base_path = cfg["dgs_gt"]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dgs_gt", paths=data_paths)
+    run(config=cfg, dl_key="dgs_gt", paths=data_paths, out_key="dgs_gt")
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
@@ -109,4 +109,4 @@ if __name__ == "__main__":
         cfg["dgs_rcnn"]["base_path"] = base_path
         cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh}/"
         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-        run(config=cfg, dl_key="dgs_rcnn", paths=data_paths)
+        run(config=cfg, dl_key="dgs_rcnn", paths=data_paths, out_key=f"dgs_rcnn_{thresh}")
