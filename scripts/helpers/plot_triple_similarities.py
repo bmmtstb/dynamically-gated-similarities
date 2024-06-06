@@ -1,3 +1,7 @@
+"""
+Script for generating the 3D plots of the triplet similarities.
+"""
+
 import os.path
 
 import matplotlib.pyplot as plt
