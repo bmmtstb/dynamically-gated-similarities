@@ -9,8 +9,8 @@ gdown  # torchreid does not import it properly
 imagesize
 lapsolver
 matplotlib
-munkres
-numpy
+# munkres
+numpy==1.*
 opencv-python
 pylint
 pyyaml
@@ -19,6 +19,7 @@ tb-nightly
 terminaltables
 torchreid==0.2.5
 tqdm
+wheel
 
 # ############################# #
 # torch cpu as extra dependency #
