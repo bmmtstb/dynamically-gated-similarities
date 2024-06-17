@@ -66,9 +66,9 @@ pose_sim:
 visual_sim_OSNet:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vis_embed_gen_OSNet"]
+    embedding_generator_path: ["visual_embed_gen_OSNet"]
 
-vis_embed_gen_OSNet:
+visual_embed_gen_OSNet:
     module_name: "torchreid"
     model_name: "osnet_x1_0"
     weights: "./weights/osnet_x1_0_imagenet.pth"
@@ -77,33 +77,33 @@ vis_embed_gen_OSNet:
 visual_sim_OSNetAIN:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vis_embed_gen_OSNetAIN"]
+    embedding_generator_path: ["visual_embed_gen_OSNetAIN"]
 
-vis_embed_gen_OSNetAIN:
+visual_embed_gen_OSNetAIN:
     module_name: "torchreid"
     model_name: "osnet_ain_x1_0"
     weights: "./weights/osnet_ain_x1_0_imagenet.pth"
     nof_classes: 1000
 
-vis_sim_Resnet50:
+visual_sim_Resnet50:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vis_embed_gen_Resnet50"]
+    embedding_generator_path: ["visual_embed_gen_Resnet50"]
 
-vis_embed_gen_Resnet50:
+visual_embed_gen_Resnet50:
     module_name: "torchreid"
     model_name: "resnet50"
     weights: "pretrained"
     nof_classes: 1000
 
-vis_sim_Resnet152:
+visual_sim_Resnet152:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
-    embedding_generator_path: ["vis_embed_gen_Resnet152"]
+    embedding_generator_path: ["visual_embed_gen_Resnet152"]
 
-vis_embed_gen_Resnet152:
+visual_embed_gen_Resnet152:
     module_name: "torchreid"
-    model_name: "resnet50"
+    model_name: "resnet152"
     weights: "pretrained"
     nof_classes: 1000
 
