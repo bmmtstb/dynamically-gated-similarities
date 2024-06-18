@@ -25,7 +25,8 @@ dataloader_test:
     dataset_path: "./data/"
     path: "./test/"
     batch_size: 8
-    threshold: 0.75
+    score_threshold: 0.75
+    iou_threshold: 0.75
     return_lists: true
 
 # ####### #

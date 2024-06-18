@@ -16,7 +16,8 @@ RCNN_Backbone:
     dataset_path: "./data/"
     base_path: "./data/PoseTrack21/images/val/"
     batch_size: 16
-    # threshold:  # set by script
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
     return_lists: true
     force_reshape: true
     image_size: !!python/tuple [ 1024, 1024 ]  # [H,W]

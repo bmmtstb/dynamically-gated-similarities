@@ -39,7 +39,7 @@ class TestKPRCNNModel(unittest.TestCase):
         self.assertTrue(isinstance(m, KeypointRCNNBackbone))
         self.assertTrue(isinstance(m.model, TorchModule))
         self.assertFalse(m.model.training)
-        self.assertTrue(m.threshold > 0.0)
+        self.assertTrue(m.score_threshold > 0.0)
 
     def test_init_image_backbone(self):
         cfg = fill_in_defaults(
@@ -54,7 +54,7 @@ class TestKPRCNNModel(unittest.TestCase):
         self.assertTrue(isinstance(m, ImageDataset))
         self.assertTrue(isinstance(m.model, TorchModule))
         self.assertFalse(m.model.training)
-        self.assertTrue(m.threshold > 0.0)
+        self.assertTrue(m.score_threshold > 0.0)
 
     def test_init_video_backbone(self):
         cfg = fill_in_defaults(
@@ -69,7 +69,7 @@ class TestKPRCNNModel(unittest.TestCase):
         self.assertTrue(isinstance(m, VideoDataset))
         self.assertTrue(isinstance(m.model, TorchModule))
         self.assertFalse(m.model.training)
-        self.assertTrue(m.threshold > 0.0)
+        self.assertTrue(m.score_threshold > 0.0)
 
     def test_init_image_data(self):
         for path, length in [
@@ -105,7 +105,7 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
-                    "threshold": 0.9,
+                    "score_threshold": 0.9,
                     "data_path": [os.path.abspath(os.path.join(IMG_FOLDER_PATH, "866-256x256.jpg"))],
                     "dataset_path": "",
                 },
@@ -129,11 +129,44 @@ class TestKPRCNNModel(unittest.TestCase):
             for key in ["keypoints", "keypoints_local", "image", "skeleton_name", "scores"]:
                 self.assertTrue(key not in out)
 
+    def test_image_iou(self):
+        for iou_thresh, detections in [(0.4, 1), (0.5, 2)]:
+            with self.subTest(msg="iou_thresh: {}".format(iou_thresh)):
+                cfg = fill_in_defaults(
+                    {
+                        "device": "cuda" if torch.cuda.is_available() else "cpu",
+                        "kprcnn": {
+                            "score_threshold": 0.0,
+                            "iou_threshold": iou_thresh,
+                            "data_path": [IMAGE_PATH],
+                            "dataset_path": "",
+                        },
+                    },
+                    get_test_config(),
+                )
+                m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
+                out_list: list[State]
+                for out_list in m:
+                    self.assertTrue(isinstance(out_list, list))
+                    self.assertEqual(len(out_list), 1)
+                    out: State = out_list[0]
+
+                    self.assertTrue(isinstance(out, State))
+                    self.assertEqual(out.B, detections, f"expected {detections} detections, but got {out.B}")
+                    self.assertTrue(
+                        torch.any(out["scores"] > 0.9), f"at least one score should be high, got: {out['scores']}"
+                    )
+
     def test_dataset_image(self):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"threshold": 0.5, "data_path": [IMAGE_PATH, IMAGE_PATH], "dataset_path": ""},
+                "kprcnn": {
+                    "score_threshold": 0.5,
+                    "iou_threshold": 0.5,
+                    "data_path": [IMAGE_PATH, IMAGE_PATH],
+                    "dataset_path": "",
+                },
             },
             get_test_config(),
         )
@@ -168,7 +201,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "module_name": "KeypointRCNNImageBackbone",
-                    "threshold": 0.5,
+                    "score_threshold": 0.5,
                     "data_path": [IMAGE_PATH, IMAGE_PATH],
                     "dataset_path": "",
                     "batch_size": 2,
@@ -207,7 +240,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"threshold": 0.5, "data_path": VIDEO_PATH, "dataset_path": ""},
+                "kprcnn": {"score_threshold": 0.5, "data_path": VIDEO_PATH, "dataset_path": ""},
             },
             get_test_config(),
         )
@@ -238,7 +271,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "module_name": "KeypointRCNNVideoBackbone",
-                    "threshold": 0.5,
+                    "score_threshold": 0.5,
                     "data_path": VIDEO_PATH,
                     "dataset_path": "",
                     "batch_size": 2,
