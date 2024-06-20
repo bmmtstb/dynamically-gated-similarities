@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     h, w = config[DL_KEY]["crop_size"]
 
-    for score_threshold in (pbar_score_thresh := tqdm([0.85, 0.90, 0.95, 0.99], desc="Score-Threshold")):
+    for score_threshold in (pbar_score_thresh := tqdm([0.85, 0.90, 0.95], desc="Score-Threshold")):
         pbar_score_thresh.set_postfix_str(str(score_threshold))
 
         score_str = f"{int(score_threshold * 100):03d}"
@@ -159,7 +159,7 @@ if __name__ == "__main__":
                         # save the image-crops and local key points
                         for i in range(s.B):
                             img_path = (
-                                f"./data/PoseTrack21/crops/{h}x{w}/rcnn_prediction_{score_str}/"
+                                f"./data/PoseTrack21/crops/{h}x{w}/rcnn_prediction_{score_str}_{iou_str}/"
                                 f"{ds_name}/{gt_img_id}_{s['person_id'][i]}.jpg"
                             )
                             if os.path.exists(img_path):

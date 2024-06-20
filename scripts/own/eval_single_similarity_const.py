@@ -102,11 +102,17 @@ if __name__ == "__main__":
     run(config=cfg, dl_key="dgs_gt", paths=data_paths, out_key="dgs_gt")
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
-        pbar_thresh.set_postfix_str(os.path.basename(thresh))
-        cfg = load_config(CONFIG_FILE)
-        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{thresh}/"
-        cfg["dgs_rcnn"]["base_path"] = base_path
-        cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh}/"
-        data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-        run(config=cfg, dl_key="dgs_rcnn", paths=data_paths, out_key=f"dgs_rcnn_{thresh}")
+    # for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
+    for score_thresh in (pbar_score_thresh := tqdm(["085", "090", "095"], desc="Score Thresh")):
+        pbar_score_thresh.set_postfix_str(os.path.basename(score_thresh))
+        for iou_thresh in (pbar_iou_thresh := tqdm(["030", "050", "070", "090"], desc="IoU Thresh")):
+            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_thresh))
+
+            cfg = load_config(CONFIG_FILE)
+            base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{score_thresh}_{iou_thresh}/"
+            cfg["dgs_rcnn"]["base_path"] = base_path
+            cfg["dgs_rcnn"][
+                "crops_folder"
+            ] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{score_thresh}_{iou_thresh}/"
+            data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+            run(config=cfg, dl_key="dgs_rcnn", paths=data_paths, out_key=f"dgs_rcnn_{score_thresh}_{iou_thresh}")
