@@ -20,7 +20,8 @@ dataset:
         check_img_sizes: false
 
     kprcnn:
-        threshold: 0.3
+        score_threshold: 0.3
+        iou_threshold: 0.6
 
 
 dataloader:

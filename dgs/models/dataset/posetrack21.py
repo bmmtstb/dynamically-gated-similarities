@@ -14,6 +14,7 @@ PoseTrack21 format:
 
 import glob
 import os
+import re
 import shutil
 import warnings
 from typing import Type, Union
@@ -488,7 +489,7 @@ class PoseTrack21_BBox(BBoxDataset):
             anno["img_path"] = map_img_id_path[anno["image_id"]]
             anno["crop_path"] = os.path.join(
                 crops_dir,
-                anno["img_path"].split("/")[-2],  # dataset name
+                re.split(r"[\\/]", anno["img_path"])[-2],  # dataset name
                 f"{anno['image_id']}_{str(anno['person_id'])}.jpg",
             )
 
@@ -637,7 +638,7 @@ class PoseTrack21_Image(ImageDataset):
             # add the crop path to annotation
             anno["crop_path"] = os.path.join(
                 crops_dir,
-                self.map_img_id_to_path[img_id].split("/")[-2],  # dataset name
+                re.split(r"[\\/]", self.map_img_id_to_path[img_id])[-2],  # dataset name
                 f"{str(anno['image_id'])}_{str(anno['person_id'])}.jpg",  # int() might remove leading zeros
             )
 
@@ -848,7 +849,8 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
             pid = anno["person_id"]
             if pid in self._junk_pids:
                 continue  # junk images are just ignored
-            ds_name = map_img_id_path[anno["image_id"]].split("/")[-2]
+
+            ds_name = re.split(r"[\\/]", map_img_id_path[anno["image_id"]])[-2]
             crop_path = os.path.join(crops_dir, ds_name, f"{anno['image_id']}_{str(pid)}.{'pt' if is_kp else 'jpg'}")
             if relabel:
                 pid = pid2label[pid]

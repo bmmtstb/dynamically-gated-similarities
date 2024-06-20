@@ -25,7 +25,8 @@ dataloader_test:
     dataset_path: "./data/"
     path: "test.mp4"
     batch_size: 16
-    threshold: 0.75
+    score_threshold: 0.75
+    iou_threshold: 0.75
     return_lists: true
 
 # ####### #

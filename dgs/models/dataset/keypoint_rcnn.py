@@ -12,6 +12,7 @@ import torch
 from torch import nn
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
+from torchvision.ops import box_iou
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
 from torchvision.transforms import v2
 from torchvision.transforms.functional import convert_image_dtype
@@ -29,7 +30,8 @@ from dgs.utils.utils import extract_crops_from_images
 rcnn_validations: Validations = {
     "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
     # optional
-    "threshold": ["optional", float, ("within", (0.0, 1.0))],
+    "score_threshold": ["optional", float, ("within", (0.0, 1.0))],
+    "iou_threshold": ["optional", float, ("within", (0.0, 1.0))],
     "force_reshape": ["optional", bool],
     "image_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "image_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
@@ -54,9 +56,12 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
     Optional Params
     ---------------
 
-    threshold (float, optional):
+    score_threshold (float, optional):
         Detections with a score lower than the threshold will be ignored.
-        Default ``DEF_VAL.dataset.kprcnn.threshold``.
+        Default ``DEF_VAL.dataset.kprcnn.score_threshold``.
+    iou_threshold (float, optional):
+        Bounding-boxes with IoU above this threshold will be ignored.
+        Default ``DEF_VAL.dataset.kprcnn.iou_threshold``.
     force_reshape (bool, optional):
         Whether to force reshape all the input images.
         Change the size and mode via ``image_mode`` and ``image_size`` parameters, iff ``force_reshape`` is `True`.
@@ -88,7 +93,9 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         self.validate_params(rcnn_validations)
 
-        self.threshold: float = self.params.get("threshold", DEF_VAL["dataset"]["kprcnn"]["threshold"])
+        self.score_threshold: float = self.params.get(
+            "score_threshold", DEF_VAL["dataset"]["kprcnn"]["score_threshold"]
+        )
 
         self.logger.debug("Loading Keypoint-RCNN Model")
         self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
@@ -107,6 +114,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
                 ),
             ]
         )
+
+        self.iou_threshold: float = self.params.get("iou_threshold", DEF_VAL["dataset"]["kprcnn"]["iou_threshold"])
 
         # image loading params
         self.force_reshape: bool = self.params.get("force_reshape", DEF_VAL["images"]["force_reshape"])
@@ -140,11 +149,21 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             sanitized = self.bbox_cleaner(output)
             scores = sanitized["scores"]
 
-            # after that get the indices where the score ('certainty') is bigger than the given threshold
-            indices = scores > self.threshold
+            # Get the sanitized bboxes and compute the IoU.
+            bbox = tvte.BoundingBoxes(sanitized["boxes"], format="XYXY", canvas_size=canvas_size)
+            iou = box_iou(bbox, bbox).tril(diagonal=-1)  # lower tri excluding diag
+            # Filter the bboxes using an IoU threshold.
+            # Additionally, use only the indices where the score ('certainty') is bigger than the given score_threshold.
+            # Because the output of KeypointRCNN is sorted by score,
+            # using the lower triangular matrix will remove the lower score.
+            indices = torch.logical_and(
+                torch.logical_not(torch.any(iou > self.iou_threshold, dim=1)),  # iou smaller than
+                scores > self.score_threshold,  # score > thresh
+            )
 
-            # get updated B and bboxes, after double sanitizing
+            # get final bbox and B after double sanitizing
             bbox = tvte.BoundingBoxes(sanitized["boxes"][indices], format="XYXY", canvas_size=canvas_size)
+
             B: int = int(torch.count_nonzero(indices).item())
 
             data = {
@@ -260,9 +279,12 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         Args:
             a: A single path to an image file.
             idx: The index of the file path within ``self.data``.
+
+        Returns:
+            A list containing one single :class:`.State` that describes zero or more detections of the given image.
         """
         # the torch model expects a list of 3D images
-        images = [
+        list_of_image = [
             convert_image_dtype(
                 tvte.Image(
                     load_image(
@@ -278,7 +300,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             )
         ]
 
-        states = self.images_to_states(images=images)
+        states = self.images_to_states(images=list_of_image)
 
         for state in states:
             state.filepath = tuple(a for _ in range(max(state.B, 1)))
@@ -286,7 +308,12 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         return states
 
     def __getitems__(self, indices: list[int]) -> list[State]:
-        """Get a batch of predictions from the dataset. It is expected that all images have the same shape."""
+        """Get a batch of predictions from the dataset. It is expected that all images have the same shape.
+
+        Returns:
+            A list containing one :class:`.State` per image / index.
+            Every State describes zero or more detections of the respective image.
+        """
         fps: FilePaths = tuple(self.data[idx] for idx in indices)
         # the torch model expects a list of 3D images
         images = [
