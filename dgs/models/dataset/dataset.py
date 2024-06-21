@@ -290,9 +290,9 @@ class BaseDataset(BaseModule, TorchDataset):
             [
                 CustomToAspect(),  # make sure the image has the correct aspect ratio for the backbone model
                 CustomResize(),
-                tvt.ClampBoundingBoxes(),  # keep bboxes in their canvas_size
+                tvt.ClampBoundingBoxes(),  # make sure to keep bboxes in their canvas_size
                 # tvt.SanitizeBoundingBoxes(),  # clean up bboxes if available
-                tvt.ToDtype({tv_tensors.Image: torch.float32}, scale=True),
+                tvt.ToDtype({tv_tensors.Image: torch.float32, "others": None}, scale=True),
             ]
         )
 

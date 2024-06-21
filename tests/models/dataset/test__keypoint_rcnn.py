@@ -163,7 +163,7 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
-                    "score_threshold": 0.0,
+                    "score_threshold": 0.2,
                     "iou_threshold": 1.0,
                     "data_path": [IMAGE_PATH],
                     "dataset_path": "./tests/test_data/",
@@ -186,6 +186,39 @@ class TestKPRCNNModel(unittest.TestCase):
 
             self.assertTrue(isinstance(out, State))
             self.assertEqual(out.B, detections, f"expected {detections} detections, but got {out.B}")
+
+    def test_masked_batched(self):
+        # mask to crop the skateboarder from the torch_person image is in pt21_dummy_2.json
+        cfg = fill_in_defaults(
+            {
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "kprcnn": {
+                    "module_name": "KeypointRCNNImageBackbone",
+                    "score_threshold": 0.2,
+                    "iou_threshold": 1.0,
+                    "data_path": [IMAGE_PATH, IMAGE_PATH],
+                    "dataset_path": "./tests/test_data/",
+                    "mask_path": "./tests/test_data/pt21/pt21_dummy_2.json",
+                    "force_reshape": True,
+                    "image_size": (1024, 1024),  # [H,W]
+                    "image_mode": "zero-pad",
+                    "batch_size": 2,
+                    "return_lists": True,
+                },
+            },
+            get_test_config(),
+        )
+        m = get_data_loader(config=cfg, path=["kprcnn"])
+        out_list: list[State]
+        detections = 0
+
+        for out_list in m:
+            self.assertTrue(isinstance(out_list, list))
+            self.assertEqual(len(out_list), 2)
+
+            for out in out_list:
+                self.assertTrue(isinstance(out, State))
+                self.assertEqual(out.B, detections, f"expected {detections} detections, but got {out.B}")
 
     def test_dataset_image(self):
         cfg = fill_in_defaults(

@@ -5,18 +5,18 @@
       "image_id": 21,
       "id": 21,
       "frame_id": 21,
-      "file_name": "images/866-500x500.jpg",
-      "ignore_regions_x": [[0, 10, 10, 0]],
-      "ignore_regions_y": [[0, 0, 10, 10]]
+      "file_name": "images/torch_person.jpg",
+      "ignore_regions_x": [[120, 100, 100, 200, 375, 300]],
+      "ignore_regions_y": [[180, 500, 650, 650, 550, 120]]
     },
     {
       "is_labeled": false,
       "image_id": 22,
       "id": 22,
       "frame_id": 22,
-      "file_name": "images/866-500x500.jpg",
-      "ignore_regions_x": [[0, 10, 10, 0], [100, 110, 110, 100]],
-      "ignore_regions_y": [[0, 0, 10, 10], [100, 100, 110, 110]]
+      "file_name": "images/torch_person.jpg",
+      "ignore_regions_x": [[120, 100, 100, 200, 375, 300]],
+      "ignore_regions_y": [[180, 500, 650, 650, 550, 120]]
     },
     {
       "is_labeled": true,
