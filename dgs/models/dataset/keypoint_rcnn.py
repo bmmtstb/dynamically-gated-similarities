@@ -16,7 +16,7 @@ from torchvision.io import VideoReader
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
 from torchvision.ops import box_iou
 from torchvision.transforms import v2
-from torchvision.transforms.functional import convert_image_dtype
+from torchvision.transforms.v2.functional import convert_image_dtype, resize as tvt_resize
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
@@ -25,7 +25,7 @@ from dgs.utils.constants import IMAGE_FORMATS, VIDEO_FORMATS
 from dgs.utils.files import is_dir, is_file, read_json
 from dgs.utils.image import create_mask_from_polygons, CustomToAspect, load_image
 from dgs.utils.state import EMPTY_STATE, State
-from dgs.utils.types import Config, FilePath, FilePaths, Image, Images, NodePath, Validations
+from dgs.utils.types import Config, FilePath, FilePaths, Image, Images, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
 
 rcnn_validations: Validations = {
@@ -121,8 +121,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         # image loading params
         self.force_reshape: bool = self.params.get("force_reshape", DEF_VAL["images"]["force_reshape"])
-        self.image_size: bool = self.params.get("image_size", DEF_VAL["images"]["image_size"])
-        self.image_mode: bool = self.params.get("image_mode", DEF_VAL["images"]["image_mode"])
+        self.image_size: ImgShape = self.params.get("image_size", DEF_VAL["images"]["image_size"])
+        self.image_mode: str = self.params.get("image_mode", DEF_VAL["images"]["image_mode"])
 
     @torch.no_grad()
     def images_to_states(self, images: Images) -> list[State]:
@@ -149,7 +149,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
             # first sanitize and clamp the bboxes, while cleaning up the respective other data as well
             sanitized = self.bbox_cleaner(output)
-            scores = sanitized["scores"]
+            scores = sanitized["scores"]  # score of each instance
 
             # Get the sanitized bboxes and compute the IoU.
             bbox = tvte.BoundingBoxes(sanitized["boxes"], format="XYXY", canvas_size=canvas_size)
@@ -243,6 +243,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
     __doc__ += KeypointRCNNBackbone.__doc__
 
     data: list[FilePath]
+    masks: list[tvte.Mask | None]
 
     def __init__(self, config: Config, path: NodePath) -> None:
         KeypointRCNNBackbone.__init__(self, config=config, path=path)
@@ -280,17 +281,25 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
 
         # fixme what about other masking types?
         if "mask_path" in self.params:
-            self.masks: list[tvte.Mask] = [
-                create_mask_from_polygons(
-                    img_size=imagesize.get(self.get_path_in_dataset(img["file_name"]))[::-1],
-                    polygons_x=img["ignore_regions_x"],
-                    polygons_y=img["ignore_regions_y"],
-                    device=self.device,
+            self.masks = [
+                tvt_resize(
+                    create_mask_from_polygons(
+                        img_size=imagesize.get(self.get_path_in_dataset(img["file_name"]))[::-1],
+                        polygons_x=img["ignore_regions_x"],
+                        polygons_y=img["ignore_regions_y"],
+                        device=self.device,
+                    )
+                    .to(dtype=torch.uint8)
+                    .unsqueeze(0),
+                    size=[1, *self.image_size],
+                    antialias=False,
                 )
+                .squeeze(0)
+                .to(dtype=torch.bool)
                 for img in read_json(self.params["mask_path"])["images"]
             ]
         else:
-            self.masks = [torch.zeros(1, device=self.device, dtype=torch.bool) for _ in range(len(self.data))]
+            self.masks = [None for _ in range(len(self.data))]
 
     def arbitrary_to_ds(self, a: FilePath, idx: int) -> list[State]:
         """Given a filepath, predict the bounding boxes and key-points of the respective image.
@@ -304,8 +313,6 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         Returns:
             A list containing one single :class:`.State` that describes zero or more detections of the given image.
         """
-        mask = self.masks[idx]  # True, where the image should be ignored
-
         img = load_image(
             filepath=a,
             force_reshape=self.force_reshape,
@@ -313,6 +320,13 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             mode=self.image_mode,
             device=self.device,
         ).squeeze(0)
+
+        if self.masks[idx] is not None:
+            # Get the mask with the same size as the image.
+            # True, where the image should be ignored.
+            mask = self.masks[idx].squeeze(0)
+        else:
+            mask = torch.zeros(img.shape[-2:], device=self.device, dtype=torch.bool)
 
         # create the image by using the unmasked area of the image and the masked area of a black image
         float_img = convert_image_dtype(
@@ -344,7 +358,12 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         # the torch model expects a list of 3D images
         masked_images = [
             tvte.Image(
-                img.squeeze(0) * torch.bitwise_not(mask) + torch.zeros_like(img.squeeze(0)) * mask, device=self.device
+                (
+                    img.squeeze(0) * torch.bitwise_not(mask) + torch.zeros_like(img.squeeze(0)) * mask
+                    if mask is not None
+                    else img.squeeze(0)
+                ),
+                device=self.device,
             )
             for img, mask in zip(images.split(1, dim=0), masks)
         ]

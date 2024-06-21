@@ -13,11 +13,12 @@ log_dir_add_date: false
 
 RCNN_Backbone:
     module_name: "KeypointRCNNImageBackbone"
-    dataset_path: "./data/"
+    dataset_path: "./data/PoseTrack21/"
     base_path: "./data/PoseTrack21/images/val/"
     batch_size: 16
     # score_threshold:  # set by script
     # iou_threshold:  # set by script
+    # mask_path:  # set by script
     return_lists: true
     force_reshape: true
     image_size: !!python/tuple [ 1024, 1024 ]  # [H,W]

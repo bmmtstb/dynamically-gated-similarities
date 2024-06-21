@@ -37,7 +37,7 @@ if __name__ == "__main__":
         score_str = f"{int(score_threshold * 100):03d}"
         config[DL_KEY]["score_threshold"] = score_threshold
 
-        for iou_threshold in (pbar_iou_thresh := tqdm([0.3, 0.5, 0.7, 0.9], desc="IoU-Threshold")):
+        for iou_threshold in (pbar_iou_thresh := tqdm([0.5, 0.6, 0.7, 0.8], desc="IoU-Threshold")):
             pbar_iou_thresh.set_postfix_str(str(iou_threshold))
 
             iou_str = f"{int(iou_threshold * 100):03d}"
@@ -54,6 +54,7 @@ if __name__ == "__main__":
                 config["submission"][
                     "file"
                 ] = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{score_str}_{iou_str}/{ds_name}.json"
+                config[DL_KEY]["mask_path"] = f"./data/PoseTrack21/posetrack_data/val/{ds_name}.json"
 
                 if os.path.exists(config["submission"]["file"]):
                     continue

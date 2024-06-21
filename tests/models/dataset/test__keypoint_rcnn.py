@@ -168,13 +168,16 @@ class TestKPRCNNModel(unittest.TestCase):
                     "data_path": [IMAGE_PATH],
                     "dataset_path": "./tests/test_data/",
                     "mask_path": "./tests/test_data/pt21/pt21_dummy_1.json",
+                    "force_reshape": True,
+                    "image_size": (1024, 1024),  # [H,W]
+                    "image_mode": "zero-pad",
                 },
             },
             get_test_config(),
         )
         m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
         out_list: list[State]
-        detections = 1
+        detections = 0
 
         for out_list in m:
             self.assertTrue(isinstance(out_list, list))
@@ -183,7 +186,6 @@ class TestKPRCNNModel(unittest.TestCase):
 
             self.assertTrue(isinstance(out, State))
             self.assertEqual(out.B, detections, f"expected {detections} detections, but got {out.B}")
-            self.assertTrue(torch.all(out["score"] < 0.2))
 
     def test_dataset_image(self):
         cfg = fill_in_defaults(
