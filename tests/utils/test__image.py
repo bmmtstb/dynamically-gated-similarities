@@ -15,6 +15,7 @@ from dgs.utils.files import to_abspath
 from dgs.utils.image import (
     combine_images_to_video,
     compute_padding,
+    create_mask_from_polygons,
     CustomCropResize,
     CustomResize,
     CustomToAspect,
@@ -148,6 +149,45 @@ class TestImageUtils(unittest.TestCase):
         ]:
             with self.subTest(msg=msg):
                 self.assertListEqual(compute_padding(old_w=width, old_h=height, target_aspect=target_aspect), paddings)
+
+    @test_multiple_devices
+    def test_create_mask_from_polygon(self, device: torch.device):
+        full = torch.ones((10, 10), dtype=torch.bool, device=device)
+        empty = torch.zeros((10, 10), dtype=torch.bool, device=device)
+
+        for shape, px, py, out in [
+            ((10, 10), [[0, 9, 9, 0]], [[0, 0, 9, 9]], full),  # CW
+            ((10, 10), [[0, 0, 9, 9]], [[0, 9, 9, 0]], full),  # CCW
+            ((10, 10), [], [], empty),
+            # lower tri
+            ((10, 10), [[0, 0, 9]], [[0, 9, 9]], empty + full.tril()),
+            # upper tri
+            ((10, 10), [[0, 9, 9]], [[0, 9, 0]], empty + full.triu()),
+            # small box in big box
+            ((3, 3), [[1]], [[1]], torch.tensor([[0, 0, 0], [0, 1, 0], [0, 0, 0]], dtype=torch.bool, device=device)),
+            # multiple overlapping chunks on the diagonal
+            (
+                (10, 10),
+                [[i, i + 2, i + 2, i] for i in range(0, 9)],
+                [[0, 0, 9, 9] for _ in range(0, 9)],
+                full,
+            ),
+        ]:
+            with self.subTest(msg="d: {}, shape: {}, px: {}, py: {}".format(device, shape, px, py)):
+                mask = create_mask_from_polygons(shape, px, py, device=device)
+                self.assertEqual(mask.device, device)
+                self.assertEqual(mask.shape, torch.Size(shape))
+
+                self.assertTrue(torch.allclose(mask, out), mask)
+
+    def test_create_mask_from_polygon_raises(self):
+        with self.assertRaises(ValueError) as e:
+            _ = create_mask_from_polygons((1, 1), [[1, 2, 3]], [[1, 2, 3], [1, 2, 3]])
+        self.assertTrue("of polygon_x 1 did not match the length of polygon_y 2." in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(ValueError) as e:
+            _ = create_mask_from_polygons((1, 1), [[1]], [[1, 2]])
+        self.assertTrue("1 did not match the length of the y-coordinates 2." in str(e.exception), msg=e.exception)
 
 
 class TestVideo(unittest.TestCase):

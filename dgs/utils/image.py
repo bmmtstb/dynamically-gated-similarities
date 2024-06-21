@@ -18,6 +18,8 @@ Grayscale Images in cv2 have a shape of ``[h x w]``.
 import os
 from typing import Iterable, Union
 
+import cv2
+import numpy as np
 import torch
 import torchvision.transforms.v2 as tvt
 from torch.nn import Module as Torch_NN_Module
@@ -35,7 +37,7 @@ from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import IMAGE_FORMATS
 from dgs.utils.exceptions import ValidationException
 from dgs.utils.files import mkdir_if_missing, to_abspath
-from dgs.utils.types import FilePath, FilePaths, Image, Images, ImgShape, Video
+from dgs.utils.types import Device, FilePath, FilePaths, Image, Images, ImgShape, Video
 from dgs.utils.validation import validate_bboxes, validate_filepath, validate_key_points
 
 
@@ -850,3 +852,40 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             )
 
         return image_crop, coord_crop
+
+
+def create_mask_from_polygons(
+    img_size: ImgShape, polygons_x: list[list[int | float]], polygons_y: list[list[int | float]], device: Device = "cpu"
+) -> tvte.Mask:
+    """Given the x- and y- coordinates of one or multiple polygons, create a :class:`.Mask`.
+
+    Args:
+        img_size: The size of the (original) image as ``(height, width)``.
+            Because the polygon coordinates are given with respect to the original image,
+            the returned mask will have the same shape as the image.
+        polygons_x: A list containing the x-coordinates of ``N`` polygons.
+            Each of the polygons can have a different number of coordinates / vertices.
+        polygons_y: A list containing the y-coordinates of ``N`` polygons.
+            Each of the polygons can have a different number of coordinates / vertices.
+        device: The device the resulting mask should be on.
+            Default "cpu".
+
+    Returns:
+        mask_tv is a binary mask containing ``True``, where the polygons are filled.
+        The Mask has the shape ``[W x H]``.
+    """
+    if (lx := len(polygons_x)) != (ly := len(polygons_y)):
+        raise ValueError(f"Length of polygon_x {lx} did not match the length of polygon_y {ly}.")
+    mask = np.zeros(img_size, dtype=np.uint8)
+
+    # Iterate over each polygon and fill it in the mask
+    for x_coords, y_coords in zip(polygons_x, polygons_y):
+        if (lcx := len(x_coords)) != (lcy := len(y_coords)):
+            raise ValueError(f"Length of x-coords {lcx} did not match the length of the y-coordinates {lcy}.")
+        # Convert coordinate lists to a single numpy array of shape (n, 1, 2)
+        points = np.array([list(zip(x_coords, y_coords))], dtype=np.int32)
+        # Fill the polygon on the mask
+        cv2.fillPoly(mask, pts=points, color=(1.0,))
+
+    # Convert to tvte Mask
+    return tvte.Mask(torch.tensor(mask, dtype=torch.bool, device=device))
