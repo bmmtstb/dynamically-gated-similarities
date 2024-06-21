@@ -5,21 +5,27 @@
       "image_id": 21,
       "id": 21,
       "frame_id": 21,
-      "file_name": "images/866-500x500.jpg"
+      "file_name": "images/866-500x500.jpg",
+      "ignore_regions_x": [[0, 10, 10, 0]],
+      "ignore_regions_y": [[0, 0, 10, 10]]
     },
     {
       "is_labeled": false,
       "image_id": 22,
       "id": 22,
       "frame_id": 22,
-      "file_name": "images/866-500x500.jpg"
+      "file_name": "images/866-500x500.jpg",
+      "ignore_regions_x": [[0, 10, 10, 0], [100, 110, 110, 100]],
+      "ignore_regions_y": [[0, 0, 10, 10], [100, 100, 110, 110]]
     },
     {
       "is_labeled": true,
       "image_id": 23,
       "id": 23,
       "frame_id": 23,
-      "file_name": "images/866-1000x1000.jpg"
+      "file_name": "images/866-1000x1000.jpg",
+      "ignore_regions_x": [],
+      "ignore_regions_y": []
     }
   ],
   "annotations": [

@@ -9,11 +9,12 @@ import os
 from abc import ABC
 
 import torch
+from imagesize import imagesize
 from torch import nn
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
-from torchvision.ops import box_iou
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
+from torchvision.ops import box_iou
 from torchvision.transforms import v2
 from torchvision.transforms.functional import convert_image_dtype
 from tqdm import tqdm
@@ -21,8 +22,8 @@ from tqdm import tqdm
 from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import IMAGE_FORMATS, VIDEO_FORMATS
-from dgs.utils.files import is_dir, is_file
-from dgs.utils.image import CustomToAspect, load_image
+from dgs.utils.files import is_dir, is_file, read_json
+from dgs.utils.image import create_mask_from_polygons, CustomToAspect, load_image
 from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.types import Config, FilePath, FilePaths, Image, Images, NodePath, Validations
 from dgs.utils.utils import extract_crops_from_images
@@ -38,6 +39,7 @@ rcnn_validations: Validations = {
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "bbox_min_size": ["optional", float, ("gte", 1.0)],
+    "mask_path": ["optional", str],
 }
 
 
@@ -225,9 +227,14 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
 # pylint: disable=too-many-ancestors
 class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
-    """
+    """Predicts 17 key-points (like COCO).
 
-    Predicts 17 key-points (like COCO).
+    Optional Params
+    ---------------
+
+    mask_path (str, optional):
+        The path to a PT21 json file containing the ``ignore_regions``.
+        Note that currently only PT21 ignore regions are supported.
 
     References:
         https://pytorch.org/vision/0.17/models/generated/torchvision.models.detection.keypointrcnn_resnet50_fpn.html
@@ -271,6 +278,20 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 f"Unknown path object, expected filepath, dirpath, or list of filepaths. Got {type(data_path)}"
             )
 
+        # fixme what about other masking types?
+        if "mask_path" in self.params:
+            self.masks: list[tvte.Mask] = [
+                create_mask_from_polygons(
+                    img_size=imagesize.get(self.get_path_in_dataset(img["file_name"]))[::-1],
+                    polygons_x=img["ignore_regions_x"],
+                    polygons_y=img["ignore_regions_y"],
+                    device=self.device,
+                )
+                for img in read_json(self.params["mask_path"])["images"]
+            ]
+        else:
+            self.masks = [torch.zeros(1, device=self.device, dtype=torch.bool) for _ in range(len(self.data))]
+
     def arbitrary_to_ds(self, a: FilePath, idx: int) -> list[State]:
         """Given a filepath, predict the bounding boxes and key-points of the respective image.
         Return a State containing all the available information.
@@ -283,24 +304,24 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         Returns:
             A list containing one single :class:`.State` that describes zero or more detections of the given image.
         """
-        # the torch model expects a list of 3D images
-        list_of_image = [
-            convert_image_dtype(
-                tvte.Image(
-                    load_image(
-                        filepath=a,
-                        force_reshape=self.force_reshape,
-                        output_size=self.image_size,
-                        mode=self.image_mode,
-                        device=self.device,
-                    ).squeeze(0),
-                    device=self.device,
-                ),
-                dtype=torch.float32,
-            )
-        ]
+        mask = self.masks[idx]  # True, where the image should be ignored
 
-        states = self.images_to_states(images=list_of_image)
+        img = load_image(
+            filepath=a,
+            force_reshape=self.force_reshape,
+            output_size=self.image_size,
+            mode=self.image_mode,
+            device=self.device,
+        ).squeeze(0)
+
+        # create the image by using the unmasked area of the image and the masked area of a black image
+        float_img = convert_image_dtype(
+            tvte.Image(img * torch.bitwise_not(mask) + torch.zeros_like(img) * mask, device=self.device),
+            dtype=torch.float32,
+        )
+
+        # the torch model expects a list of 3D images
+        states = self.images_to_states(images=[float_img])
 
         for state in states:
             state.filepath = tuple(a for _ in range(max(state.B, 1)))
@@ -315,15 +336,20 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             Every State describes zero or more detections of the respective image.
         """
         fps: FilePaths = tuple(self.data[idx] for idx in indices)
+        masks = [self.masks[idx] for idx in indices]
+        images = convert_image_dtype(
+            tvte.Image(load_image(fps, device=self.device), device=self.device), dtype=torch.float32
+        )
+
         # the torch model expects a list of 3D images
-        images = [
-            img.squeeze(0)
-            for img in convert_image_dtype(
-                tvte.Image(load_image(fps, device=self.device), device=self.device), dtype=torch.float32
-            ).split(1, dim=0)
+        masked_images = [
+            tvte.Image(
+                img.squeeze(0) * torch.bitwise_not(mask) + torch.zeros_like(img.squeeze(0)) * mask, device=self.device
+            )
+            for img, mask in zip(images.split(1, dim=0), masks)
         ]
 
-        states = self.images_to_states(images=images)
+        states = self.images_to_states(images=masked_images)
 
         for fp, state in zip(fps, states):
             state.filepath = tuple(fp for _ in range(max(state.B, 1)))

@@ -157,6 +157,34 @@ class TestKPRCNNModel(unittest.TestCase):
                         torch.any(out["scores"] > 0.9), f"at least one score should be high, got: {out['scores']}"
                     )
 
+    def test_masked(self):
+        # mask to crop the skateboarder from the torch_person image is in pt21_dummy_1.json
+        cfg = fill_in_defaults(
+            {
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "kprcnn": {
+                    "score_threshold": 0.0,
+                    "iou_threshold": 1.0,
+                    "data_path": [IMAGE_PATH],
+                    "dataset_path": "./tests/test_data/",
+                    "mask_path": "./tests/test_data/pt21/pt21_dummy_1.json",
+                },
+            },
+            get_test_config(),
+        )
+        m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
+        out_list: list[State]
+        detections = 1
+
+        for out_list in m:
+            self.assertTrue(isinstance(out_list, list))
+            self.assertEqual(len(out_list), 1)
+            out: State = out_list[0]
+
+            self.assertTrue(isinstance(out, State))
+            self.assertEqual(out.B, detections, f"expected {detections} detections, but got {out.B}")
+            self.assertTrue(torch.all(out["score"] < 0.2))
+
     def test_dataset_image(self):
         cfg = fill_in_defaults(
             {

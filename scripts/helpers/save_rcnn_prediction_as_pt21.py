@@ -4,6 +4,7 @@ import os.path
 from glob import glob
 
 import torch
+from imagesize import imagesize
 from torchvision.io import write_jpeg
 from torchvision.transforms.v2.functional import convert_image_dtype
 from tqdm import tqdm
@@ -12,6 +13,7 @@ from dgs.models.loader import module_loader
 from dgs.models.submission import PoseTrack21Submission
 from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing, read_json
+from dgs.utils.image import create_mask_from_polygons
 from dgs.utils.state import State
 from dgs.utils.types import Config
 
@@ -104,8 +106,13 @@ if __name__ == "__main__":
 
                         gt_img_id: int = gt_img_id_map[own_iid - 1]
 
-                        ignore_regions_x: list[list, list] = gt_data["images"][own_iid - 1]["ignore_regions_x"]
-                        ignore_regions_y: list[list, list] = gt_data["images"][own_iid - 1]["ignore_regions_y"]
+                        # use the ignore_regions to extract the mask
+                        shape = imagesize.get(s.filepath[0])[::-1]
+                        ignore_regions_x: list[list] = gt_data["images"][own_iid - 1]["ignore_regions_x"]
+                        ignore_regions_y: list[list] = gt_data["images"][own_iid - 1]["ignore_regions_y"]
+                        gt_mask = torch.bitwise_not(
+                            create_mask_from_polygons(shape, ignore_regions_x, ignore_regions_y, device=s.device)
+                        )
 
                         # create dict with all the image data
                         image = {

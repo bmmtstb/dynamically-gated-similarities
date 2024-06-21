@@ -18,10 +18,10 @@ Grayscale Images in cv2 have a shape of ``[h x w]``.
 import os
 from typing import Iterable, Union
 
-import cv2
 import numpy as np
 import torch
 import torchvision.transforms.v2 as tvt
+from cv2 import fillPoly  # pylint: disable=no-name-in-module
 from torch.nn import Module as Torch_NN_Module
 from torchvision import tv_tensors as tvte
 from torchvision.io import ImageReadMode, read_image, read_video, write_video
@@ -885,7 +885,7 @@ def create_mask_from_polygons(
         # Convert coordinate lists to a single numpy array of shape (n, 1, 2)
         points = np.array([list(zip(x_coords, y_coords))], dtype=np.int32)
         # Fill the polygon on the mask
-        cv2.fillPoly(mask, pts=points, color=(1.0,))
+        fillPoly(mask, pts=points, color=(1.0,))
 
     # Convert to tvte Mask
     return tvte.Mask(torch.tensor(mask, dtype=torch.bool, device=device))
