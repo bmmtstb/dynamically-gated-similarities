@@ -64,6 +64,8 @@ rst_prolog = """
 .. _PT21: https://openaccess.thecvf.com//content/CVPR2022/html/Doring_PoseTrack21_A_Dataset_for_Person_Search_Multi-Object_Tracking_and_Multi-Person_CVPR_2022_paper.html
 .. |torchreid| replace:: ``torchreid``
 .. _torchreid: https://github.com/KaiyangZhou/deep-person-reid
+.. |MOT| replace:: ``MOT``
+.. _MOT: https://motchallenge.net/
 """
 
 # tell autodoc that we don't want these packages to be imported

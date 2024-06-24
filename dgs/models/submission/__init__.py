@@ -3,12 +3,14 @@
 from typing import Type
 
 from dgs.utils.loader import get_instance, register_instance
+from .MOT import MOTSubmission
 from .posetrack21 import PoseTrack21Submission
 from .submission import SubmissionFile
 
 SUBMISSION_FORMATS: dict[str, Type[SubmissionFile]] = {
     "None": SubmissionFile,
     "PoseTrack21": PoseTrack21Submission,
+    "MOT": MOTSubmission,
 }
 
 

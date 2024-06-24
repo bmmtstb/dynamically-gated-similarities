@@ -220,7 +220,9 @@ class BaseDataset(BaseModule, TorchDataset):
         # State has length zero and image and local key points are just placeholders
         if len(ds) == 0:
             ds.image_crop = tv_tensors.Image(torch.empty((0, 3, 1, 1)), device=ds.device)
-            ds.keypoints_local = torch.empty((0, ds.J, ds.joint_dim), device=ds.device)
+            ds.keypoints_local = torch.empty(
+                (0, ds.J if "keypoints" in ds else 1, ds.joint_dim if "keypoints" in ds else 2), device=ds.device
+            )
             return
 
         # check whether precomputed image crops exist
@@ -251,23 +253,29 @@ class BaseDataset(BaseModule, TorchDataset):
                 force_reshape=True,
                 mode=self.params.get("image_mode", DEF_VAL["images"]["image_mode"]),
                 output_size=self.params.get("image_size", DEF_VAL["images"]["image_size"]),
+                dtype=torch.float32,
                 device=ds.device,
             )
         else:
-            ds.image = load_image(ds.filepath, device=ds.device)
+            ds.image = load_image(ds.filepath, device=ds.device, dtype=torch.float32)
 
         structured_input = {
-            "image": ds.image,
+            "images": ds.image,
             "box": ds.bbox,
-            "keypoints": ds.keypoints,
+            "keypoints": (
+                ds.keypoints
+                if "keypoints" in ds
+                else torch.zeros((ds.bbox.size(0), 1, 2), device=self.device, dtype=torch.float32)
+            ),
             "output_size": self.params.get("crop_size", DEF_VAL["images"]["crop_size"]),
             "mode": self.params.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
         }
         new_state = self.transform_crop_resize()(structured_input)
 
-        ds.image_crop = new_state["image"].to(dtype=torch.float32, device=self.device)
-        ds.keypoints_local = new_state["keypoints"].to(dtype=torch.float32, device=self.device)
-        assert "joint_weights" in ds.data, "visibility should be given"
+        ds.image_crop = tv_tensors.Image(new_state["image"].to(dtype=torch.float32, device=self.device))
+        if "keypoints" in ds:
+            ds.keypoints_local = new_state["keypoints"].to(dtype=torch.float32, device=self.device)
+            assert "joint_weights" in ds.data, "visibility should be given"
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:

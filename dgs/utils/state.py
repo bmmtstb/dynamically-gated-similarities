@@ -377,7 +377,7 @@ class State(UserDict):
     @image.setter
     def image(self, value: Images) -> None:
         imgs = validate_images(value) if self.validate else value
-        self.data["image"]: Images = [tv_tensors.wrap(v.to(device=self.device), like=v) for v in imgs]
+        self.data["image"]: Images = [tv_tensors.Image(v.to(device=self.device)) for v in imgs]
 
     @property
     def image_crop(self) -> Image:

@@ -23,6 +23,11 @@ dataset:
         score_threshold: 0.3
         iou_threshold: 0.6
 
+    MOT:
+        space_around_delimiters: False
+        file_separator: ",\\s?"
+        seqinfo_path: null
+
 
 dataloader:
     batch_size: 16
@@ -49,6 +54,9 @@ images:
 
 submission:
     file: "./submission.json"
+
+    MOT:
+        bbox_decimals: 0
 
 # ############## #
 # LOSS FUNCTIONS #
