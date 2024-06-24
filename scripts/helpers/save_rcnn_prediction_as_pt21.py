@@ -20,9 +20,12 @@ from dgs.utils.types import Config
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 DL_KEY: str = "RCNN_Backbone"
 
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
+
 # IN images: "./data/PoseTrack21/crops/hxw/val/DATASET/*.jpg"
-# OUT predictions: "./data/PoseTrack21/posetrack_data/rcnn_prediction_XXX/DATASET.json"
-# OUT cropped image and loc_kp: "./data/PoseTrack21/crops/hxw/rcnn_prediction_XXX/DATASET/*.jpg" and "...*.pt"
+# OUT predictions: "./data/PoseTrack21/posetrack_data/rcnn_prediction_XXX_YYY/DATASET.json"
+# OUT cropped image and loc_kp: "./data/PoseTrack21/crops/hxw/rcnn_prediction_XXX_YYY/DATASET/*.jpg" and "...*.pt"
 
 if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}")
@@ -31,13 +34,13 @@ if __name__ == "__main__":
 
     h, w = config[DL_KEY]["crop_size"]
 
-    for score_threshold in (pbar_score_thresh := tqdm([0.85, 0.90, 0.95], desc="Score-Threshold")):
+    for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold")):
         pbar_score_thresh.set_postfix_str(str(score_threshold))
 
         score_str = f"{int(score_threshold * 100):03d}"
         config[DL_KEY]["score_threshold"] = score_threshold
 
-        for iou_threshold in (pbar_iou_thresh := tqdm([0.5, 0.6, 0.7, 0.8], desc="IoU-Threshold")):
+        for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold")):
             pbar_iou_thresh.set_postfix_str(str(iou_threshold))
 
             iou_str = f"{int(iou_threshold * 100):03d}"

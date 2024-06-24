@@ -24,6 +24,21 @@ from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
+KEYS: list[str] = ["iou", "oks", "OSNet"]
+# KEYS: list[str] = [
+#     "iou",
+#     "oks",
+#     "OSNet",
+#     "OSNetAIN",
+#     "Resnet50",
+#     "Resnet152",
+#     "OSNetAIN_CrossDomainDuke",
+#     "OSNetIBN_CrossDomainDuke",
+#     "OSNetAIN_CrossDomainMSMT17",
+# ]
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
+
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
@@ -31,27 +46,12 @@ CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
     """Main function to run the code."""
     # IoU, OKS, and visual similarity
-    for dgs_key in (
-        pbar_key := tqdm(
-            [
-                "iou",
-                "oks",
-                "OSNet",
-                "OSNetAIN",
-                "Resnet50",
-                "Resnet152",
-                "OSNetAIN_CrossDomainDuke",
-                "OSNetIBN_CrossDomainDuke",
-                "OSNetAIN_CrossDomainMSMT17",
-            ],
-            desc="similarities",
-        )
-    ):
+    for dgs_key in (pbar_key := tqdm(KEYS, desc="similarities")):
         pbar_key.set_postfix_str(dgs_key)
 
         config["name"] = f"Evaluate-Single-{dgs_key}"
 
-        # get sub folders or files and analyse them one-by-one
+        # get all the sub folders or files and analyze them one-by-one
         for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
             pbar_data.set_postfix_str(os.path.basename(sub_datapath))
             # make sure to have a unique log dir every time
@@ -103,16 +103,16 @@ if __name__ == "__main__":
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     # for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
-    for score_thresh in (pbar_score_thresh := tqdm(["085", "090", "095"], desc="Score Thresh")):
-        pbar_score_thresh.set_postfix_str(os.path.basename(score_thresh))
-        for iou_thresh in (pbar_iou_thresh := tqdm(["030", "050", "070", "090"], desc="IoU Thresh")):
-            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_thresh))
+    for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
+        score_str = f"{int(score_thresh * 100):03d}"
+        pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
+        for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
+            iou_str = f"{int(iou_thresh * 100):03d}"
+            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
 
             cfg = load_config(CONFIG_FILE)
-            base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{score_thresh}_{iou_thresh}/"
+            base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{score_str}_{iou_str}/"
             cfg["dgs_rcnn"]["base_path"] = base_path
-            cfg["dgs_rcnn"][
-                "crops_folder"
-            ] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{score_thresh}_{iou_thresh}/"
+            cfg["dgs_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{score_str}_{iou_str}/"
             data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-            run(config=cfg, dl_key="dgs_rcnn", paths=data_paths, out_key=f"dgs_rcnn_{score_thresh}_{iou_thresh}")
+            run(config=cfg, dl_key="dgs_rcnn", paths=data_paths, out_key=f"dgs_rcnn_{score_str}_{iou_str}")
