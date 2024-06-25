@@ -7,8 +7,22 @@ is_training: off
 log_dir: "./results/helpers/rcnn_predictor/"
 log_dir_add_date: false
 
+# ################ #
+# SUBMISSION FILES #
+# ################ #
+
+submission_pt21:
+    module_name: "PoseTrack21"
+    # file:  # will be set in python script
+
+submission_MOT:
+    module_name: "MOT"
+    # file:  # will be set in python script
+    # seqinfo_key:  # will be set in python script
+
+
 # #### #
-# DATA #
+# PT21 #
 # #### #
 
 RCNN_PT21_Backbone:
@@ -27,6 +41,10 @@ RCNN_PT21_Backbone:
 
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
+
+# ##### #
+# MOT20 #
+# ##### #
 
 RCNN_MOT_train:
     module_name: "KeypointRCNNImageBackbone"
@@ -59,6 +77,22 @@ RCNN_MOT_test:
 
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
+
+MOT_train:
+    module_name: "MOTImage"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/MOT20/"
+    dataset_paths: "./data/MOT20/train/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+# ########## #
+# DanceTrack #
+# ########## #
 
 RCNN_Dance_train:
     module_name: "KeypointRCNNImageBackbone"
@@ -108,12 +142,26 @@ RCNN_Dance_val:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
+Dance_train:
+    module_name: "MOTImage"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/DanceTrack/"
+    dataset_paths: "./data/DanceTrack/train/**/"
 
-submission_pt21:
-    module_name: "PoseTrack21"
-    # file:  # will be set in python script
+    batch_size: 16
+    return_lists: true
 
-submission_MOT:
-    module_name: "MOT"
-    # file:  # will be set in python script
-    # seqinfo_key:  # will be set in python script
+    crop_size: !!python/tuple [ 256, 192 ]  # [H,W]
+    crop_mode: "zero-pad"
+
+Dance_val:
+    module_name: "MOTImage"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/DanceTrack/"
+    dataset_paths: "./data/DanceTrack/val/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    crop_size: !!python/tuple [ 256, 192 ]  # [H,W]
+    crop_mode: "zero-pad"

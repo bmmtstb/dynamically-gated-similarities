@@ -8,7 +8,7 @@ from torchvision.io import write_jpeg
 from torchvision.transforms.v2.functional import convert_image_dtype
 from tqdm import tqdm
 
-from dgs.models.dataset.MOT import load_seq_ini
+from dgs.models.dataset.MOT import load_seq_ini, write_seq_ini
 from dgs.models.loader import module_loader
 from dgs.models.submission import MOTSubmission
 from dgs.utils.config import DEF_VAL, load_config
@@ -21,12 +21,18 @@ CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
 IOU_THRESHS: list[float] = [1.0]  # basically deactivate IoU thresh
 
-DL_KEYS: list[str] = [
-    "RCNN_MOT_train",
+RCNN_DL_KEYS: list[str] = [
+    # "RCNN_MOT_train",
     # "RCNN_MOT_test",
     # "RCNN_Dance_test",
-    "RCNN_Dance_train",
+    # "RCNN_Dance_train",
     "RCNN_Dance_val",
+]
+
+DL_KEYS: list[str] = [
+    # "MOT_train",
+    # "Dance_train",
+    "Dance_val",
 ]
 
 # IN images: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/img1/*.jpg"
@@ -36,7 +42,8 @@ DL_KEYS: list[str] = [
 
 
 @torch.no_grad()
-def run_MOT(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
+def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
+    """Given some configuration, predict and extract the image crops using Keypoint-RCNN."""
     dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
@@ -49,6 +56,9 @@ def run_MOT(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         # modify submission data - seqinfo.ini
         own_seqinfo = gt_seqinfo.copy()
         own_seqinfo["imDir"] = rcnn_cfg_str
+        h, w = config[dl_key]["crop_size"]
+        own_seqinfo["cropWidth"] = str(w)
+        own_seqinfo["cropHeight"] = str(h)
         config[subm_key]["seqinfo_key"] = rcnn_cfg_str
 
         # modify the configuration
@@ -88,14 +98,58 @@ def run_MOT(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
                 submission.append(s)
 
                 # save the image-crops and local key points
-                save_crops(s, _img_path=crops_folder, _gt_img_id=s["frame_id"])
+                save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=True)
         submission.save()
 
 
 @torch.no_grad()
-def save_crops(_s: State, _img_path: FilePath, _gt_img_id: str | int) -> None:
+def run_gt_extractor(dl_key: str) -> None:
+    """Given some ground-truth annotation data, extract and save the image crops"""
+    dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
+
+    for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
+        ds_name = os.path.basename(os.path.realpath(dataset_path))
+        pbar_dataset.set_postfix_str(ds_name)
+
+        # GT data
+        gt_seqinfo_path = os.path.join(dataset_path, "./seqinfo.ini")
+        gt_seqinfo = load_seq_ini(gt_seqinfo_path, key="Sequence")
+
+        # create img output folder
+        crops_folder = os.path.join(dataset_path, "./crops/")
+        mkdir_if_missing(crops_folder)
+
+        # modify submission data - seqinfo.ini
+        own_seqinfo = gt_seqinfo.copy()
+        own_seqinfo["imDir"] = "crops"
+        h, w = config[dl_key]["crop_size"]
+        own_seqinfo["cropWidth"] = str(w)
+        own_seqinfo["cropHeight"] = str(h)
+        write_seq_ini(fp=gt_seqinfo_path, data=own_seqinfo, key="Crops")
+
+        # modify the configuration
+        config[dl_key]["data_path"] = os.path.join(dataset_path, "./gt/gt.txt/")
+
+        # get data loader
+        dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
+        assert len(dataloader) >= 0
+
+        batch: list[State]
+        s: State
+
+        for batch in tqdm(dataloader, desc="batch", leave=False):
+            for s in batch:
+                if s.B == 0:
+                    continue
+                # save the image-crops, there are no local key-points
+                save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=False)
+
+
+@torch.no_grad()
+def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bool = True) -> None:
+    """Save the image crops."""
     for i in range(_s.B):
-        img_path = os.path.join(_img_path, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
+        img_path = os.path.join(img_dir, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
         if os.path.exists(img_path):
             continue
         write_jpeg(
@@ -103,7 +157,8 @@ def save_crops(_s: State, _img_path: FilePath, _gt_img_id: str | int) -> None:
             filename=img_path,
             quality=DEF_VAL["images"]["jpeg_quality"],
         )
-        torch.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
+        if save_kps:
+            torch.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
 
 
 if __name__ == "__main__":
@@ -112,21 +167,25 @@ if __name__ == "__main__":
     config: Config = load_config(CONFIG_FILE)
 
     for dl_key in DL_KEYS:
-        print(f"predicting for Dataloader: {dl_key}")
+        print(f"Extracting GT image crops using dataloader: {dl_key}")
+        run_gt_extractor(dl_key=dl_key)
 
-        h, w = config[dl_key]["crop_size"]
+    for rcnn_dl_key in RCNN_DL_KEYS:
+        print(f"Using Keypoint-RCNN to predict and extract crops for dataloader: {rcnn_dl_key}")
+
+        h, w = config[rcnn_dl_key]["crop_size"]
 
         for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold")):
             pbar_score_thresh.set_postfix_str(str(score_threshold))
             score_str = f"{int(score_threshold * 100):03d}"
-            config[dl_key]["score_threshold"] = score_threshold
+            config[rcnn_dl_key]["score_threshold"] = score_threshold
 
             for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold")):
                 pbar_iou_thresh.set_postfix_str(str(iou_threshold))
 
                 iou_str = f"{int(iou_threshold * 100):03d}"
-                config[dl_key]["iou_threshold"] = iou_threshold
+                config[rcnn_dl_key]["iou_threshold"] = iou_threshold
 
                 _rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{h}x{w}"
 
-                run_MOT(dl_key=dl_key, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)
+                run_RCNN_extractor(dl_key=rcnn_dl_key, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)
