@@ -7,10 +7,9 @@ from dgs.models.loader import get_data_loader
 from dgs.utils.config import load_config
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException
-from dgs.utils.files import is_abs_dir
+from dgs.utils.files import is_abs_dir, mkdir_if_missing
 from dgs.utils.state import State
 from dgs.utils.utils import HidePrint
-from torchreid.utils import mkdir_if_missing
 
 
 class TestSeqinfoIni(unittest.TestCase):
