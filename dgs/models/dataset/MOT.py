@@ -21,10 +21,11 @@ MOT_validations: Validations = {
     # optional
     "file_separator": ["optional", str],
     "seqinfo_path": ["optional", str],
+    "seqinfo_key": ["optional", str],
 }
 
 
-def load_seq_ini(fp: FilePath) -> dict[str, any]:
+def load_seq_ini(fp: FilePath, key: str = "Sequence") -> dict[str, any]:
     """Load a ``seqinfo.ini`` file containing the information of the Sequence.
 
     Example ``seqinfo.ini``::
@@ -37,6 +38,10 @@ def load_seq_ini(fp: FilePath) -> dict[str, any]:
         imWidth=1920
         imHeight=1080
         imExt=.jpg
+
+    Args:
+        fp: The local or absolute path to the seqinfo.ini file.
+        key: The key at which the data is stored in the seqinfo.ini file.
     """
     if not fp.endswith(".ini"):
         raise InvalidPathException(f"Presumed seqinfo.ini file '{fp}' does not have .ini ending.")
@@ -45,10 +50,14 @@ def load_seq_ini(fp: FilePath) -> dict[str, any]:
     ini_data.optionxform = str  # make sure camelCase of the variable names stays
 
     ini_data.read(fp, encoding="utf-8")
-    return dict(ini_data["Sequence"])
+    if key not in ini_data:
+        raise KeyError(f"Expected key '{key}' to be in seqinfo.ini file, but got keys: '{ini_data.keys()}'")
+    return dict(ini_data[key])
 
 
-def write_seq_ini(fp: FilePath, data: dict[str, any], space_around_delimiters: bool = None) -> None:
+def write_seq_ini(
+    fp: FilePath, data: dict[str, any], space_around_delimiters: bool = None, key: str = "Sequence"
+) -> None:
     """Write the ``seqinfo.ini`` file to a given location.
 
     Args:
@@ -57,6 +66,8 @@ def write_seq_ini(fp: FilePath, data: dict[str, any], space_around_delimiters: b
         space_around_delimiters: Whether to put spaces around the delimiters,
             see :func:`configparser.ConfigParser().write` for more details.
             Default ``DEF_VAL.dataset.MOT.space_around_delimiters``.
+        key: The key at which the data should be stored in the seqinfo.ini file.
+            Default "Sequence".
     """
     for value in ["name", "imDir", "frameRate", "seqLength", "imWidth", "imHeight", "imExt"]:
         if value not in data:
@@ -68,7 +79,7 @@ def write_seq_ini(fp: FilePath, data: dict[str, any], space_around_delimiters: b
     config = configparser.ConfigParser()
     config.optionxform = str  # make sure camelCase of the variable names stays
 
-    config["Sequence"] = data
+    config[key] = data
     with open(fp, "w", encoding="utf-8") as file:
         config.write(fp=file, space_around_delimiters=space_around_delimiters)
 

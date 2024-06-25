@@ -41,10 +41,20 @@ class TestSeqinfoIni(unittest.TestCase):
                 self.assertTrue(key in data, data)
                 self.assertEqual(data[key], val, data)
 
+    def test_load_seq_ini_key(self):
+        data = load_seq_ini(self.seqinfo_path, key="Other")
+        self.assertEqual(len(data), 1)
+        self.assertTrue("name" in data)
+        self.assertEqual(data["name"], "MOT_other")
+
     def test_load_seq_ini_exceptions(self):
         with self.assertRaises(InvalidPathException) as e:
             _ = load_seq_ini("./tests/test_data/seq.info")
         self.assertTrue("file './tests/test_data/seq.info' does not have .ini" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(KeyError) as e:
+            _ = load_seq_ini(fp=self.seqinfo_path, key="Dummy")
+        self.assertTrue("Expected key 'Dummy' to be in" in str(e.exception), msg=e.exception)
 
     def test_write_seq_ini(self):
         for space in [None, True, False]:
@@ -54,6 +64,14 @@ class TestSeqinfoIni(unittest.TestCase):
                 self.assertTrue(os.path.exists(self.new_path))
                 self.assertDictEqual(load_seq_ini(self.new_path), self.test_data)
                 os.remove(self.new_path)
+
+    def test_write_seq_ini_key(self):
+        key = "Other"
+        self.assertFalse(os.path.exists(self.new_path))
+        write_seq_ini(fp=self.new_path, data=self.test_data, key=key)
+        self.assertTrue(os.path.exists(self.new_path))
+        self.assertDictEqual(load_seq_ini(self.new_path, key=key), self.test_data)
+        os.remove(self.new_path)
 
     def test_write_seq_ini_exceptions(self):
         self.assertFalse(os.path.exists(self.new_path))
