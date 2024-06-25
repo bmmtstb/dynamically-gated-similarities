@@ -11,23 +11,109 @@ log_dir_add_date: false
 # DATA #
 # #### #
 
-RCNN_Backbone:
+RCNN_PT21_Backbone:
     module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
     dataset_path: "./data/PoseTrack21/"
-    base_path: "./data/PoseTrack21/images/val/"
+    dataset_paths: "./data/PoseTrack21/images/val/**/"
+
     batch_size: 16
+    return_lists: true
+
     # score_threshold:  # set by script
     # iou_threshold:  # set by script
     # mask_path:  # set by script
-    return_lists: true
-    force_reshape: true
-    image_size: !!python/tuple [ 1024, 1024 ]  # [H,W]
-    image_mode: "zero-pad"
-    crop_size: !!python/tuple [256, 192]  # [H,W]
-    crop_mode: "zero-pad"
-    # data_path:  # will be set in python script
     bbox_min_size: 50.0
 
-submission:
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+RCNN_MOT_train:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/MOT20/"
+    dataset_paths: "./data/MOT20/train/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+RCNN_MOT_test:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/MOT20/"
+    dataset_paths: "./data/MOT20/test/**/"
+
+    batch_size: 1
+    return_lists: true
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+RCNN_Dance_train:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/DanceTrack/"
+    dataset_paths: "./data/DanceTrack/train/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+RCNN_Dance_test:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/DanceTrack/"
+    dataset_paths: "./data/DanceTrack/test/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+RCNN_Dance_val:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/DanceTrack/"
+    dataset_paths: "./data/DanceTrack/val/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+
+submission_pt21:
     module_name: "PoseTrack21"
     # file:  # will be set in python script
+
+submission_MOT:
+    module_name: "MOT"
+    # file:  # will be set in python script
+    # seqinfo_key:  # will be set in python script

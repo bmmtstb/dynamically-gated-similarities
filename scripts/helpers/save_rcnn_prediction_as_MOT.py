@@ -1,0 +1,132 @@
+"""Run the RCNN backbone over the whole dataset and save the results, so they don't have to be recomputed every time."""
+
+import os
+from glob import glob
+
+import torch
+from torchvision.io import write_jpeg
+from torchvision.transforms.v2.functional import convert_image_dtype
+from tqdm import tqdm
+
+from dgs.models.dataset.MOT import load_seq_ini
+from dgs.models.loader import module_loader
+from dgs.models.submission import MOTSubmission
+from dgs.utils.config import DEF_VAL, load_config
+from dgs.utils.files import mkdir_if_missing
+from dgs.utils.state import State
+from dgs.utils.types import Config, FilePath
+
+CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
+
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+IOU_THRESHS: list[float] = [1.0]  # basically deactivate IoU thresh
+
+DL_KEYS: list[str] = [
+    "RCNN_MOT_train",
+    # "RCNN_MOT_test",
+    # "RCNN_Dance_test",
+    "RCNN_Dance_train",
+    "RCNN_Dance_val",
+]
+
+# IN images: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/img1/*.jpg"
+# IN boxes: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/gt/gt.txt"
+# OUT predictions: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/det/rcnn_XXX_YYY.txt"
+# OUT cropped image and loc_kp: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/rcnn_XXX_YYY/*.jpg" and "...*.pt"
+
+
+@torch.no_grad()
+def run_MOT(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
+    dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
+
+    for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
+        ds_name = os.path.basename(os.path.realpath(dataset_path))
+        pbar_dataset.set_postfix_str(ds_name)
+
+        # GT data
+        gt_seqinfo = load_seq_ini(os.path.join(dataset_path, "./seqinfo.ini"), key="Sequence")
+
+        # modify submission data - seqinfo.ini
+        own_seqinfo = gt_seqinfo.copy()
+        own_seqinfo["imDir"] = rcnn_cfg_str
+        config[subm_key]["seqinfo_key"] = rcnn_cfg_str
+
+        # modify the configuration
+        config[dl_key]["data_path"] = os.path.join(dataset_path, f"./{gt_seqinfo['imDir']}/")
+        config[subm_key]["file"] = os.path.join(dataset_path, f"./det/{rcnn_cfg_str}.txt")
+
+        if os.path.exists(config[subm_key]["file"]):
+            continue
+
+        dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
+
+        # load submission
+        submission: MOTSubmission = module_loader(config=config, module_class="submission", key=subm_key)
+        submission.seq_info = own_seqinfo
+
+        # create img output folder
+        crops_folder = os.path.join(dataset_path, f"./{rcnn_cfg_str}/")
+        mkdir_if_missing(crops_folder)
+
+        batch: list[State]
+        s: State
+        frame_id = 0
+
+        assert len(dataloader) >= 0
+
+        for batch in tqdm(dataloader, desc="batch", leave=False):
+            for s in batch:
+                frame_id += 1
+
+                s["frame_id"] = frame_id
+                s.person_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
+
+                if s.B == 0:
+                    continue
+
+                # append to submission
+                submission.append(s)
+
+                # save the image-crops and local key points
+                save_crops(s, _img_path=crops_folder, _gt_img_id=s["frame_id"])
+        submission.save()
+
+
+@torch.no_grad()
+def save_crops(_s: State, _img_path: FilePath, _gt_img_id: str | int) -> None:
+    for i in range(_s.B):
+        img_path = os.path.join(_img_path, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
+        if os.path.exists(img_path):
+            continue
+        write_jpeg(
+            input=convert_image_dtype(_s.image_crop[i], torch.uint8).cpu(),
+            filename=img_path,
+            quality=DEF_VAL["images"]["jpeg_quality"],
+        )
+        torch.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
+
+
+if __name__ == "__main__":
+    print(f"Cuda available: {torch.cuda.is_available()}")
+
+    config: Config = load_config(CONFIG_FILE)
+
+    for dl_key in DL_KEYS:
+        print(f"predicting for Dataloader: {dl_key}")
+
+        h, w = config[dl_key]["crop_size"]
+
+        for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold")):
+            pbar_score_thresh.set_postfix_str(str(score_threshold))
+            score_str = f"{int(score_threshold * 100):03d}"
+            config[dl_key]["score_threshold"] = score_threshold
+
+            for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold")):
+                pbar_iou_thresh.set_postfix_str(str(iou_threshold))
+
+                iou_str = f"{int(iou_threshold * 100):03d}"
+                config[dl_key]["iou_threshold"] = iou_threshold
+
+                _rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{h}x{w}"
+
+                run_MOT(dl_key=dl_key, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)

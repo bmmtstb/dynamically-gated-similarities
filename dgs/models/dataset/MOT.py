@@ -25,7 +25,7 @@ MOT_validations: Validations = {
 }
 
 
-def load_seq_ini(fp: FilePath, key: str = "Sequence") -> dict[str, any]:
+def load_seq_ini(fp: FilePath, key: str = None) -> dict[str, any]:
     """Load a ``seqinfo.ini`` file containing the information of the Sequence.
 
     Example ``seqinfo.ini``::
@@ -42,7 +42,10 @@ def load_seq_ini(fp: FilePath, key: str = "Sequence") -> dict[str, any]:
     Args:
         fp: The local or absolute path to the seqinfo.ini file.
         key: The key at which the data is stored in the seqinfo.ini file.
+            Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
     """
+    if key is None:
+        key = DEF_VAL["submission"]["MOT"]["seqinfo_key"]
     if not fp.endswith(".ini"):
         raise InvalidPathException(f"Presumed seqinfo.ini file '{fp}' does not have .ini ending.")
     fp = to_abspath(fp)
@@ -51,13 +54,11 @@ def load_seq_ini(fp: FilePath, key: str = "Sequence") -> dict[str, any]:
 
     ini_data.read(fp, encoding="utf-8")
     if key not in ini_data:
-        raise KeyError(f"Expected key '{key}' to be in seqinfo.ini file, but got keys: '{ini_data.keys()}'")
+        raise KeyError(f"Expected key '{key}' to be in seqinfo.ini file, but got keys: '{list(ini_data.keys())}'")
     return dict(ini_data[key])
 
 
-def write_seq_ini(
-    fp: FilePath, data: dict[str, any], space_around_delimiters: bool = None, key: str = "Sequence"
-) -> None:
+def write_seq_ini(fp: FilePath, data: dict[str, any], space_around_delimiters: bool = None, key: str = None) -> None:
     """Write the ``seqinfo.ini`` file to a given location.
 
     Args:
@@ -67,7 +68,7 @@ def write_seq_ini(
             see :func:`configparser.ConfigParser().write` for more details.
             Default ``DEF_VAL.dataset.MOT.space_around_delimiters``.
         key: The key at which the data should be stored in the seqinfo.ini file.
-            Default "Sequence".
+            Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
     """
     for value in ["name", "imDir", "frameRate", "seqLength", "imWidth", "imHeight", "imExt"]:
         if value not in data:
@@ -76,9 +77,14 @@ def write_seq_ini(
     if space_around_delimiters is None:
         space_around_delimiters = DEF_VAL["dataset"]["MOT"]["space_around_delimiters"]
 
+    if key is None:
+        key = DEF_VAL["submission"]["MOT"]["seqinfo_key"]
+
     config = configparser.ConfigParser()
     config.optionxform = str  # make sure camelCase of the variable names stays
-
+    # get current state
+    config.read(fp, encoding="utf-8")
+    # add a new key or modify the existing one
     config[key] = data
     with open(fp, "w", encoding="utf-8") as file:
         config.write(fp=file, space_around_delimiters=space_around_delimiters)
@@ -147,6 +153,7 @@ def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqi
         if N == 0:
             es = EMPTY_STATE.copy()
             es.filepath = file_paths
+            es["frame_id"] = frame_id
             states.append(es)
             continue
 
@@ -158,6 +165,7 @@ def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqi
                 bbox=bboxes,
                 filepath=file_paths,
                 person_id=torch.tensor([anno[1] for anno in annos], device=device, dtype=torch.long),
+                frame_id=frame_id,
                 validate=False,
             )
         )

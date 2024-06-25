@@ -252,11 +252,11 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
 
         # load data - data_path is either a directory, a single image file, or a list of image filepaths
         self.data = []
-        data_path = self.params["data_path"]
+        data_path: any = self.params["data_path"]
         if isinstance(data_path, list):
             self.data = sorted(data_path)
         elif isinstance(data_path, str):
-            data_path = self.get_path_in_dataset(data_path)
+            data_path: FilePath = self.get_path_in_dataset(data_path)
             if is_file(data_path):
                 # single image
                 if any(data_path.lower().endswith(ending) for ending in IMAGE_FORMATS):

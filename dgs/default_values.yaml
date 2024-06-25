@@ -57,6 +57,7 @@ submission:
 
     MOT:
         bbox_decimals: 0
+        seqinfo_key: "Sequence"
 
 # ############## #
 # LOSS FUNCTIONS #

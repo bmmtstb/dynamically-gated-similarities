@@ -6,10 +6,13 @@ Notes:
     The structure of the submission files is similar to the structures of the inputs,
     where each line contains one annotated bounding-box::
 
-        ``<frame>, <person_id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>``
+        ``<frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>``
+
+    During loading, the ``<id>`` seems to be the person-ID,
+    while for submissions it is the track-ID or the predicted person-ID.
 
 Notes:
-    Iff the person_id is unknown
+    Iff the person_id is unknown, it can be set to ``-1``.
 """
 
 import os.path
@@ -26,6 +29,7 @@ from dgs.utils.types import Config, NodePath, Validations
 
 mot_submission_validations: Validations = {
     # optional
+    "seqinfo_key": ["optional", str],
     "seqinfo_path": ["optional", str],
     "bbox_decimals": ["optional", int],
 }
@@ -36,6 +40,10 @@ class MOTSubmission(SubmissionFile):
 
     Optional Params
     ---------------
+
+    seqinfo_key (str, optional):
+        Save the information in the seqinfo.ini file under a different key.
+        Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
 
     seqinfo_path (str, optional):
         The optional path to the ``seqinfo.ini`` file.
@@ -49,7 +57,7 @@ class MOTSubmission(SubmissionFile):
 
     data: list[tuple[any, ...]]
     """A list containing the values as tuple, like:
-    ``tuple(<frame>, <person_id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>)``
+    ``tuple(<frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>)``
     """
 
     seq_info: dict[str, any]
@@ -80,7 +88,7 @@ class MOTSubmission(SubmissionFile):
             convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
         detections = s.split()
         for det in detections:
-            pid = det.person_id.item() if "person_id" in det else -1
+            tid = det.track_id.item()
             conf = det["score"] if "score" in det else 1
             x = det["x"] if "x" in det else -1
             y = det["y"] if "y" in det else -1
@@ -88,7 +96,7 @@ class MOTSubmission(SubmissionFile):
             self.data.append(
                 (
                     self.frame_id,  # <frame>
-                    pid,  # <person_id>
+                    tid,  # <track_id>
                     _get_bbox_value(s, 0),  # X = <bb_left>
                     _get_bbox_value(s, 1),  # Y = <bb_top>
                     _get_bbox_value(s, 2),  # W = <bb_width>
@@ -105,10 +113,13 @@ class MOTSubmission(SubmissionFile):
     def save(self) -> None:
         """Save the current data to the given filepath."""
         try:
+            # seqinfo.ini file
+            seqinfo_key: str = self.params.get("seqinfo_key", DEF_VAL["submission"]["MOT"]["seqinfo_key"])
             seq_file = self.params.get(
                 "seqinfo_path", os.path.join(os.path.dirname(os.path.dirname(self.fp)), "./seqinfo.ini")
             )
-            write_seq_ini(fp=seq_file, data=self.seq_info)
+            write_seq_ini(fp=seq_file, data=self.seq_info, key=seqinfo_key)
+            # MOT / detection file
             write_MOT_file(fp=self.fp, data=self.data)
         except TypeError as te:
             self.logger.exception(f"data: {self.data}")

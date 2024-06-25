@@ -65,12 +65,30 @@ class TestSeqinfoIni(unittest.TestCase):
                 self.assertDictEqual(load_seq_ini(self.new_path), self.test_data)
                 os.remove(self.new_path)
 
-    def test_write_seq_ini_key(self):
+    def test_override_seq_ini_key(self):
         key = "Other"
         self.assertFalse(os.path.exists(self.new_path))
         write_seq_ini(fp=self.new_path, data=self.test_data, key=key)
         self.assertTrue(os.path.exists(self.new_path))
         self.assertDictEqual(load_seq_ini(self.new_path, key=key), self.test_data)
+        other_data = self.test_data.copy()
+        other_data["dummy"] = "dummy"
+        write_seq_ini(fp=self.new_path, data=other_data, key=key)
+        self.assertTrue(os.path.exists(self.new_path))
+        self.assertDictEqual(load_seq_ini(self.new_path, key=key), other_data)
+        os.remove(self.new_path)
+
+    def test_add_seq_ini_key(self):
+        key1 = "Existing"
+        key2 = "Other"
+        other_data = self.test_data.copy()
+        other_data["dummy"] = "dummy"
+        self.assertFalse(os.path.exists(self.new_path))
+        write_seq_ini(fp=self.new_path, data=self.test_data, key=key1)
+        write_seq_ini(fp=self.new_path, data=other_data, key=key2)
+        self.assertTrue(os.path.exists(self.new_path))
+        self.assertDictEqual(load_seq_ini(self.new_path, key=key1), self.test_data)
+        self.assertDictEqual(load_seq_ini(self.new_path, key=key2), other_data)
         os.remove(self.new_path)
 
     def test_write_seq_ini_exceptions(self):

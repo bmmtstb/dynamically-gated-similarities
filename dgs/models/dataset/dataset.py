@@ -358,7 +358,7 @@ class BaseDataset(BaseModule, TorchDataset):
             FileNotFoundError: If the path is not found.
         """
         if os.path.exists(path):
-            return os.path.normpath(path)
+            return os.path.normpath(os.path.abspath(path))
         if is_project_file(path) or is_project_dir(path):
             return to_abspath(path)
         dataset_path = os.path.join(self.params["dataset_path"], str(path))
