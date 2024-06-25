@@ -112,7 +112,7 @@ class PoseTrack21Submission(SubmissionFile):
             return []
 
         # validate the annotation data
-        for key in ["person_id", "pred_tid", "bbox", "keypoints", "joint_weight"]:
+        for key in ["pred_tid", "bbox", "keypoints", "joint_weight"]:
             if key not in s:
                 raise KeyError(f"Expected key '{key}' to be in State.")
             if (l := len(s[key])) != s.B:
@@ -146,7 +146,6 @@ class PoseTrack21Submission(SubmissionFile):
                     "image_id": int(
                         s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]
                     ),
-                    "person_id": int(s.person_id[i].item()),
                     "track_id": int(s["pred_tid"][i].item()),
                 }
             )
