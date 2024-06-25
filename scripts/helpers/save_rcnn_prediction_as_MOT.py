@@ -56,9 +56,9 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         # modify submission data - seqinfo.ini
         own_seqinfo = gt_seqinfo.copy()
         own_seqinfo["imDir"] = rcnn_cfg_str
-        h, w = config[dl_key]["crop_size"]
-        own_seqinfo["cropWidth"] = str(w)
-        own_seqinfo["cropHeight"] = str(h)
+        crop_h, crop_w = config[dl_key]["crop_size"]
+        own_seqinfo["cropWidth"] = str(crop_w)
+        own_seqinfo["cropHeight"] = str(crop_h)
         config[subm_key]["seqinfo_key"] = rcnn_cfg_str
 
         # modify the configuration
@@ -122,9 +122,9 @@ def run_gt_extractor(dl_key: str) -> None:
         # modify submission data - seqinfo.ini
         own_seqinfo = gt_seqinfo.copy()
         own_seqinfo["imDir"] = "crops"
-        h, w = config[dl_key]["crop_size"]
-        own_seqinfo["cropWidth"] = str(w)
-        own_seqinfo["cropHeight"] = str(h)
+        crop_h, crop_w = config[dl_key]["crop_size"]
+        own_seqinfo["cropWidth"] = str(crop_w)
+        own_seqinfo["cropHeight"] = str(crop_h)
         write_seq_ini(fp=gt_seqinfo_path, data=own_seqinfo, key="Crops")
 
         # modify the configuration
@@ -166,26 +166,26 @@ if __name__ == "__main__":
 
     config: Config = load_config(CONFIG_FILE)
 
-    for dl_key in DL_KEYS:
-        print(f"Extracting GT image crops using dataloader: {dl_key}")
-        run_gt_extractor(dl_key=dl_key)
+    for DL_KEY in DL_KEYS:
+        print(f"Extracting GT image crops using dataloader: {DL_KEY}")
+        run_gt_extractor(dl_key=DL_KEY)
 
-    for rcnn_dl_key in RCNN_DL_KEYS:
-        print(f"Using Keypoint-RCNN to predict and extract crops for dataloader: {rcnn_dl_key}")
+    for RCNN_DL_KEY in RCNN_DL_KEYS:
+        print(f"Using Keypoint-RCNN to predict and extract crops for dataloader: {RCNN_DL_KEY}")
 
-        h, w = config[rcnn_dl_key]["crop_size"]
+        h, w = config[RCNN_DL_KEY]["crop_size"]
 
         for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold")):
             pbar_score_thresh.set_postfix_str(str(score_threshold))
             score_str = f"{int(score_threshold * 100):03d}"
-            config[rcnn_dl_key]["score_threshold"] = score_threshold
+            config[RCNN_DL_KEY]["score_threshold"] = score_threshold
 
             for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold")):
                 pbar_iou_thresh.set_postfix_str(str(iou_threshold))
 
                 iou_str = f"{int(iou_threshold * 100):03d}"
-                config[rcnn_dl_key]["iou_threshold"] = iou_threshold
+                config[RCNN_DL_KEY]["iou_threshold"] = iou_threshold
 
                 _rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{h}x{w}"
 
-                run_RCNN_extractor(dl_key=rcnn_dl_key, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)
+                run_RCNN_extractor(dl_key=RCNN_DL_KEY, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)

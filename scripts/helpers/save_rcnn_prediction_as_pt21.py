@@ -27,6 +27,7 @@ IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 
 
 def save_crops(_s: State, _img_path: FilePath, _gt_img_id: str | int) -> None:
+    """Save the image crops and local key points."""
     for i in range(_s.B):
         img_path = os.path.join(_img_path, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
         if os.path.exists(img_path):
