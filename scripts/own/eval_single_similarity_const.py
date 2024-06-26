@@ -24,6 +24,15 @@ from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
+DL_KEYS: list[str] = [
+    "dgs_pt21_gt_256x192",
+    "dgs_pt21_gt_256x128",
+]
+RCNN_DL_KEYS: list[str] = [
+    "dgs_pt21_rcnn_256x192",
+    "dgs_pt21_rcnn_256x128",
+]
+
 KEYS: list[str] = ["iou", "oks", "OSNet"]
 # KEYS: list[str] = [
 #     "iou",
@@ -95,26 +104,31 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}")
 
-    print("Evaluating on the PT21 ground-truth evaluation dataset")
     cfg = load_config(CONFIG_FILE)
-    base_path = cfg["dgs_pt21_gt"]["base_path"]
-    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dgs_pt21_gt", paths=data_paths, out_key="dgs_pt21_gt")
+    for DL_KEY in DL_KEYS:
+        print(f"Evaluating on the PT21 ground-truth evaluation dataset with config: {DL_KEY}")
+        base_path = cfg[DL_KEY]["base_path"]
+        data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+        run(config=cfg, dl_key="dgs_pt21_gt", paths=data_paths, out_key=DL_KEY)
 
-    print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    # for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
-    DL_KEY = "dgs_pt21_rcnn"
-    for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
-        score_str = f"{int(score_thresh * 100):03d}"
-        pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
-        for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
-            iou_str = f"{int(iou_thresh * 100):03d}"
-            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
+    for RCNN_DL_KEY in RCNN_DL_KEYS:
+        print(f"Evaluating on the PT21 val-dataset using KeypointRCNN with config: {RCNN_DL_KEY}")
+        for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
+            score_str = f"{int(score_thresh * 100):03d}"
+            pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
+            for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
+                iou_str = f"{int(iou_thresh * 100):03d}"
+                pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
 
-            cfg = load_config(CONFIG_FILE)
-            base_path = f"./data/PoseTrack21/posetrack_data/rcnn_{score_str}_{iou_str}_val/"
-            cfg[DL_KEY]["base_path"] = base_path
-            crop_h, crop_w = cfg[DL_KEY]["crop_size"]
-            cfg[DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/rcnn_{score_str}_{iou_str}_val/"
-            data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-            run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_rcnn_{score_str}_{iou_str}_val")
+                cfg = load_config(CONFIG_FILE)
+                base_path = f"./data/PoseTrack21/posetrack_data/rcnn_{score_str}_{iou_str}_val/"
+                cfg[RCNN_DL_KEY]["base_path"] = base_path
+                crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
+                cfg[RCNN_DL_KEY]["crops_folder"] = base_path.replace("posetrack_data", f"crops/{crop_h}x{crop_w}")
+                data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+                run(
+                    config=cfg,
+                    dl_key=RCNN_DL_KEY,
+                    paths=data_paths,
+                    out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}_val",
+                )
