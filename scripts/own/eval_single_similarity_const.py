@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
     # for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
-    dl_key = "dgs_pt21_rcnn"
+    DL_KEY = "dgs_pt21_rcnn"
     for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
         score_str = f"{int(score_thresh * 100):03d}"
         pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
@@ -113,8 +113,8 @@ if __name__ == "__main__":
 
             cfg = load_config(CONFIG_FILE)
             base_path = f"./data/PoseTrack21/posetrack_data/rcnn_{score_str}_{iou_str}_val/"
-            cfg[dl_key]["base_path"] = base_path
-            crop_h, crop_w = cfg[dl_key]["crop_size"]
-            cfg[dl_key]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/rcnn_{score_str}_{iou_str}_val/"
+            cfg[DL_KEY]["base_path"] = base_path
+            crop_h, crop_w = cfg[DL_KEY]["crop_size"]
+            cfg[DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/rcnn_{score_str}_{iou_str}_val/"
             data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-            run(config=cfg, dl_key=dl_key, paths=data_paths, out_key=f"dgs_pt21_rcnn_{score_str}_{iou_str}_val")
+            run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_rcnn_{score_str}_{iou_str}_val")

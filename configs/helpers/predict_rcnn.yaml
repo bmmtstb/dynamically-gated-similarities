@@ -4,7 +4,7 @@ description: "Given the KeypointRCNNImageBackbone, predict the detections and sa
 device: "cuda:0"
 print_prio: "INFO"
 is_training: off
-log_dir: "./results/helpers/rcnn_predictor/"
+log_dir: "./results/own/rcnn_predictor_log/"
 log_dir_add_date: false
 
 # ################ #

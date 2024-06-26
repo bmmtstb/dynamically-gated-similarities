@@ -51,6 +51,8 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int) -> None:
 
 def predict_and_save_rcnn(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
     """Predict and save the rcnn results of all the PT21 datasets in the folder given by the config."""
+    # pylint: disable=too-many-locals
+
     dataset_paths: list = glob(config[dl_key]["dataset_paths"])
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
@@ -74,13 +76,12 @@ def predict_and_save_rcnn(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None
         subm_module: PoseTrack21Submission = module_loader(config=config, module_class="submission", key="submission")
 
         # create img output folder
-        crop_h, crop_w = config[DL_KEY]["crop_size"]
+        crop_h, crop_w = config[dl_key]["crop_size"]
         crops_folder = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/{ds_name}/"
         mkdir_if_missing(crops_folder)
 
         batch: list[State]
         for batch in tqdm(dl_module, desc="batch", leave=False):
-
             for s in batch:
                 # images
                 # {
@@ -101,27 +102,25 @@ def predict_and_save_rcnn(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None
                 assert all(s.filepath[0] == s.filepath[i] for i in range(len(s.filepath)))
                 fp = "/".join(s.filepath[0].split("/")[-4:])  # get fp in dataset folder
 
-                B = s.B
-
                 own_iid = int(s["image_id"][0].item())  # one-indexed
                 gt_img_id: int = gt_img_id_map[own_iid - 1]
 
-                # create dict with all the image data
-                image = {
-                    "is_labeled": True,
-                    "nframes": gt_imgs[0]["nframes"],
-                    "image_id": gt_img_id,
-                    "id": gt_img_id,
-                    "vid_id": gt_imgs[0]["vid_id"],
-                    "file_name": fp,
-                    "has_labeled_person": B != 0,
-                    "ignore_regions_x": gt_imgs[own_iid - 1]["ignore_regions_x"],
-                    "ignore_regions_y": gt_imgs[own_iid - 1]["ignore_regions_y"],
-                }
+                # create dict with all the image data and append it to the submission module
+                subm_module.data["images"].append(
+                    {
+                        "is_labeled": True,
+                        "nframes": gt_imgs[0]["nframes"],
+                        "image_id": gt_img_id,
+                        "id": gt_img_id,
+                        "vid_id": gt_imgs[0]["vid_id"],
+                        "file_name": fp,
+                        "has_labeled_person": s.B != 0,
+                        "ignore_regions_x": gt_imgs[own_iid - 1]["ignore_regions_x"],
+                        "ignore_regions_y": gt_imgs[own_iid - 1]["ignore_regions_y"],
+                    }
+                )
 
-                subm_module.data["images"].append(image)
-
-                if B == 0:
+                if s.B == 0:
                     continue
 
                 # annotations
@@ -136,7 +135,7 @@ def predict_and_save_rcnn(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None
                 # }
                 s["pred_tid"] = torch.ones_like(s.person_id, dtype=torch.long, device=s.device) * -1  # set to -1
                 # set to number to remove duplicates in crop files
-                s["person_id"] = torch.arange(start=1, end=B + 1, dtype=torch.long, device=s.device)
+                s["person_id"] = torch.arange(start=1, end=s.B + 1, dtype=torch.long, device=s.device)
 
                 annos = subm_module.get_anno_data(s)
                 for a_i, anno in enumerate(annos):
@@ -162,10 +161,6 @@ def extract_gt_boxes(dl_key: str) -> None:
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
         ds_name = os.path.basename(os.path.realpath(dataset_path))
         pbar_dataset.set_postfix_str(ds_name)
-
-        # get gt data
-        gt_data_path = f"{dataset_path.replace('images', 'posetrack_data').rstrip('/')}.json"
-        gt_data = read_json(gt_data_path)
 
         # create img output folder
         crop_h, crop_w = config[dl_key]["crop_size"]
@@ -211,5 +206,5 @@ if __name__ == "__main__":
                 predict_and_save_rcnn(
                     dl_key=RCNN_DL_KEY,
                     subm_key=SUBM_KEY,
-                    rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{RCNN_DL_KEY.split('_')[-1]}",
+                    rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{RCNN_DL_KEY.rsplit('_', maxsplit=1)[-1]}",
                 )
