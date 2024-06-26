@@ -30,13 +30,13 @@ from dgs.utils.utils import HidePrint
 
 CONFIG_FILE = "./configs/DGS/eval_const_triplet_similarities.yaml"
 
+DGS_MODULES: list[str] = ["iou_oks_OSNet", "iou_oks_OSNetAIN", "iou_oks_Resnet50", "iou_oks_Resnet152"]
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 
-# @torch_memory_analysis
-# @MemoryTracker(interval=7.5, top_n=20)
-@torch.no_grad()
-def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
-    """Main function to run the code."""
 
+def get_combinations() -> list[list[int]]:
+    """Get all triplet combinations as list of integers in range 10-90, all summing to 100."""
     combinations = []
     for a1 in range(10, 91, 10):
         for a2 in range(10, 91, 10):
@@ -44,13 +44,17 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
             if a3 <= 0 or a3 >= 100:
                 continue
             combinations.append([a1, a2, a3])
+    return combinations
+
+
+# @torch_memory_analysis
+# @MemoryTracker(interval=7.5, top_n=20)
+@torch.no_grad()
+def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
+    """Main function to run the code."""
 
     # Combinations of IoU, OKS, and visual similarity
-    for dgs_key in (
-        pbar_key := tqdm(
-            ["iou_oks_OSNet", "iou_oks_OSNetAIN", "iou_oks_Resnet50", "iou_oks_Resnet152"], desc="combinations"
-        )
-    ):
+    for dgs_key in (pbar_key := tqdm(DGS_MODULES, desc="Dataloader")):
         pbar_key.set_postfix_str(dgs_key)
 
         config["name"] = f"Evaluate-Combinations-{dgs_key}"
@@ -61,7 +65,7 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 
             config[dl_key]["data_path"] = sub_datapath
 
-            for combination in (pbar_alpha := tqdm(combinations, desc="alphas", leave=False)):
+            for combination in (pbar_alpha := tqdm(get_combinations(), desc="alphas", leave=False)):
                 pbar_alpha.set_postfix_str(f"{combination}")
 
                 # set alpha values
@@ -108,17 +112,27 @@ if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}")
 
     print("Evaluating on the PT21 ground-truth evaluation dataset")
+    DL_KEY = "dgs_pt21_gt"
     cfg = load_config(CONFIG_FILE)
-    base_path = cfg["dgs_pt21_gt"]["base_path"]
+    base_path = cfg[DL_KEY]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dgs_pt21_gt", paths=data_paths, out_key="dgs_pt21_gt")
+    run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY)
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
-        pbar_thresh.set_postfix_str(os.path.basename(thresh))
-        cfg = load_config(CONFIG_FILE)
-        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{thresh}/"
-        cfg["dgs_pt21_rcnn"]["base_path"] = base_path
-        cfg["dgs_pt21_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh}/"
-        data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-        run(config=cfg, dl_key="dgs_pt21_rcnn", paths=data_paths, out_key=f"dgs_pt21_rcnn_{thresh}")
+    RCNN_DL_KEY = "dgs_pt21_rcnn"
+    for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
+        score_str = f"{int(score_thresh * 100):03d}"
+        pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
+        for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
+            iou_str = f"{int(iou_thresh * 100):03d}"
+            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
+
+            rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_val"
+
+            cfg = load_config(CONFIG_FILE)
+            base_path = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/"
+            cfg[RCNN_DL_KEY]["base_path"] = base_path
+            crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
+            cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
+            data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+            run(config=cfg, dl_key=RCNN_DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")

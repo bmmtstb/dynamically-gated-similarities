@@ -25,7 +25,7 @@ submission_MOT:
 # PT21 #
 # #### #
 
-RCNN_PT21_Backbone:
+RCNN_PT21_256x128_val:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/PoseTrack21/"
@@ -38,6 +38,47 @@ RCNN_PT21_Backbone:
     # iou_threshold:  # set by script
     # mask_path:  # set by script
     bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 128]  # [H,W]
+    crop_mode: "zero-pad"
+
+PT21_256x128_val:
+    module_name: "PoseTrack21_Image"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/PoseTrack21/"
+    dataset_paths: "./data/PoseTrack21/images/val/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    crop_size: !!python/tuple [256, 128]  # [H,W]
+    crop_mode: "zero-pad"
+
+RCNN_PT21_256x192_val:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/PoseTrack21/"
+    dataset_paths: "./data/PoseTrack21/images/val/**/"
+
+    batch_size: 16
+    return_lists: true
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    # mask_path:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+PT21_256x192_val:
+    module_name: "PoseTrack21_Image"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/PoseTrack21/"
+    dataset_paths: "./data/PoseTrack21/images/val/**/"
+
+    batch_size: 16
+    return_lists: true
 
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"

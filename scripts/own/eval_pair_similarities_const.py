@@ -41,6 +41,9 @@ MODULES = [
     "oks_Resnet152",
 ]
 
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
+
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
@@ -106,17 +109,29 @@ if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}")
 
     print("Evaluating on the PT21 ground-truth evaluation dataset")
+    DL_KEY = "dgs_pt21_gt"
+
     cfg = load_config(CONFIG_FILE)
-    base_path = cfg["dgs_pt21_gt"]["base_path"]
+    base_path = cfg[DL_KEY]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-    run(config=cfg, dl_key="dgs_pt21_gt", paths=data_paths, out_key="dgs_pt21_gt")
+    run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY)
 
     print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    for thresh in (pbar_thresh := tqdm(["085", "090", "095", "099"], desc="thresholds")):
-        pbar_thresh.set_postfix_str(os.path.basename(thresh))
-        cfg = load_config(CONFIG_FILE)
-        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_prediction_{thresh}/"
-        cfg["dgs_pt21_rcnn"]["base_path"] = base_path
-        cfg["dgs_pt21_rcnn"]["crops_folder"] = f"./data/PoseTrack21/crops/256x192/rcnn_prediction_{thresh}/"
-        data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-        run(config=cfg, dl_key="dgs_pt21_rcnn", paths=data_paths, out_key=f"dgs_pt21_rcnn_{thresh}")
+    RCNN_DL_KEY = "dgs_pt21_rcnn"
+    for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
+        score_str = f"{int(score_thresh * 100):03d}"
+        pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
+        for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
+            iou_str = f"{int(iou_thresh * 100):03d}"
+            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
+
+            rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_val"
+
+            cfg = load_config(CONFIG_FILE)
+
+            base_path = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/"
+            cfg[RCNN_DL_KEY]["base_path"] = base_path
+            crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
+            cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
+            data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+            run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")
