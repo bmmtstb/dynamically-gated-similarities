@@ -14,17 +14,18 @@ from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing, read_json
 from dgs.utils.state import State
 from dgs.utils.types import Config, FilePath
+from dgs.utils.utils import HidePrint
 
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 SUBM_KEY: str = "submission_pt21"
 
 RCNN_DL_KEYS: list[str] = [
-    "RCNN_pt21_256x128_val",
-    "RCNN_pt21_256x192_val",
+    "RCNN_PT21_256x128_val",
+    "RCNN_PT21_256x192_val",
 ]
 DL_KEYS: list[str] = [
-    "pt21_256x128_val",
-    "pt21_256x192_val",
+    "PT21_256x128_val",
+    "PT21_256x192_val",
 ]
 
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
@@ -38,6 +39,7 @@ IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int) -> None:
     """Save the image crops and local key points."""
     for i in range(_s.B):
+        assert torch.all(_s["person_id"] >= 0)
         img_path = os.path.join(img_dir, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
         if os.path.exists(img_path):
             continue
@@ -164,10 +166,17 @@ def extract_gt_boxes(dl_key: str) -> None:
 
         # create img output folder
         crop_h, crop_w = config[dl_key]["crop_size"]
-        crops_folder = f"{dataset_path.replace('images', f'crops/{crop_h}x{crop_w}')}"
+        crops_folder = (
+            f"{config[dl_key]['dataset_path']}"
+            f"./crops/{crop_h}x{crop_w}/{os.path.basename(os.path.dirname(dataset_path))}"
+        )
         mkdir_if_missing(crops_folder)
 
-        dl_module = module_loader(config=config, module_class="dataloader", key=dl_key)
+        # modify the configuration
+        config[dl_key]["data_path"] = dataset_path
+
+        with HidePrint():
+            dl_module = module_loader(config=config, module_class="dataloader", key=dl_key)
 
         batch: list[State]
         s: State
@@ -175,6 +184,8 @@ def extract_gt_boxes(dl_key: str) -> None:
             for s in batch:
                 if s.B == 0:
                     continue
+                if "image_crop" not in s or "keypoints_local" not in s:
+                    s.load_image_crop(store=True)
                 # save the image-crops, there are no local key-points
                 save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"][0].item())
 

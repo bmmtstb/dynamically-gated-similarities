@@ -18,6 +18,7 @@ dataset:
 
     pt21:
         check_img_sizes: false
+        load_img_crops: true
 
     kprcnn:
         score_threshold: 0.3

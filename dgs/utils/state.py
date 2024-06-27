@@ -504,17 +504,27 @@ class State(UserDict):
             crop_size: The size of the image crops.
                 Default ``DEF_VAL.images.crop_size``.
         """
-        if "image_crop" in self.data and self.data["image_crop"] is not None and len(self.data["image_crop"]) == self.B:
+        if (
+            "image_crop" in self
+            and self.data["image_crop"] is not None
+            and len(self.data["image_crop"]) == self.B
+            and "keypoints_local" in self
+        ):
             return self.image_crop
 
         if "crop_path" in self.data:
             if len(self.crop_path) == 0:
                 crop = []
+                loc_kps = torch.empty((0, 1, 2), dtype=torch.long, device=self.device)
             else:
                 # allow changing the crop_size and other params via kwargs
                 crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
+                loc_kps = torch.vstack(
+                    [torch.load(f=f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt") for sub_path in self.crop_path]
+                ).to(device=self.device, dtype=torch.float32)
             if store:
                 self.data["image_crop"] = crop
+                self.data["keypoints_local"] = loc_kps
             return crop
 
         try:

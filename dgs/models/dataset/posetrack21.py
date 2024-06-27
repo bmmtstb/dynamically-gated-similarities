@@ -60,6 +60,7 @@ pt21_json_validations: Validations = {
     "crops_folder": [str, ("folder exists", False)],
     # optional
     "id_map": ["optional", str],
+    "load_img_crops": ["optional", bool],
 }
 
 
@@ -538,8 +539,9 @@ class PoseTrack21_BBox(BBoxDataset):
             skeleton_name=(self.skeleton_name,),
             frame_id=self.frame_ids[idx],
         )
-        # make sure to get the image crop for this State
-        self.get_image_crops(ds)
+        # make sure to get the image crop for this State if requested
+        if self.params.get("load_img_crops", DEF_VAL["dataset"]["pt21"]["load_img_crops"]):
+            self.get_image_crops(ds)
         return ds
 
     # def __getitems__(self, indices: list[int]) -> State:
@@ -563,7 +565,9 @@ class PoseTrack21_Image(ImageDataset):
         the length of this ID map should have the correct value.
         By default, this value is not set or None.
         In case this value is not present, the mapping will be created from scratch as the enumerated sorted person IDs.
-
+    load_img_crops (bool, optional):
+        Whether to load the image crops during the __getitem__ call.
+        Default ``DEF_VAL["dataset"]["pt21"]["load_img_crops"]``.
 
     Important Inherited Params
     --------------------------
@@ -679,8 +683,9 @@ class PoseTrack21_Image(ImageDataset):
             image_id=t.ones(max(len(anno_ids), 1), device=self.device, dtype=t.long) * img_id,
             frame_id=t.ones(max(len(anno_ids), 1), device=self.device, dtype=t.long) * img_id,
         )
-        # make sure to get the image crop for this State
-        self.get_image_crops(ds)
+        # make sure to get the image crop for this State if requested
+        if self.params.get("load_img_crops", DEF_VAL["dataset"]["pt21"]["load_img_crops"]):
+            self.get_image_crops(ds)
         return ds
 
     def _get_anno_data(

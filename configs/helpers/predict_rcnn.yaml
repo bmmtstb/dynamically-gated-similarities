@@ -31,7 +31,7 @@ RCNN_PT21_256x128_val:
     dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/images/val/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     # score_threshold:  # set by script
@@ -46,13 +46,15 @@ PT21_256x128_val:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
     dataset_path: "./data/PoseTrack21/"
-    dataset_paths: "./data/PoseTrack21/images/val/**/"
+    dataset_paths: "./data/PoseTrack21/posetrack_data/val/**.json"
+    crops_folder: "./data/PoseTrack21/crops/256x128/val/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     crop_size: !!python/tuple [256, 128]  # [H,W]
     crop_mode: "zero-pad"
+    load_img_crops: false
 
 RCNN_PT21_256x192_val:
     module_name: "KeypointRCNNImageBackbone"
@@ -60,7 +62,7 @@ RCNN_PT21_256x192_val:
     dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/images/val/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     # score_threshold:  # set by script
@@ -75,13 +77,15 @@ PT21_256x192_val:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
     dataset_path: "./data/PoseTrack21/"
-    dataset_paths: "./data/PoseTrack21/images/val/**/"
-
-    batch_size: 16
+    dataset_paths: "./data/PoseTrack21/posetrack_data/val/**.json"
+    crops_folder: "./data/PoseTrack21/crops/256x192/val/"
+    
+    batch_size: 1
     return_lists: true
 
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
+    load_img_crops: false
 
 # ##### #
 # MOT20 #
@@ -93,7 +97,7 @@ RCNN_MOT_train:
     dataset_path: "./data/MOT20/"
     dataset_paths: "./data/MOT20/train/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     # score_threshold:  # set by script
@@ -125,7 +129,7 @@ MOT_train:
     dataset_path: "./data/MOT20/"
     dataset_paths: "./data/MOT20/train/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     crop_size: !!python/tuple [256, 192]  # [H,W]
@@ -141,7 +145,7 @@ RCNN_Dance_train:
     dataset_path: "./data/DanceTrack/"
     dataset_paths: "./data/DanceTrack/train/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     # score_threshold:  # set by script
@@ -157,7 +161,7 @@ RCNN_Dance_test:
     dataset_path: "./data/DanceTrack/"
     dataset_paths: "./data/DanceTrack/test/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     # score_threshold:  # set by script
@@ -173,7 +177,7 @@ RCNN_Dance_val:
     dataset_path: "./data/DanceTrack/"
     dataset_paths: "./data/DanceTrack/val/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     # score_threshold:  # set by script
@@ -189,7 +193,7 @@ Dance_train:
     dataset_path: "./data/DanceTrack/"
     dataset_paths: "./data/DanceTrack/train/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     crop_size: !!python/tuple [ 256, 192 ]  # [H,W]
@@ -201,7 +205,7 @@ Dance_val:
     dataset_path: "./data/DanceTrack/"
     dataset_paths: "./data/DanceTrack/val/**/"
 
-    batch_size: 16
+    batch_size: 1
     return_lists: true
 
     crop_size: !!python/tuple [ 256, 192 ]  # [H,W]
