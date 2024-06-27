@@ -13,6 +13,7 @@ import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TorchDataset
 from torchvision import tv_tensors
 from torchvision.io import VideoReader
+from torchvision.transforms.v2.functional import to_dtype
 
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_VAL
@@ -247,17 +248,18 @@ class BaseDataset(BaseModule, TorchDataset):
         self.logger.debug("computing image crops")
         ds.to(self.device)
 
+        # load original image, reshape if requested
         if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
             ds.image = load_image(
                 ds.filepath,
                 force_reshape=True,
                 mode=self.params.get("image_mode", DEF_VAL["images"]["image_mode"]),
                 output_size=self.params.get("image_size", DEF_VAL["images"]["image_size"]),
-                dtype=torch.float32,
+                dtype=torch.uint8,
                 device=ds.device,
             )
         else:
-            ds.image = load_image(ds.filepath, device=ds.device, dtype=torch.float32)
+            ds.image = load_image(ds.filepath, device=ds.device, dtype=torch.uint8)
 
         structured_input = {
             "images": ds.image,
@@ -272,7 +274,9 @@ class BaseDataset(BaseModule, TorchDataset):
         }
         new_state = self.transform_crop_resize()(structured_input)
 
-        ds.image_crop = tv_tensors.Image(new_state["image"].to(dtype=torch.float32, device=self.device))
+        ds.image_crop = tv_tensors.Image(
+            to_dtype(new_state["image"].to(device=self.device), dtype=torch.uint8, scale=True)
+        )
         if "keypoints" in ds:
             ds.keypoints_local = new_state["keypoints"].to(dtype=torch.float32, device=self.device)
             assert "joint_weights" in ds.data, "visibility should be given"

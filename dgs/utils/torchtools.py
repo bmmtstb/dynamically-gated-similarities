@@ -524,5 +524,6 @@ def torch_memory_analysis(
             torch.cuda.memory._dump_snapshot(file_name)
             # stop recording memory
             torch.cuda.memory._record_memory_history(enabled=None)
+            print(f"saved torch memory snapshot to: '{file_name}'")
 
     return decorator

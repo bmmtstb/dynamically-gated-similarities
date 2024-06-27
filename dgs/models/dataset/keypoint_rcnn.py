@@ -17,7 +17,7 @@ from torchvision.io import VideoReader
 from torchvision.models.detection import keypointrcnn_resnet50_fpn, KeypointRCNN_ResNet50_FPN_Weights
 from torchvision.ops import box_iou
 from torchvision.transforms import v2
-from torchvision.transforms.v2.functional import convert_image_dtype
+from torchvision.transforms.v2.functional import to_dtype
 from tqdm import tqdm
 
 from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
@@ -281,7 +281,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             )
 
         # fixme what about other masking types?
-        if "mask_path" in self.params:
+        if "mask_path" in self.params and self.force_reshape:
             self.masks = [
                 self.transform_resize_image()(
                     {
@@ -303,6 +303,16 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 )["image"]
                 .squeeze(0)
                 .to(dtype=t.bool)
+                for img in read_json(self.params["mask_path"])["images"]
+            ]
+        elif "mask_path" in self.params:
+            self.masks = [
+                create_mask_from_polygons(
+                    img_size=imagesize.get(self.get_path_in_dataset(img["file_name"]))[::-1],
+                    polygons_x=img["ignore_regions_x"],
+                    polygons_y=img["ignore_regions_y"],
+                    device=self.device,
+                )
                 for img in read_json(self.params["mask_path"])["images"]
             ]
         else:
@@ -332,15 +342,15 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             # Get the mask with the same size as the image.
             # True, where the image should be ignored.
             mask = self.masks[idx]
-            assert mask.shape == t.Size(self.image_size)
-
+            assert not self.force_reshape or mask.shape == t.Size(self.image_size), (mask.shape, self.image_size)
         else:
             mask = t.zeros(img.shape[-2:], device=self.device, dtype=t.bool)
 
         # create the image by using the unmasked area of the image and the masked area of a black image
-        float_img = convert_image_dtype(
+        float_img = to_dtype(
             tvte.Image(img * t.bitwise_not(mask) + t.zeros_like(img) * mask, device=self.device),
             dtype=t.float32,
+            scale=True,
         )
 
         # the torch model expects a list of 3D images
@@ -360,20 +370,17 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         """
         fps: FilePaths = tuple(self.data[idx] for idx in indices)
         masks = [self.masks[idx] for idx in indices]
-        images = convert_image_dtype(
-            tvte.Image(
-                load_image(
-                    fps,
-                    force_reshape=self.force_reshape,
-                    output_size=self.image_size,
-                    mode=self.image_mode,
-                    device=self.device,
-                ),
-                device=self.device,
-            ),
+        images = load_image(
+            fps,
+            force_reshape=self.force_reshape,
+            output_size=self.image_size,
+            mode=self.image_mode,
+            device=self.device,
             dtype=t.float32,
         )
-        assert all(mask.shape == t.Size(self.image_size) for mask in masks if mask is not None)
+        assert not self.force_reshape or all(
+            mask.shape == t.Size(self.image_size) for mask in masks if mask is not None
+        )
         # the torch model expects a list of 3D images
         masked_images = [
             tvte.Image(
@@ -420,8 +427,30 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
         if not isinstance(a, t.Tensor):
             raise NotImplementedError
         # the torch RCNN model expects a list of 3D images
-        # TODO: should these images be force reshaped too?
-        images = [convert_image_dtype(a, t.float32)]
+        if self.force_reshape:
+            # reshape the images iff requested to the desired size
+            images = [
+                to_dtype(
+                    self.transform_resize_image()(
+                        {
+                            "image": tvte.Image(a),
+                            "box": tvte.BoundingBoxes(
+                                t.ones((1, 4), dtype=t.float32),
+                                canvas_size=self.image_size,
+                                format="XYWH",
+                                dtype=t.float32,
+                            ),
+                            "keypoints": t.ones((1, 15, 2)),
+                            "output_size": self.image_size,
+                            "mode": self.image_mode,
+                        }
+                    )["image"],
+                    t.float32,
+                    scale=True,
+                )
+            ]
+        else:
+            images = [to_dtype(a, t.float32, scale=True)]
 
         states = self.images_to_states(images=images)
 

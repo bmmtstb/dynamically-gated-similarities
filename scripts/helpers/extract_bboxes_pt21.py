@@ -19,13 +19,13 @@ from dgs.utils.utils import HidePrint
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 SUBM_KEY: str = "submission_pt21"
 
+DL_KEYS: list[str] = [
+    # "PT21_256x128_val",
+    # "PT21_256x192_val",
+]
 RCNN_DL_KEYS: list[str] = [
     "RCNN_PT21_256x128_val",
     "RCNN_PT21_256x192_val",
-]
-DL_KEYS: list[str] = [
-    "PT21_256x128_val",
-    "PT21_256x192_val",
 ]
 
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
@@ -73,11 +73,11 @@ def predict_and_save_rcnn(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None
         config[subm_key]["file"] = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/{ds_name}.json"
         config[dl_key]["mask_path"] = gt_data_path
 
-        if os.path.exists(config["submission"]["file"]):
+        if os.path.exists(config[subm_key]["file"]):
             continue
 
         dl_module = module_loader(config=config, module_class="dataloader", key=dl_key)
-        subm_module: PoseTrack21Submission = module_loader(config=config, module_class="submission", key="submission")
+        subm_module: PoseTrack21Submission = module_loader(config=config, module_class="submission", key=subm_key)
 
         # create img output folder
         crop_h, crop_w = config[dl_key]["crop_size"]

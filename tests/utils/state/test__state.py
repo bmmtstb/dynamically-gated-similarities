@@ -498,7 +498,7 @@ class TestStateFunctions(unittest.TestCase):
 
     def test_load_image_crop(self):
         orig_img = load_test_image(IMG_NAME)
-        s = State(bbox=DUMMY_BBOX, crop_path=(DUMMY_FP,), validate=False)
+        s = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP, validate=False)
         multi_s = State(bbox=DUMMY_BBOX_BATCH, crop_path=DUMMY_FP_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
         empty_fps = State(
@@ -506,7 +506,7 @@ class TestStateFunctions(unittest.TestCase):
             crop_path=tuple(),
             validate=False,
         )
-        img_ds = State(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), validate=False)
+        img_ds = State(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), keypoints_local=DUMMY_KP, validate=False)
 
         # get using data -> fails if not present yet
         for obj in [s, multi_s, no_fps]:

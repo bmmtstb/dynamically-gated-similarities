@@ -30,6 +30,7 @@ from torchvision.transforms.v2.functional import (
     crop as tvt_crop,
     pad as tvt_pad,
     resize as tvt_resize,
+    to_dtype as tvt_to_dtype,
 )
 from tqdm import tqdm
 
@@ -97,19 +98,19 @@ def load_image(
         RuntimeError: If images have different shapes but ``force_reshape`` is ``False``.
 
     Returns:
-        Torch uint8 / byte tensor with its original shape of ``[B x C x H x W]`` if force_reshape is false,
+        Torch tensor with its original shape of ``[B x C x H x W]`` if force_reshape is false,
         otherwise the returned shape depends on the ``output_size``.
         The returned image will always have four dimensions.
+        The returned image will have the dtype and respective scale as provided.
     """
     paths: FilePaths = validate_filepath(filepath)
 
     # load images
     images = [read_image(path, mode=read_mode).to(device=device) for path in paths]
 
-    transform_dtype = tvt.ToDtype({tvte.Image: dtype, "others": None}, scale=True)
     # if multiple images are loaded, reshape them to a given output_size
     if force_reshape:
-        transform = tvt.Compose([CustomToAspect(), CustomResize(), transform_dtype])
+        transform = tvt.Compose([CustomToAspect(), CustomResize()])
         new_images: list[Image] = []
         mode: str = kwargs.pop("mode", DEF_VAL["images"]["image_mode"])
         output_size: ImgShape = kwargs.pop("output_size", DEF_VAL["images"]["image_size"])
@@ -129,9 +130,10 @@ def load_image(
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
 
-    images = tvte.Image(torch.stack(images), device=device)
+    images = torch.stack(images)
+    images.to(device=device)
 
-    return transform_dtype(images)
+    return tvte.Image(tvt_to_dtype(images, dtype=dtype, scale=True))
 
 
 def load_image_list(
