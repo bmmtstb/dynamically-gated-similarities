@@ -43,6 +43,8 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int) -> None:
         img_path = os.path.join(img_dir, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
         if os.path.exists(img_path):
             continue
+        if "image_crop" not in _s or "keypoints_local" not in _s:
+            _s.load_image_crop(store=True)
         write_jpeg(
             input=convert_image_dtype(_s.image_crop[i], torch.uint8).cpu(),
             filename=img_path,
@@ -184,8 +186,6 @@ def extract_gt_boxes(dl_key: str) -> None:
             for s in batch:
                 if s.B == 0:
                     continue
-                if "image_crop" not in s or "keypoints_local" not in s:
-                    s.load_image_crop(store=True)
                 # save the image-crops, there are no local key-points
                 save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"][0].item())
 
