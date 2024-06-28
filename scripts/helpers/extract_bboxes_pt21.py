@@ -68,21 +68,21 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
         gt_imgs = read_json(gt_data_path)["images"]
         gt_img_id_map = [img["image_id"] for img in gt_imgs]  # zero-indexed!
 
+        # create img output folder
+        crop_h, crop_w = config[dl_key]["crop_size"]
+        crops_folder = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/{ds_name}/"
+        mkdir_if_missing(crops_folder)
+
         # modify the configuration
         config[dl_key]["data_path"] = dataset_path
-        config[subm_key]["file"] = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/{ds_name}.json"
         config[dl_key]["mask_path"] = gt_data_path
+        config[subm_key]["file"] = f"./data/PoseTrack21/posetrack_data/{crop_h}x{crop_w}_{rcnn_cfg_str}/{ds_name}.json"
 
         if os.path.exists(config[subm_key]["file"]):
             continue
 
         dl_module = module_loader(config=config, module_class="dataloader", key=dl_key)
         subm_module: PoseTrack21Submission = module_loader(config=config, module_class="submission", key=subm_key)
-
-        # create img output folder
-        crop_h, crop_w = config[dl_key]["crop_size"]
-        crops_folder = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/{ds_name}/"
-        mkdir_if_missing(crops_folder)
 
         batch: list[State]
         for batch in tqdm(dl_module, desc="batch", leave=False):
