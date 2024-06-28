@@ -45,6 +45,7 @@ DL_KEYS: list[str] = [
 def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
     """Given some configuration, predict and extract the image crops using Keypoint-RCNN."""
     dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
+    assert len(dataset_paths) > 0
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
         ds_name = os.path.basename(os.path.realpath(dataset_path))
@@ -99,6 +100,8 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
 
                 # save the image-crops and local key points
                 save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=True)
+                # remove image and image crop to free memory
+                s.clean()
         submission.save()
 
 
@@ -106,6 +109,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
 def run_gt_extractor(dl_key: str) -> None:
     """Given some ground-truth annotation data, extract and save the image crops"""
     dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
+    assert len(dataset_paths) > 0
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
         ds_name = os.path.basename(os.path.realpath(dataset_path))
@@ -143,6 +147,8 @@ def run_gt_extractor(dl_key: str) -> None:
                     continue
                 # save the image-crops, there are no local key-points
                 save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=False)
+                # remove image and image crop to free memory
+                s.clean()
 
 
 @torch.no_grad()
