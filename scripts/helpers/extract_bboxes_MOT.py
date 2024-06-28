@@ -91,6 +91,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
                 frame_id += 1
 
                 s["frame_id"] = frame_id
+                s.person_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
                 s.track_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
 
                 if s.B == 0:
