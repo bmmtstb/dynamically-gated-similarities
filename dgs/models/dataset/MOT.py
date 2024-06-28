@@ -11,7 +11,7 @@ import torchvision.tv_tensors as tvte
 from dgs.models.dataset.dataset import ImageDataset
 from dgs.utils.config import DEF_VAL
 from dgs.utils.exceptions import InvalidPathException
-from dgs.utils.files import to_abspath
+from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
 from dgs.utils.utils import HidePrint
@@ -183,8 +183,10 @@ def write_MOT_file(fp: FilePath, data: list[tuple[any, ...]], sep=",") -> None: 
     """
     if not fp.endswith(".txt"):
         raise InvalidPathException(f"Presumed to write to a .txt file, but got '{fp}'.")
-    str_data = [sep.join(val for val in d) for d in data]
-    with open(fp, mode="w", encoding="utf-8") as file:
+    fp = os.path.abspath(os.path.normpath(fp))
+    mkdir_if_missing(os.path.dirname(fp))
+    str_data = [sep.join(str(val) for val in d) for d in data]
+    with open(fp, mode="w+", encoding="utf-8") as file:
         file.writelines(str_data)
 
 

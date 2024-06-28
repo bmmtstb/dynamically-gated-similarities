@@ -48,6 +48,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
     assert len(dataset_paths) > 0
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
+        dataset_path = os.path.normpath(dataset_path)
         ds_name = os.path.basename(os.path.realpath(dataset_path))
         pbar_dataset.set_postfix_str(ds_name)
 
@@ -63,8 +64,8 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         config[subm_key]["seqinfo_key"] = rcnn_cfg_str
 
         # modify the configuration
-        config[dl_key]["data_path"] = os.path.join(dataset_path, f"./{gt_seqinfo['imDir']}/")
-        config[subm_key]["file"] = os.path.join(dataset_path, f"./det/{rcnn_cfg_str}.txt")
+        config[dl_key]["data_path"] = os.path.normpath(os.path.join(dataset_path, f"./{gt_seqinfo['imDir']}/"))
+        config[subm_key]["file"] = os.path.normpath(os.path.join(dataset_path, f"./det/{rcnn_cfg_str}.txt"))
 
         if os.path.exists(config[subm_key]["file"]):
             continue

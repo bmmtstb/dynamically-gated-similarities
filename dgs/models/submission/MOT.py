@@ -89,7 +89,7 @@ class MOTSubmission(SubmissionFile):
         detections = s.split()
         for det in detections:
             tid = det.track_id.item()
-            conf = det["score"] if "score" in det else 1
+            conf = float(det["score"].item()) if "score" in det else 1
             x = det["x"] if "x" in det else -1
             y = det["y"] if "y" in det else -1
             z = det["z"] if "z" in det else -1
