@@ -132,6 +132,11 @@ class DGSEngine(EngineModule):
 
         # Get the current state from the Tracks and use it to compute the similarity to the current detections.
         track_state: list[State] = self.tracks.get_states()
+
+        for ts in track_state:
+            ts.clean(keys="image")
+            ts.load_image_crop(store=True)
+
         batch_times["data"] = time.time() - time_batch_start
 
         if len(track_state) == 0 and N > 0:
@@ -191,6 +196,7 @@ class DGSEngine(EngineModule):
 
         results: dict[str, any] = {}
         detections: list[State]
+        detection: State
         frame_idx: int = 0
 
         # set model to evaluation mode and freeze / close all layers
@@ -247,7 +253,11 @@ class DGSEngine(EngineModule):
                         **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
 
-                frame_idx += 1
+                    frame_idx += 1
+
+            # free up memory by removing the images and crops
+            for d in detections:
+                d.clean()
 
         self.submission.save()
 

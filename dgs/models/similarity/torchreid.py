@@ -4,6 +4,7 @@ Compute the similarity using one of the torchreid models.
 
 import torch
 from torch import nn
+from torchvision.transforms.v2.functional import to_dtype
 
 from dgs.models.embedding_generator import TorchreidEmbeddingGenerator
 from dgs.models.metric import get_metric, METRICS
@@ -94,14 +95,18 @@ class TorchreidVisualSimilarity(SimilarityModule):
         """Given a :class:`State` get the current embedding or compute it using the image crop."""
         if self.model.embedding_key in ds:
             return ds[self.model.embedding_key]
-        ds[self.model.embedding_key] = self.model.predict_embeddings(ds.image_crop)
+        ds[self.model.embedding_key] = self.model.predict_embeddings(
+            to_dtype(ds.image_crop, dtype=torch.float32, scale=True)
+        )
         return ds[self.model.embedding_key]
 
     def get_target(self, ds: State) -> torch.Tensor:
         """Given a :class:`State` get the target embedding or compute it using the image crop."""
         if self.model.embedding_key in ds:
             return ds[self.model.embedding_key]
-        ds[self.model.embedding_key] = self.model.predict_embeddings(ds.image_crop)
+        ds[self.model.embedding_key] = self.model.predict_embeddings(
+            to_dtype(ds.image_crop, dtype=torch.float32, scale=True)
+        )
         return ds[self.model.embedding_key]
 
     def forward(self, data: State, target: State) -> torch.Tensor:

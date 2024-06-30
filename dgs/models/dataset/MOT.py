@@ -22,6 +22,7 @@ MOT_validations: Validations = {
     "file_separator": ["optional", str],
     "seqinfo_path": ["optional", str],
     "seqinfo_key": ["optional", str],
+    "crop_key": ["optional", str],
 }
 
 
@@ -90,7 +91,14 @@ def write_seq_ini(fp: FilePath, data: dict[str, any], space_around_delimiters: b
         config.write(fp=file, space_around_delimiters=space_around_delimiters)
 
 
-def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqinfo_fp: FilePath = None) -> list[State]:
+def load_MOT_file(
+    fp: FilePath,
+    sep: str = r",\s?",
+    device: Device = "cpu",
+    seqinfo_fp: FilePath = None,
+    seqinfo_key: str = None,
+    crop_key: str = None,
+) -> list[State]:
     """Given the path to a file in the MOT format, get a list of states.
     Each State contains the data of one image and the respective detections.
 
@@ -117,6 +125,10 @@ def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqi
         seqinfo_fp: The local or absolute path to the folder containing the seqinfo file for this dataset.
             With the default ``None``, and with ``fp=".../MOT20-XX/gt/gt.txt"``,
             the file is expected to be in ``.../MOT20-XX/seqinfo.ini``.
+        seqinfo_key: The key to use in the seqinfo file.
+            Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
+        crop_key: The key to use in the seqinfo file when loading the image crop paths.
+            Default ``DEF_VAL["submission"]["MOT"]["crop_key"]``.
 
     Raises:
         InvalidPathException if the file ending is not correct.
@@ -132,11 +144,18 @@ def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqi
 
     dataset_path = os.path.dirname(os.path.dirname(fp))
     seqinfo_fp = seqinfo_fp if seqinfo_fp is not None else os.path.join(dataset_path, "./seqinfo.ini")
-    seqinfo: dict[str, any] = load_seq_ini(fp=seqinfo_fp)
+    seqinfo_key = seqinfo_key if seqinfo_key is not None else DEF_VAL["submission"]["MOT"]["seqinfo_key"]
+    seqinfo: dict[str, any] = load_seq_ini(fp=seqinfo_fp, key=seqinfo_key)
 
+    crop_key = crop_key if crop_key is not None else DEF_VAL["submission"]["MOT"]["crop_key"]
+    crop_info: dict[str, any] = load_seq_ini(fp=seqinfo_fp, key=crop_key)
+
+    # image and crop handling
     base_img_path: FilePath = os.path.join(dataset_path, seqinfo["imDir"])
     all_img_paths: list[FilePath] = glob(os.path.join(base_img_path, f"./*{seqinfo['imExt']}"))
     assert len(all_img_paths) == int(seqinfo["seqLength"])
+    base_crop_path: FilePath = os.path.join(dataset_path, crop_info["imDir"])
+
     img_name_digits: int = len(os.path.basename(all_img_paths[0]).split(".")[0])
     assert all(len(os.path.basename(path).split(".")[0]) == img_name_digits for path in all_img_paths)
     img_shape: ImgShape = (int(seqinfo["imHeight"]), int(seqinfo["imWidth"]))
@@ -145,12 +164,11 @@ def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqi
     for frame_id in range(1, int(seqinfo["seqLength"]) + 1):
         # get all annotations for the current frame id
         annos: list[list[any]] = [line for line in lines if line[0] == frame_id]
-        N = len(annos)
         file_paths = tuple(
-            [os.path.join(base_img_path, f"{frame_id:0{img_name_digits}d}{seqinfo['imExt']}")] * max(N, 1)
+            [os.path.join(base_img_path, f"{frame_id:0{img_name_digits}d}{seqinfo['imExt']}")] * max(len(annos), 1)
         )
 
-        if N == 0:
+        if len(annos) == 0:
             es = EMPTY_STATE.copy()
             es.filepath = file_paths
             es["frame_id"] = frame_id
@@ -160,12 +178,14 @@ def load_MOT_file(fp: FilePath, sep: str = r",\s?", device: Device = "cpu", seqi
         bboxes = tvte.BoundingBoxes(
             [anno[2:6] for anno in annos], format="XYWH", canvas_size=img_shape, dtype=torch.float32, device=device
         )
+        crop_paths = tuple(os.path.join(base_crop_path, f"{frame_id}_{anno[1]}{crop_info['imExt']}") for anno in annos)
         states.append(
             State(
                 bbox=bboxes,
                 filepath=file_paths,
+                crop_path=crop_paths,
                 person_id=torch.tensor([anno[1] for anno in annos], device=device, dtype=torch.long),
-                frame_id=frame_id,
+                frame_id=[frame_id] * len(annos),
                 validate=False,
             )
         )
@@ -185,7 +205,7 @@ def write_MOT_file(fp: FilePath, data: list[tuple[any, ...]], sep=",") -> None: 
         raise InvalidPathException(f"Presumed to write to a .txt file, but got '{fp}'.")
     fp = os.path.abspath(os.path.normpath(fp))
     mkdir_if_missing(os.path.dirname(fp))
-    str_data = [sep.join(str(val) for val in d) for d in data]
+    str_data = [sep.join(str(val) for val in d) + "\n" for d in data]
     with open(fp, mode="w+", encoding="utf-8") as file:
         file.writelines(str_data)
 
@@ -220,6 +240,7 @@ class MOTImage(ImageDataset):
             fp=self.get_path_in_dataset(self.params["data_path"]),
             sep=self.params.get("file_separator", DEF_VAL["dataset"]["MOT"]["file_separator"]),
             seqinfo_fp=self.params.get("seqinfo_path", DEF_VAL["dataset"]["MOT"]["seqinfo_path"]),
+            seqinfo_key=self.params.get("seqinfo_key", DEF_VAL["submission"]["MOT"]["seqinfo_key"]),
         )
 
     def arbitrary_to_ds(self, a: State, idx: int) -> State:

@@ -253,6 +253,8 @@ class Track:
         """Append a new state to the Track."""
         if state.B != 1:
             raise ValueError(f"A Track should only get a State with the a batch size of 1, but got {state.B}.")
+        if len(self._states) > 0:
+            self._states[-1].clean()
         self._states.append(state)
         self.set_active()
         self._nof_active += 1
@@ -613,6 +615,8 @@ class Tracks(UserDict):
             else:
                 self.inactive[tid] = 1
                 self.data[tid].set_inactive()
+                for s in self.data[tid]:
+                    s.clean()
 
     def _get_next_id(self) -> TrackID:
         """Get the next free track-ID."""

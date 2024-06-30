@@ -29,8 +29,6 @@ from dgs.utils.types import Config, NodePath, Validations
 
 mot_submission_validations: Validations = {
     # optional
-    "seqinfo_key": ["optional", str],
-    "seqinfo_path": ["optional", str],
     "bbox_decimals": ["optional", int],
 }
 
@@ -40,15 +38,6 @@ class MOTSubmission(SubmissionFile):
 
     Optional Params
     ---------------
-
-    seqinfo_key (str, optional):
-        Save the information in the seqinfo.ini file under a different key.
-        Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
-
-    seqinfo_path (str, optional):
-        The optional path to the ``seqinfo.ini`` file.
-        If the path of the submission-file is ``.../MOT20-XX/gt/gt.txt``,
-        the default location is ``.../MOT20-XX/seqinfo.ini``.
 
     bbox_decimals (int, optional):
         The number of decimals to save for the bbox coordinates.
@@ -60,15 +49,12 @@ class MOTSubmission(SubmissionFile):
     ``tuple(<frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>)``
     """
 
-    seq_info: dict[str, any]
-
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
         self.validate_params(mot_submission_validations)
 
         self.data = []
-        self.seq_info = {}
         self.frame_id: int = 1
         self.bbox_decimals: int = self.params.get("bbox_decimals", DEF_VAL["submission"]["MOT"]["bbox_decimals"])
 
@@ -88,7 +74,7 @@ class MOTSubmission(SubmissionFile):
             convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
         detections = s.split()
         for det in detections:
-            tid = det.track_id.item()
+            tid = det["pred_tid"].item()
             conf = float(det["score"].item()) if "score" in det else 1
             x = det["x"] if "x" in det else -1
             y = det["y"] if "y" in det else -1
@@ -107,18 +93,13 @@ class MOTSubmission(SubmissionFile):
                     z,  # <z>
                 )
             )
+            det.clean()
 
         self.frame_id += 1
 
     def save(self) -> None:
         """Save the current data to the given filepath."""
         try:
-            # seqinfo.ini file
-            seqinfo_key: str = self.params.get("seqinfo_key", DEF_VAL["submission"]["MOT"]["seqinfo_key"])
-            seq_file = self.params.get(
-                "seqinfo_path", os.path.join(os.path.dirname(os.path.dirname(self.fp)), "./seqinfo.ini")
-            )
-            write_seq_ini(fp=seq_file, data=self.seq_info, key=seqinfo_key)
             # MOT / detection file
             write_MOT_file(fp=self.fp, data=self.data)
         except TypeError as te:
@@ -130,5 +111,3 @@ class MOTSubmission(SubmissionFile):
 
     def terminate(self) -> None:
         super().terminate()
-        if self.seq_info:
-            del self.seq_info

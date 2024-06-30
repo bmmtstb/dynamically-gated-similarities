@@ -20,7 +20,7 @@ from torchvision.transforms.v2.functional import convert_image_dtype
 from torchvision.utils import save_image
 
 from dgs.utils.constants import COLORS, SKELETONS
-from dgs.utils.files import mkdir_if_missing
+from dgs.utils.files import is_file, mkdir_if_missing
 from dgs.utils.image import load_image, load_image_list
 from dgs.utils.types import DataGetter, FilePath, FilePaths, Heatmap, Image, Images
 from dgs.utils.utils import extract_crops_from_images
@@ -512,19 +512,25 @@ class State(UserDict):
         ):
             return self.image_crop
 
-        if "crop_path" in self.data:
+        if "crop_path" in self:
             if len(self.crop_path) == 0:
                 crop = []
                 loc_kps = torch.empty((0, 1, 2), dtype=torch.long, device=self.device)
             else:
                 # allow changing the crop_size and other params via kwargs
                 crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
-                loc_kps = torch.vstack(
-                    [torch.load(f=f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt") for sub_path in self.crop_path]
-                ).to(device=self.device, dtype=torch.float32)
+
+                kps_paths = [f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt" for sub_path in self.crop_path]
+                if all(is_file(path) for path in kps_paths):
+                    loc_kps = torch.vstack([torch.load(f=path) for path in kps_paths]).to(
+                        device=self.device, dtype=torch.float32
+                    )
+                else:
+                    loc_kps = None
             if store:
                 self.data["image_crop"] = crop
-                self.data["keypoints_local"] = loc_kps
+                if loc_kps is not None:
+                    self.data["keypoints_local"] = loc_kps
             return crop
 
         try:

@@ -12,7 +12,7 @@ test:
     inactivity_threshold: 15
     max_track_length: 1
     save_images: off
-    submission: ["submission"]
+    # submission:  # will be set in python script
 
 # #### #
 # DATA #
@@ -70,8 +70,40 @@ dgs_pt21_gt_256x128:
     crop_size: !!python/tuple [256, 128]
     crop_mode: "zero-pad"
 
-submission:
+dgs_Dance_gt:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    base_path: "./data/DanceTrack/val/**/gt/gt.txt"
+    # data_path: # will be set in python script
+
+    batch_size: 4
+    return_lists: true
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+    crop_key: "Crops"
+
+dgs_Dance_rcnn_256x192:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    base_path: "./data/DanceTrack/val/**/det/"
+    # data_path: # will be set in python script
+
+    batch_size: 4
+    return_lists: true
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+    # crop_key:  # will be set in python script
+
+submission_pt21:
     module_name: "PoseTrack21"
+    # file: # will be set in python script
+
+submission_MOT:
+    module_name: "MOT"
     # file: # will be set in python script
 
 # ####### #
