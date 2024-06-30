@@ -15,12 +15,10 @@ Notes:
     Iff the person_id is unknown, it can be set to ``-1``.
 """
 
-import os.path
-
 import torchvision.tv_tensors as tvte
 from torchvision.transforms.v2.functional import convert_bounding_box_format
 
-from dgs.models.dataset.MOT import write_MOT_file, write_seq_ini
+from dgs.models.dataset.MOT import write_MOT_file
 from dgs.models.submission.submission import SubmissionFile
 from dgs.utils.config import DEF_VAL
 from dgs.utils.exceptions import InvalidPathException
@@ -108,6 +106,3 @@ class MOTSubmission(SubmissionFile):
         except InvalidPathException as ipe:
             self.logger.exception(f"fp: {self.fp}")
             raise InvalidPathException from ipe
-
-    def terminate(self) -> None:
-        super().terminate()

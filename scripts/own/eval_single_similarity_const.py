@@ -15,12 +15,11 @@ from glob import glob
 import torch
 from tqdm import tqdm
 
-from dgs.models.dataset.MOT import load_seq_ini
 from dgs.models.dgs import DGSModule
 from dgs.models.engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
-from dgs.utils.torchtools import close_all_layers, torch_memory_analysis
+from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint
 
@@ -59,8 +58,8 @@ IOU_THRESHS: list[float] = [1.0]
 @torch.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
-    crop_h, crop_w = cfg[dl_key]["crop_size"]
-    cfg[dl_key]["crops_folder"] = cfg[dl_key]["base_path"].replace("posetrack_data", f"crops/{crop_h}x{crop_w}")
+    crop_h, crop_w = config[dl_key]["crop_size"]
+    config[dl_key]["crops_folder"] = config[dl_key]["base_path"].replace("posetrack_data", f"crops/{crop_h}x{crop_w}")
 
     # get all the sub folders or files and analyze them one-by-one
     for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
@@ -196,8 +195,8 @@ if __name__ == "__main__":
                             dgs_key=DGS_KEY,
                         )
                     elif "Dance" in RCNN_DL_KEY:
-                        crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
-                        rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{crop_h}x{crop_w}"
+                        _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
+                        rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{_crop_h}x{_crop_w}"
                         cfg[RCNN_DL_KEY]["crops_key"] = rcnn_cfg_str
 
                         data_paths = [
