@@ -26,28 +26,27 @@ from dgs.utils.utils import HidePrint
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
 DL_KEYS: list[str] = [
-    # "dgs_pt21_gt_256x192",
-    # "dgs_pt21_gt_256x128",
+    "dgs_pt21_gt_256x192",
+    "dgs_pt21_gt_256x128",
     "dgs_Dance_gt",
 ]
 RCNN_DL_KEYS: list[str] = [
-    # "dgs_pt21_rcnn_256x192",
-    # "dgs_pt21_rcnn_256x128",
+    "dgs_pt21_rcnn_256x192",
+    "dgs_pt21_rcnn_256x128",
     "dgs_Dance_rcnn_256x192",
 ]
 
-KEYS: list[str] = ["iou", "OSNet"]
-# KEYS: list[str] = [
-#     "iou",
-#     "oks",
-#     "OSNet",
-#     "OSNetAIN",
-#     "Resnet50",
-#     "Resnet152",
-#     "OSNetAIN_CrossDomainDuke",
-#     "OSNetIBN_CrossDomainDuke",
-#     "OSNetAIN_CrossDomainMSMT17",
-# ]
+KEYS: list[str] = [
+    "iou",
+    "oks",
+    "OSNet",
+    "OSNetAIN",
+    "Resnet50",
+    "Resnet152",
+    "OSNetAIN_CrossDomainDuke",
+    "OSNetIBN_CrossDomainDuke",
+    "OSNetAIN_CrossDomainMSMT17",
+]
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
 # IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 IOU_THRESHS: list[float] = [1.0]
