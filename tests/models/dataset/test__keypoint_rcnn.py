@@ -153,6 +153,17 @@ class TestKPRCNNModel(unittest.TestCase):
 
                     self.assertTrue(isinstance(out, State))
                     self.assertEqual(out.B, detections, f"expected {detections} detections, but got {out.B}")
+                    self.assertEqual(len(out.person_id), detections)
+                    self.assertEqual(len(out["image_id"]), detections)
+                    self.assertEqual(len(out["frame_id"]), detections)
+                    self.assertEqual(len(out["skeleton_name"]), detections)
+                    self.assertEqual(len(out["scores"]), detections)
+                    self.assertEqual(len(out["score"]), detections)
+                    self.assertEqual(len(out.bbox), detections)
+                    self.assertEqual(len(out.image_crop), detections)
+                    self.assertEqual(len(out.keypoints), detections)
+                    self.assertEqual(len(out.keypoints_local), detections)
+                    self.assertEqual(len(out.joint_weight), detections)
                     self.assertTrue(
                         torch.any(out["scores"] > 0.9), f"at least one score should be high, got: {out['scores']}"
                     )
@@ -249,6 +260,18 @@ class TestKPRCNNModel(unittest.TestCase):
             self.assertTrue("joint_weight" in out.data)
             self.assertTrue("filepath" in out.data)
             self.assertTrue("image_crop" in out.data)
+
+            self.assertEqual(len(out.person_id), detections)
+            self.assertEqual(len(out["image_id"]), detections)
+            self.assertEqual(len(out["frame_id"]), detections)
+            self.assertEqual(len(out["skeleton_name"]), detections)
+            self.assertEqual(len(out["scores"]), detections)
+            self.assertEqual(len(out["score"]), detections)
+            self.assertEqual(len(out.bbox), detections)
+            self.assertEqual(len(out.image_crop), detections)
+            self.assertEqual(len(out.keypoints), detections)
+            self.assertEqual(len(out.keypoints_local), detections)
+            self.assertEqual(len(out.joint_weight), detections)
 
             self.assertEqual(out.image[0].ndim, 4)
             self.assertEqual(out.image[0].size(0), detections)

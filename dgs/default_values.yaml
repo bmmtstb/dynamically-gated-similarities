@@ -28,6 +28,7 @@ dataset:
         space_around_delimiters: False
         file_separator: ",\\s?"
         seqinfo_path: null
+        crop_key: "Crops"
 
 
 dataloader:
@@ -59,7 +60,6 @@ submission:
     MOT:
         bbox_decimals: 0
         seqinfo_key: "Sequence"
-        crop_key: "Crops"
 
 # ############## #
 # LOSS FUNCTIONS #

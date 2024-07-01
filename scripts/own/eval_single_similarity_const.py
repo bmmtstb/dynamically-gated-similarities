@@ -196,7 +196,7 @@ if __name__ == "__main__":
                     elif "Dance" in RCNN_DL_KEY:
                         _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                         rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{_crop_h}x{_crop_w}"
-                        cfg[RCNN_DL_KEY]["crops_key"] = rcnn_cfg_str
+                        cfg[RCNN_DL_KEY]["crop_key"] = rcnn_cfg_str
 
                         data_paths = [
                             os.path.join(p, f"./{rcnn_cfg_str}.txt") for p in glob(cfg[RCNN_DL_KEY]["base_path"])

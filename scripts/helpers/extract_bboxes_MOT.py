@@ -90,9 +90,13 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
             for s in batch:
                 frame_id += 1
 
+                if len(glob(os.path.join(crops_folder, f"{frame_id}_*.jpg"))) == s.B:
+                    continue
+
                 s["frame_id"] = frame_id
                 s.person_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
                 s.track_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
+                s["pred_tid"] = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
 
                 if s.B == 0:
                     continue
@@ -146,6 +150,8 @@ def run_gt_extractor(dl_key: str) -> None:
         for batch in tqdm(dataloader, desc="batch", leave=False):
             for s in batch:
                 if s.B == 0:
+                    continue
+                if len(glob(os.path.join(crops_folder, f"{s['frame_id'][0]}_*.jpg"))) == s.B:
                     continue
                 # save the image-crops, there are no local key-points
                 save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=False)
