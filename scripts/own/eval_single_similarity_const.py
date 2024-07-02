@@ -182,7 +182,9 @@ if __name__ == "__main__":
                     cfg = load_config(CONFIG_FILE)
                     cfg["name"] = f"Evaluate-Single-{DGS_KEY}"
                     if "pt21" in RCNN_DL_KEY:
-                        base_path = f"./data/PoseTrack21/posetrack_data/rcnn_{score_str}_{iou_str}_val/"
+                        base_path = os.path.normpath(
+                            f"./data/PoseTrack21/posetrack_data/rcnn_{score_str}_{iou_str}_val/"
+                        )
                         cfg[RCNN_DL_KEY]["base_path"] = base_path
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
 

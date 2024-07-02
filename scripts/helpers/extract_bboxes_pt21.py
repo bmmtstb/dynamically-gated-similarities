@@ -20,8 +20,8 @@ CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 SUBM_KEY: str = "submission_pt21"
 
 DL_KEYS: list[str] = [
-    # "PT21_256x128_val",
-    # "PT21_256x192_val",
+    "PT21_256x128_val",
+    "PT21_256x192_val",
 ]
 RCNN_DL_KEYS: list[str] = [
     "RCNN_PT21_256x128_val",

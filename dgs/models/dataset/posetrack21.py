@@ -632,11 +632,11 @@ class PoseTrack21_Image(ImageDataset):
 
         for anno_id, anno in enumerate(json["annotations"]):
             img_id = int(anno["image_id"])
-            pid = int(anno["person_id"])
             # append the ID of the current annotation to the annotation-list of the respective image
             self.map_img_id_to_anno_ids[img_id].append(anno_id)
             # save the image-, person-, and class-ids for later use as torch tensors
             img_id_list.append(img_id)
+            pid = int(anno["person_id"])
             pid_list.append(pid)
             cid_list.append(map_pid_to_cid[pid])
             # add the crop path to annotation
