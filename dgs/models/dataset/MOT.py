@@ -229,7 +229,7 @@ class MOTImage(ImageDataset):
         Default ``DEF_VAL["dataset"]["MOT"]["file_separator"]``.
     crop_key (str, optional):
         The name of the key in the seqinfo file containing the info for the image crops.
-        Default ``DEF_VAL["dataset"]["MOT"]["crop_key"]
+        Default ``DEF_VAL["dataset"]["MOT"]["crop_key"]``.
     seqinfo_path (str, optional):
         The optional path to the ``seqinfo.ini`` file.
         Default ``DEF_VAL["dataset"]["MOT"]["seqinfo_path"]``.
