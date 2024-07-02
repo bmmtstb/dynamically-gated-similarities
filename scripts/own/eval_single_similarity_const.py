@@ -58,7 +58,11 @@ IOU_THRESHS: list[float] = [1.0]
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
     crop_h, crop_w = config[dl_key]["crop_size"]
-    config[dl_key]["crops_folder"] = config[dl_key]["base_path"].replace("posetrack_data", f"crops/{crop_h}x{crop_w}")
+    config[dl_key]["crops_folder"] = (
+        config[dl_key]["base_path"]
+        .replace("posetrack_data", f"crops/{crop_h}x{crop_w}")
+        .replace(f"{crop_h}x{crop_w}_", "")  # remove redundant from crop folder name iff existing
+    )
 
     # get all the sub folders or files and analyze them one-by-one
     for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
@@ -181,9 +185,10 @@ if __name__ == "__main__":
 
                     cfg = load_config(CONFIG_FILE)
                     cfg["name"] = f"Evaluate-Single-{DGS_KEY}"
+                    _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                     if "pt21" in RCNN_DL_KEY:
                         base_path = os.path.normpath(
-                            f"./data/PoseTrack21/posetrack_data/rcnn_{score_str}_{iou_str}_val/"
+                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"
                         )
                         cfg[RCNN_DL_KEY]["base_path"] = base_path
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
@@ -196,7 +201,6 @@ if __name__ == "__main__":
                             dgs_key=DGS_KEY,
                         )
                     elif "Dance" in RCNN_DL_KEY:
-                        _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                         rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{_crop_h}x{_crop_w}"
                         cfg[RCNN_DL_KEY]["crop_key"] = rcnn_cfg_str
 
