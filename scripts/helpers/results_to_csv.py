@@ -8,6 +8,7 @@ import os
 from glob import glob
 
 from dgs.utils.files import read_json
+from dgs.utils.types import FilePath
 
 JOINTS = [
     "right_ankle",
@@ -54,6 +55,17 @@ PT21_METRICS: list[str] = [
 
 BASE_DIR: str = "./results/own/eval/"
 
+
+def replace_dots_with_commas(fp: FilePath) -> None:
+    with open(fp, "r", encoding="utf-8") as file:
+        content = file.read()
+
+    modified_content = content.replace(".", ",")
+
+    with open(fp, "w", encoding="utf-8") as file:
+        file.write(modified_content)
+
+
 if __name__ == "__main__":
 
     # ####### #
@@ -62,32 +74,31 @@ if __name__ == "__main__":
 
     poseval_out_file = os.path.join(BASE_DIR, "./results_poseval.csv")
     with open(poseval_out_file, "w", encoding="utf-8") as csvfile:
-        csv_writer = csv.writer(csvfile)
+        csv_writer = csv.writer(csvfile, delimiter=";")
         csv_writer.writerow(["Combined", "Dataset", "Key", "Type"] + JOINTS)
 
-        AP_metrics = glob(f"{BASE_DIR}/**/eval_data/total_AP_metrics.json", recursive=True)
+        MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
 
-        for AP_file in AP_metrics:
-            data_folder = os.path.dirname(os.path.dirname(os.path.realpath(AP_file)))
-            MOT_file = os.path.join(data_folder, "./eval_data/total_MOT_metrics.json")
-
-            if not os.path.isfile(MOT_file):
-                raise FileNotFoundError(f"Found AP metrics file, but no MOT file at '{MOT_file}'.")
-
+        for MOT_file in MOT_metrics:
+            data_folder = os.path.dirname(os.path.dirname(os.path.realpath(MOT_file)))
             ds, conf_key = os.path.split(data_folder)[-2:]
             ds_name = os.path.basename(ds)
 
-            ap_data = read_json(AP_file)
             mot_data = read_json(MOT_file)
-
-            # ap
-            for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
-                comb = f"{ds_name}_{conf_key}_{new_k}"
-                csv_writer.writerow([comb, ds_name, conf_key, new_k] + ap_data[k])
             # mot
             for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
                 comb = f"{ds_name}_{conf_key}_{new_k}"
                 csv_writer.writerow([comb, ds_name, conf_key, new_k] + mot_data[k])
+
+            AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
+            if os.path.isfile(AP_file):
+                ap_data = read_json(AP_file)
+                # ap
+                for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
+                    comb = f"{ds_name}_{conf_key}_{new_k}"
+                    csv_writer.writerow([comb, ds_name, conf_key, new_k] + ap_data[k])
+    replace_dots_with_commas(poseval_out_file)
+
     print(f"Wrote poseval results to: {poseval_out_file}")
 
     # ######### #
@@ -96,7 +107,7 @@ if __name__ == "__main__":
 
     pt21_out_file = os.path.join(BASE_DIR, "./results_pt21.csv")
     with open(pt21_out_file, "w", encoding="utf-8") as csvfile:
-        csv_writer = csv.writer(csvfile)
+        csv_writer = csv.writer(csvfile, delimiter=";")
         csv_writer.writerow(["Combined", "Dataset", "Key"] + PT21_METRICS)
 
         # Search for pose_hota_results.txt files recursively in the ./files/ directory
@@ -116,4 +127,5 @@ if __name__ == "__main__":
                 assert len(values) == len(PT21_METRICS)
                 comb = f"{ds_name}_{meth_key}"
                 csv_writer.writerow([comb, ds_name, meth_key] + values)
+    replace_dots_with_commas(pt21_out_file)
     print(f"Wrote PT21 results to: {pt21_out_file}")
