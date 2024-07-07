@@ -101,7 +101,8 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
 
     # get all the sub folders or files and analyze them one-by-one
     for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
-        dataset_name = os.path.basename(os.path.dirname(os.path.dirname(sub_datapath)))
+        dataset_path = os.path.normpath(os.path.dirname(os.path.dirname(sub_datapath)))
+        dataset_name = os.path.basename(dataset_path)
         pbar_data.set_postfix_str(dataset_name)
         config[dl_key]["data_path"] = sub_datapath
 
@@ -110,12 +111,12 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
 
         # change config data
         config["log_dir"] += f"./{out_key}/{dgs_key}/"
-        config["test"]["submission"] = ["submission_MOT"]
 
         # set the new path for the submission file - uses PT21 submission !
         subm_key = "submission_MOT"
+        config["test"]["submission"] = [subm_key]
         config[subm_key]["file"] = os.path.abspath(
-            os.path.normpath(f"{config['log_dir']}/results_txt/{dataset_name}.txt")
+            os.path.normpath(f"{os.path.dirname(dataset_path)}./results_{dl_key}_{dgs_key}/{dataset_name}.txt")
         )
 
         if os.path.exists(config[subm_key]["file"]):
@@ -205,7 +206,8 @@ if __name__ == "__main__":
                         cfg[RCNN_DL_KEY]["crop_key"] = rcnn_cfg_str
 
                         data_paths = [
-                            os.path.join(p, f"./{rcnn_cfg_str}.txt") for p in glob(cfg[RCNN_DL_KEY]["base_path"])
+                            os.path.normpath(os.path.join(p, f"./{rcnn_cfg_str}.txt"))
+                            for p in glob(cfg[RCNN_DL_KEY]["base_path"])
                         ]
 
                         run_dance(

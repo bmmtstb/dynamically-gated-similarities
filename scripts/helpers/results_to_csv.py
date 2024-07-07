@@ -9,7 +9,7 @@ from glob import glob
 
 from dgs.utils.files import read_json
 
-JOINTS = [
+PT21_JOINTS = [
     "right_ankle",
     "right_knee",
     "right_hip",
@@ -61,9 +61,9 @@ if __name__ == "__main__":
     # ####### #
 
     poseval_out_file = os.path.join(BASE_DIR, "./results_poseval.csv")
-    with open(poseval_out_file, "w", encoding="utf-8") as csvfile:
+    with open(poseval_out_file, "w+", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Combined", "Dataset", "Key", "Type"] + JOINTS)
+        csv_writer.writerow(["Combined", "Dataset", "Key", "Type"] + PT21_JOINTS)
 
         AP_metrics = glob(f"{BASE_DIR}/**/eval_data/total_AP_metrics.json", recursive=True)
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # ######### #
 
     pt21_out_file = os.path.join(BASE_DIR, "./results_pt21.csv")
-    with open(pt21_out_file, "w", encoding="utf-8") as csvfile:
+    with open(pt21_out_file, "w+", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(["Combined", "Dataset", "Key"] + PT21_METRICS)
 
@@ -117,3 +117,30 @@ if __name__ == "__main__":
                 comb = f"{ds_name}_{meth_key}"
                 csv_writer.writerow([comb, ds_name, meth_key] + values)
     print(f"Wrote PT21 results to: {pt21_out_file}")
+
+    # ########## #
+    # DanceTrack #
+    # ########## #
+
+    dance_out_file = os.path.join(BASE_DIR, "./results_dance.csv")
+    dance_files = glob("./data/DanceTrack/*/results_*/eval_data/pedestrian_detailed.csv")
+    data: list[dict] = []
+    for dance_file in dance_files:
+        res_dir_name = os.path.basename(os.path.dirname(os.path.dirname(dance_file)))
+        data_part_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(dance_file))))
+
+        with open(dance_file, "r", encoding="utf-8") as in_file:
+            csv_reader = csv.DictReader(in_file, delimiter=",", lineterminator="\r\n")
+            line: dict
+            for line in csv_reader:
+                ds_name = line["seq"]
+                comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
+                d = {**line, **{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}}
+                data.append(d)
+    fieldnames = ["Combined", "Dataset", "Key"] + list(data[0].keys())
+    with open(dance_out_file, "w+", encoding="utf-8") as out_file:
+        csv_writer = csv.DictWriter(out_file, fieldnames=fieldnames, delimiter=";", lineterminator="\n")
+        csv_writer.writeheader()
+        for d in data:
+            csv_writer.writerow(dict(d))
+    print(f"Wrote DanceTrack results to: {dance_out_file}")

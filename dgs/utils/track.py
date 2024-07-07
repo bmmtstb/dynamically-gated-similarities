@@ -599,7 +599,9 @@ class Tracks(UserDict):
         # append state to track
         self.data[tid].append(state=add_state)
         # add track id to state
-        self.data[tid][-1]["pred_tid"] = torch.tensor(tid, dtype=torch.long, device=add_state.device).flatten()
+        self.data[tid][-1]["pred_tid"] = torch.tensor(
+            [tid] * self.data[tid][-1].B, dtype=torch.long, device=add_state.device
+        ).flatten()
 
     def _handle_inactive(self, tids: set[TrackID]) -> None:
         """Given the Track-IDs of the Tracks that haven't been seen this step, update the inactivity tracker.

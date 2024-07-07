@@ -143,7 +143,7 @@ RCNN_Dance_train:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
-    dataset_paths: "./data/DanceTrack/train/**/"
+    dataset_paths: "./data/DanceTrack/train/dancetrack*/"
 
     batch_size: 1
     return_lists: true
@@ -159,7 +159,7 @@ RCNN_Dance_test:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
-    dataset_paths: "./data/DanceTrack/test/**/"
+    dataset_paths: "./data/DanceTrack/test/dancetrack*/"
 
     batch_size: 1
     return_lists: true
@@ -175,7 +175,7 @@ RCNN_Dance_val:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
-    dataset_paths: "./data/DanceTrack/val/**/"
+    dataset_paths: "./data/DanceTrack/val/dancetrack*/"
 
     batch_size: 1
     return_lists: true
@@ -191,9 +191,9 @@ Dance_train:
     module_name: "MOTImage"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
-    dataset_paths: "./data/DanceTrack/train/**/"
+    dataset_paths: "./data/DanceTrack/train/dancetrack*/"
 
-    batch_size: 1
+    batch_size: 8
     return_lists: true
 
     crop_size: !!python/tuple [ 256, 192 ]  # [H,W]
@@ -203,9 +203,9 @@ Dance_val:
     module_name: "MOTImage"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
-    dataset_paths: "./data/DanceTrack/val/**/"
+    dataset_paths: "./data/DanceTrack/val/dancetrack*/"
 
-    batch_size: 1
+    batch_size: 8
     return_lists: true
 
     crop_size: !!python/tuple [ 256, 192 ]  # [H,W]

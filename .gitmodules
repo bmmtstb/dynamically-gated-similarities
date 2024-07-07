@@ -14,4 +14,4 @@
 	url = https://github.com/cheind/py-lapsolver
 [submodule "dependencies/DanceTrack"]
 	path = dependencies/DanceTrack
-	url = git@github.com:DanceTrack/DanceTrack
+	url = git@github.com:bmmtstb/DanceTrack
