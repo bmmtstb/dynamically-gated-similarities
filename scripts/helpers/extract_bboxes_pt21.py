@@ -28,7 +28,7 @@ RCNN_DL_KEYS: list[str] = [
     "RCNN_PT21_256x192_val",
 ]
 
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 
 # IN images: "./data/PoseTrack21/images/{val|train}/DATASET/*.jpg"
@@ -162,7 +162,7 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
     """Given the gt annotations, extract the image crops and local coordinates."""
     dataset_paths: list[str] = glob(config[dl_key]["dataset_paths"])
 
-    for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
+    for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets")):
         ds_name = os.path.basename(os.path.realpath(dataset_path))
         pbar_dataset.set_postfix_str(ds_name)
 
@@ -208,7 +208,7 @@ if __name__ == "__main__":
             score_str = f"{int(score_threshold * 100):03d}"
             rcnn_cfg[RCNN_DL_KEY]["score_threshold"] = score_threshold
 
-            for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold")):
+            for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold", leave=False)):
                 pbar_iou_thresh.set_postfix_str(str(iou_threshold))
 
                 iou_str = f"{int(iou_threshold * 100):03d}"
