@@ -208,6 +208,7 @@ def write_MOT_file(fp: FilePath, data: list[tuple[any, ...]], sep=",") -> None: 
     fp = os.path.abspath(os.path.normpath(fp))
     mkdir_if_missing(os.path.dirname(fp))
     str_data = [sep.join(str(val) for val in d) + "\n" for d in data]
+
     with open(fp, mode="w+", encoding="utf-8") as file:
         file.writelines(str_data)
 

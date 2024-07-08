@@ -9,10 +9,7 @@ Notes:
         ``<frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>``
 
     During loading, the ``<id>`` seems to be the person-ID,
-    while for submissions it is the track-ID or the predicted person-ID.
-
-Notes:
-    Iff the person_id is unknown, it can be set to ``-1``.
+    while for submissions it is the predicted track-ID or the predicted person-ID.
 """
 
 import torchvision.tv_tensors as tvte
@@ -67,12 +64,15 @@ class MOTSubmission(SubmissionFile):
                 return str(int(val))
             return f"{val:.{self.bbox_decimals}}"
 
+        if "pred_tid" not in s:
+            raise ValueError("The predicted track-ID should be set.")
+
         # convert bbox format to receive the height and width more easily later on
         if s.bbox.format != tvte.BoundingBoxFormat.XYWH:
             convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
         detections = s.split()
         for det in detections:
-            tid = det["pred_tid"].item()
+            tid = det["pred_tid"].item() + 1  # MOT is 1-indexed, but State is 0-indexed
             conf = float(det["score"].item()) if "score" in det else 1
             x = det["x"] if "x" in det else -1
             y = det["y"] if "y" in det else -1
@@ -99,6 +99,7 @@ class MOTSubmission(SubmissionFile):
         """Save the current data to the given filepath."""
         try:
             # MOT / detection file
+            assert len(self.data) > 0, "No data to save"
             write_MOT_file(fp=self.fp, data=self.data)
         except TypeError as te:
             self.logger.exception(f"data: {self.data}")

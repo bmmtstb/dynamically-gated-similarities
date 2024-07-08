@@ -49,8 +49,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
         dataset_path = os.path.normpath(dataset_path)
-        ds_name = os.path.basename(os.path.realpath(dataset_path))
-        pbar_dataset.set_postfix_str(ds_name)
+        pbar_dataset.set_postfix_str(os.path.basename(os.path.realpath(dataset_path)))
 
         # GT data
         gt_seqinfo = load_seq_ini(os.path.join(dataset_path, "./seqinfo.ini"), key="Sequence")
@@ -84,28 +83,34 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         s: State
         frame_id = 0
 
+        # get the amount of images per crop id
+        all_crop_ids = {i: 0 for i in range(1, int(gt_seqinfo["seqLength"]) + 1)}
+        for file_name in [os.path.basename(p) for p in glob(os.path.join(crops_folder, f"*{own_seqinfo['imExt']}"))]:
+            file_name = file_name.rstrip(gt_seqinfo["imExt"])
+            img_id, _ = file_name.split("_")
+            all_crop_ids[int(img_id)] += 1
+
         assert len(dataloader) >= 0
 
         for batch in tqdm(dataloader, desc="batch", leave=False):
             for s in batch:
                 frame_id += 1
 
-                if len(glob(os.path.join(crops_folder, f"{frame_id}_*.jpg"))) == s.B:
-                    continue
-
-                s["frame_id"] = frame_id
+                s["frame_id"] = torch.tensor([frame_id] * s.B, dtype=torch.long, device=s.device)
                 s.person_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
                 s.track_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
-                s["pred_tid"] = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
-
-                if s.B == 0:
-                    continue
+                # pred_tid is 0 indexed -> submission file will add 1 later
+                s["pred_tid"] = torch.arange(0, s.B, dtype=torch.long, device=s.device)
 
                 # append to submission
                 submission.append(s)
 
+                if s.B in (0, all_crop_ids[frame_id]):
+                    s.clean()
+                    continue
+
                 # save the image-crops and local key points
-                save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=True)
+                save_crops(s, img_dir=crops_folder, _gt_img_id=frame_id, save_kps=True)
                 # remove image and image crop to free memory
                 s.clean()
         submission.save()
@@ -126,7 +131,7 @@ def run_gt_extractor(dl_key: str) -> None:
         gt_seqinfo = load_seq_ini(gt_seqinfo_path, key="Sequence")
 
         # create img output folder
-        crops_folder = os.path.join(dataset_path, "./crops/")
+        crops_folder = os.path.normpath(os.path.join(dataset_path, "./crops/"))
         mkdir_if_missing(crops_folder)
 
         # modify submission data - seqinfo.ini
@@ -138,7 +143,14 @@ def run_gt_extractor(dl_key: str) -> None:
         write_seq_ini(fp=gt_seqinfo_path, data=own_seqinfo, key="Crops")
 
         # modify the configuration
-        config[dl_key]["data_path"] = os.path.join(dataset_path, "./gt/gt.txt/")
+        config[dl_key]["data_path"] = os.path.normpath(os.path.join(dataset_path, "./gt/gt.txt/"))
+
+        # skip if at least one crop exists for every image in the sequence
+        all_crop_ids = set(
+            int(os.path.basename(p).split("_")[0]) for p in glob(os.path.join(crops_folder, f"*{own_seqinfo['imExt']}"))
+        )
+        if all(i in all_crop_ids for i in range(1, int(gt_seqinfo["seqLength"]) + 1)):  # 1 indexed
+            continue
 
         # get data loader
         dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
@@ -149,12 +161,11 @@ def run_gt_extractor(dl_key: str) -> None:
 
         for batch in tqdm(dataloader, desc="batch", leave=False):
             for s in batch:
-                if s.B == 0:
-                    continue
-                if len(glob(os.path.join(crops_folder, f"{s['frame_id'][0]}_*.jpg"))) == s.B:
+                if s.B == 0 or len(glob(os.path.join(crops_folder, f"{s['frame_id'][0]}_*.jpg"))) == s.B:
+                    s.clean()
                     continue
                 # save the image-crops, there are no local key-points
-                save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"], save_kps=False)
+                save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"][0], save_kps=False)
                 # remove image and image crop to free memory
                 s.clean()
 
@@ -196,10 +207,10 @@ if __name__ == "__main__":
             score_str = f"{int(score_threshold * 100):03d}"
             config[RCNN_DL_KEY]["score_threshold"] = score_threshold
 
-            for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold")):
+            for iou_threshold in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU-Threshold", leave=False)):
                 pbar_iou_thresh.set_postfix_str(str(iou_threshold))
-
                 iou_str = f"{int(iou_threshold * 100):03d}"
+
                 config[RCNN_DL_KEY]["iou_threshold"] = iou_threshold
 
                 _rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{h}x{w}"

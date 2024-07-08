@@ -6,7 +6,6 @@ import os.path
 import time
 
 import torch as t
-from lapsolver import solve_dense
 from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
@@ -21,6 +20,7 @@ from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
+from lapsolver import solve_dense
 
 dgs_eng_test_validations: Validations = {
     "submission_key": [("any", ["str", ("all", [list, ("forall", str)])])],
@@ -134,8 +134,8 @@ class DGSEngine(EngineModule):
         track_state: list[State] = self.tracks.get_states()
 
         for ts in track_state:
-            ts.clean(keys="image")
             ts.load_image_crop(store=True)
+            ts.clean(keys="image")
 
         batch_times["data"] = time.time() - time_batch_start
 
@@ -220,8 +220,11 @@ class DGSEngine(EngineModule):
                 if len(active_list) == 0 or all(a.B == 0 for a in active_list):
                     active = EMPTY_STATE.copy()
                     active.filepath = detection.filepath
-                    active["image_id"] = detection["image_id"]
-                    active["frame_id"] = detection["frame_id"]
+                    if "image_id" in detection:
+                        active["image_id"] = detection["image_id"]
+                    if "frame_id" in detection:
+                        active["frame_id"] = detection["frame_id"]
+                    active["pred_tid"] = t.tensor([-1], dtype=t.long, device=detection.device)
                 else:
                     active = collate_states(active_list)
 
