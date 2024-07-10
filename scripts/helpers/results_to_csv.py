@@ -98,7 +98,6 @@ if __name__ == "__main__":
                     comb = f"{ds_name}_{conf_key}_{new_k}"
                     csv_writer.writerow([comb, ds_name, conf_key, new_k] + ap_data[k])
     replace_dots_with_commas(poseval_out_file)
-
     print(f"Wrote poseval results to: {poseval_out_file}")
 
     # ######### #
@@ -155,4 +154,5 @@ if __name__ == "__main__":
         csv_writer.writeheader()
         for d in data:
             csv_writer.writerow(dict(d))
+    replace_dots_with_commas(dance_out_file)
     print(f"Wrote DanceTrack results to: {dance_out_file}")
