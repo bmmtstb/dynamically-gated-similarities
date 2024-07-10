@@ -57,6 +57,7 @@ BASE_DIR: str = "./results/own/eval/"
 
 
 def replace_dots_with_commas(fp: FilePath) -> None:
+    """Given a file path, replace all dots with commas in the file."""
     with open(fp, "r", encoding="utf-8") as file:
         content = file.read()
 
