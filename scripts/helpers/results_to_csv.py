@@ -147,11 +147,10 @@ if __name__ == "__main__":
             for line in csv_reader:
                 ds_name = line["seq"]
                 comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
-                d = {**line, **{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}}
+                d = {**{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}, **line}
                 data.append(d)
-    fieldnames = ["Combined", "Dataset", "Key"] + list(data[0].keys())
     with open(dance_out_file, "w+", encoding="utf-8") as out_file:
-        csv_writer = csv.DictWriter(out_file, fieldnames=fieldnames, delimiter=";", lineterminator="\n")
+        csv_writer = csv.DictWriter(out_file, fieldnames=list(data[0].keys()), delimiter=";", lineterminator="\n")
         csv_writer.writeheader()
         for d in data:
             csv_writer.writerow(dict(d))
