@@ -32,8 +32,8 @@ foreach ($dir in $dirs) {
                           " --OUTPUT_SUB_FOLDER .\eval_data\" +
                           " --USE_PARALLEL True" +
                           " --NUM_PARALLEL_CORES 8" +
-                          " --OUTPUT_DETAILED False" +
-                          " --OUTPUT_SUMMARY False" +
+                          " --OUTPUT_DETAILED True" +
+                          " --OUTPUT_SUMMARY True" +
                           " --PRINT_CONFIG False" +
                           " --PRINT_RESULTS False"
 
