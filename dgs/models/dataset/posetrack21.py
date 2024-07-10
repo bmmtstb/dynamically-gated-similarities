@@ -10,6 +10,10 @@ PoseTrack21 format:
 * The 17 key points and their respective visibilities are stored in one list of len 51.
   The list contains the x- and y-coordinate and the visibility: \n
   [``x``\ :sub:`i`, ``y``\ :sub:`i`, ``vis``\ :sub:`i`, ...]
+
+Notes:
+    The original P21-paper said,
+    that during evaluation they ignore all person detections that overlap with the ignore regions.
 """
 
 import glob

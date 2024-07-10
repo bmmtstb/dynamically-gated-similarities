@@ -134,8 +134,10 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
             Does not add the original image to the new State, to reduce memory / GPU usage.
             With the filepath given in the state, the image can be reloaded if required.
         """
+        # make sure all images are float
+        images = [tvte.Image(to_dtype(img, dtype=t.float32, scale=True)) for img in images]
 
-        # predict list of {boxes: XYWH[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
+        # predicts a list of {boxes: XYWH[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
         # every image in images can have multiple predictions
         outputs: list[dict[str, t.Tensor]] = self.model(images)
 
@@ -336,6 +338,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             output_size=self.image_size,
             mode=self.image_mode,
             device=self.device,
+            dtype=t.float32,
         ).squeeze(0)
 
         if self.masks[idx] is not None:
@@ -347,14 +350,10 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             mask = t.zeros(img.shape[-2:], device=self.device, dtype=t.bool)
 
         # create the image by using the unmasked area of the image and the masked area of a black image
-        float_img = to_dtype(
-            tvte.Image(img * t.bitwise_not(mask) + t.zeros_like(img) * mask, device=self.device),
-            dtype=t.float32,
-            scale=True,
-        )
+        masked_img = tvte.Image(img * t.bitwise_not(mask) + t.zeros_like(img) * mask, device=self.device)
 
         # the torch model expects a list of 3D images
-        states = self.images_to_states(images=[float_img])
+        states = self.images_to_states(images=[masked_img])
 
         for state in states:
             state.filepath = tuple(a for _ in range(max(state.B, 1)))
@@ -383,14 +382,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
         )
         # the torch model expects a list of 3D images
         masked_images = [
-            tvte.Image(
-                (
-                    (img * t.bitwise_not(mask) + t.zeros_like(img) * mask).squeeze(0)
-                    if mask is not None
-                    else img.squeeze(0)
-                ),
-                device=self.device,
-            )
+            (img * t.bitwise_not(mask) + t.zeros_like(img) * mask).squeeze(0) if mask is not None else img.squeeze(0)
             for img, mask in zip(images.split(1, dim=0), masks)
         ]
 
@@ -430,31 +422,27 @@ class KeypointRCNNVideoBackbone(KeypointRCNNBackbone, VideoDataset):
         if self.force_reshape:
             # reshape the images iff requested to the desired size
             images = [
-                to_dtype(
-                    self.transform_resize_image()(
-                        {
-                            "image": tvte.Image(a),
-                            "box": tvte.BoundingBoxes(
-                                t.ones((1, 4), dtype=t.float32),
-                                canvas_size=self.image_size,
-                                format="XYWH",
-                                dtype=t.float32,
-                            ),
-                            "keypoints": t.ones((1, 15, 2)),
-                            "output_size": self.image_size,
-                            "mode": self.image_mode,
-                        }
-                    )["image"],
-                    t.float32,
-                    scale=True,
-                )
+                self.transform_resize_image()(
+                    {
+                        "image": tvte.Image(a),
+                        "box": tvte.BoundingBoxes(
+                            t.ones((1, 4), dtype=t.float32),
+                            canvas_size=self.image_size,
+                            format="XYWH",
+                            dtype=t.float32,
+                        ),
+                        "keypoints": t.ones((1, 15, 2)),
+                        "output_size": self.image_size,
+                        "mode": self.image_mode,
+                    }
+                )["image"],
             ]
         else:
-            images = [to_dtype(a, t.float32, scale=True)]
+            images = [a]
 
         states = self.images_to_states(images=images)
 
         for img, state in zip(images, states):
-            state.image = [tvte.wrap(img.unsqueeze(0), like=img) for _ in range(state.B)]
+            state.image = [tvte.Image(img.unsqueeze(0)) for _ in range(state.B)]
 
         return states

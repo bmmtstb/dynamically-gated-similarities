@@ -135,7 +135,6 @@ class PoseTrack21Submission(SubmissionFile):
             anno_data.append(
                 {
                     "bboxes": bboxes[i].flatten().tolist(),
-                    "kps": kps.flatten().tolist(),
                     "keypoints": kps.flatten().tolist(),
                     "scores": scores,
                     "score": (
@@ -144,7 +143,7 @@ class PoseTrack21Submission(SubmissionFile):
                         else s["score"][i].item() if isinstance(s["score"][i], t.Tensor) else s["score"][i]
                     ),
                     "image_id": int(
-                        s["image_id"][0].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][0]
+                        s["image_id"][i].item() if isinstance(s["image_id"], t.Tensor) else s["image_id"][i]
                     ),
                     "person_id": int(s.person_id[i].item()),
                     "track_id": int(s["pred_tid"][i].item()),
