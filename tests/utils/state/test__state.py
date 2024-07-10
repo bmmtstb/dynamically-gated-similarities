@@ -601,7 +601,7 @@ class TestStateFunctions(unittest.TestCase):
 
         with self.assertRaises(ValueError) as e:
             _ = s.clean("bbox")
-        self.assertTrue("Can not clean bounding box!" in str(e.exception), msg=e.exception)
+        self.assertTrue("Cannot clean bounding box!" in str(e.exception), msg=e.exception)
 
 
 class TestDataGetter(unittest.TestCase):
