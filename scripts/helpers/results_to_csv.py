@@ -136,24 +136,25 @@ if __name__ == "__main__":
 
     dance_out_file = os.path.join(BASE_DIR, "./results_dance.csv")
     dance_files = glob("./data/DanceTrack/*/results_*/eval_data/pedestrian_detailed.csv")
-    data: list[dict] = []
-    for dance_file in dance_files:
-        res_dir_name = os.path.basename(os.path.dirname(os.path.dirname(dance_file)))
-        data_part_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(dance_file))))
+    if len(dance_files):
+        data: list[dict] = []
+        for dance_file in dance_files:
+            res_dir_name = os.path.basename(os.path.dirname(os.path.dirname(dance_file)))
+            data_part_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(dance_file))))
 
-        with open(dance_file, "r", encoding="utf-8") as in_file:
-            csv_reader = csv.DictReader(in_file, delimiter=",", lineterminator="\r\n")
-            line: dict
-            for line in csv_reader:
-                ds_name = line["seq"]
-                comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
-                d = {**line, **{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}}
-                data.append(d)
-    fieldnames = ["Combined", "Dataset", "Key"] + list(data[0].keys())
-    with open(dance_out_file, "w+", encoding="utf-8") as out_file:
-        csv_writer = csv.DictWriter(out_file, fieldnames=fieldnames, delimiter=";", lineterminator="\n")
-        csv_writer.writeheader()
-        for d in data:
-            csv_writer.writerow(dict(d))
-    replace_dots_with_commas(dance_out_file)
-    print(f"Wrote DanceTrack results to: {dance_out_file}")
+            with open(dance_file, "r", encoding="utf-8") as in_file:
+                csv_reader = csv.DictReader(in_file, delimiter=",", lineterminator="\r\n")
+                line: dict
+                for line in csv_reader:
+                    ds_name = line["seq"]
+                    comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
+                    d = {**line, **{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}}
+                    data.append(d)
+        fieldnames = ["Combined", "Dataset", "Key"] + list(data[0].keys())
+        with open(dance_out_file, "w+", encoding="utf-8") as out_file:
+            csv_writer = csv.DictWriter(out_file, fieldnames=fieldnames, delimiter=";", lineterminator="\n")
+            csv_writer.writeheader()
+            for d in data:
+                csv_writer.writerow(dict(d))
+        replace_dots_with_commas(dance_out_file)
+        print(f"Wrote DanceTrack results to: {dance_out_file}")
