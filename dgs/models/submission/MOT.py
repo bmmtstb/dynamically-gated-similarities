@@ -81,10 +81,10 @@ class MOTSubmission(SubmissionFile):
                 (
                     self.frame_id,  # <frame>
                     tid,  # <track_id>
-                    _get_bbox_value(s, 0),  # X = <bb_left>
-                    _get_bbox_value(s, 1),  # Y = <bb_top>
-                    _get_bbox_value(s, 2),  # W = <bb_width>
-                    _get_bbox_value(s, 3),  # H = <bb_height>
+                    _get_bbox_value(det, 0),  # X = <bb_left>
+                    _get_bbox_value(det, 1),  # Y = <bb_top>
+                    _get_bbox_value(det, 2),  # W = <bb_width>
+                    _get_bbox_value(det, 3),  # H = <bb_height>
                     conf,  # <conf>
                     x,  # <x>
                     y,  # <y>
