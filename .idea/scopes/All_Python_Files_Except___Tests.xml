@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="All Python Files Except __Tests" pattern="file:*.py&amp;&amp;!file:*test__*.py&amp;&amp;!file[DGS]:dependencies//*&amp;&amp;!file[DGS]:tests/venv//*&amp;&amp;!file[DGS]:docs/venv//*" />
+</component>

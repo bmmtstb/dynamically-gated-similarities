@@ -113,7 +113,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
         # change config data
         config["log_dir"] += f"./{out_key}/{dgs_key}/"
 
-        # set the new path for the submission file - uses PT21 submission !
+        # set the new path for the submission file
         subm_key = "submission_MOT"
         config["test"]["submission"] = [subm_key]
         config[subm_key]["file"] = os.path.abspath(
