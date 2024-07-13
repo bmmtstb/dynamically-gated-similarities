@@ -315,7 +315,17 @@ class State(UserDict):
     @property
     def keypoints(self) -> torch.Tensor:
         """Get the key-points. The coordinates are based on the coordinate-frame of the full-image."""
-        return self.data["keypoints"]
+        if "keypoints" in self:
+            return self.data["keypoints"]
+        if "keypoints_path" in self:
+            self.data["keypoints"] = torch.load(self.data["keypoints_path"]).to(device=self.device)
+            return self.data["keypoints"]
+        if "crop_path" in self and is_file(kp_path := (self.data["crop_path"].replace(".jpg", "_glob.pt"))):
+            self.data["keypoints"], self.data["joint_weights"] = (
+                torch.load(kp_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
+            )
+            return self.data["keypoints"]
+        raise KeyError("There are no key-points in this object.")
 
     @keypoints.setter
     def keypoints(self, value: torch.Tensor) -> None:
@@ -347,7 +357,17 @@ class State(UserDict):
         """Get the local key-points.
         The local coordinates are based on the coordinate-frame of the image crops, within the bounding-box.
         """
-        return self.data["keypoints_local"]
+        if "keypoints_local" in self:
+            return self.data["keypoints_local"]
+        if "keypoints_local_path" in self:
+            self.data["keypoints_local"] = torch.load(self.data["keypoints_local_path"]).to(device=self.device)
+            return self.data["keypoints_local"]
+        if "crop_path" in self and is_file(kp_loc_path := (self.data["crop_path"].replace(".jpg", ".pt"))):
+            self.data["keypoints_local"], self.data["joint_weights"] = (
+                torch.load(kp_loc_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
+            )
+            return self.data["keypoints_local"]
+        raise KeyError("There are no local key-points in this object.")
 
     @keypoints_local.setter
     def keypoints_local(self, value: torch.Tensor) -> None:
