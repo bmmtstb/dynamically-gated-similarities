@@ -1,5 +1,8 @@
 """
-Engine for visual embedding training and testing.
+Engine for training and testing visual embedding modules.
+
+Notes:
+    Kind of obsolete, due to being able to use the engines from |torchreid|_ to train visual embedding models.
 """
 
 import time
