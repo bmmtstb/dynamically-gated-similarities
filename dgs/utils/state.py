@@ -320,7 +320,7 @@ class State(UserDict):
         if "keypoints_path" in self:
             self.data["keypoints"] = torch.load(self.data["keypoints_path"]).to(device=self.device)
             return self.data["keypoints"]
-        if "crop_path" in self and is_file(kp_path := (self.data["crop_path"].replace(".jpg", "_glob.pt"))):
+        if "crop_path" in self and is_file(kp_path := self.data["crop_path"].replace(".jpg", "_glob.pt")):
             self.data["keypoints"], self.data["joint_weights"] = (
                 torch.load(kp_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
             )
@@ -362,7 +362,7 @@ class State(UserDict):
         if "keypoints_local_path" in self:
             self.data["keypoints_local"] = torch.load(self.data["keypoints_local_path"]).to(device=self.device)
             return self.data["keypoints_local"]
-        if "crop_path" in self and is_file(kp_loc_path := (self.data["crop_path"].replace(".jpg", ".pt"))):
+        if "crop_path" in self and is_file(kp_loc_path := self.data["crop_path"].replace(".jpg", ".pt")):
             self.data["keypoints_local"], self.data["joint_weights"] = (
                 torch.load(kp_loc_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
             )

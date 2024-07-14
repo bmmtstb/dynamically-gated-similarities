@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     dance_out_file = os.path.join(BASE_DIR, "./results_dance.csv")
     dance_files = glob("./data/DanceTrack/*/results_*/eval_data/pedestrian_detailed.csv")
-    if len(dance_files):
+    if len(dance_files) > 0:
         data: list[dict] = []
         for dance_file in dance_files:
             res_dir_name = os.path.basename(os.path.dirname(os.path.dirname(dance_file)))
