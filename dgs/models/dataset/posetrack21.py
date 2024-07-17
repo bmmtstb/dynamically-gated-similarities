@@ -723,7 +723,7 @@ class PoseTrack21_Image(ImageDataset):
             return (
                 t.empty((0, 17, 2)),
                 t.empty((0, 17, 1)),
-                tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+                tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYWH"),
                 (),
             )
         return collate_tensors(keypoints), collate_tensors(visibilities), collate_bboxes(bboxes), tuple(crop_paths)

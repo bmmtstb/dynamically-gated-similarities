@@ -58,7 +58,7 @@ submission:
     file: "./submission.json"
 
     MOT:
-        bbox_decimals: 0
+        bbox_decimals: 3
         seqinfo_key: "Sequence"
 
 # ############## #

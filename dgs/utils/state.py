@@ -201,10 +201,11 @@ class State(UserDict):
 
     @bbox.setter
     def bbox(self, bbox: tv_tensors) -> None:
-        raise NotImplementedError(
-            "It is not allowed to change the bounding box of an already existing State object. "
-            "Create a new object instead!"
-        )
+        if not isinstance(bbox, tv_tensors.BoundingBoxes):
+            raise TypeError(f"Expected bounding box, got {type(bbox)}")
+        if bbox.shape != self.bbox.shape:
+            raise ValueError(f"Can't switch bbox shape. Expected {self.bbox.shape} but got {bbox.shape}")
+        self.data["bbox"] = bbox.to(device=self.bbox.device)
 
     @property
     def device(self):

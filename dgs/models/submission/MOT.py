@@ -69,7 +69,8 @@ class MOTSubmission(SubmissionFile):
 
         # convert bbox format to receive the height and width more easily later on
         if s.bbox.format != tvte.BoundingBoxFormat.XYWH:
-            convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+            s.bbox = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+        assert s.bbox.format == tvte.BoundingBoxFormat.XYWH, f"got format: {s.bbox.format}"
         detections = s.split()
         for det in detections:
             tid = det["pred_tid"].item() + 1  # MOT is 1-indexed, but State is 0-indexed

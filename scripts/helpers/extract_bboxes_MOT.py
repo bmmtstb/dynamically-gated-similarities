@@ -18,7 +18,7 @@ from dgs.utils.types import Config, FilePath
 
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
+SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 IOU_THRESHS: list[float] = [1.0]  # basically deactivate IoU thresh
 
 RCNN_DL_KEYS: list[str] = [

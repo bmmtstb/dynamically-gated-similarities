@@ -27,7 +27,7 @@ iou_validations: Validations = {
 
 
 class ObjectKeypointSimilarity(SimilarityModule):
-    """Compute the object key-point similarity (OKS) between two batches of poses.
+    """Compute the object key-point similarity (OKS) between two batches of poses / States.
 
     Params
     ------
@@ -57,7 +57,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
             "eps", torch.tensor(torch.finfo(self.precision).eps, device=self.device, dtype=self.precision)
         )
         # Set up a transform function to convert the bounding boxes if they have the wrong format
-        self.transform = ConvertBoundingBoxFormat("XYXY")
+        self.transf_bbox_to_xyxy = ConvertBoundingBoxFormat("XYXY")
 
         # Set up softmax function if requested
         self.softmax = nn.Sequential()
@@ -81,7 +81,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
         elif bboxes.format == BoundingBoxFormat.XYWH:
             area = bboxes[:, -2] * bboxes[:, -1]  # w * h
         else:
-            bboxes = self.transform(bboxes)
+            bboxes = self.transf_bbox_to_xyxy(bboxes)
             area = box_area(bboxes).float()
 
         return kps, area
@@ -121,36 +121,39 @@ class ObjectKeypointSimilarity(SimilarityModule):
                 * 2 = labeled but visible
             * :math:`s` the scale of the ground truth object, with :math:`s^2` becoming the object's segmented area
 
-        Fixme: exclude ignore regions from image_shape ?
-
         Args:
-            data: A :class:`State` object containing at least the key points and the bounding box.
-            target: A :class:`State` containing at least the target key points.
+            data: A :class:`State` object containing at least the key points and the bounding box. Shape ``N``.
+            target: A :class:`State` containing at least the target key points. Shape ``T``.
+
+        Returns:
+            A (Float)Tensor of shape ``[N x T]`` with values in ``[0..1]``.
+            If requested, the softmax is computed along the -1 dimension,
+            resulting in probability distributions for each value of the input data.
         """
-        # get predicted key-points as [B1 x J x 2] and bbox area as [B1]
+        # get predicted key-points as [N x J x 2] and bbox area as [N]
         pred_kps, bbox_area = self.get_data(ds=data)
-        # get ground-truth key-points as [B2 x J x 2] and visibility as [B2 x J]
+        # get ground-truth key-points as [T x J x 2] and visibility as [T x J]
         gt_kps, gt_vis = self.get_target(ds=target)
         assert pred_kps.size(-1) == gt_kps.size(-1), "Key-points should have the same number of dimensions"
         # Compute d = Euclidean dist, but don't compute the sqrt, because only d^2 is required.
-        # A little tensor magic, because if B1 != B2 and B1 != 1 and B2 != 1, regular subtraction will fail!
-        # Therefore, modify the tensors to have shape [B1 x J x 2 x 1], [(1 x) J x 2 x B2].
-        # The output has shape [B1 x J x 2 x B2], then square and sum over the number of dimensions (-2).
+        # A little tensor magic, because if N != T and N != 1 and T != 1, regular subtraction will fail!
+        # Therefore, modify the tensors to have shape [N x J x 2 x 1], [(1 x) J x 2 x T].
+        # The output has shape [N x J x 2 x T], then square and sum over the number of dimensions (-2).
         d2 = torch.sum(
             torch.sub(pred_kps.unsqueeze(-1), gt_kps.permute(1, 2, 0)).square(),
             dim=-2,
-        )  # -> [B1 x J x B2]
+        )  # -> [N x J x T]
         # Ground truth scale as bounding box area in relation to the image area it lies within.
         # Keep area s^2, because s is never used.
-        s2 = bbox_area.flatten()  # [B1]
+        s2 = bbox_area.flatten()  # [N]
         # Keypoint similarity for every key-point pair of ground truth and detected.
-        # Use outer product to combine s^2 [B1] with k^2 [J] and add epsilon to make sure to have non-zero values.
+        # Use outer product to combine s^2 [N] with k^2 [J] and add epsilon to make sure to have non-zero values.
         # Again, modify the tensor shapes to match for division.
-        # Shapes: d2 [B1 x J x B2], new_outer [B1 x J x 1]
-        ks = torch.exp(-torch.div(d2, (2 * torch.outer(s2, self.k2) + self.eps).unsqueeze(-1)))  # -> [B1 x J x B2]
+        # Shapes: d2 [N x J x T], new_outer [N x J x 1]
+        ks = torch.exp(-torch.div(d2, (2 * torch.outer(s2, self.k2) + self.eps).unsqueeze(-1)))  # -> [N x J x T]
         # The count of non-zero visibilities in the ground-truth
-        count = torch.count_nonzero(gt_vis, dim=-1)  # [B2]
-        # for every pair in B, sum over all J
+        count = torch.count_nonzero(gt_vis, dim=-1)  # [T]
+        # with ks [N x J x T], sum over all J and divide by the nof visibilities
         return self.softmax(torch.div(torch.where(gt_vis.T, ks, 0).sum(dim=-2), count).nan_to_num_(nan=0.0, posinf=0.0))
 
 
@@ -178,7 +181,7 @@ class IntersectionOverUnion(SimilarityModule):
 
     def get_data(self, ds: State) -> BoundingBoxes:
         """Given a :class:`State` obtain the ground-truth bounding-boxes as
-        :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[B1 x 4]``.
+        :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[N x 4]``.
 
         Notes:
             The box_iou function expects that the bounding boxes are in the 'XYXY' format.
@@ -190,7 +193,7 @@ class IntersectionOverUnion(SimilarityModule):
 
     def get_target(self, ds: State) -> BoundingBoxes:
         """Given a :class:`State` obtain the ground-truth bounding-boxes as
-        :class:`torchvision.tv_etnsors.BoundingBoxes` object of size ``[B2 x 4]``.
+        :class:`torchvision.tv_etnsors.BoundingBoxes` object of size ``[T x 4]``.
 
         Notes:
             The function :func:`box_iou` expects that the bounding boxes are in the 'XYXY' format.
@@ -201,4 +204,15 @@ class IntersectionOverUnion(SimilarityModule):
         return bboxes
 
     def forward(self, data: State, target: State) -> torch.Tensor:
+        """Given two states containing bounding-boxes, compute the intersection over union between each pair.
+
+        Args:
+            data: A :class:`State` object containing the detected bounding-boxes. Size ``N``
+            target: A :class:`State` object containing the target bounding-boxes. Size ``T``
+
+        Returns:
+            A (Float)Tensor of shape ``[N x T]`` with values in ``[0..1]``.
+            If requested, the softmax is computed along the -1 dimension,
+            resulting in probability distributions for each value of the input data.
+        """
         return self.softmax(box_iou(self.get_data(ds=data), self.get_target(ds=target)))
