@@ -59,6 +59,7 @@ submission:
 
     MOT:
         bbox_decimals: 3
+        score_decimals: 3
         seqinfo_key: "Sequence"
 
 # ############## #
