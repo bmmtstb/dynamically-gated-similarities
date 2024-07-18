@@ -129,11 +129,13 @@ class TorchreidVisualSimilarity(SimilarityModule):
 
         Returns:
             A similarity matrix containing values describing the similarity between every current- and target-embedding.
-            The similarity should be (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
+            The similarity is a (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
             If the provided metric does not return a probability distribution,
             you might want to change the metric or set the 'softmax' parameter of this module,
             or within the :class:`DGSModule` if this is a submodule.
             Computing the softmax ensures better / correct behavior when combining this similarity with others.
+            If requested, the softmax is computed along the -1 dimension,
+            resulting in probability distributions for each value of the input data.
         """
         pred_embeds = self.get_data(ds=data)
         targ_embeds = self.get_target(ds=target)

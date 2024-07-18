@@ -186,6 +186,7 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bo
         )
         if save_kps:
             torch.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
+            torch.save(_s.keypoints[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", "_glob.pt"))
 
 
 if __name__ == "__main__":

@@ -114,7 +114,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
         subm_key = "submission_MOT"
         config["test"]["submission"] = [subm_key]
         config[subm_key]["file"] = os.path.abspath(
-            os.path.normpath(f"{os.path.dirname(dataset_path)}./results_{dl_key}_{dgs_key}/{dataset_name}.txt")
+            os.path.normpath(f"{os.path.dirname(dataset_path)}./results_{out_key}_{dgs_key}/{dataset_name}.txt")
         )
 
         if os.path.exists(config[subm_key]["file"]):
@@ -156,6 +156,10 @@ if __name__ == "__main__":
         # IoU, OKS, and visual similarity
         for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities")):
             pbar_key.set_postfix_str(DGS_KEY)
+
+            if DGS_KEY == "oks":
+                # not possible for gt data
+                continue
 
             if "pt21" in DL_KEY:
                 data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["base_path"]) if f.is_file()]
@@ -212,7 +216,7 @@ if __name__ == "__main__":
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}_val",
+                            out_key=f"dgs_Dance_{rcnn_cfg_str}_val",
                             dgs_key=DGS_KEY,
                         )
                     else:

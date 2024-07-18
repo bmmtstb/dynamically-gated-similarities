@@ -24,7 +24,8 @@ from dgs.utils.types import Config, NodePath, Validations
 
 mot_submission_validations: Validations = {
     # optional
-    "bbox_decimals": ["optional", int],
+    "bbox_decimals": ["optional", int, ("gte", 0)],
+    "score_decimals": ["optional", int, ("gte", 0)],
 }
 
 
@@ -37,6 +38,10 @@ class MOTSubmission(SubmissionFile):
     bbox_decimals (int, optional):
         The number of decimals to save for the bbox coordinates.
         Default ``DEF_VAL["submission"]["MOT"]["bbox_decimals"]``.
+    score_decimals (int, optional):
+        The number of decimals to save for the score value.
+        Is only used if the score is present and ``score >= 0``.
+        Default ``DEF_VAL["submission"]["MOT"]["score_decimals"]``.
     """
 
     data: list[tuple[any, ...]]
@@ -52,6 +57,7 @@ class MOTSubmission(SubmissionFile):
         self.data = []
         self.frame_id: int = 1
         self.bbox_decimals: int = self.params.get("bbox_decimals", DEF_VAL["submission"]["MOT"]["bbox_decimals"])
+        self.score_decimals: int = self.params.get("score_decimals", DEF_VAL["submission"]["MOT"]["score_decimals"])
 
     def append(self, s: State, *_args, **_kwargs) -> None:
         """Given a new state containing the detections of one image, append the data to the submission file."""
@@ -69,11 +75,15 @@ class MOTSubmission(SubmissionFile):
 
         # convert bbox format to receive the height and width more easily later on
         if s.bbox.format != tvte.BoundingBoxFormat.XYWH:
-            convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+            s.bbox = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+        assert s.bbox.format == tvte.BoundingBoxFormat.XYWH, f"got format: {s.bbox.format}"
         detections = s.split()
         for det in detections:
             tid = det["pred_tid"].item() + 1  # MOT is 1-indexed, but State is 0-indexed
-            conf = float(det["score"].item()) if "score" in det else 1
+            if "score" in det:
+                conf = f"{round(float(det['score'].item())), self.score_decimals}:.{self.score_decimals}"
+            else:
+                conf = str(1)
             x = det["x"] if "x" in det else -1
             y = det["y"] if "y" in det else -1
             z = det["z"] if "z" in det else -1

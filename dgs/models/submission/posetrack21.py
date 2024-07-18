@@ -120,7 +120,10 @@ class PoseTrack21Submission(SubmissionFile):
 
         # get the annotation data
         anno_data = []
-        bboxes = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+        if s.bbox.format != tvte.BoundingBoxFormat.XYWH:
+            s.bbox = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+        assert s.bbox.format == tvte.BoundingBoxFormat.XYWH, f"got format: {s.bbox.format}"
+
         for i in range(s.B):
             kps = t.cat([s.keypoints[i], s.joint_weight[i]], dim=-1)
             scores: list[float]
@@ -134,7 +137,7 @@ class PoseTrack21Submission(SubmissionFile):
 
             anno_data.append(
                 {
-                    "bboxes": bboxes[i].flatten().tolist(),
+                    "bboxes": s.bbox[i].flatten().tolist(),
                     "keypoints": kps.flatten().tolist(),
                     "scores": scores,
                     "score": (

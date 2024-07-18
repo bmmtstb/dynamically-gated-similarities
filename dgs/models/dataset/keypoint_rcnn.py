@@ -137,7 +137,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         # make sure all images are float
         images = [tvte.Image(to_dtype(img, dtype=t.float32, scale=True)) for img in images]
 
-        # predicts a list of {boxes: XYWH[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
+        # predicts a list of {boxes: XYXY[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
         # every image in images can have multiple predictions
         outputs: list[dict[str, t.Tensor]] = self.model(images)
 

@@ -136,11 +136,14 @@ class TestStateAttributes(unittest.TestCase):
                     ds = State(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
                     setattr(ds, scopes[(i + 1) % 2], DUMMY_KP)
 
-    def test_setting_bbox_fails(self):
+    def test_setting_bbox_exceptions(self):
         ds = State(**DUMMY_DATA)
-        with self.assertRaises(NotImplementedError) as e:
-            ds.bbox = DUMMY_BBOX
-        self.assertTrue("not allowed to change the bounding box of an already" in str(e.exception), msg=e.exception)
+        with self.assertRaises(TypeError) as e:
+            ds.bbox = DUMMY_BBOX_TENSOR
+        self.assertTrue("Expected bounding box, got" in str(e.exception), msg=e.exception)
+        with self.assertRaises(ValueError) as e:
+            ds.bbox = DUMMY_BBOX_BATCH
+        self.assertTrue("Can't switch bbox shape. Expected" in str(e.exception), msg=e.exception)
 
     def test_filepath(self):
         for validate in [True, False]:

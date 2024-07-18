@@ -13,7 +13,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Get coverage for PR
-                uses: orgoro/coverage@v3.1
+                uses: orgoro/coverage@v3.2
                 with:
                     coverageFile: coverage/coverage.xml
                     token: ${{ secrets.GITHUB_TOKEN }}
