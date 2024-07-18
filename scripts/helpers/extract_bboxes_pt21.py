@@ -29,7 +29,7 @@ RCNN_DL_KEYS: list[str] = [
 ]
 
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
+IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 
 # IN images: "./data/PoseTrack21/images/{val|train}/DATASET/*.jpg"
 # OUT predictions: "./data/PoseTrack21/posetrack_data/rcnn_XXX_YYY_{val|train}/DATASET.json"
