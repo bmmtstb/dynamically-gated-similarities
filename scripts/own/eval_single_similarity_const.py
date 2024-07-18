@@ -50,6 +50,7 @@ KEYS: list[str] = [
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 
+
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
 @torch.no_grad()
