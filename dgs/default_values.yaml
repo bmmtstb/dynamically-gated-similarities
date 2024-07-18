@@ -111,6 +111,10 @@ engine:
         show_skeleton: true
         draw_kwargs: {}
 
+    sim:
+        metric_kwargs: {}
+        image_key: "image_crop"
+
 similarity:
     torchreid:
         softmax: false

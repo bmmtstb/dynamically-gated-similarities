@@ -8,9 +8,8 @@ Notes:
 import time
 from datetime import timedelta
 
-import torch
-from torch import nn
-from torch.utils.data import DataLoader as TorchDataLoader
+import torch as t
+from torch.utils.data import DataLoader as TDataLoader
 from tqdm import tqdm
 
 from dgs.models.engine.engine import EngineModule
@@ -20,7 +19,7 @@ from dgs.models.similarity.torchreid import TorchreidVisualSimilarity
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
-from dgs.utils.types import Config, Validations
+from dgs.utils.types import Config, Metric, Validations
 
 train_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
@@ -97,21 +96,21 @@ class VisualSimilarityEngine(EngineModule):
     # The heart of the project might get a little larger...
     # pylint: disable=too-many-arguments
 
-    val_dl: TorchDataLoader
+    val_dl: TDataLoader
     """The torch DataLoader containing the validation (query) data."""
 
     model: TorchreidVisualSimilarity
 
-    metric: nn.Module
+    metric: Metric
     """A metric function used to compute the embedding distance."""
 
     def __init__(
         self,
         config: Config,
         model: TorchreidVisualSimilarity,
-        test_loader: TorchDataLoader,
-        val_loader: TorchDataLoader,
-        train_loader: TorchDataLoader = None,
+        test_loader: TDataLoader,
+        val_loader: TDataLoader,
+        train_loader: TDataLoader = None,
         **kwargs,
     ):
         super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader, **kwargs)
@@ -125,7 +124,7 @@ class VisualSimilarityEngine(EngineModule):
             **self.params_test.get("metric_kwargs", DEF_VAL["engine"]["visual"]["metric_kwargs"])
         )
 
-        self.image_key: str = self.params.get("image_key", DEF_VAL["engine"]["visual"]["image_key"])
+        self.image_key: str = self.params_test.get("image_key", DEF_VAL["engine"]["visual"]["image_key"])
 
         if self.is_training:
             self.validate_params(train_validations, attrib_name="params_train")
@@ -134,16 +133,16 @@ class VisualSimilarityEngine(EngineModule):
 
             self.topk_acc: list[int] = self.params_train.get("topk_acc", DEF_VAL["engine"]["visual"]["topk_acc"])
 
-    def get_target(self, ds: State) -> torch.Tensor:
+    def get_target(self, ds: State) -> t.Tensor:
         """Get the target pIDs from the data."""
         return ds["class_id"].long()
 
-    def get_data(self, ds: State) -> torch.Tensor:
-        """Get the image crop from the data."""
+    def get_data(self, ds: State) -> t.Tensor:
+        """Get the image crop or other requested image from the state."""
         return ds[self.image_key]
 
     @enable_keyboard_interrupt
-    def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:
+    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:
 
         target_ids = self.get_target(data)
 
@@ -161,11 +160,9 @@ class VisualSimilarityEngine(EngineModule):
 
         return loss
 
-    @torch.no_grad()
+    @t.no_grad()
     @enable_keyboard_interrupt
-    def _extract_data(
-        self, dl: TorchDataLoader, desc: str, write_embeds: bool = False
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def _extract_data(self, dl: TDataLoader, desc: str, write_embeds: bool = False) -> tuple[t.Tensor, t.Tensor]:
         """Given a dataloader, extract the embeddings describing the people and the target pIDs using the model.
         Additionally, compute the accuracy and send the embeddings to the writer.
 
@@ -180,9 +177,9 @@ class VisualSimilarityEngine(EngineModule):
             embeddings, target_ids
         """
 
-        embed_l: list[torch.Tensor] = []
-        t_ids_l: list[torch.Tensor] = []
-        imgs_l: list[torch.Tensor] = []
+        embed_l: list[t.Tensor] = []
+        t_ids_l: list[t.Tensor] = []
+        imgs_l: list[t.Tensor] = []
 
         batch_t: DifferenceTimer = DifferenceTimer()
         batch: State
@@ -216,8 +213,8 @@ class VisualSimilarityEngine(EngineModule):
         del t_id, embed, img_crop
 
         # concatenate the result lists
-        p_embed: torch.Tensor = torch.cat(embed_l)  # 2D gt embeddings  [N, E]
-        t_ids: torch.Tensor = torch.cat(t_ids_l)  # 1D gt person labels [N]
+        p_embed: t.Tensor = t.cat(embed_l)  # 2D gt embeddings  [N, E]
+        t_ids: t.Tensor = t.cat(t_ids_l)  # 1D gt person labels [N]
         N: int = len(t_ids)
 
         assert len(t_ids) == len(p_embed), f"tids: {len(t_ids)}, embed: {len(p_embed)}"
@@ -234,12 +231,12 @@ class VisualSimilarityEngine(EngineModule):
             self.writer.add_embedding(
                 mat=p_embed[: min(512, N), :],
                 metadata=t_ids[: min(512, N)].tolist(),
-                label_img=torch.cat(imgs_l)[: min(512, N)] if imgs_l else None,  # 4D images [N x C x h x w]
+                label_img=t.cat(imgs_l)[: min(512, N)] if imgs_l else None,  # 4D images [N x C x h x w]
                 tag=f"Test/{desc}_embeds_{self.curr_epoch}",
             )
 
-        assert isinstance(p_embed, torch.Tensor), f"p_embed is {p_embed}"
-        assert isinstance(t_ids, torch.Tensor), f"t_ids is {t_ids}"
+        assert isinstance(p_embed, t.Tensor), f"p_embed is {p_embed}"
+        assert isinstance(t_ids, t.Tensor), f"t_ids is {t_ids}"
 
         return p_embed, t_ids
 
@@ -297,7 +294,7 @@ class VisualSimilarityEngine(EngineModule):
 
         return results
 
-    def predict(self) -> torch.Tensor:
+    def predict(self) -> t.Tensor:
         """Predict the visual embeddings for the test data.
 
         Notes:
@@ -317,7 +314,7 @@ class VisualSimilarityEngine(EngineModule):
             desc="Predict",
             write_embeds=self.params_test.get("write_embeds", DEF_VAL["engine"]["visual"]["write_embeds"])[0],
         )
-        self.logger.info(f"Test time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
+        self.logger.info(f"Predict time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
         self.logger.info(f"#### Prediction of {self.name} complete ####")
 
         return embeds
