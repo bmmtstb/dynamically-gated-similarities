@@ -11,7 +11,7 @@ from collections import OrderedDict
 from functools import partial
 from typing import TypeVar, Union
 
-import torch
+import torch as t
 from torch import nn, optim
 from torch.nn import Module as TorchModule
 
@@ -95,7 +95,7 @@ def save_checkpoint(
     # save
     epoch = int(state["epoch"])
     fpath = os.path.join(save_dir, f"epoch-{epoch:0>3}.pth")
-    torch.save(state, fpath)
+    t.save(state, fpath)
     if verbose:
         print(f"Checkpoint saved to '{fpath}'")
     if is_best:
@@ -126,13 +126,13 @@ def load_checkpoint(fpath) -> dict:
     fpath = os.path.abspath(os.path.expanduser(fpath))
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"File is not found at '{fpath}'")
-    map_location = None if torch.cuda.is_available() else "cpu"
+    map_location = None if t.cuda.is_available() else "cpu"
     try:
-        checkpoint = torch.load(fpath, map_location=map_location)
+        checkpoint = t.load(fpath, map_location=map_location)
     except UnicodeDecodeError:
         pickle.load = partial(pickle.load, encoding="latin1")
         pickle.Unpickler = partial(pickle.Unpickler, encoding="latin1")
-        checkpoint = torch.load(fpath, pickle_module=pickle, map_location=map_location)
+        checkpoint = t.load(fpath, pickle_module=pickle, map_location=map_location)
     except Exception:
         print(f"Unable to load checkpoint from '{fpath}'")
         raise
@@ -517,13 +517,13 @@ def torch_memory_analysis(
         """The decorator."""
         try:
             # start memory recording
-            torch.cuda.memory._record_memory_history(max_entries=max_events)
+            t.cuda.memory._record_memory_history(max_entries=max_events)
             # call original function
             f(*args, **kwargs)
         finally:
-            torch.cuda.memory._dump_snapshot(file_name)
+            t.cuda.memory._dump_snapshot(file_name)
             # stop recording memory
-            torch.cuda.memory._record_memory_history(enabled=None)
+            t.cuda.memory._record_memory_history(enabled=None)
             print(f"saved torch memory snapshot to: '{file_name}'")
 
     return decorator

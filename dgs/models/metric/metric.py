@@ -4,11 +4,11 @@ Methods for handling the computation of distances and other metrics.
 
 import warnings
 
-import torch
+import torch as t
 from torch import nn
 from torch.linalg import vector_norm
 from torch.nn import PairwiseDistance
-from torchvision import tv_tensors as tv_te
+from torchvision import tv_tensors as tvte
 from torchvision.ops import box_iou
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 
@@ -32,9 +32,7 @@ with warnings.catch_warnings():
         )
 
 
-def compute_cmc(
-    distmat: torch.Tensor, query_pids: torch.Tensor, gallery_pids: torch.Tensor, ranks: list[int]
-) -> dict[int, float]:
+def compute_cmc(distmat: t.Tensor, query_pids: t.Tensor, gallery_pids: t.Tensor, ranks: list[int]) -> dict[int, float]:
     r"""Compute the cumulative matching characteristics metric.
     It is expected that the distmat has lower values when the predictions are close.
 
@@ -84,11 +82,11 @@ def compute_cmc(
     gallery_pids = gallery_pids.squeeze().long()
 
     # sort by distance, lowest to highest
-    indices = torch.argsort(distmat, dim=1)  # [n_query x n_gallery]
+    indices = t.argsort(distmat, dim=1)  # [n_query x n_gallery]
     # with predictions[indices] := sorted predictions
     # obtain a BoolTensor [n_query x max(ranks)] containing whether the r most probable classes equal the query
     most_prob = gallery_pids[indices][:, : min(max(ranks), n_gallery)]
-    matches: torch.Tensor = torch.eq(most_prob, query_pids).bool()
+    matches: t.Tensor = t.eq(most_prob, query_pids).bool()
 
     for rank in ranks:
         orig_rank = rank
@@ -99,13 +97,13 @@ def compute_cmc(
             )
             rank = n_gallery
 
-        cmc = torch.any(matches[:, :rank], dim=1).sum()
+        cmc = t.any(matches[:, :rank], dim=1).sum()
 
         cmcs[orig_rank] = float(cmc.float().item()) / float(n_query)
     return cmcs
 
 
-def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[int] = None) -> dict[int, float]:
+def compute_accuracy(prediction: t.Tensor, target: t.Tensor, topk: list[int] = None) -> dict[int, float]:
     """Compute the accuracies of a predictor over a tuple of ``k``-top predictions.
     Will use the k-biggest values in prediction.
 
@@ -128,7 +126,7 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[
     ids = ids.long()
     target = target.long()
 
-    correct: torch.Tensor = ids.eq(target.view(-1, 1)).bool()  # [B x max(topk)]
+    correct: t.Tensor = ids.eq(target.view(-1, 1)).bool()  # [B x max(topk)]
     del ids, target
 
     res: dict[int, float] = {}
@@ -139,7 +137,42 @@ def compute_accuracy(prediction: torch.Tensor, target: torch.Tensor, topk: list[
     return res
 
 
-def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: int, eps: float) -> torch.Tensor:
+def compute_near_k_accuracy(a_pred: t.Tensor, a_targ: t.Tensor, ks: list[int]) -> dict[int, float]:
+    r"""Compute the number of correct predictions within a margin of k percent for all k.
+
+    Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
+    matches the number of correct predictions (:math:`\alpha_{\mathrm{correct}}`)
+    divided by the total number of predictions (:math:`N`).
+    With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{correct}}}{N}`
+    :math`\alpha{\mathrm{pred}}` is counted as correct if
+    :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
+
+    Args:
+        a_pred: The predicted alpha probabilities as tensor of shape ``[N (x 1)]``.
+        a_targ: The correct / target alpha probabilities as tensor of shape ``[N (x 1)]``.
+        ks: A list of length ``K`` containing percentage values.
+            Used to check whether the accuracies lie within a margin of k percent.
+
+    Returns:
+        A dict mapping the integer value ``k`` to the respective accuracy.
+    """
+    N = len(a_pred)
+    if len(a_targ) != N:
+        raise ValueError(f"alpha_pred and alpha_targ must have the same length, got {N} and {len(a_targ)}.")
+    if any(k < 0 for k in ks):
+        raise ValueError(f"ks must be positive, got {ks}.")
+    k_float = t.tensor(ks, dtype=t.float32, device=a_pred.device).reshape(1, -1) / 100.0  # -> [1 x K]
+    # make sure pred and target are 2d
+    if a_pred.ndim == 1:
+        a_pred = a_pred.unsqueeze(-1)  # -> [N x 1]
+    if a_targ.ndim == 1:
+        a_targ = a_targ.unsqueeze(-1)  # -> [N x 1]
+    correct = t.bitwise_and((a_pred - k_float) <= a_targ, a_targ <= (a_pred + k_float + 1e-7)).sum(dim=0)  # -> [N]
+    accuracies: list[float] = (correct / N).tolist()
+    return dict(zip(ks, accuracies))
+
+
+def custom_cosine_similarity(input1: t.Tensor, input2: t.Tensor, dim: int, eps: float) -> t.Tensor:
     """See https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908"""
     # get normalization value
     t1_div = vector_norm(input1, dim=dim, keepdim=True)  # pylint: disable=not-callable
@@ -147,7 +180,7 @@ def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: in
 
     t1_div = t1_div.clone()
     t2_div = t2_div.clone()
-    with torch.no_grad():
+    with t.no_grad():
         t1_div.clamp_(eps)
         t2_div.clamp_(eps)
 
@@ -155,10 +188,10 @@ def custom_cosine_similarity(input1: torch.Tensor, input2: torch.Tensor, dim: in
     t1_norm = input1 / t1_div
     t2_norm = input2 / t2_div
 
-    return torch.mm(t1_norm, t2_norm.T)
+    return t.mm(t1_norm, t2_norm.T)
 
 
-def _validate_metric_inputs(input1: torch.Tensor, input2: torch.Tensor) -> None:
+def _validate_metric_inputs(input1: t.Tensor, input2: t.Tensor) -> None:
     """Metrics should be handed two tensors where the second dimension matches.
 
     Raises:
@@ -175,7 +208,7 @@ class EuclideanSquareMetric(Metric):
     """Class to compute the squared Euclidean distance between two matrices."""
 
     @staticmethod
-    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """Compute squared Euclidean distance between two matrices with a matching second dimension.
 
         Args:
@@ -187,14 +220,14 @@ class EuclideanSquareMetric(Metric):
         """
         _validate_metric_inputs(input1, input2)
 
-        return torch.cdist(input1, input2, p=2).square()
+        return t.cdist(input1, input2, p=2).square()
 
 
 class EuclideanDistanceMetric(Metric):
     """Class to compute the Euclidean distance between two matrices."""
 
     @staticmethod
-    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """Compute Euclidean distance between two matrices with a matching second dimension.
 
         Args:
@@ -206,7 +239,7 @@ class EuclideanDistanceMetric(Metric):
         """
         _validate_metric_inputs(input1, input2)
 
-        return torch.cdist(input1, input2, p=2)
+        return t.cdist(input1, input2, p=2)
 
 
 class CosineSimilarityMetric(Metric):
@@ -225,7 +258,7 @@ class CosineSimilarityMetric(Metric):
         self.eps = kwargs.pop("eps", 1e-5)
         super().__init__(*args, **kwargs)
 
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """Due to the sheer size of the |PT21| dataset,
         :func:`~torch.nn.CosineSimilarity` does not work due to memory issues.
         See `this issue <https://github.com/pytorch/pytorch/issues/104564#issuecomment-1625348908>_` for more details.
@@ -263,7 +296,7 @@ class CosineDistanceMetric(Metric):
         self.eps = kwargs.pop("eps", 1e-5)
         super().__init__(*args, **kwargs)
 
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """
 
         Args:
@@ -276,7 +309,7 @@ class CosineDistanceMetric(Metric):
         _validate_metric_inputs(input1, input2)
 
         cs = custom_cosine_similarity(input1, input2, self.dim, self.eps)
-        return torch.ones_like(cs) - cs
+        return t.ones_like(cs) - cs
 
 
 class PairwiseDistanceMetric(Metric):
@@ -292,7 +325,7 @@ class PairwiseDistanceMetric(Metric):
         self.dist = PairwiseDistance(p=p, eps=eps, keepdim=keepdim)
         self.register_module("PairwiseDistanceModule", self.dist)
 
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """Compute the pairwise distance between the two inputs, where the second dimension has to match.
 
         Args:
@@ -318,7 +351,7 @@ class NegativeSoftmaxEuclideanDistance(Metric):
         self.dist = EuclideanDistanceMetric()
         self.softmax = nn.Softmax(dim=softmax_dim)
 
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """First compute the Euclidean distance between the two inputs, of which the second dimension has to match.
         Then compute the softmax of the negative distance along the second dimension.
 
@@ -333,7 +366,7 @@ class NegativeSoftmaxEuclideanDistance(Metric):
         """
         _validate_metric_inputs(input1, input2)
         d = self.dist(input1, input2)
-        return self.softmax(torch.neg(d))
+        return self.softmax(t.neg(d))
 
 
 class NegativeSoftmaxEuclideanSquaredDistance(Metric):
@@ -348,7 +381,7 @@ class NegativeSoftmaxEuclideanSquaredDistance(Metric):
         self.dist = EuclideanSquareMetric()
         self.softmax = nn.Softmax(dim=softmax_dim)
 
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """First compute the squared Euclidean distance between the two inputs.
         The second dimension of the inputs has to match.
         Then compute the softmax of the negative distance along the second dimension.
@@ -364,7 +397,7 @@ class NegativeSoftmaxEuclideanSquaredDistance(Metric):
         """
         _validate_metric_inputs(input1, input2)
         d = self.dist(input1, input2)
-        return self.softmax(torch.neg(d))
+        return self.softmax(t.neg(d))
 
 
 class IOUDistance(Metric):
@@ -378,7 +411,7 @@ class IOUDistance(Metric):
 
         self.transform = ConvertBoundingBoxFormat("XYXY")
 
-    def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """Compute the intersection-over-union between two input tensors.
 
         The inputs should be :class:`tv_tensors.BoundingBoxes`.
@@ -394,28 +427,28 @@ class IOUDistance(Metric):
         Raises:
             TypeError: If input1 or input2 is not a :class:`tv_tensors.BoundingBoxes` object.
         """
-        if isinstance(input1, tv_te.BoundingBoxes):
-            if input1.format != tv_te.BoundingBoxFormat.XYXY:
+        if isinstance(input1, tvte.BoundingBoxes):
+            if input1.format != tvte.BoundingBoxFormat.XYXY:
                 input1 = self.transform(input1)
         else:
             raise TypeError(f"input1 should be an instance of tv_tensors.BoundingBoxes, but got {type(input1)}.")
 
-        if isinstance(input2, tv_te.BoundingBoxes):
-            if input2.format != tv_te.BoundingBoxFormat.XYXY:
+        if isinstance(input2, tvte.BoundingBoxes):
+            if input2.format != tvte.BoundingBoxFormat.XYXY:
                 input2 = self.transform(input2)
         else:
             raise TypeError(f"input2 should be an instance of tv_tensors.BoundingBoxes, but got {type(input2)}.")
 
-        iou: torch.Tensor = box_iou(input1, input2)
+        iou: t.Tensor = box_iou(input1, input2)
 
-        return torch.ones_like(iou) - iou
+        return t.ones_like(iou) - iou
 
 
 class TorchreidEuclideanSquaredDistance(Metric):
     """Call TorchReid's version of the Euclidean squared distance."""
 
     @staticmethod
-    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         _validate_metric_inputs(input1, input2)
         return TorchreidESD(input1=input1, input2=input2)
 
@@ -424,6 +457,6 @@ class TorchreidCosineDistance(Metric):
     """Call TorchReid's version of the cosine distance."""
 
     @staticmethod
-    def forward(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
+    def forward(input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         _validate_metric_inputs(input1, input2)
         return TorchreidCD(input1=input1, input2=input2)

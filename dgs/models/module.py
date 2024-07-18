@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from datetime import date
 from functools import wraps
 
-import torch
+import torch as t
 from torch.nn import Module
 
 from dgs.utils.config import DEF_VAL, get_sub_config
@@ -20,7 +20,7 @@ from dgs.utils.types import Config, FilePath, NodePath, Validations
 from dgs.utils.validation import validate_value
 
 module_validations: Validations = {
-    "device": [("any", [("in", ["cuda", "cpu"]), ("instance", torch.device), ("startswith", "cuda:")])],
+    "device": [("any", [("in", ["cuda", "cpu"]), ("instance", t.device), ("startswith", "cuda:")])],
     "is_training": [bool],
     "name": [str, ("longer", 2)],
     # optional
@@ -28,7 +28,7 @@ module_validations: Validations = {
     "description": ["optional", str],
     "log_dir": ["optional", str],
     "log_dir_add_date": ["optional", bool],
-    "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), torch.dtype])],
+    "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), t.dtype])],
 }
 
 
@@ -282,9 +282,9 @@ class BaseModule(ABC):
         return self.config["is_training"]
 
     @property
-    def device(self) -> torch.device:
+    def device(self) -> t.device:
         """Get the device of this module."""
-        return torch.device(self.config["device"])
+        return t.device(self.config["device"])
 
     @property
     def name(self) -> str:
@@ -297,15 +297,15 @@ class BaseModule(ABC):
         return str(self.config["name"]).replace(" ", "-").replace(".", "_")
 
     @property
-    def precision(self) -> torch.dtype:
+    def precision(self) -> t.dtype:
         """Get the (floating point) precision used in multiple parts of this module."""
         precision = self.config.get("precision", DEF_VAL["base"]["precision"])
-        if isinstance(precision, torch.dtype):
+        if isinstance(precision, t.dtype):
             return precision
         if precision == int:
-            return torch.int
+            return t.int
         if precision == float:
-            return torch.float
+            return t.float
         if isinstance(precision, str):
             return PRECISION_MAP[precision]
         raise NotImplementedError
@@ -339,4 +339,4 @@ class BaseModule(ABC):
         for handler in self.logger.handlers:
             self.logger.removeHandler(handler)
         del self.logger
-        torch.cuda.empty_cache()
+        t.cuda.empty_cache()

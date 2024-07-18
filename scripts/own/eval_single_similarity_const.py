@@ -12,7 +12,7 @@ and additionally over the PT21 evaluation set but using the RCNN-dataloader to o
 import os
 from glob import glob
 
-import torch
+import torch as t
 from tqdm import tqdm
 
 from dgs.models.dgs import DGSModule
@@ -55,7 +55,7 @@ SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
-@torch.no_grad()
+@t.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
     crop_h, crop_w = config[dl_key]["crop_size"]
@@ -96,7 +96,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
 
 
 # @torch_memory_analysis
-@torch.no_grad()
+@t.no_grad()
 def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
 
@@ -131,7 +131,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
         config["log_dir"] = orig_log_dir
 
 
-@torch.no_grad()
+@t.no_grad()
 def run(config: Config, dl_key: str, dgs_key: str) -> None:
     """Main function to run the code after all the parameters are set."""
     with HidePrint():
@@ -151,7 +151,7 @@ def run(config: Config, dl_key: str, dgs_key: str) -> None:
 
 
 if __name__ == "__main__":
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     cfg = load_config(CONFIG_FILE)
     for DL_KEY in DL_KEYS:

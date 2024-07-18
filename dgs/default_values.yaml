@@ -114,6 +114,9 @@ engine:
     sim:
         metric_kwargs: {}
         image_key: "image_crop"
+        acc_k_train: [ 1, 5, 10, 20, 50 ]
+        acc_k_test: [ 1, 5, 10, 20, 50 ]
+
 
 similarity:
     torchreid:

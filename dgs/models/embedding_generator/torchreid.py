@@ -4,7 +4,7 @@ Use a model out of the torchreid package as an embedding generator.
 
 import warnings
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
@@ -124,7 +124,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         # send model to the device
         return self.configure_torch_module(m, train=False)
 
-    def predict_embeddings(self, data: torch.Tensor) -> torch.Tensor:
+    def predict_embeddings(self, data: t.Tensor) -> t.Tensor:
         """Predict embeddings given some input.
 
         Args:
@@ -135,9 +135,9 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             Shape: ``[B x E]``
         """
 
-        def _get_torchreid_embeds(r) -> torch.Tensor:
+        def _get_torchreid_embeds(r) -> t.Tensor:
             """Torchreid returns embeddings during eval and ids during training."""
-            if isinstance(r, torch.Tensor):
+            if isinstance(r, t.Tensor):
                 # During model building, triplet loss was forced for torchreid models.
                 # Therefore, only one return value means that only the embeddings are returned
                 return r
@@ -149,7 +149,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         results = self.model(data)
         return _get_torchreid_embeds(results)
 
-    def predict_ids(self, data: torch.Tensor) -> torch.Tensor:
+    def predict_ids(self, data: t.Tensor) -> t.Tensor:
         """Predict class IDs given some input.
 
         Args:
@@ -160,9 +160,9 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             Shape: ``[B x num_classes]``
         """
 
-        def _get_torchreid_ids(r) -> torch.Tensor:
+        def _get_torchreid_ids(r) -> t.Tensor:
             """Torchreid returns embeddings during eval and ids during training."""
-            if isinstance(r, torch.Tensor):
+            if isinstance(r, t.Tensor):
                 # During model building, triplet loss was forced for torchreid models.
                 # Therefore, only one return value means that only the embeddings are returned
                 return self.model.classifier(r)
@@ -174,7 +174,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         results = self.model(data)
         return _get_torchreid_ids(results)
 
-    def forward(self, ds: State) -> torch.Tensor:
+    def forward(self, ds: State) -> t.Tensor:
         """Predict embeddings given some input.
 
         Notes:

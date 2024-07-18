@@ -4,7 +4,7 @@ Base module for models used for embedding generation.
 
 from abc import abstractmethod
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.module import BaseModule
@@ -66,12 +66,12 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
         self.nof_classes = self.params["nof_classes"]
         self.embedding_key: str = self.params.get("embedding_key", DEF_VAL["embed_gen"]["embedding_key"])
 
-    def __call__(self, *args, **kwargs) -> torch.Tensor:  # pragma: no cover
+    def __call__(self, *args, **kwargs) -> t.Tensor:  # pragma: no cover
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, ds: State) -> torch.Tensor:
+    def forward(self, ds: State) -> t.Tensor:
         """Predict next outputs, given any data in a State object, using this Re-ID model.
 
         Returns:

@@ -7,7 +7,7 @@ TorchreidPoseDataset and TorchreidPoseDataManager are custom models for torchrei
 import warnings
 from typing import Callable, Type, Union
 
-import torch
+import torch as t
 import torchvision.transforms.v2 as tvt
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
@@ -43,7 +43,7 @@ class TorchreidPoseDataset(TorchreidDataset):
 
     def __getitem__(self, index: int) -> dict[str, any]:
         pose_path, pid, camid, dsetid = self.data[index]
-        pose = torch.load(pose_path)
+        pose = t.load(pose_path)
         return {"img": pose, "pid": pid, "camid": camid, "dsetid": dsetid}
 
     def show_summary(self) -> None:
@@ -222,7 +222,7 @@ class TorchreidPoseDataManager(TorchreidDM):
                 root=self.root, mode="gallery", transform=self.transform_te, **self.params
             )
             # build gallery loader
-            test_loader[dataset]["gallery"] = torch.utils.data.DataLoader(
+            test_loader[dataset]["gallery"] = t.utils.data.DataLoader(
                 gallery_set,
                 batch_size=self.params["batch_size_test"],
                 shuffle=False,
@@ -292,13 +292,13 @@ class TorchreidPoseDataManager(TorchreidDM):
             ValueError: If ``transforms`` is an invalid object or contains invalid transform names.
         """
 
-        def random_move(x: torch.Tensor) -> torch.Tensor:
+        def random_move(x: t.Tensor) -> t.Tensor:
             """Move a torch tensor by a little bit in random directions using a normal distribution ~N(0,1)."""
-            return x + torch.randn_like(x)
+            return x + t.randn_like(x)
 
-        def random_resize(x: torch.Tensor) -> torch.Tensor:
+        def random_resize(x: t.Tensor) -> t.Tensor:
             """Resize the torch tensor by a little bit, up and down. Ranges from 0.95 to 1.05."""
-            return x * torch.tensor([1.0]).uniform_(0.95, 1.05)
+            return x * t.tensor([1.0]).uniform_(0.95, 1.05)
 
         if transforms is None:
             transforms = []
@@ -308,7 +308,7 @@ class TorchreidPoseDataManager(TorchreidDM):
         if not isinstance(transforms, list):
             raise ValueError(f"Transforms must be a list of strings, but found to be {type(transforms)}")
 
-        train_transforms = [tvt.ToTensor(), tvt.ToDtype(dtype=torch.float32)]
+        train_transforms = [tvt.ToTensor(), tvt.ToDtype(dtype=t.float32)]
 
         for transform in transforms:
             if transform == "random_flip":
@@ -340,6 +340,6 @@ class TorchreidPoseDataManager(TorchreidDM):
             else:
                 raise ValueError(f"Unknown transform: {transform}")
 
-        test_transforms = [tvt.ToTensor(), tvt.ToDtype(dtype=torch.float32)]
+        test_transforms = [tvt.ToTensor(), tvt.ToDtype(dtype=t.float32)]
 
         return tvt.Compose(train_transforms), tvt.Compose(test_transforms)

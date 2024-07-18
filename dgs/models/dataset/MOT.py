@@ -5,7 +5,7 @@ import os.path
 import re
 from glob import glob
 
-import torch
+import torch as t
 import torchvision.tv_tensors as tvte
 
 from dgs.models.dataset.dataset import ImageDataset
@@ -178,7 +178,7 @@ def load_MOT_file(
             continue
 
         bboxes = tvte.BoundingBoxes(
-            [anno[2:6] for anno in annos], format="XYWH", canvas_size=img_shape, dtype=torch.float32, device=device
+            [anno[2:6] for anno in annos], format="XYWH", canvas_size=img_shape, dtype=t.float32, device=device
         )
         crop_paths = tuple(os.path.join(base_crop_path, f"{frame_id}_{anno[1]}{crop_info['imExt']}") for anno in annos)
         states.append(
@@ -186,7 +186,7 @@ def load_MOT_file(
                 bbox=bboxes,
                 filepath=file_paths,
                 crop_path=crop_paths,
-                person_id=torch.tensor([anno[1] for anno in annos], device=device, dtype=torch.long),
+                person_id=t.tensor([anno[1] for anno in annos], device=device, dtype=t.long),
                 frame_id=[frame_id] * len(annos),
                 validate=False,
             )

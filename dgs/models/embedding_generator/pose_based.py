@@ -4,9 +4,9 @@ Different pose based embedding generators.
 
 from typing import Union
 
-import torch
+import torch as t
 from torch import nn
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
@@ -23,7 +23,7 @@ kpcpbeg_validations: Validations = {
             "any",
             [
                 ("in", ["XYXY", "XYWH", "CXCYWH"]),
-                ("instance", tv_tensors.BoundingBoxFormat),
+                ("instance", tvte.BoundingBoxFormat),
             ],
         ),
     ],
@@ -41,7 +41,7 @@ lpbeg_validations: Validations = {
             "any",
             [
                 ("in", ["XYXY", "XYWH", "CXCYWH"]),
-                ("instance", tv_tensors.BoundingBoxFormat),
+                ("instance", tvte.BoundingBoxFormat),
             ],
         ),
     ],
@@ -193,7 +193,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
             nn.Softmax(dim=-1),
         )
 
-    def forward(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
         """Forward pass of the custom key point convolution model.
 
         Params:
@@ -222,7 +222,7 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
 
         # Concatenate [B x j] and [B x 4] along the last dim.
         # Then use that as input into the second group of fc layers to obtain the embeddings.
-        embeddings = self.fc2(torch.cat([x, bboxes], dim=-1))
+        embeddings = self.fc2(t.cat([x, bboxes], dim=-1))
         # Obtain the class (id) probabilities by calling the classifier on the embeddings.
         ids = self.classifier(embeddings)
 
@@ -319,7 +319,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
             )
         )
 
-    def forward(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
         """Forward pass of the linear pose-based embedding generator.
 
         Params:
@@ -340,7 +340,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         bboxes = ds.bbox
         # convert bboxes to the specified target type
         bboxes = self.bbox_converter(bboxes)
-        data = torch.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
+        data = t.cat([kp.flatten(start_dim=1), bboxes.data.flatten(start_dim=1)], dim=-1)
 
         embeddings = self.model(data)
 

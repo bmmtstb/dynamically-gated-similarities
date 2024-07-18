@@ -4,7 +4,7 @@ definition of regularly used types
 
 from typing import Callable, Union
 
-import torch
+import torch as t
 from torch import nn
 from torch.optim.lr_scheduler import LRScheduler
 from torch.types import Device as TorchDevice
@@ -29,7 +29,7 @@ Validations = dict[str, list[Union[str, type, tuple[str, any], Validator]]]
 """A dictionary of validations, mapping a value of a given Config to some sort of validation."""
 
 # Data Handling
-DataGetter = Callable[["State"], tuple[Union[torch.Tensor, any], ...]]
+DataGetter = Callable[["State"], tuple[Union[t.Tensor, any], ...]]
 """Function to extract specific data from a :class:`State`."""
 
 # Modules
@@ -49,13 +49,13 @@ Device = Union[TorchDevice, str]
 r"""A Torch device, either descriptive string (e.g. 'cpu') or a regular :class:`torch.device` object."""
 
 # Images
-Video = Union[tv_Video, torch.Tensor]
+Video = Union[tv_Video, t.Tensor]
 """A tensor based video, either torchvision or regular tensor. Shape ``[B x C x H x W]``."""
-Image = Union[tv_Image, torch.Tensor]
+Image = Union[tv_Image, t.Tensor]
 """A tensor based image with shape ``[B x C x H x W]``."""
 Images = list[Image]
 """A list with length ``B``, containing Images with shape ``[1 x C x H x W]``."""
-Heatmap = Union[tv_Mask, torch.Tensor]
+Heatmap = Union[tv_Mask, t.Tensor]
 """Heatmap as mask with shape ``[(B x) J x h x w]``."""
 ImgShape = tuple[int, int]
 """Shape of an image as tuple like ``(height, width)``."""

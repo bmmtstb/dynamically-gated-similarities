@@ -5,7 +5,7 @@ Evaluate the DGS Tracker.
 import time
 from datetime import timedelta
 
-import torch
+import torch as t
 
 from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
@@ -17,7 +17,7 @@ CONFIG_FILE = "./configs/eval_dgs.yaml"
 if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
     config = load_config(CONFIG_FILE)
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     # validation dataset
     ds_start_time = time.time()

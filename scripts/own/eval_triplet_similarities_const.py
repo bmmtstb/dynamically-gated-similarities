@@ -17,7 +17,7 @@ and additionally over the PT21 evaluation set but using the RCNN-dataloader to o
 
 import os
 
-import torch
+import torch as t
 from tqdm import tqdm
 
 from dgs.models.dgs import DGSModule
@@ -49,7 +49,7 @@ def get_combinations() -> list[list[int]]:
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
-@torch.no_grad()
+@t.no_grad()
 def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
     """Main function to run the code."""
 
@@ -109,7 +109,7 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 
 
 if __name__ == "__main__":
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     print("Evaluating on the PT21 ground-truth evaluation dataset")
     DL_KEY = "dgs_pt21_gt"

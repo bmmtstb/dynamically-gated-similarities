@@ -7,11 +7,11 @@ import os
 from abc import ABC, abstractmethod
 from typing import Union
 
-import torch
+import torch as t
 import torchvision
 import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TorchDataset
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
 from torchvision.transforms.v2.functional import to_dtype
 
@@ -220,8 +220,8 @@ class BaseDataset(BaseModule, TorchDataset):
 
         # State has length zero and image and local key points are just placeholders
         if len(ds) == 0:
-            ds.image_crop = tv_tensors.Image(torch.empty((0, 3, 1, 1)), device=ds.device)
-            ds.keypoints_local = torch.empty(
+            ds.image_crop = tvte.Image(t.empty((0, 3, 1, 1)), device=ds.device)
+            ds.keypoints_local = t.empty(
                 (0, ds.J if "keypoints" in ds else 1, ds.joint_dim if "keypoints" in ds else 2), device=ds.device
             )
             return
@@ -239,7 +239,7 @@ class BaseDataset(BaseModule, TorchDataset):
                     for i in range(len(ds))
                 )
             ds.load_image_crop()
-            ds.keypoints_local = torch.stack([torch.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
+            ds.keypoints_local = t.stack([t.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
                 device=self.device
             )
             return
@@ -255,11 +255,11 @@ class BaseDataset(BaseModule, TorchDataset):
                 force_reshape=True,
                 mode=self.params.get("image_mode", DEF_VAL["images"]["image_mode"]),
                 output_size=self.params.get("image_size", DEF_VAL["images"]["image_size"]),
-                dtype=torch.uint8,
+                dtype=t.uint8,
                 device=ds.device,
             )
         else:
-            ds.image = load_image(ds.filepath, device=ds.device, dtype=torch.uint8)
+            ds.image = load_image(ds.filepath, device=ds.device, dtype=t.uint8)
 
         structured_input = {
             "images": ds.image,
@@ -267,18 +267,16 @@ class BaseDataset(BaseModule, TorchDataset):
             "keypoints": (
                 ds.keypoints
                 if "keypoints" in ds
-                else torch.zeros((ds.bbox.size(0), 1, 2), device=self.device, dtype=torch.float32)
+                else t.zeros((ds.bbox.size(0), 1, 2), device=self.device, dtype=t.float32)
             ),
             "output_size": self.params.get("crop_size", DEF_VAL["images"]["crop_size"]),
             "mode": self.params.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
         }
         new_state = self.transform_crop_resize()(structured_input)
 
-        ds.image_crop = tv_tensors.Image(
-            to_dtype(new_state["image"].to(device=self.device), dtype=torch.uint8, scale=True)
-        )
+        ds.image_crop = tvte.Image(to_dtype(new_state["image"].to(device=self.device), dtype=t.uint8, scale=True))
         if "keypoints" in ds:
-            ds.keypoints_local = new_state["keypoints"].to(dtype=torch.float32, device=self.device)
+            ds.keypoints_local = new_state["keypoints"].to(dtype=t.float32, device=self.device)
             assert "joint_weights" in ds.data, "visibility should be given"
 
     @staticmethod
@@ -304,7 +302,7 @@ class BaseDataset(BaseModule, TorchDataset):
                 CustomResize(),
                 tvt.ClampBoundingBoxes(),  # make sure to keep bboxes in their canvas_size
                 # tvt.SanitizeBoundingBoxes(),  # clean up bboxes if available
-                tvt.ToDtype({tv_tensors.Image: torch.float32, "others": None}, scale=True),
+                tvt.ToDtype({tvte.Image: t.float32, "others": None}, scale=True),
             ]
         )
 
@@ -339,7 +337,7 @@ class BaseDataset(BaseModule, TorchDataset):
         """
         return tvt.Compose(
             [
-                tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
+                tvt.ConvertBoundingBoxFormat(format=tvte.BoundingBoxFormat.XYWH),
                 tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
                 # tvt.SanitizeBoundingBoxes(),  # clean up bboxes
                 CustomCropResize(),  # crop the image at the four corners specified in bboxes
@@ -505,7 +503,7 @@ class VideoDataset(BaseDataset, ABC):
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         self.data.seek(time_s=float(idx) / self.fps)
-        frame = tv_tensors.Image(next(self.data)["data"], device=self.device)
+        frame = tvte.Image(next(self.data)["data"], device=self.device)
         s: State = self.arbitrary_to_ds(a=frame, idx=idx)
         return s
 

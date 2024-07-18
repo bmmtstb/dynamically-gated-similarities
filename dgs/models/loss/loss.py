@@ -2,7 +2,7 @@
 Custom loss functions.
 """
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.utils.config import DEF_VAL
@@ -19,7 +19,7 @@ class CrossEntropyLoss(Loss):
         default_kwargs.update(kwargs)
         self.cross_entropy_loss = nn.CrossEntropyLoss(**default_kwargs)
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: t.Tensor, targets: t.Tensor) -> t.Tensor:
         """Given predictions of shape ``[B x nof_classes]`` and targets of shape ``[B]``
         compute and return the CrossEntropyLoss.
         """

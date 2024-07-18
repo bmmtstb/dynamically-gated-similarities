@@ -2,7 +2,7 @@
 Modules for computing the similarity between two poses.
 """
 
-import torch
+import torch as t
 from torch import nn
 from torchvision.ops import box_area, box_iou
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
@@ -47,15 +47,13 @@ class ObjectKeypointSimilarity(SimilarityModule):
         self.validate_params(oks_validations)
 
         # get sigma
-        sigma: torch.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=self.precision)
+        sigma: t.Tensor = OKS_SIGMAS[self.params["format"]].to(device=self.device, dtype=self.precision)
         # With k = 2 * sigma -> shape [J]
         # We know that k is constant and k^2 is only ever required. Therefore, save it as parameter / buffer.
-        self.register_buffer("k2", torch.square(torch.mul(2, sigma)))
+        self.register_buffer("k2", t.square(t.mul(2, sigma)))
 
         # Create a small value for epsilon to make sure that we do not divide by zero later on.
-        self.register_buffer(
-            "eps", torch.tensor(torch.finfo(self.precision).eps, device=self.device, dtype=self.precision)
-        )
+        self.register_buffer("eps", t.tensor(t.finfo(self.precision).eps, device=self.device, dtype=self.precision))
         # Set up a transform function to convert the bounding boxes if they have the wrong format
         self.transf_bbox_to_xyxy = ConvertBoundingBoxFormat("XYXY")
 
@@ -64,7 +62,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
         if self.params.get("softmax", DEF_VAL["similarity"]["oks"]["softmax"]):
             self.softmax.append(nn.Softmax(dim=-1))
 
-    def get_data(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
+    def get_data(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
         """Given a :class:`State`, compute the detected / predicted key points with shape ``[B1 x J x 2]``
         and the areas of the respective ground-truth bounding-boxes with shape ``[B1]``.
 
@@ -86,16 +84,16 @@ class ObjectKeypointSimilarity(SimilarityModule):
 
         return kps, area
 
-    def get_target(self, ds: State) -> tuple[torch.Tensor, torch.Tensor]:
+    def get_target(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
         """Given a :class:`State` obtain the ground truth key points and the key-point-visibility.
         Both are tensors, the key points are a FloatTensor of shape ``[B2 x J x 2]``
         and the visibility is a BoolTensor of shape ``[B2 x J]``.
         """
         kps = ds.keypoints.float().view(ds.B, -1, 2)
-        vis = ds.cast_joint_weight(dtype=torch.bool).squeeze(-1).view(ds.B, -1)
+        vis = ds.cast_joint_weight(dtype=t.bool).squeeze(-1).view(ds.B, -1)
         return kps, vis
 
-    def forward(self, data: State, target: State) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> t.Tensor:
         r"""Compute the object key-point similarity between a ground truth label and detected key points.
 
         There has to be one key point of the label for any detection. (Batch sizes have to match)
@@ -139,8 +137,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
         # A little tensor magic, because if N != T and N != 1 and T != 1, regular subtraction will fail!
         # Therefore, modify the tensors to have shape [N x J x 2 x 1], [(1 x) J x 2 x T].
         # The output has shape [N x J x 2 x T], then square and sum over the number of dimensions (-2).
-        d2 = torch.sum(
-            torch.sub(pred_kps.unsqueeze(-1), gt_kps.permute(1, 2, 0)).square(),
+        d2 = t.sum(
+            t.sub(pred_kps.unsqueeze(-1), gt_kps.permute(1, 2, 0)).square(),
             dim=-2,
         )  # -> [N x J x T]
         # Ground truth scale as bounding box area in relation to the image area it lies within.
@@ -150,11 +148,11 @@ class ObjectKeypointSimilarity(SimilarityModule):
         # Use outer product to combine s^2 [N] with k^2 [J] and add epsilon to make sure to have non-zero values.
         # Again, modify the tensor shapes to match for division.
         # Shapes: d2 [N x J x T], new_outer [N x J x 1]
-        ks = torch.exp(-torch.div(d2, (2 * torch.outer(s2, self.k2) + self.eps).unsqueeze(-1)))  # -> [N x J x T]
+        ks = t.exp(-t.div(d2, (2 * t.outer(s2, self.k2) + self.eps).unsqueeze(-1)))  # -> [N x J x T]
         # The count of non-zero visibilities in the ground-truth
-        count = torch.count_nonzero(gt_vis, dim=-1)  # [T]
+        count = t.count_nonzero(gt_vis, dim=-1)  # [T]
         # with ks [N x J x T], sum over all J and divide by the nof visibilities
-        return self.softmax(torch.div(torch.where(gt_vis.T, ks, 0).sum(dim=-2), count).nan_to_num_(nan=0.0, posinf=0.0))
+        return self.softmax(t.div(t.where(gt_vis.T, ks, 0).sum(dim=-2), count).nan_to_num_(nan=0.0, posinf=0.0))
 
 
 class IntersectionOverUnion(SimilarityModule):
@@ -203,7 +201,7 @@ class IntersectionOverUnion(SimilarityModule):
             bboxes = self.transform(bboxes)
         return bboxes
 
-    def forward(self, data: State, target: State) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> t.Tensor:
         """Given two states containing bounding-boxes, compute the intersection over union between each pair.
 
         Args:

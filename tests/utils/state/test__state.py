@@ -2,6 +2,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
+from torchvision import tv_tensors
 
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import get_ds_data_getter, State
@@ -16,12 +17,12 @@ class TestState(unittest.TestCase):
         for validate in [True, False]:
             with self.subTest(msg="validate: {}".format(validate)):
                 ds = State(bbox=DUMMY_BBOX, validate=validate)
-                self.assertTrue(torch.allclose(ds.bbox, DUMMY_BBOX))
+                self.assertTrue(t.allclose(ds.bbox, DUMMY_BBOX))
                 self.assertEqual(len(ds), 1)
                 self.assertEqual(ds.B, 1)
 
                 multi_ds = State(bbox=DUMMY_BBOX_BATCH, validate=validate)
-                self.assertTrue(torch.allclose(multi_ds.bbox, DUMMY_BBOX_BATCH))
+                self.assertTrue(t.allclose(multi_ds.bbox, DUMMY_BBOX_BATCH))
                 self.assertEqual(len(multi_ds), B)
                 self.assertEqual(multi_ds.B, B)
 
@@ -55,8 +56,8 @@ class TestState(unittest.TestCase):
             with self.subTest(msg=f"v: {validate}, len: {len(bbox)} fp: {fp}, bbox: {bbox}, kp: {kp}"):
                 ds = State(filepath=fp, bbox=bbox, keypoints=kp, validate=validate)
                 self.assertEqual(ds.filepath, out_fp)
-                self.assertTrue(torch.allclose(ds.bbox, out_bbox))
-                self.assertTrue(torch.allclose(ds.keypoints, out_kp))
+                self.assertTrue(t.allclose(ds.bbox, out_bbox))
+                self.assertTrue(t.allclose(ds.keypoints, out_kp))
                 self.assertEqual(ds.J, J)
                 self.assertEqual(ds.joint_dim, J_DIM)
 
@@ -179,29 +180,29 @@ class TestStateAttributes(unittest.TestCase):
     def test_class_id(self):
         ds = State(bbox=DUMMY_BBOX, validate=False, class_id=1)
         self.assertEqual(ds.class_id.ndim, 1)
-        self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
+        self.assertEqual(ds.class_id, t.ones(1, dtype=t.long))
 
-        ds = State(bbox=DUMMY_BBOX, validate=False, class_id=torch.ones(1))
+        ds = State(bbox=DUMMY_BBOX, validate=False, class_id=t.ones(1))
         self.assertEqual(ds.class_id.ndim, 1)
-        self.assertEqual(ds.class_id, torch.ones(1, dtype=torch.long))
+        self.assertEqual(ds.class_id, t.ones(1, dtype=t.long))
 
     def test_person_id(self):
         ds = State(bbox=DUMMY_BBOX, validate=False, person_id=1)
         self.assertEqual(ds.person_id.ndim, 1)
-        self.assertEqual(ds.person_id, torch.ones(1, dtype=torch.long))
+        self.assertEqual(ds.person_id, t.ones(1, dtype=t.long))
 
-        ds = State(bbox=DUMMY_BBOX, validate=False, person_id=torch.ones(1))
-        self.assertEqual(ds.person_id, torch.ones(1, dtype=torch.long))
-        self.assertEqual(ds.person_id, torch.ones(1, dtype=torch.long))
+        ds = State(bbox=DUMMY_BBOX, validate=False, person_id=t.ones(1))
+        self.assertEqual(ds.person_id, t.ones(1, dtype=t.long))
+        self.assertEqual(ds.person_id, t.ones(1, dtype=t.long))
 
     def test_track_id(self):
         ds = State(bbox=DUMMY_BBOX, validate=False, track_id=1)
         self.assertEqual(ds.track_id.ndim, 1)
-        self.assertEqual(ds.track_id, torch.ones(1, dtype=torch.long))
+        self.assertEqual(ds.track_id, t.ones(1, dtype=t.long))
 
-        ds = State(bbox=DUMMY_BBOX, validate=False, track_id=torch.ones(1))
+        ds = State(bbox=DUMMY_BBOX, validate=False, track_id=t.ones(1))
         self.assertEqual(ds.track_id.ndim, 1)
-        self.assertEqual(ds.track_id, torch.ones(1, dtype=torch.long))
+        self.assertEqual(ds.track_id, t.ones(1, dtype=t.long))
 
     def test_crop_path(self):
         ds = State(bbox=DUMMY_BBOX, validate=False, crop_path=("dummy",))
@@ -231,14 +232,14 @@ class TestStateAttributes(unittest.TestCase):
                     data_dict["validate"] = validate
 
                     ds: State = State(**data_dict)
-                    self.assertEqual(ds.device, torch.device(device))
-                    self.assertTrue(torch.allclose(ds.person_id, out_id))
-                    self.assertTrue(torch.allclose(ds.image[0], out_image))
-                    self.assertTrue(torch.allclose(ds.image_crop[0], out_imgcrop))
-                    self.assertTrue(torch.allclose(ds.keypoints, out_kp))
-                    self.assertTrue(torch.allclose(ds.keypoints_local, out_loc_kp))
-                    self.assertTrue(torch.allclose(ds.bbox, out_bbox))
-                    self.assertTrue(torch.allclose(ds.joint_weight, out_joint_weight))
+                    self.assertEqual(ds.device, t.device(device))
+                    self.assertTrue(t.allclose(ds.person_id, out_id))
+                    self.assertTrue(t.allclose(ds.image[0], out_image))
+                    self.assertTrue(t.allclose(ds.image_crop[0], out_imgcrop))
+                    self.assertTrue(t.allclose(ds.keypoints, out_kp))
+                    self.assertTrue(t.allclose(ds.keypoints_local, out_loc_kp))
+                    self.assertTrue(t.allclose(ds.bbox, out_bbox))
+                    self.assertTrue(t.allclose(ds.joint_weight, out_joint_weight))
                     self.assertEqual(ds.J, J)
                     self.assertEqual(ds.joint_dim, J_DIM)
 
@@ -275,18 +276,18 @@ class TestStateFunctions(unittest.TestCase):
         s2 = s1.copy()
 
         self.assertTrue(isinstance(s2, State))
-        self.assertTrue(torch.allclose(s2.keypoints, s1.keypoints))
+        self.assertTrue(t.allclose(s2.keypoints, s1.keypoints))
 
-        s2.keypoints += torch.ones_like(DUMMY_KP)
+        s2.keypoints += t.ones_like(DUMMY_KP)
 
-        self.assertTrue(torch.allclose(s2.keypoints, DUMMY_KP + torch.ones_like(DUMMY_KP)))
-        self.assertTrue(torch.allclose(s1.keypoints, DUMMY_KP))
+        self.assertTrue(t.allclose(s2.keypoints, DUMMY_KP + t.ones_like(DUMMY_KP)))
+        self.assertTrue(t.allclose(s1.keypoints, DUMMY_KP))
 
     @test_multiple_devices
-    def test_to(self, device: torch.device):
+    def test_to(self, device: Device):
         bbox = tv_tensors.wrap(DUMMY_BBOX.cpu(), like=DUMMY_BBOX)
         kp = DUMMY_KP.cpu()
-        cid = torch.ones(1, dtype=torch.long).cpu()
+        cid = t.ones(1, dtype=t.long).cpu()
         ds = State(bbox=bbox, keypoints=kp, class_id=cid, validate=False)
         ds.to(device=device)
         self.assertEqual(ds.bbox.device, device)
@@ -294,7 +295,7 @@ class TestStateFunctions(unittest.TestCase):
         self.assertEqual(ds.class_id.device, device)
 
     @test_multiple_devices
-    def test_extract_and_split(self, device: torch.device):
+    def test_extract_and_split(self, device: Device):
         for validate in [True, False]:
             for states, res_states in [
                 (
@@ -308,14 +309,14 @@ class TestStateFunctions(unittest.TestCase):
                 (
                     State(
                         bbox=tv_tensors.BoundingBoxes(
-                            torch.stack([torch.tensor([i, i, 7, 9]) for i in range(B)]),
+                            t.stack([t.tensor([i, i, 7, 9]) for i in range(B)]),
                             canvas_size=(10, 10),
                             format="XYWH",
                         ),
                         keypoints=DUMMY_KP_BATCH,
                         filepath=tuple(DUMMY_FP_STRING for _ in range(B)),
-                        tensor=torch.ones(B),
-                        val_tensor=torch.tensor(2, device=device),
+                        tensor=t.ones(B),
+                        val_tensor=t.tensor(2, device=device),
                         tuple=tuple(str(i) for i in range(B)),
                         list=[str(i) for i in range(B)],
                         dict={"a": 1},
@@ -328,13 +329,11 @@ class TestStateFunctions(unittest.TestCase):
                     ),
                     [
                         State(
-                            bbox=tv_tensors.BoundingBoxes(
-                                torch.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"
-                            ),
+                            bbox=tv_tensors.BoundingBoxes(t.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"),
                             keypoints=DUMMY_KP,
                             filepath=(DUMMY_FP_STRING,),
-                            tensor=torch.ones(1),
-                            val_tensor=torch.tensor(2, device=device),
+                            tensor=t.ones(1),
+                            val_tensor=t.tensor(2, device=device),
                             tuple=(str(i),),
                             list=[str(i)],
                             dict={"a": 1},
@@ -405,28 +404,28 @@ class TestStateFunctions(unittest.TestCase):
             (
                 DUMMY_WEIGHT.detach().clone(),
                 0,
-                torch.int32,
-                torch.round(torch.tensor([i / J for i in range(J)]).view((1, J, 1)), decimals=0).to(dtype=torch.int32),
+                t.int32,
+                t.round(t.tensor([i / J for i in range(J)]).view((1, J, 1)), decimals=0).to(dtype=t.int32),
             ),
             (
                 DUMMY_WEIGHT.detach().clone(),
                 1,
-                torch.float32,
-                torch.round(torch.tensor([i / J for i in range(J)]).view((1, J, 1)), decimals=1),
+                t.float32,
+                t.round(t.tensor([i / J for i in range(J)]).view((1, J, 1)), decimals=1),
             ),
             (  # typecast only
                 DUMMY_WEIGHT.detach().clone(),
                 -1,
-                torch.int32,
-                torch.tensor([i / J for i in range(J)]).view((1, J, 1)).to(dtype=torch.int32),
+                t.int32,
+                t.tensor([i / J for i in range(J)]).view((1, J, 1)).to(dtype=t.int32),
             ),
             (  # start with int
                 DUMMY_WEIGHT.detach().clone().int(),
                 0,
-                torch.int32,
-                torch.round(
-                    torch.tensor([i / J for i in range(J)], dtype=torch.int32).view((1, J, 1)).float(), decimals=0
-                ).to(dtype=torch.int32),
+                t.int32,
+                t.round(t.tensor([i / J for i in range(J)], dtype=t.int32).view((1, J, 1)).float(), decimals=0).to(
+                    dtype=t.int32
+                ),
             ),
         ]:
             for overwrite in [True, False]:
@@ -441,11 +440,11 @@ class TestStateFunctions(unittest.TestCase):
                     dsi = deepcopy(ds)
                     r = dsi.cast_joint_weight(dtype=dtype, decimals=decimals, overwrite=overwrite)
                     self.assertEqual(r.dtype, dtype)
-                    self.assertTrue(torch.allclose(r, result))
+                    self.assertTrue(t.allclose(r, result))
                     if overwrite:
-                        self.assertTrue(torch.allclose(r, dsi.joint_weight))
+                        self.assertTrue(t.allclose(r, dsi.joint_weight))
                     else:
-                        self.assertTrue(torch.allclose(dsi.joint_weight, ds.joint_weight))
+                        self.assertTrue(t.allclose(dsi.joint_weight, ds.joint_weight))
 
     def test_load_image(self):
         orig_img = load_test_image(IMG_NAME)
@@ -453,7 +452,7 @@ class TestStateFunctions(unittest.TestCase):
         multi_s = State(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOX_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
         empty_fps = State(
-            bbox=tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            bbox=tv_tensors.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
             filepath=tuple(),
             validate=False,
         )
@@ -467,7 +466,7 @@ class TestStateFunctions(unittest.TestCase):
                 self.assertTrue("'image'" in str(e.exception), msg=e.exception)
         # -> succeed if present
         img_0 = img_ds.data["image"][0]
-        self.assertTrue(torch.allclose(img_0, orig_img))
+        self.assertTrue(t.allclose(img_0, orig_img))
 
         # call load_image
         s.load_image(store=False)
@@ -479,16 +478,16 @@ class TestStateFunctions(unittest.TestCase):
         img_1 = imgs_1[0]
         self.assertTrue(isinstance(img_1, tv_tensors.Image))
         self.assertEqual(img_1.shape, orig_img.shape)
-        self.assertTrue(torch.allclose(img_1, orig_img))
+        self.assertTrue(t.allclose(img_1, orig_img))
 
         imgs_2 = multi_s.load_image()
         self.assertTrue(isinstance(imgs_2, list))
         for img_2 in imgs_2:
             self.assertTrue(isinstance(img_2, tv_tensors.Image))
             self.assertEqual(list(img_2.shape), [1] + list(orig_img.shape)[-3:])
-            self.assertTrue(torch.allclose(img_2, orig_img))
+            self.assertTrue(t.allclose(img_2, orig_img))
 
-        self.assertTrue(torch.allclose(img_ds.load_image()[0], orig_img))
+        self.assertTrue(t.allclose(img_ds.load_image()[0], orig_img))
 
         # calling load image fails if the filepaths are not given
         with self.assertRaises(AttributeError) as e:
@@ -505,7 +504,7 @@ class TestStateFunctions(unittest.TestCase):
         multi_s = State(bbox=DUMMY_BBOX_BATCH, crop_path=DUMMY_FP_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
         empty_fps = State(
-            bbox=tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            bbox=tv_tensors.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
             crop_path=tuple(),
             validate=False,
         )
@@ -519,7 +518,7 @@ class TestStateFunctions(unittest.TestCase):
                 self.assertTrue("'image_crop'" in str(e.exception), msg=e.exception)
         # -> succeed if present
         orig_img = img_ds.data["image_crop"]
-        self.assertTrue(torch.allclose(orig_img, orig_img))
+        self.assertTrue(t.allclose(orig_img, orig_img))
 
         # call load_image_crop
         s.load_image_crop(store=False)
@@ -529,14 +528,14 @@ class TestStateFunctions(unittest.TestCase):
         crop = s.data["image_crop"]
         self.assertTrue(isinstance(crop, tv_tensors.Image))
         self.assertEqual(crop.shape, orig_img.shape)
-        self.assertTrue(torch.allclose(crop, orig_img))
+        self.assertTrue(t.allclose(crop, orig_img))
 
         imgs = multi_s.load_image_crop()
         self.assertTrue(isinstance(imgs, tv_tensors.Image))
         self.assertEqual(list(imgs.shape), [B] + list(orig_img.shape)[1:])
-        self.assertTrue(torch.allclose(imgs, orig_img.repeat_interleave(B, dim=0)))
+        self.assertTrue(t.allclose(imgs, orig_img.repeat_interleave(B, dim=0)))
 
-        self.assertTrue(torch.allclose(img_ds.load_image_crop()[0], orig_img))
+        self.assertTrue(t.allclose(img_ds.load_image_crop()[0], orig_img))
 
         # calling load image fails if the filepaths are not given
         with self.assertRaises(AttributeError) as e:
@@ -563,26 +562,26 @@ class TestStateFunctions(unittest.TestCase):
         self.assertTrue("keypoints_local" in single_s.data)
         self.assertTrue("image_crop" in single_s.data)
         self.assertTrue(isinstance(crop, tv_tensors.Image))
-        self.assertEqual(crop.shape, torch.Size((1, 3, *DEF_VAL["images"]["crop_size"])))
+        self.assertEqual(crop.shape, t.Size((1, 3, *DEF_VAL["images"]["crop_size"])))
         self.assertEqual(single_s.keypoints_local.shape, DUMMY_KP.shape)
 
         out_size = (100, 100)
         crops = multi_s.load_image_crop(crop_size=out_size)
         self.assertTrue(isinstance(crops, tv_tensors.Image))
-        self.assertEqual(crops.shape, torch.Size((B, 3, *out_size)))
+        self.assertEqual(crops.shape, t.Size((B, 3, *out_size)))
         self.assertFalse("keypoints_local" in multi_s.data)
 
     def test_get_image_and_load(self):
         s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP)
         imgs = s.image
         self.assertTrue("image" not in s.data)
-        self.assertTrue(all(torch.allclose(i, load_test_image(IMG_NAME)) for i in imgs))
+        self.assertTrue(all(t.allclose(i, load_test_image(IMG_NAME)) for i in imgs))
 
     def test_get_image_crop_and_load(self):
         s = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP)
         crops = s.image_crop
         self.assertTrue("image_crop" not in s.data)
-        self.assertTrue(all(torch.allclose(i, load_test_image(IMG_NAME)) for i in crops))
+        self.assertTrue(all(t.allclose(i, load_test_image(IMG_NAME)) for i in crops))
 
     def test_clean(self):
         s = State(**DUMMY_DATA)
@@ -612,7 +611,7 @@ class TestDataGetter(unittest.TestCase):
         getter = get_ds_data_getter(["bbox", "filepath"])
         self.assertTrue(callable(getter))
         s = State(**DUMMY_DATA.copy())
-        self.assertTrue(torch.allclose(getter(s)[0], s.bbox))
+        self.assertTrue(t.allclose(getter(s)[0], s.bbox))
         self.assertEqual(getter(s)[1], s.filepath)
 
 

@@ -9,12 +9,12 @@ import warnings
 from abc import abstractmethod
 from datetime import datetime
 
-import torch
+import torch as t
 from matplotlib import pyplot as plt
 from torch import nn, optim
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.tensorboard import SummaryWriter
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
 from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
@@ -433,18 +433,18 @@ class EngineModule(BaseModule, nn.Module):
         for attr in ["model", "optimizer", "lr_sched", "test_dl", "train_dl", "val_dl", "metric", "loss", "module"]:
             if hasattr(self, attr):
                 delattr(self, attr)
-        torch.cuda.empty_cache()
+        t.cuda.empty_cache()
         super().terminate()
 
-    def _normalize_test(self, tensor: torch.Tensor) -> torch.Tensor:
+    def _normalize_test(self, tensor: t.Tensor) -> t.Tensor:
         """If ``params_test.normalize`` is True, we want to obtain the normalized prediction and target."""
         if self.params_test.get("normalize", DEF_VAL["engine"]["test"]["normalize"]):
             self.logger.debug("Normalizing test data")
-            tensor: torch.Tensor = nn.functional.normalize(tensor)
+            tensor: t.Tensor = nn.functional.normalize(tensor)
         return tensor
 
     @abstractmethod
-    def _get_train_loss(self, data: State, _curr_iter: int) -> torch.Tensor:  # pragma: no cover
+    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:  # pragma: no cover
         """Compute the loss during training given the data.
 
         Different models can have different outputs and a different number of targets.
@@ -464,10 +464,10 @@ class EngineModule(BaseModule, nn.Module):
             if isinstance(value, (int, float, str)):
                 self.writer.add_scalar(f"{prepend}/{key}", value, global_step=self.curr_epoch)
             # single valued tensor
-            elif isinstance(value, torch.Tensor) and value.ndim == 1 and value.size(0) == 1:
+            elif isinstance(value, t.Tensor) and value.ndim == 1 and value.size(0) == 1:
                 self.writer.add_scalar(f"{prepend}/{key}", value.item(), global_step=self.curr_epoch)
             # image
-            elif isinstance(value, tv_tensors.Image):
+            elif isinstance(value, tvte.Image):
                 if value.ndim == 3:
                     self.writer.add_image(f"{prepend}/{key}", value, global_step=self.curr_epoch)
                 else:
@@ -505,7 +505,7 @@ class EngineModule(BaseModule, nn.Module):
                 self.logger.info("CMC curve:")
                 for r, cmc_i in value.items():
                     self.logger.info(f"Rank-{r}: {cmc_i:.2%}")
-            elif isinstance(value, tv_tensors.Image):
+            elif isinstance(value, tvte.Image):
                 show_images = True
                 torch_show_image(value, show=False)
             elif "embed" in key:

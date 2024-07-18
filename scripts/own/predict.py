@@ -3,7 +3,7 @@
 import time
 from datetime import timedelta
 
-import torch
+import torch as t
 
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.dgs_engine import DGSEngine
@@ -18,7 +18,7 @@ CONFIG_FILE = "./configs/predict_images.yaml"
 if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
     config = load_config(CONFIG_FILE)
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     # validation dataset
     print("Loading data")

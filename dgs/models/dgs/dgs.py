@@ -2,7 +2,7 @@
 Base class for a torch module that contains the heart of the dynamically gated similarity tracker.
 """
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.combine import CombineSimilaritiesModule, get_combine_module
@@ -90,7 +90,7 @@ class DGSModule(BaseModule, nn.Module):
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
 
-    def forward(self, ds: State, target: State) -> torch.Tensor:
+    def forward(self, ds: State, target: State) -> t.Tensor:
         """Given a State containing the current detections and a target, compute the similarity between every pair.
 
         Returns:
@@ -102,12 +102,12 @@ class DGSModule(BaseModule, nn.Module):
         results = [self.similarity_softmax(m(ds, target)) for m in self.sim_mods]
 
         # combine and possibly compute softmax []
-        combined: torch.Tensor = self.combined_softmax(self.combine(*results))
+        combined: t.Tensor = self.combined_softmax(self.combine(*results))
 
         # add a number of columns for the empty / new tracks equal to the length of the input
         # every input should be allowed to get assigned to a new track
-        new_track = torch.zeros((nof_det, nof_det), dtype=self.precision, device=self.device)
-        return torch.cat([combined, new_track], dim=-1)
+        new_track = t.zeros((nof_det, nof_det), dtype=self.precision, device=self.device)
+        return t.cat([combined, new_track], dim=-1)
 
     def terminate(self) -> None:
         """Terminate the DGS module and delete the torch modules."""

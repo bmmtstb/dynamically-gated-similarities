@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
-import torch
+import torch as t
 import torchvision.transforms.v2 as tvt
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from torchvision.ops import box_convert
 from torchvision.utils import draw_bounding_boxes, draw_keypoints, make_grid
 
@@ -15,7 +15,7 @@ from dgs.utils.visualization import torch_show_image
 def transform_crop_resize() -> tvt.Compose:
     return tvt.Compose(
         [
-            tvt.ConvertBoundingBoxFormat(format=tv_tensors.BoundingBoxFormat.XYWH),
+            tvt.ConvertBoundingBoxFormat(format=tvte.BoundingBoxFormat.XYWH),
             tvt.ClampBoundingBoxes(),  # make sure the bboxes are clamped to start with
             CustomCropResize(),  # crop the image at the four corners specified in bboxes
             tvt.ClampBoundingBoxes(),  # duplicate ?
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     J = len(json)
 
     # set up bounding boxes and key-point coordinates
-    bboxes = validate_bboxes(tv_tensors.BoundingBoxes([det["box"] for det in json], canvas_size=(H, W), format="XYWH"))
-    coords = validate_key_points(torch.tensor([det["keypoints"] for det in json]).float().reshape(J, -1, 3))[:, :, :2]
+    bboxes = validate_bboxes(tvte.BoundingBoxes([det["box"] for det in json], canvas_size=(H, W), format="XYWH"))
+    coords = validate_key_points(t.tensor([det["keypoints"] for det in json]).float().reshape(J, -1, 3))[:, :, :2]
 
     # plot and save image with bounding boxes
     torch_show_image(draw_bounding_boxes(img, box_convert(bboxes.detach().clone(), "xywh", "xyxy")))

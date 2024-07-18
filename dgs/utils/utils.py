@@ -11,7 +11,7 @@ from functools import wraps
 from typing import Union
 
 import numpy as np
-import torch
+import torch as t
 import torch.nn.functional as F
 from torchvision import tv_tensors as tvte
 from torchvision.io import write_jpeg
@@ -24,29 +24,29 @@ from dgs.utils.image import CustomCropResize, load_image_list
 from dgs.utils.types import Device, FilePath, FilePaths, Image, Images
 
 
-def torch_to_numpy(t: torch.Tensor) -> np.ndarray:
+def torch_to_numpy(tensor: t.Tensor) -> np.ndarray:
     """Clone and convert torch tensor to numpy.
 
     Args:
-        t: Torch tensor on arbitrary hardware.
+        tensor: Torch tensor on arbitrary hardware.
 
     Returns:
         A single numpy array with the same shape and type as the original tensor.
     """
     # Detach creates a new tensor with the same data, so it is important to clone.
     # May not be necessary if moving from GPU to CPU, but better safe than sorry
-    return t.detach().cpu().clone().numpy()
+    return tensor.detach().cpu().clone().numpy()
 
 
 def extract_crops_from_images(
-    imgs: Images, bboxes: tvte.BoundingBoxes, kps: torch.Tensor = None, **kwargs
-) -> tuple[Image, Union[torch.Tensor, None]]:
+    imgs: Images, bboxes: tvte.BoundingBoxes, kps: t.Tensor = None, **kwargs
+) -> tuple[Image, Union[t.Tensor, None]]:
     """Given a list of images, use the bounding boxes to extract the respective image crops.
     Additionally, compute the local key-point coordinates if global key points are given.
 
     Args:
-        imgs: A list containing one or multiple tv_tensors.Image tensors.
-        bboxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
+        imgs: A list containing one or multiple :class:`tv_tensors.Image` tensors.
+        bboxes: The bounding boxes as :class:`tv_tensors.BoundingBoxes` of arbitrary format.
         kps: The key points of the respective images.
             The key points will be transformed with the images to obtain the local key point coordinates.
             Default None just means that a placeholder is passed and returned.
@@ -65,7 +65,7 @@ def extract_crops_from_images(
         The local key points are returned iff ``kps`` was not ``None``.
     """
     if len(imgs) == 0:
-        return tvte.Image(torch.empty(0, 3, 1, 1)), None
+        return tvte.Image(t.empty(0, 3, 1, 1)), None
 
     if len(imgs) != len(bboxes):
         raise ValueError(f"Expected length of imgs {len(imgs)} and number of bounding boxes {len(bboxes)} to match.")
@@ -78,7 +78,7 @@ def extract_crops_from_images(
         {
             "images": imgs,
             "box": bboxes,
-            "keypoints": kps if kps is not None else torch.zeros((len(imgs), 1, 2), device=imgs[0].device),
+            "keypoints": kps if kps is not None else t.zeros((len(imgs), 1, 2), device=imgs[0].device),
             "mode": kwargs.get("crop_mode", DEF_VAL["images"]["crop_mode"]),
             "output_size": kwargs.get("crop_size", DEF_VAL["images"]["crop_size"]),
         }
@@ -93,9 +93,9 @@ def extract_crops_and_save(
     img_fps: Union[list[FilePath], FilePaths],
     boxes: tvte.BoundingBoxes,
     new_fps: Union[list[FilePath], FilePaths],
-    key_points: torch.Tensor = None,
+    key_points: t.Tensor = None,
     **kwargs,
-) -> tuple[Image, torch.Tensor]:
+) -> tuple[Image, t.Tensor]:
     """Given a list of original image paths and a list of target image-crops paths,
     use the given bounding boxes to extract the image content as image crops and save them as new images.
 
@@ -108,7 +108,7 @@ def extract_crops_and_save(
         img_fps: An iterable of absolute paths pointing to the original images.
         boxes: The bounding boxes as tv_tensors.BoundingBoxes of arbitrary format.
         new_fps: An iterable of absolute paths pointing to the image crops.
-        key_points (torch.Tensor, optional): Key points of the respective images.
+        key_points: Key points of the respective images.
             The key points will be transformed with the images. Default None just means that a placeholder is passed.
 
     Keyword Args:
@@ -136,7 +136,7 @@ def extract_crops_and_save(
         raise ValueError("There has to be an equal amount of image-, crop-paths, boxes, and key points if present.")
 
     # extract kwargs
-    device: Device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+    device: Device = kwargs.get("device", "cuda" if t.cuda.is_available() else "cpu")
 
     imgs: Images = load_image_list(filepath=tuple(img_fps), device=device)
 
@@ -145,12 +145,12 @@ def extract_crops_and_save(
     for i, (fp, crop) in enumerate(zip(new_fps, crops.cpu())):
         mkdir_if_missing(os.path.dirname(fp))
         write_jpeg(
-            input=convert_image_dtype(crop, torch.uint8),
+            input=convert_image_dtype(crop, t.uint8),
             filename=fp,
             quality=kwargs.get("quality", DEF_VAL["images"]["jpeg_quality"]),
         )
         if key_points is not None:
-            torch.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
+            t.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
 
     return crops.to(device=device), None if key_points is None else loc_kps
 
@@ -178,7 +178,7 @@ class HidePrint:
         sys.stdout = self._original_stdout
 
 
-def ids_to_one_hot(ids: Union[torch.Tensor, torch.Tensor], nof_classes: int) -> torch.Tensor:
+def ids_to_one_hot(ids: Union[t.Tensor, t.Tensor], nof_classes: int) -> t.Tensor:
     """Given a tensor containing the class ids as LongTensor, return the one hot representation as LongTensor."""
     return F.one_hot(ids.long(), nof_classes)  # pylint: disable=not-callable
 

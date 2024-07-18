@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.module import BaseModule
@@ -23,7 +23,7 @@ class SimilarityModule(BaseModule, nn.Module):
 
         self.validate_params(similarity_validations)
 
-    def __call__(self, *args, **kwargs) -> torch.Tensor:  # pragma: no cover
+    def __call__(self, *args, **kwargs) -> t.Tensor:  # pragma: no cover
         """see self.forward()"""
         return self.forward(*args, **kwargs)
 
@@ -38,6 +38,6 @@ class SimilarityModule(BaseModule, nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def forward(self, data: State, target: State) -> torch.Tensor:
+    def forward(self, data: State, target: State) -> t.Tensor:
         """Compute the similarity between two input tensors."""
         raise NotImplementedError

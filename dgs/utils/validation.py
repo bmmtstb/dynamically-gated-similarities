@@ -6,8 +6,8 @@ import os
 from collections.abc import Iterable, Sized
 from typing import Union
 
-import torch
-from torchvision import tv_tensors
+import torch as t
+from torchvision import tv_tensors as tvte
 
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.exceptions import InvalidPathException, ValidationException
@@ -145,11 +145,11 @@ VALIDATIONS: dict[str, Validator] = {
 
 
 def validate_bboxes(
-    bboxes: tv_tensors.BoundingBoxes,
+    bboxes: tvte.BoundingBoxes,
     length: int = None,
     dims: Union[int, None] = 2,
-    box_format: Union[tv_tensors.BoundingBoxFormat, None] = None,
-) -> tv_tensors.BoundingBoxes:
+    box_format: Union[tvte.BoundingBoxFormat, None] = None,
+) -> tvte.BoundingBoxes:
     """Given a torchvision tensor of bounding boxes,
     validate them and return them as a torchvision-tensor of bounding-boxes.
 
@@ -170,7 +170,7 @@ def validate_bboxes(
         TypeError: If the `bboxes` input is not a Tensor.
         ValueError: If the `bboxes` have the wrong shape or the `bboxes` have the wrong format.
     """
-    if not isinstance(bboxes, tv_tensors.BoundingBoxes):
+    if not isinstance(bboxes, tvte.BoundingBoxes):
         raise TypeError(f"Bounding boxes should be torch tensor or tv_tensor Bounding Boxes but is {type(bboxes)}")
 
     if box_format is not None and box_format != bboxes.format:
@@ -183,10 +183,10 @@ def validate_bboxes(
     elif length is not None and len(bboxes) != length:
         raise ValidationException(f"Bounding box length is expected to be {length} but got {len(bboxes)}")
 
-    return tv_tensors.wrap(bboxes, like=saved)
+    return tvte.wrap(bboxes, like=saved)
 
 
-def validate_dimensions(tensor: torch.Tensor, dims: int, *_, length: int = None) -> torch.Tensor:
+def validate_dimensions(tensor: t.Tensor, dims: int, *_, length: int = None) -> t.Tensor:
     """Given a tensor, make sure he has the correct number of dimensions.
 
     Args:
@@ -202,9 +202,9 @@ def validate_dimensions(tensor: torch.Tensor, dims: int, *_, length: int = None)
         TypeError: If the `tensor` input is not a `torch.tensor` or cannot be cast to one.
         ValueError: If the length of the `tensor` is bigger than `dims` and cannot be unsqueezed.
     """
-    if not isinstance(tensor, torch.Tensor):
+    if not isinstance(tensor, t.Tensor):
         try:
-            tensor = torch.tensor(tensor)
+            tensor = t.tensor(tensor)
         except (TypeError, ValueError) as e:
             raise TypeError(
                 f"The input should be a torch tensor or a type that can be converted to one. "
@@ -257,7 +257,7 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath], FilePaths]
 
 
 def validate_heatmaps(
-    heatmaps: Union[torch.Tensor, Heatmap], length: int = None, dims: Union[int, None] = 4, nof_joints: int = None
+    heatmaps: Union[t.Tensor, Heatmap], length: int = None, dims: Union[int, None] = 4, nof_joints: int = None
 ) -> Heatmap:
     """Validate a given tensor of heatmaps, whether it has the correct format and shape.
 
@@ -278,7 +278,7 @@ def validate_heatmaps(
         TypeError: If the `heatmaps` input is not a Tensor or cannot be cast to one.
         ValueError: If the `heatmaps` are neither two- nor three-dimensional.
     """
-    if not isinstance(heatmaps, (Heatmap, torch.Tensor)):
+    if not isinstance(heatmaps, (Heatmap, t.Tensor)):
         raise TypeError(f"heatmaps should be a Heatmap or torch tensor but are {type(heatmaps)}.")
 
     if nof_joints is not None and (heatmaps.ndim < 3 or heatmaps.shape[-3] != nof_joints):
@@ -289,10 +289,10 @@ def validate_heatmaps(
     elif length is not None and len(heatmaps) != length:
         raise ValidationException(f"Heatmap length is expected to be {length} but got {len(heatmaps)}")
 
-    return tv_tensors.Mask(heatmaps)
+    return tvte.Mask(heatmaps)
 
 
-def validate_ids(ids: Union[int, torch.Tensor], length: int = None) -> torch.Tensor:
+def validate_ids(ids: Union[int, t.Tensor], length: int = None) -> t.Tensor:
     """Validate a given tensor or single integer value.
 
     Args:
@@ -307,9 +307,9 @@ def validate_ids(ids: Union[int, torch.Tensor], length: int = None) -> torch.Ten
         TypeError: If `ids` is not a `torch.Tensor`.
     """
     if isinstance(ids, int):
-        ids = torch.tensor([ids], dtype=torch.int)
+        ids = t.tensor([ids], dtype=t.int)
 
-    if not isinstance(ids, torch.Tensor) or ids.is_floating_point() or ids.is_complex():
+    if not isinstance(ids, t.Tensor) or ids.is_floating_point() or ids.is_complex():
         raise TypeError(f"The input should be an integer or an whole numbered torch.Tensor but is {type(ids)}")
 
     ids.squeeze_()
@@ -325,7 +325,7 @@ def validate_ids(ids: Union[int, torch.Tensor], length: int = None) -> torch.Ten
     return ids.long()
 
 
-def validate_image(images: Union[Image, torch.Tensor], length: int = None, dims: Union[int, None] = 4) -> Image:
+def validate_image(images: Union[Image, t.Tensor], length: int = None, dims: Union[int, None] = 4) -> Image:
     """Given one single image or a stacked batch images, validate them and return a torchvision-tensor image.
 
     Args:
@@ -343,8 +343,8 @@ def validate_image(images: Union[Image, torch.Tensor], length: int = None, dims:
         TypeError: If `images` is not a Tensor or cannot be cast to one.
         ValueError: If the dimension of the `images` channels is wrong.
     """
-    if not isinstance(images, (torch.Tensor, torch.Tensor, torch.Tensor, tv_tensors.Image)) or not (
-        isinstance(images, torch.Tensor) and images.dtype in [torch.float32, torch.uint8]  # iff tensor, check dtype
+    if not isinstance(images, (t.Tensor, t.Tensor, t.Tensor, tvte.Image)) or not (
+        isinstance(images, t.Tensor) and images.dtype in [t.float32, t.uint8]  # iff tensor, check dtype
     ):
         raise TypeError(f"Image should be torch tensor or tv_tensor Image but is {type(images)}.")
 
@@ -361,10 +361,10 @@ def validate_image(images: Union[Image, torch.Tensor], length: int = None, dims:
             f"Image should either be RGB, RGBA or depth. But a dimensionality {images.shape[-3]} is unknown."
         )
 
-    return tv_tensors.Image(images)
+    return tvte.Image(images)
 
 
-def validate_images(images: list[Union[Image, torch.Tensor]]) -> Images:
+def validate_images(images: list[Union[Image, t.Tensor]]) -> Images:
     """Given one single or multiple images, validate them and return a torchvision-tensor image.
 
     Args:
@@ -383,12 +383,12 @@ def validate_images(images: list[Union[Image, torch.Tensor]]) -> Images:
 
 
 def validate_key_points(
-    key_points: torch.Tensor,
+    key_points: t.Tensor,
     length: int = None,
     dims: Union[int, None] = 3,
     nof_joints: int = None,
     joint_dim: int = None,
-) -> torch.Tensor:
+) -> t.Tensor:
     """Given a tensor of key points, validate them and return them as torch tensor of the correct shape.
 
     Args:
@@ -411,7 +411,7 @@ def validate_key_points(
         TypeError: If the key point input is not a Tensor.
         ValueError: If the key points or joints have the wrong dimensionality.
     """
-    if not isinstance(key_points, torch.Tensor):
+    if not isinstance(key_points, t.Tensor):
         raise TypeError(f"Key points should be torch tensor but is {type(key_points)}.")
 
     if joint_dim is None and not 2 <= key_points.shape[-1] <= 3:

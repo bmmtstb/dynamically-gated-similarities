@@ -29,8 +29,8 @@ idx
 """
 
 import imagesize
-import torch
-from torchvision import tv_tensors
+import torch as t
+from torchvision import tv_tensors as tvte
 
 from dgs.models.dataset.dataset import BBoxDataset
 from dgs.utils.files import read_json
@@ -70,14 +70,12 @@ class AlphaPoseLoader(BBoxDataset):
     def arbitrary_to_ds(self, a, idx: int) -> State:
         """Here `a` is one dict of the AP-JSON containing image_id, category_id, keypoints, score, box, and idx."""
         keypoints, visibility = (
-            torch.tensor(a["keypoints"], dtype=torch.float32, device=self.device)
-            .reshape((1, -1, 3))
-            .split([2, 1], dim=-1)
+            t.tensor(a["keypoints"], dtype=t.float32, device=self.device).reshape((1, -1, 3)).split([2, 1], dim=-1)
         )
 
         return State(
             filepath=a["full_img_path"],
-            bbox=tv_tensors.BoundingBoxes(a["bboxes"], format="XYWH", canvas_size=self.canvas_size),
+            bbox=tvte.BoundingBoxes(a["bboxes"], format="XYWH", canvas_size=self.canvas_size),
             keypoints=keypoints,
             person_id=a["idx"],
             # additional values which are not required
@@ -87,20 +85,20 @@ class AlphaPoseLoader(BBoxDataset):
         )
 
     def __getitems__(self, indices: list[int]) -> State:
-        def stack_key(key: str) -> torch.Tensor:
-            return torch.stack([torch.tensor(self.data[i][key], device=self.device) for i in indices])
+        def stack_key(key: str) -> t.Tensor:
+            return t.stack([t.tensor(self.data[i][key], device=self.device) for i in indices])
 
         keypoints, visibility = (
-            torch.tensor(
-                torch.stack([torch.tensor(self.data[i]["keypoints"]).reshape((-1, 3)) for i in indices]),
+            t.tensor(
+                t.stack([t.tensor(self.data[i]["keypoints"]).reshape((-1, 3)) for i in indices]),
             )
-            .to(device=self.device, dtype=torch.float32)
+            .to(device=self.device, dtype=t.float32)
             .split([2, 1], dim=-1)
         )
         ds = State(
             validate=False,
             filepath=tuple(self.data[i]["full_img_path"] for i in indices),
-            bbox=tv_tensors.BoundingBoxes(stack_key("bboxes"), format="XYWH", canvas_size=self.canvas_size),
+            bbox=tvte.BoundingBoxes(stack_key("bboxes"), format="XYWH", canvas_size=self.canvas_size),
             keypoints=keypoints,
             person_id=stack_key("idx").int(),
             # additional values which are not required

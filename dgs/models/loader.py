@@ -4,7 +4,7 @@ Load and register modules.
 
 from typing import Type, TypeVar, Union
 
-import torch.nn
+from torch.nn import Module as TModule
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
 from dgs.models.dataset.dataset import BaseDataset, dataloader_validations
@@ -88,7 +88,7 @@ def module_loader(
     return m(config=config, path=path, **kwargs)
 
 
-def register_module(name, new_module: Union[Type[M], Type[torch.nn.Module]], inst_class_name: str) -> None:
+def register_module(name, new_module: Union[Type[M], Type[TModule]], inst_class_name: str) -> None:
     r"""Register a new module.
 
     Args:

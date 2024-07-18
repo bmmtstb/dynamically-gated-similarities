@@ -3,7 +3,7 @@
 import os
 from glob import glob
 
-import torch
+import torch as t
 from torchvision.io import write_jpeg
 from torchvision.transforms.v2.functional import convert_image_dtype
 from tqdm import tqdm
@@ -41,7 +41,7 @@ DL_KEYS: list[str] = [
 # OUT cropped image and loc_kp: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/rcnn_XXX_YYY/*.jpg" and "...*.pt"
 
 
-@torch.no_grad()
+@t.no_grad()
 def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
     """Given some configuration, predict and extract the image crops using Keypoint-RCNN."""
     dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
@@ -96,11 +96,11 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
             for s in batch:
                 frame_id += 1
 
-                s["frame_id"] = torch.tensor([frame_id] * s.B, dtype=torch.long, device=s.device)
-                s.person_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
-                s.track_id = torch.arange(1, s.B + 1, dtype=torch.long, device=s.device)
+                s["frame_id"] = t.tensor([frame_id] * s.B, dtype=t.long, device=s.device)
+                s.person_id = t.arange(1, s.B + 1, dtype=t.long, device=s.device)
+                s.track_id = t.arange(1, s.B + 1, dtype=t.long, device=s.device)
                 # pred_tid is 0 indexed -> submission file will add 1 later
-                s["pred_tid"] = torch.arange(0, s.B, dtype=torch.long, device=s.device)
+                s["pred_tid"] = t.arange(0, s.B, dtype=t.long, device=s.device)
 
                 # append to submission
                 submission.append(s)
@@ -116,7 +116,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         submission.save()
 
 
-@torch.no_grad()
+@t.no_grad()
 def run_gt_extractor(dl_key: str) -> None:
     """Given some ground-truth annotation data, extract and save the image crops"""
     dataset_paths: list = sorted(glob(config[dl_key]["dataset_paths"]))
@@ -170,7 +170,7 @@ def run_gt_extractor(dl_key: str) -> None:
                 s.clean()
 
 
-@torch.no_grad()
+@t.no_grad()
 def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bool = True) -> None:
     """Save the image crops."""
     for i in range(_s.B):
@@ -180,17 +180,17 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bo
         if "image_crop" not in _s or (save_kps and "keypoints_local" not in _s):
             _s.load_image_crop(store=True)
         write_jpeg(
-            input=convert_image_dtype(_s.image_crop[i], torch.uint8).cpu(),
+            input=convert_image_dtype(_s.image_crop[i], t.uint8).cpu(),
             filename=img_path,
             quality=DEF_VAL["images"]["jpeg_quality"],
         )
         if save_kps:
-            torch.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
-            torch.save(_s.keypoints[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", "_glob.pt"))
+            t.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
+            t.save(_s.keypoints[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", "_glob.pt"))
 
 
 if __name__ == "__main__":
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     config: Config = load_config(CONFIG_FILE)
 

@@ -19,7 +19,7 @@ import os
 from typing import Iterable, Union
 
 import numpy as np
-import torch
+import torch as t
 import torchvision.transforms.v2 as tvt
 from cv2 import fillPoly  # pylint: disable=no-name-in-module
 from torch.nn import Module as Torch_NN_Module
@@ -45,8 +45,8 @@ from dgs.utils.validation import validate_bboxes, validate_filepath, validate_ke
 def load_image(
     filepath: Union[FilePath, FilePaths],
     force_reshape: bool = False,
-    dtype: torch.dtype = torch.float32,
-    device: torch.device = "cpu",
+    dtype: t.dtype = t.float32,
+    device: t.device = "cpu",
     read_mode: ImageReadMode = ImageReadMode.RGB,
     **kwargs,
 ) -> Image:
@@ -118,8 +118,8 @@ def load_image(
         for img in images:
             data = {
                 "image": tvte.Image(img.detach().clone()),
-                "box": tvte.BoundingBoxes(torch.zeros((1, 4)), format="XYWH", canvas_size=(1, 1)),
-                "keypoints": torch.zeros((1, 1, 2)),
+                "box": tvte.BoundingBoxes(t.zeros((1, 4)), format="XYWH", canvas_size=(1, 1)),
+                "keypoints": t.zeros((1, 1, 2)),
                 "mode": mode,
                 "output_size": output_size,
                 **kwargs,
@@ -130,7 +130,7 @@ def load_image(
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
 
-    images = torch.stack(images)
+    images = t.stack(images)
     images.to(device=device)
 
     return tvte.Image(tvt_to_dtype(images, dtype=dtype, scale=True))
@@ -138,8 +138,8 @@ def load_image(
 
 def load_image_list(
     filepath: Union[FilePath, FilePaths],
-    dtype: torch.dtype = torch.float32,
-    device: torch.device = "cpu",
+    dtype: t.dtype = t.float32,
+    device: t.device = "cpu",
     read_mode: ImageReadMode = ImageReadMode.RGB,
 ) -> Images:
     """Load multiple images with possibly different sizes as a list of tv_tensor images.
@@ -178,7 +178,7 @@ def combine_images_to_video(
     This function will then transform the images into a single uint8 video tensor of shape ``[N x H x W x C]``
     """
     images: Image
-    transform_dtype = tvt.ToDtype(torch.uint8, scale=True)
+    transform_dtype = tvt.ToDtype(t.uint8, scale=True)
 
     # get a single tensor containing the images in uint8 format, still in regular image format
     if isinstance(imgs, str):  # pragma: no cover
@@ -187,11 +187,11 @@ def combine_images_to_video(
             for path in tqdm(os.listdir(imgs))
             if any(path.lower().endswith(end) for end in IMAGE_FORMATS)
         )
-        images = load_image(filepath=paths, dtype=torch.uint8)
-    elif isinstance(imgs, torch.Tensor):
+        images = load_image(filepath=paths, dtype=t.uint8)
+    elif isinstance(imgs, t.Tensor):
         images = transform_dtype(imgs)
     elif isinstance(imgs, list):
-        images = transform_dtype(torch.cat(imgs))
+        images = transform_dtype(t.cat(imgs))
     else:
         raise TypeError(f"Unknown input format. Got {type(imgs)}")
 
@@ -199,7 +199,7 @@ def combine_images_to_video(
         images = images.unsqueeze(0)
 
     # change order of the dimensions
-    video_tensor = torch.permute(images, (0, 2, 3, 1))
+    video_tensor = t.permute(images, (0, 2, 3, 1))
 
     # make directory for out file
     mkdir_if_missing(os.path.dirname(video_file))
@@ -217,8 +217,8 @@ def load_video(filepath: FilePath, **kwargs) -> Video:
     """
     fp: FilePath = to_abspath(filepath)
 
-    dtype = kwargs.get("dtype", torch.uint8)
-    device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+    dtype = kwargs.get("dtype", t.uint8)
+    device = kwargs.get("device", "cuda" if t.cuda.is_available() else "cpu")
 
     # read video, save frames and discard audio
     frames, *_ = read_video(fp, output_format="TCHW", pts_unit="sec")
@@ -340,9 +340,9 @@ class CustomTransformValidator:
             raise ValueError(f"Bounding boxes should be in XYWH format, but are in {bboxes.format}")
 
     @staticmethod
-    def _validate_key_points(kp: torch.Tensor, *_args):
+    def _validate_key_points(kp: t.Tensor, *_args):
         """Validate the key points."""
-        if not isinstance(kp, torch.Tensor):
+        if not isinstance(kp, t.Tensor):
             raise TypeError(f"key points should be a torch Tensor object but is {type(kp)}")
         if kp.ndim != 3:
             raise ValueError(f"key points should have three dimensions, but shape is: {kp.shape}")
@@ -524,7 +524,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         self,
         image: Image,
         bboxes: tvte.BoundingBoxes,
-        coordinates: torch.Tensor,
+        coordinates: t.Tensor,
         mode: str,
         **kwargs,
     ) -> dict:
@@ -537,7 +537,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
             # compute mean of RGB channels over this batch
             # mean needs to receive tensor as float or complex
             # convert and save the mean with the same dtype as the input image (float or uint8)
-            padding_fill = tuple(image.mean(dim=[-4, -2, -1], dtype=torch.float32).to(dtype=image.dtype))
+            padding_fill = tuple(image.mean(dim=[-4, -2, -1], dtype=t.float32).to(dtype=image.dtype))
             padding_mode = "constant"
         elif mode == "edge-pad":
             padding_fill = None
@@ -573,7 +573,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         if coordinates.shape[-1] == 3:
             # 3d coordinates have no padding in the third dimension
             diff.append(0)
-        padded_coords: torch.Tensor = coordinates + torch.tensor(diff, device=coordinates.device)
+        padded_coords: t.Tensor = coordinates + t.tensor(diff, device=coordinates.device)
 
         return {
             "image": padded_image,
@@ -587,7 +587,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         self,
         image: Image,
         bboxes: tvte.BoundingBoxes,
-        coordinates: torch.Tensor,
+        coordinates: t.Tensor,
         **kwargs,
     ) -> dict:
         """To keep forward uncluttered, handle the inside cropping or extracting separately."""
@@ -605,7 +605,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         delta = [self.W - nw, self.H - nh]
 
         # use delta to shift bbox, such that the bbox uses local coordinates
-        box_diff = torch.div(torch.tensor(delta + [0.0, 0.0], device=coordinates.device, dtype=torch.float32), 2)
+        box_diff = t.div(t.tensor(delta + [0.0, 0.0], device=coordinates.device, dtype=t.float32), 2)
         cropped_bboxes: tvte.BoundingBoxes = tvte.wrap(bboxes - box_diff, like=bboxes)
 
         # use delta to shift the coordinates, such that they use local coordinates
@@ -613,9 +613,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
             # 3d coordinates have no crop in the third dimension
             delta.append(0)
 
-        cropped_coords: torch.Tensor = coordinates - torch.div(
-            torch.tensor(delta, device=coordinates.device, dtype=torch.float32), 2
-        )
+        cropped_coords: t.Tensor = coordinates - t.div(t.tensor(delta, device=coordinates.device, dtype=t.float32), 2)
 
         return {
             "image": cropped_image,
@@ -664,14 +662,10 @@ class CustomResize(Torch_NN_Module, CustomTransformValidator):
         image = tvte.wrap(tvt_resize(image, size=list(output_size), antialias=True), like=image)
         bboxes = tvte.wrap(tvt_resize(bboxes, size=list(output_size), antialias=True), like=bboxes)
         if coordinates.shape[-1] == 2:
-            coordinates *= torch.tensor(
-                [self.w / self.W, self.h / self.H], dtype=torch.float32, device=coordinates.device
-            )
+            coordinates *= t.tensor([self.w / self.W, self.h / self.H], dtype=t.float32, device=coordinates.device)
         else:
             # fixme: 3d coordinates have 0 in the third dimension ?
-            coordinates *= torch.tensor(
-                [self.w / self.W, self.h / self.H, 0], dtype=torch.float32, device=coordinates.device
-            )
+            coordinates *= t.tensor([self.w / self.W, self.h / self.H, 0], dtype=t.float32, device=coordinates.device)
 
         return {
             "image": image,
@@ -748,8 +742,8 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
         img_crops: list[tvte.Image] = []
         img_crop: tvte.Image
-        coord_crops: list[torch.Tensor] = []
-        coord_crop: torch.Tensor
+        coord_crops: list[t.Tensor] = []
+        coord_crop: t.Tensor
 
         if bboxes.size(0) != coordinates.size(0):
             raise ValueError(
@@ -760,7 +754,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
             raise ValueError(f"Expected the same amount of images {len(images)} and bounding boxes {len(bboxes)}.")
 
         # use torch to round and then cast the bboxes to int
-        bboxes_corners = bboxes.round().to(dtype=torch.int)
+        bboxes_corners = bboxes.round().to(dtype=t.int)
 
         for i, (image, corners, coords) in enumerate(zip(images, bboxes_corners, coordinates)):
             # get current image
@@ -780,7 +774,7 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
                 delta = [left, top]
                 if coords.shape[-1] == 3:
                     delta.append(0)
-                coord_crop = coords - torch.tensor(delta, device=coords.device)
+                coord_crop = coords - t.tensor(delta, device=coords.device)
 
             # Resize the image and coord crops to make them stackable again.
             # Use CustomToAspect to make the image the correct aspect ratio.
@@ -805,9 +799,9 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         assert len(img_crops) == len(coord_crops)
 
         return {
-            "image": tvte.Image(torch.cat(img_crops)),
+            "image": tvte.Image(t.cat(img_crops)),
             "box": bboxes,
-            "keypoints": torch.cat(coord_crops),
+            "keypoints": t.cat(coord_crops),
             "output_size": output_size,
             "mode": mode,
             **kwargs,
@@ -815,10 +809,10 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
 
     def _handle_outside_crop(
         self,
-        coordinates: torch.Tensor,
-        corners: torch.Tensor,
+        coordinates: t.Tensor,
+        corners: t.Tensor,
         image: Image,
-    ) -> tuple[Image, torch.Tensor]:
+    ) -> tuple[Image, t.Tensor]:
         """Handle method outside crop to keep forward cleaner"""
         # extract corners from current bboxes
         left, top, box_width, box_height = corners
@@ -844,12 +838,12 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         )
 
         if coordinates.shape[-1] == 2:
-            coord_crop = coordinates - torch.tensor([new_left, new_top]).to(
+            coord_crop = coordinates - t.tensor([new_left, new_top]).to(
                 dtype=coordinates.dtype, device=coordinates.device
             )
         else:
             # fixme: 3d coordinates no cropping in the third dimension ?
-            coord_crop = coordinates - torch.tensor([new_left, new_top, 0]).to(
+            coord_crop = coordinates - t.tensor([new_left, new_top, 0]).to(
                 dtype=coordinates.dtype, device=coordinates.device
             )
 
@@ -890,4 +884,4 @@ def create_mask_from_polygons(
         fillPoly(mask, pts=points, color=(1.0,))
 
     # Convert to tvte Mask
-    return tvte.Mask(torch.tensor(mask, dtype=torch.bool, device=device))
+    return tvte.Mask(t.tensor(mask, dtype=t.bool, device=device))

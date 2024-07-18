@@ -12,22 +12,19 @@ At least, the channel for matplotlib is RGB too.
 from typing import Union
 
 import numpy as np
-import torch
+import torch as t
 from matplotlib import pyplot as plt
-from torchvision import tv_tensors
-from torchvision.transforms.functional import convert_image_dtype
+from torchvision import tv_tensors as tvte
 from torchvision.transforms.v2 import ToPILImage
-from torchvision.transforms.v2.functional import convert_bounding_box_format
+from torchvision.transforms.v2.functional import convert_bounding_box_format, to_dtype
 from torchvision.utils import draw_bounding_boxes, draw_keypoints, make_grid
 
 from dgs.utils.constants import SKELETONS
 from dgs.utils.types import Image
 
 
-@torch.no_grad()
-def torch_show_image(
-    imgs: Union[Image, list[Image], torch.Tensor, list[torch.Tensor]], show: bool = True, **kwargs
-) -> None:
+@t.no_grad()
+def torch_show_image(imgs: Union[Image, list[Image], t.Tensor, list[t.Tensor]], show: bool = True, **kwargs) -> None:
     """Show a single torch image using matplotlib.
 
     Args:
@@ -39,14 +36,14 @@ def torch_show_image(
             Set show as false to print multiple images at once, or to modify the plt object.
             Default: True
     """
-    if isinstance(imgs, torch.Tensor) and imgs.ndim == 4:
+    if isinstance(imgs, t.Tensor) and imgs.ndim == 4:
         imgs = [make_grid(imgs, nrow=kwargs.get("nrow", 8))]
     elif not isinstance(imgs, list):
         imgs = [imgs]
     _, axs = plt.subplots(ncols=len(imgs), squeeze=False)
     for i, img in enumerate(imgs):
         img = img.detach().clone()
-        img: torch.Tensor = convert_image_dtype(img, torch.uint8)
+        img: t.Tensor = to_dtype(img, t.uint8, scale=True)
         if img.ndim != 3:
             raise ValueError(f"Sth went wrong, img shape is {img.shape}")
         img = ToPILImage(mode="RGB")(img)
@@ -56,16 +53,16 @@ def torch_show_image(
         plt.show()
 
 
-@torch.no_grad()
+@t.no_grad()
 def show_image_with_additional(
-    img: Union[Image, torch.Tensor],
-    key_points: torch.Tensor = None,
-    bboxes: tv_tensors.BoundingBoxes = None,
+    img: Union[Image, t.Tensor],
+    key_points: t.Tensor = None,
+    bboxes: tvte.BoundingBoxes = None,
     show: bool = True,
     kp_connectivity: Union[str, list[tuple[int, int]]] = None,
     # kp_visibility: torch.Tensor = None,
     **kwargs,
-) -> torch.Tensor:
+) -> t.Tensor:
     """Draw one torch tensor images, potentially adding key points and bounding boxes on top.
 
     Notes:
@@ -107,16 +104,16 @@ def show_image_with_additional(
         TypeError: If the image has the wrong type.
         ValueError: If the image has the wrong shape or the connectivity or given color is faulty.
     """
-    if isinstance(img, (tv_tensors.Image, torch.Tensor)) and img.ndim == 3:
+    if isinstance(img, (tvte.Image, t.Tensor)) and img.ndim == 3:
         pass
-    elif isinstance(img, (tv_tensors.Image, torch.Tensor)) and img.ndim == 4:
+    elif isinstance(img, (tvte.Image, t.Tensor)) and img.ndim == 4:
         img = img.squeeze(0)
         if img.ndim != 3:
             raise ValueError(f"image could not be squeezed to correct shape, got: {img.shape}")
     else:
         raise TypeError(f"image is neither tensor nor image. Got {type(img)}")
 
-    int_img: torch.Tensor = convert_image_dtype(img, torch.uint8)
+    int_img: t.Tensor = to_dtype(img, t.uint8, scale=True)
 
     if bboxes is not None:
         # get key point params
@@ -136,7 +133,7 @@ def show_image_with_additional(
         # draw bboxes
         int_img = draw_bounding_boxes(
             image=int_img,
-            boxes=convert_bounding_box_format(inpt=bboxes, new_format=tv_tensors.BoundingBoxFormat.XYXY),
+            boxes=convert_bounding_box_format(inpt=bboxes, new_format=tvte.BoundingBoxFormat.XYXY),
             **bbox_params,
         )
 
@@ -177,14 +174,14 @@ def show_image_with_additional(
     return int_img
 
 
-@torch.no_grad()
+@t.no_grad()
 def show_images_with_additional(
-    imgs: list[Union[Image, torch.Tensor]],
-    key_points: list[torch.Tensor] = None,
-    bboxes: list[tv_tensors.BoundingBoxes] = None,
+    imgs: list[Union[Image, t.Tensor]],
+    key_points: list[t.Tensor] = None,
+    bboxes: list[tvte.BoundingBoxes] = None,
     show: bool = True,
     kp_connectivity: Union[str, list[str], list[tuple[int, int]], list[list[tuple[int, int]]]] = None,
-    kp_visibilities: list[torch.Tensor] = None,
+    kp_visibilities: list[t.Tensor] = None,
     **kwargs,
 ) -> None:
     """Draw one or multiple torch tensor images, potentially adding key points and bounding boxes on top.
@@ -255,7 +252,7 @@ def show_images_with_additional(
         key.replace("grid_", ""): kwargs.pop(key) for key in kwargs if key.startswith("grid_")
     }
 
-    new_imgs: list[torch.Tensor] = []
+    new_imgs: list[t.Tensor] = []
     for img, kps, bbox, kpc, kpv in zip(imgs, key_points, bboxes, kp_connectivity, kp_visibilities):
         new_imgs.append(
             show_image_with_additional(

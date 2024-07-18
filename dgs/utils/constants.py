@@ -6,7 +6,7 @@ import logging
 import os
 
 import matplotlib.colors as mcolors
-import torch
+import torch as t
 
 PRINT_PRIORITY: dict[str, int] = {
     "DEBUG": logging.DEBUG,
@@ -21,11 +21,11 @@ PRINT_PRIORITY: dict[str, int] = {
 PROJECT_ROOT: str = os.path.normpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 """Path to this projects' root directory."""
 
-OKS_SIGMAS: dict[str, torch.Tensor] = {
+OKS_SIGMAS: dict[str, t.Tensor] = {
     # pylint: disable=line-too-long
     # fmt: off
-    "halpe-full-body": torch.div(
-        torch.tensor(
+    "halpe-full-body": t.div(
+        t.tensor(
             [0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89, 0.8,
              0.8, 0.8, 0.89, 0.89, 0.89, 0.89, 0.89, 0.89, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25,
              0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25,
@@ -36,7 +36,7 @@ OKS_SIGMAS: dict[str, torch.Tensor] = {
              0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
         ).float(), 10
     ),
-    "coco-whole-body": torch.tensor(
+    "coco-whole-body": t.tensor(
         [0.026, 0.025, 0.025, 0.035, 0.035, 0.079, 0.079, 0.072, 0.072, 0.062, 0.062, 0.107, 0.107, 0.087, 0.087, 0.089,
          0.089, 0.068, 0.066, 0.066, 0.092, 0.094, 0.094, 0.042, 0.043, 0.044, 0.043, 0.040, 0.035, 0.031, 0.025, 0.020,
          0.023, 0.029, 0.032, 0.037, 0.038, 0.043, 0.041, 0.045, 0.013, 0.012, 0.011, 0.011, 0.012, 0.012, 0.011, 0.011,
@@ -47,14 +47,14 @@ OKS_SIGMAS: dict[str, torch.Tensor] = {
          0.029, 0.022, 0.035, 0.037, 0.047, 0.026, 0.025, 0.024, 0.035, 0.018, 0.024, 0.022, 0.026, 0.017, 0.021, 0.021,
          0.032, 0.02, 0.019, 0.022, 0.031]
     ).float(),
-    "halpe": torch.div(
-        torch.tensor(
+    "halpe": t.div(
+        t.tensor(
             [0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89, 0.8,
              0.8, 0.8, 0.89, 0.89, 0.89, 0.89, 0.89, 0.89]
         ).float(), 10
     ),
-    "coco": torch.div(
-        torch.tensor(
+    "coco": t.div(
+        t.tensor(
             [0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89]
         ).float(), 10
     ),
@@ -162,26 +162,26 @@ KEY_POINT_NAMES: dict[str, list[str]] = {
     ],
 }
 
-PRECISION_MAP: [str, torch.dtype] = {
-    "bfloat16": torch.bfloat16,
-    "bool": torch.bool,
-    "cfloat": torch.cfloat,
-    "complex128": torch.complex128,
-    "complex64": torch.complex64,
-    "double": torch.double,
-    "float": torch.float,
-    "float16": torch.float16,
-    "float32": torch.float32,
-    "float64": torch.float64,
-    "half": torch.half,
-    "int": torch.int,
-    "int16": torch.int16,
-    "int32": torch.int32,
-    "int64": torch.int64,
-    "int8": torch.int8,
-    "long": torch.long,
-    "short": torch.short,
-    "uint8": torch.uint8,
+PRECISION_MAP: [str, t.dtype] = {
+    "bfloat16": t.bfloat16,
+    "bool": t.bool,
+    "cfloat": t.cfloat,
+    "complex128": t.complex128,
+    "complex64": t.complex64,
+    "double": t.double,
+    "float": t.float,
+    "float16": t.float16,
+    "float32": t.float32,
+    "float64": t.float64,
+    "half": t.half,
+    "int": t.int,
+    "int16": t.int16,
+    "int32": t.int32,
+    "int64": t.int64,
+    "int8": t.int8,
+    "long": t.long,
+    "short": t.short,
+    "uint8": t.uint8,
 }
 
 IMAGE_FORMATS: list[str] = [".jpg", ".jpeg", ".png"]

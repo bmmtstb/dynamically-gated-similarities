@@ -12,10 +12,10 @@ from collections.abc import Iterable
 from copy import deepcopy
 from typing import Callable, Type, Union
 
-import torch
+import torch as t
 from matplotlib import pyplot as plt
 from torch.utils.data._utils.collate import collate
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from torchvision.transforms.v2.functional import convert_image_dtype
 from torchvision.utils import save_image
 
@@ -134,7 +134,7 @@ class State(UserDict):
     def __init__(
         self,
         *args,
-        bbox: tv_tensors.BoundingBoxes,
+        bbox: tvte.BoundingBoxes,
         validate: bool = True,
         **kwargs,
     ) -> None:
@@ -147,7 +147,7 @@ class State(UserDict):
             if args:
                 raise NotImplementedError(f"Unknown arguments: {args}")
 
-        self.data["bbox"]: tv_tensors.BoundingBoxes = bbox.to(device=kwargs.get("device", bbox.device))
+        self.data["bbox"]: tvte.BoundingBoxes = bbox.to(device=kwargs.get("device", bbox.device))
 
         for k, v in kwargs.items():
             if v is None:
@@ -163,7 +163,7 @@ class State(UserDict):
 
     def copy(self) -> "State":
         """Obtain a copy of this state. No validation, either it was done already or it is not wanted."""
-        data = {k: v.detach().clone() if isinstance(v, torch.Tensor) else deepcopy(v) for k, v in self.data.items()}
+        data = {k: v.detach().clone() if isinstance(v, t.Tensor) else deepcopy(v) for k, v in self.data.items()}
         data["validate"] = False
         state = State(**data)
         state.validate = self.validate
@@ -179,13 +179,13 @@ class State(UserDict):
             and all(
                 (
                     # tensor equality
-                    torch.allclose(v, other.data[k])
-                    if isinstance(v, torch.Tensor)
+                    t.allclose(v, other.data[k])
+                    if isinstance(v, t.Tensor)
                     else (
                         # check for iterable of tensors
                         len(other.data[k]) == len(v)
-                        and all(torch.allclose(sub_v, sub_o) for sub_v, sub_o in zip(v, other.data[k]))
-                        if isinstance(v, Iterable) and any(isinstance(sub_v, torch.Tensor) for sub_v in v)
+                        and all(t.allclose(sub_v, sub_o) for sub_v, sub_o in zip(v, other.data[k]))
+                        if isinstance(v, Iterable) and any(isinstance(sub_v, t.Tensor) for sub_v in v)
                         # regular equality
                         else v == other.data[k]
                     )
@@ -195,13 +195,13 @@ class State(UserDict):
         )
 
     @property
-    def bbox(self) -> tv_tensors.BoundingBoxes:
+    def bbox(self) -> tvte.BoundingBoxes:
         """Get this States bounding-box."""
         return self.data["bbox"]
 
     @bbox.setter
-    def bbox(self, bbox: tv_tensors) -> None:
-        if not isinstance(bbox, tv_tensors.BoundingBoxes):
+    def bbox(self, bbox: tvte) -> None:
+        if not isinstance(bbox, tvte.BoundingBoxes):
             raise TypeError(f"Expected bounding box, got {type(bbox)}")
         if bbox.shape != self.bbox.shape:
             raise ValueError(f"Can't switch bbox shape. Expected {self.bbox.shape} but got {bbox.shape}")
@@ -217,7 +217,7 @@ class State(UserDict):
     @device.setter
     def device(self, value):
         """Device can be changed using to() or during initialization."""
-        self.data["device"] = torch.device(value)
+        self.data["device"] = t.device(value)
 
     # ################## #
     # REGULAR PROPERTIES #
@@ -252,36 +252,36 @@ class State(UserDict):
     # ###################### #
 
     @property
-    def person_id(self) -> torch.Tensor:
+    def person_id(self) -> t.Tensor:
         """Get the ID of the respective person shown on the bounding-box."""
         return self.data["person_id"].long()
 
     @person_id.setter
-    def person_id(self, value: Union[int, torch.Tensor]) -> None:
-        self.data["person_id"] = (torch.tensor(value).flatten().long() if isinstance(value, int) else value).to(
-            device=self.device, dtype=torch.long
+    def person_id(self, value: Union[int, t.Tensor]) -> None:
+        self.data["person_id"] = (t.tensor(value).flatten().long() if isinstance(value, int) else value).to(
+            device=self.device, dtype=t.long
         )
 
     @property
-    def class_id(self) -> torch.Tensor:
+    def class_id(self) -> t.Tensor:
         """Get the class-ID of the bounding-boxes."""
         return self.data["class_id"].long()
 
     @class_id.setter
-    def class_id(self, value: Union[int, torch.Tensor]) -> None:
-        self.data["class_id"] = (torch.tensor(value).flatten().long() if isinstance(value, int) else value).to(
-            device=self.device, dtype=torch.long
+    def class_id(self, value: Union[int, t.Tensor]) -> None:
+        self.data["class_id"] = (t.tensor(value).flatten().long() if isinstance(value, int) else value).to(
+            device=self.device, dtype=t.long
         )
 
     @property
-    def track_id(self) -> torch.Tensor:
+    def track_id(self) -> t.Tensor:
         """Get the ID of the tracks associated with the respective bounding-boxes."""
         return self.data["track_id"].long()
 
     @track_id.setter
-    def track_id(self, value: Union[int, torch.Tensor]) -> None:
-        self.data["track_id"] = (torch.tensor(value).flatten().long() if isinstance(value, int) else value).to(
-            device=self.device, dtype=torch.long
+    def track_id(self, value: Union[int, t.Tensor]) -> None:
+        self.data["track_id"] = (t.tensor(value).flatten().long() if isinstance(value, int) else value).to(
+            device=self.device, dtype=t.long
         )
 
     @property
@@ -314,22 +314,22 @@ class State(UserDict):
         raise NotImplementedError(f"Unknown filepath format: {type(fp)}, path: {fp}")
 
     @property
-    def keypoints(self) -> torch.Tensor:
+    def keypoints(self) -> t.Tensor:
         """Get the key-points. The coordinates are based on the coordinate-frame of the full-image."""
         if "keypoints" in self:
             return self.data["keypoints"]
         if "keypoints_path" in self:
-            self.data["keypoints"] = torch.load(self.data["keypoints_path"]).to(device=self.device)
+            self.data["keypoints"] = t.load(self.data["keypoints_path"]).to(device=self.device)
             return self.data["keypoints"]
         if "crop_path" in self and is_file(kp_path := self.data["crop_path"].replace(".jpg", "_glob.pt")):
             self.data["keypoints"], self.data["joint_weights"] = (
-                torch.load(kp_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
+                t.load(kp_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
             )
             return self.data["keypoints"]
         raise KeyError("There are no key-points in this object.")
 
     @keypoints.setter
-    def keypoints(self, value: torch.Tensor) -> None:
+    def keypoints(self, value: t.Tensor) -> None:
         try:
             J = self.J
             j_dim = self.joint_dim
@@ -354,24 +354,24 @@ class State(UserDict):
         self.data["heatmap"] = (validate_heatmaps(value) if self.validate else value).to(device=self.device)
 
     @property
-    def keypoints_local(self) -> torch.Tensor:
+    def keypoints_local(self) -> t.Tensor:
         """Get the local key-points.
         The local coordinates are based on the coordinate-frame of the image crops, within the bounding-box.
         """
         if "keypoints_local" in self:
             return self.data["keypoints_local"]
         if "keypoints_local_path" in self:
-            self.data["keypoints_local"] = torch.load(self.data["keypoints_local_path"]).to(device=self.device)
+            self.data["keypoints_local"] = t.load(self.data["keypoints_local_path"]).to(device=self.device)
             return self.data["keypoints_local"]
         if "crop_path" in self and is_file(kp_loc_path := self.data["crop_path"].replace(".jpg", ".pt")):
             self.data["keypoints_local"], self.data["joint_weights"] = (
-                torch.load(kp_loc_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
+                t.load(kp_loc_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
             )
             return self.data["keypoints_local"]
         raise KeyError("There are no local key-points in this object.")
 
     @keypoints_local.setter
-    def keypoints_local(self, value: torch.Tensor) -> None:
+    def keypoints_local(self, value: t.Tensor) -> None:
         """Set local key points with a little bit of validation."""
         try:
             J = self.J
@@ -398,7 +398,7 @@ class State(UserDict):
     @image.setter
     def image(self, value: Images) -> None:
         imgs = validate_images(value) if self.validate else value
-        self.data["image"]: Images = [tv_tensors.Image(v.to(device=self.device)) for v in imgs]
+        self.data["image"]: Images = [tvte.Image(v.to(device=self.device)) for v in imgs]
 
     @property
     def image_crop(self) -> Image:
@@ -423,12 +423,12 @@ class State(UserDict):
         self.data["crop_path"]: FilePaths = validate_filepath(value) if self.validate else value
 
     @property
-    def joint_weight(self) -> torch.Tensor:
+    def joint_weight(self) -> t.Tensor:
         """Get the weight of the joints. Either represents the visibility or an importance score of this joint."""
         return self.data["joint_weight"]
 
     @joint_weight.setter
-    def joint_weight(self, value: torch.Tensor) -> None:
+    def joint_weight(self, value: t.Tensor) -> None:
         self.data["joint_weight"] = (value.view(self.B, self.J, 1) if self.validate else value).to(device=self.device)
 
     # ######### #
@@ -452,20 +452,20 @@ class State(UserDict):
         new_data = {"validate": self.validate}
         for k, v in self.data.items():
             ks = str(k)
-            if isinstance(v, tv_tensors.TVTensor):
+            if isinstance(v, tvte.TVTensor):
                 # make sure tv_tensors stay, especially for bboxes
-                new_data[ks] = tv_tensors.wrap(v[idx], like=v)
+                new_data[ks] = tvte.wrap(v[idx], like=v)
             elif isinstance(v, list):
                 # lists stay list
                 new_data[ks] = [v[idx]]
             elif isinstance(v, tuple):
                 # tuples stay tuple
                 new_data[ks] = (v[idx],)
-            elif isinstance(v, torch.Tensor) and v.ndim > 1:
+            elif isinstance(v, t.Tensor) and v.ndim > 1:
                 new_data[ks] = v[idx].unsqueeze(0)
-            elif isinstance(v, torch.Tensor) and v.ndim == 1:
+            elif isinstance(v, t.Tensor) and v.ndim == 1:
                 new_data[ks] = v[idx].flatten()
-            elif isinstance(v, torch.Tensor) and v.ndim == 0:
+            elif isinstance(v, t.Tensor) and v.ndim == 0:
                 new_data[ks] = v
             elif isinstance(v, (dict, set)):  # dict and set stay the same
                 new_data[ks] = v
@@ -494,11 +494,11 @@ class State(UserDict):
                 elif isinstance(v, tuple):
                     # tuples stay tuple
                     new_data[idx][ks] = (v[idx],)
-                elif isinstance(v, torch.Tensor) and v.ndim > 1:
+                elif isinstance(v, t.Tensor) and v.ndim > 1:
                     new_data[idx][ks] = v[idx].unsqueeze(0)
-                elif isinstance(v, torch.Tensor) and v.ndim == 1:
+                elif isinstance(v, t.Tensor) and v.ndim == 1:
                     new_data[idx][ks] = v[idx].flatten()
-                elif isinstance(v, torch.Tensor) and v.ndim == 0:
+                elif isinstance(v, t.Tensor) and v.ndim == 0:
                     new_data[idx][ks] = v
                 elif isinstance(v, (dict, set)):  # dict and set stay the same
                     new_data[idx][ks] = v
@@ -511,9 +511,9 @@ class State(UserDict):
                     new_data[idx][ks] = v
 
                 # if it was a tv_tensor, make sure to wrap it again
-                if isinstance(v, tv_tensors.TVTensor):
+                if isinstance(v, tvte.TVTensor):
                     # make sure tv_tensors stay, especially for bboxes
-                    new_data[idx][ks] = tv_tensors.wrap(new_data[idx][ks], like=v)
+                    new_data[idx][ks] = tvte.wrap(new_data[idx][ks], like=v)
 
         assert all("bbox" in d for d in new_data), "No Bounding box given while creating the state."
         return [State(**d) for d in new_data]  # pylint: disable=missing-kwoa
@@ -536,16 +536,14 @@ class State(UserDict):
         if "crop_path" in self:
             if len(self.crop_path) == 0:
                 crop = []
-                loc_kps = torch.empty((0, 1, 2), dtype=torch.long, device=self.device)
+                loc_kps = t.empty((0, 1, 2), dtype=t.long, device=self.device)
             else:
                 # allow changing the crop_size and other params via kwargs
                 crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
 
                 kps_paths = [f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt" for sub_path in self.crop_path]
                 if all(is_file(path) for path in kps_paths):
-                    loc_kps = torch.vstack([torch.load(f=path) for path in kps_paths]).to(
-                        device=self.device, dtype=torch.float32
-                    )
+                    loc_kps = t.vstack([t.load(f=path) for path in kps_paths]).to(device=self.device, dtype=t.float32)
                 else:
                     loc_kps = None
             if store:
@@ -585,19 +583,17 @@ class State(UserDict):
         """Override torch.Tensor.to() for the whole object."""
 
         for attr_key, attr_value in self.items():
-            if isinstance(attr_value, torch.Tensor) or (
-                hasattr(attr_value, "to") and callable(getattr(attr_value, "to"))
-            ):
+            if isinstance(attr_value, t.Tensor) or (hasattr(attr_value, "to") and callable(getattr(attr_value, "to"))):
                 self[attr_key] = attr_value.to(*args, **kwargs)
         self.device = self.bbox.device
         return self
 
     def cast_joint_weight(
         self,
-        dtype: torch.dtype = torch.float32,
+        dtype: t.dtype = t.float32,
         decimals: int = 0,
         overwrite: bool = False,
-    ) -> torch.Tensor:
+    ) -> t.Tensor:
         """Cast and return the joint weight as tensor.
 
         The weight might have an arbitrary tensor type, this function allows getting one specific variant.
@@ -632,8 +628,8 @@ class State(UserDict):
         # round
         if decimals >= 0:
             # round needs floating point tensor
-            if not torch.is_floating_point(new_weights):
-                new_weights = new_weights.to(dtype=torch.float32)
+            if not t.is_floating_point(new_weights):
+                new_weights = new_weights.to(dtype=t.float32)
             new_weights.round_(decimals=decimals)
         # change dtype
         new_weights = new_weights.to(dtype=dtype)
@@ -642,7 +638,7 @@ class State(UserDict):
             self.joint_weight = new_weights
         return new_weights
 
-    @torch.no_grad()
+    @t.no_grad()
     def draw(
         self, save_path: FilePath, show_kp: bool = True, show_skeleton: bool = True, show_bbox: bool = True, **kwargs
     ) -> None:  # pragma: no cover
@@ -666,9 +662,7 @@ class State(UserDict):
             warnings.warn(f"There are no images to be drawn for save_path: '{save_path}'")
 
         # get the original image - with B > 0, there might be multiple images; they all should be equal
-        if len(img) > 1 and not all(
-            torch.allclose(self.image[i - 1], self.image[i]) for i in range(1, len(self.image))
-        ):
+        if len(img) > 1 and not all(t.allclose(self.image[i - 1], self.image[i]) for i in range(1, len(self.image))):
             raise ValueError(
                 "If there are more than one image in this state, it is expected, that all the images are equal."
             )
@@ -715,7 +709,7 @@ class State(UserDict):
         # ('save_image' expects a float32 image and is immediately converting it back to byte...)
         save_image(convert_image_dtype(int_img), fp=save_path)
 
-    @torch.no_grad()
+    @t.no_grad()
     def draw_individually(self, save_path: Union[FilePath, FilePaths], **kwargs) -> None:  # pragma: no cover
         """Split the state and draw the detections of the image(s) independently.
 
@@ -763,9 +757,7 @@ class State(UserDict):
         return self
 
 
-EMPTY_STATE = State(
-    bbox=tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY"), validate=False
-)
+EMPTY_STATE = State(bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"), validate=False)
 
 
 def get_ds_data_getter(attributes: list[str]) -> DataGetter:
@@ -773,51 +765,51 @@ def get_ds_data_getter(attributes: list[str]) -> DataGetter:
     return a function, that gets those attributes from a given :class:`State`.
     """
 
-    def getter(ds: State) -> Union[torch.Tensor, tuple[torch.Tensor, ...]]:
+    def getter(ds: State) -> Union[t.Tensor, tuple[t.Tensor, ...]]:
         """The getter function."""
         return tuple(ds[str(attrib)] for attrib in attributes)
 
     return getter
 
 
-def collate_devices(batch: list[torch.device], *_args, **_kwargs) -> torch.device:
+def collate_devices(batch: list[t.device], *_args, **_kwargs) -> t.device:
     """Collate a batch of devices into a single device."""
     return batch[0]
 
 
-def collate_tensors(batch: list[torch.Tensor], *_args, **_kwargs) -> torch.Tensor:
+def collate_tensors(batch: list[t.Tensor], *_args, **_kwargs) -> t.Tensor:
     """Collate a batch of tensors into a single one.
 
     Will use torch.cat() if the first dimension has a shape of one, otherwise torch.stack()
     """
     if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
-        return torch.empty(0)
-    return torch.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))])
+        return t.empty(0)
+    return t.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))])
 
 
 def collate_tvt_tensors(
-    batch: list[Union[tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]], *_args, **_kwargs
-) -> Union[tv_tensors.TVTensor, tv_tensors.Image, tv_tensors.Mask, tv_tensors.Video]:
+    batch: list[Union[tvte.Image, tvte.Mask, tvte.Video]], *_args, **_kwargs
+) -> Union[tvte.TVTensor, tvte.Image, tvte.Mask, tvte.Video]:
     """Collate a batch of tv_tensors into a batched version of it."""
     if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
-        return tv_tensors.TVTensor([])
-    return tv_tensors.wrap(
-        torch.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))]),
+        return tvte.TVTensor([])
+    return tvte.wrap(
+        t.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))]),
         like=batch[0],
     )
 
 
-def collate_bboxes(batch: list[tv_tensors.BoundingBoxes], *_args, **_kwargs) -> tv_tensors.BoundingBoxes:
+def collate_bboxes(batch: list[tvte.BoundingBoxes], *_args, **_kwargs) -> tvte.BoundingBoxes:
     """Collate a batch of bounding boxes into a single one.
     It is expected that all bounding boxes have the same canvas size and format.
     """
     if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
-        return tv_tensors.BoundingBoxes(torch.empty((0, 4)), canvas_size=(0, 0), format="XYXY")
-    bb_format: tv_tensors.BoundingBoxFormat = batch[0].format
+        return tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY")
+    bb_format: tvte.BoundingBoxFormat = batch[0].format
     canvas_size = batch[0].canvas_size
 
-    return tv_tensors.BoundingBoxes(
-        torch.cat(batch),
+    return tvte.BoundingBoxes(
+        t.cat(batch),
         canvas_size=canvas_size,
         format=bb_format,
     )
@@ -827,10 +819,10 @@ CUSTOM_COLLATE_MAP: dict[Type, Callable] = {  # pragma: no cover
     str: lambda str_batch, *args, **kwargs: tuple(s for s in str_batch),
     list: lambda l_batch, *args, **kwargs: sum(l_batch, []),
     tuple: lambda t_batch, *args, **kwargs: sum(t_batch, ()),
-    tv_tensors.BoundingBoxes: collate_bboxes,
-    (tv_tensors.Image, tv_tensors.Video, tv_tensors.Mask): collate_tvt_tensors,
-    torch.device: collate_devices,
-    torch.Tensor: collate_tensors,  # override regular tensor collate to *not* add another dimension
+    tvte.BoundingBoxes: collate_bboxes,
+    (tvte.Image, tvte.Video, tvte.Mask): collate_tvt_tensors,
+    t.device: collate_devices,
+    t.Tensor: collate_tensors,  # override regular tensor collate to *not* add another dimension
 }
 
 

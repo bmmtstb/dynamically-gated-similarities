@@ -5,7 +5,7 @@ Train a pose embedding model and predict pose similarities using the dgs interna
 import time
 from datetime import timedelta
 
-import torch
+import torch as t
 
 from dgs.models.engine import VisualSimilarityEngine
 from dgs.models.loader import module_loader
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
     config = load_config(CONFIG_FILE)
 
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     ds_start_time = time.time()
     # validation / query

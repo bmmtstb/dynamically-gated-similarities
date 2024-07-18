@@ -14,7 +14,7 @@ Workflow
 from datetime import date
 from typing import Union
 
-import torch
+import torch as t
 from torch.utils.tensorboard import SummaryWriter
 
 from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
@@ -54,7 +54,7 @@ PRE_TRAINED: bool = False
 TEST_ONLY: bool = True
 
 if __name__ == "__main__":
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     data_manager = TorchreidPoseDataManager(
         root="./data/",

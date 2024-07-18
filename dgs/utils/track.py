@@ -6,7 +6,7 @@ from collections import deque, UserDict
 from copy import deepcopy
 from enum import Enum
 
-import torch
+import torch as t
 
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import collate_states, State
@@ -224,7 +224,7 @@ class Track:
 
     @id.setter
     def id(self, value: TrackID):
-        if isinstance(value, torch.Tensor) and (value.ndim == 0 or (value.ndim == 1 and len(value) == 1)):
+        if isinstance(value, t.Tensor) and (value.ndim == 0 or (value.ndim == 1 and len(value) == 1)):
             self._id = int(value.item())
         elif isinstance(value, int):
             self._id = value
@@ -237,7 +237,7 @@ class Track:
         return self._N
 
     @property
-    def device(self) -> torch.device:
+    def device(self) -> t.device:
         """Get the device of every tensor in this Track."""
         if len(self) == 0:
             raise ValueError("Can not get the device of an empty Track.")
@@ -324,15 +324,15 @@ class Track:
 
     def copy(self) -> "Track":
         """Return a (deep) copy of self."""
-        t = Track(
+        track = Track(
             N=self.N,
             curr_frame=self._start_frame,
             states=[s.copy() for s in self._states],
             tid=self.id,
         )
-        t.nof_active = self._nof_active
-        t.set_status(status=self._status, tid=self.id)
-        return t
+        track.nof_active = self._nof_active
+        track.set_status(status=self._status, tid=self.id)
+        return track
 
 
 class Tracks(UserDict):
@@ -599,8 +599,8 @@ class Tracks(UserDict):
         # append state to track
         self.data[tid].append(state=add_state)
         # add track id to state
-        self.data[tid][-1]["pred_tid"] = torch.tensor(
-            [tid] * self.data[tid][-1].B, dtype=torch.long, device=add_state.device
+        self.data[tid][-1]["pred_tid"] = t.tensor(
+            [tid] * self.data[tid][-1].B, dtype=t.long, device=add_state.device
         ).flatten()
 
     def _handle_inactive(self, tids: set[TrackID]) -> None:

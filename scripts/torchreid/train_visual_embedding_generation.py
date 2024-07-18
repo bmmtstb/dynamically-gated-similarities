@@ -25,7 +25,7 @@ Notes:
 
 from datetime import date
 
-import torch
+import torch as t
 from torch.utils.tensorboard import SummaryWriter
 
 from dgs.models.dataset.posetrack21 import PoseTrack21Torchreid
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     cfg = load_config(CONFIG_FILE)
 
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     # noinspection PyTypeChecker
     register_image_dataset("PoseTrack21", PoseTrack21Torchreid)

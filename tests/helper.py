@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from io import StringIO
 from typing import Iterable
 
-import torch
+import torch as t
 
 from dgs.utils.config import load_config
 from dgs.utils.image import load_image
@@ -27,9 +27,9 @@ def test_multiple_devices(func: callable) -> callable:
     Returns:
         The decorated function with an additional 'device' keyword-argument.
     """
-    devices: list[Device] = [torch.device("cpu")]
-    if torch.cuda.is_available():
-        devices.append(torch.device("cuda:0"))
+    devices: list[Device] = [t.device("cpu")]
+    if t.cuda.is_available():
+        devices.append(t.device("cuda:0"))
 
     def device_wrapper(cls, *args, **kwargs):
         for device in devices:

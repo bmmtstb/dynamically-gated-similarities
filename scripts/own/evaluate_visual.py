@@ -7,7 +7,7 @@ import os
 import time
 from datetime import timedelta
 
-import torch
+import torch as t
 from tqdm import tqdm
 
 from dgs.models.engine.visual_sim_engine import VisualSimilarityEngine
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
     config = load_config(CONFIG_FILE)
 
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     ds_start_time = time.time()
     # test / gallery

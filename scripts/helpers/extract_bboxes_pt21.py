@@ -3,7 +3,7 @@
 import os.path
 from glob import glob
 
-import torch
+import torch as t
 from torchvision.io import write_jpeg
 from torchvision.transforms.v2.functional import convert_image_dtype
 from tqdm import tqdm
@@ -39,18 +39,18 @@ IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int) -> None:
     """Save the image crops and local key points."""
     for i in range(_s.B):
-        assert torch.all(_s["person_id"] >= 0)
+        assert t.all(_s["person_id"] >= 0)
         img_path = os.path.join(img_dir, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
         if os.path.exists(img_path):
             continue
         if "image_crop" not in _s or "keypoints_local" not in _s:
             _s.load_image_crop(store=True)
         write_jpeg(
-            input=convert_image_dtype(_s.image_crop[i], torch.uint8).cpu(),
+            input=convert_image_dtype(_s.image_crop[i], t.uint8).cpu(),
             filename=img_path,
             quality=DEF_VAL["images"]["jpeg_quality"],
         )
-        torch.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
+        t.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
 
 
 def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
@@ -137,9 +137,9 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
                 #     "keypoints": [],
                 #     "track_id": 1
                 # }
-                s["pred_tid"] = torch.ones_like(s.person_id, dtype=torch.long, device=s.device) * -1  # set to -1
+                s["pred_tid"] = t.ones_like(s.person_id, dtype=t.long, device=s.device) * -1  # set to -1
                 # set to number to remove duplicates in crop files
-                s["person_id"] = torch.arange(start=1, end=s.B + 1, dtype=torch.long, device=s.device)
+                s["person_id"] = t.arange(start=1, end=s.B + 1, dtype=t.long, device=s.device)
 
                 annos = subm_module.get_anno_data(s)
                 for a_i, anno in enumerate(annos):
@@ -191,7 +191,7 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
 
 
 if __name__ == "__main__":
-    print(f"Cuda available: {torch.cuda.is_available()}")
+    print(f"Cuda available: {t.cuda.is_available()}")
 
     for DL_KEY in DL_KEYS:
         print(f"Extracting ground-truth: {DL_KEY}")

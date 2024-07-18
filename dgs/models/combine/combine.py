@@ -6,7 +6,7 @@ Obtain similarity matrices as a result of one or multiple
 
 from abc import abstractmethod
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.module import BaseModule
@@ -40,7 +40,7 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> torch.Tensor:
+    def forward(self, *args, **kwargs) -> t.Tensor:
         raise NotImplementedError
 
 
@@ -59,7 +59,7 @@ class DynamicallyGatedSimilarities(CombineSimilaritiesModule):
     It is possible that :math:`S_1` and :math:`S_2` have different shapes in at least one dimension.
     """
 
-    def forward(self, *tensors, alpha: torch.Tensor = torch.tensor([0.5, 0.5]), **_kwargs) -> torch.Tensor:
+    def forward(self, *tensors, alpha: t.Tensor = t.tensor([0.5, 0.5]), **_kwargs) -> t.Tensor:
         """The forward call of this module combines two weight matrices given a third importance weight :math:`\alpha`.
         :math:`\alpha` describes how important s1 is, while :math:`(1- \alpha)` does the same for s2.
 
@@ -79,11 +79,11 @@ class DynamicallyGatedSimilarities(CombineSimilaritiesModule):
         """
         if len(tensors) != 2:
             raise ValueError(f"There should be exactly two matrices in the tensors argument, got {len(tensors)}")
-        if any(not isinstance(t, torch.Tensor) for t in tensors):
+        if any(not isinstance(tensor, t.Tensor) for tensor in tensors):
             raise TypeError("All matrices should be torch (float) tensors.")
         s1, s2 = tensors
-        if (a_max := torch.max(alpha)) > 1.0 or torch.min(alpha) < 0.0:
-            raise ValueError(f"alpha should lie in the range [0,1], but got [{torch.min(alpha)}, {a_max}]")
+        if (a_max := t.max(alpha)) > 1.0 or t.min(alpha) < 0.0:
+            raise ValueError(f"alpha should lie in the range [0,1], but got [{t.min(alpha)}, {a_max}]")
 
         if alpha.ndim > 2:
             alpha.squeeze_()
@@ -104,7 +104,7 @@ class DynamicallyGatedSimilarities(CombineSimilaritiesModule):
                 f"the first dimension has to equal the first dimension of s1 and s2 but got {alpha.shape}."
             )
 
-        return alpha * s1 + (torch.ones_like(alpha) - alpha) * s2
+        return alpha * s1 + (t.ones_like(alpha) - alpha) * s2
 
 
 @configure_torch_module
@@ -126,14 +126,14 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
 
         self.validate_params(static_alpha_validation)
 
-        alpha = torch.tensor(self.params["alpha"], dtype=self.precision).reshape(-1)
+        alpha = t.tensor(self.params["alpha"], dtype=self.precision).reshape(-1)
         self.register_buffer("alpha_const", alpha)
         self.len_alpha: int = len(alpha)
 
-        if not torch.allclose(a_sum := torch.sum(torch.abs(alpha)), torch.tensor(1.0)):  # pragma: no cover  # redundant
+        if not t.allclose(a_sum := t.sum(t.abs(alpha)), t.tensor(1.0)):  # pragma: no cover  # redundant
             raise ValueError(f"alpha should sum to 1.0, but got {a_sum:.8f}")
 
-    def forward(self, *tensors, **_kwargs) -> torch.Tensor:
+    def forward(self, *tensors, **_kwargs) -> t.Tensor:
         """Given alpha from the configuration file and args of the same length,
         multiply each alpha with each matrix and compute the sum.
 
@@ -154,24 +154,24 @@ class StaticAlphaCombine(CombineSimilaritiesModule):
                 f"Unknown type for tensors, expected tuple of torch.Tensor but got {type(tensors)}"
             )
 
-        if any(not isinstance(t, torch.Tensor) for t in tensors):
+        if any(not isinstance(tensor, t.Tensor) for tensor in tensors):
             raise TypeError("All the values in args should be tensors.")
 
-        if len(tensors) > 1 and any(t.shape != tensors[0].shape for t in tensors):
+        if len(tensors) > 1 and any(tensor.shape != tensors[0].shape for tensor in tensors):
             raise ValueError("The shapes of every tensor should match.")
 
         if len(tensors) == 1 and self.len_alpha != 1:
             # given a single already stacked tensor or a single valued alpha
             tensors = tensors[0]
         else:
-            tensors = torch.stack(tensors)
+            tensors = t.stack(tensors)
 
         if self.len_alpha != 1 and len(tensors) != self.len_alpha:
             raise ValueError(
                 f"The length of the tensors {len(tensors)} should equal the length of alpha {self.len_alpha}"
             )
 
-        return torch.tensordot(self.alpha_const, tensors.float(), dims=1)
+        return t.tensordot(self.alpha_const, tensors.float(), dims=1)
 
     def terminate(self) -> None:  # pragma: no cover
         del self.alpha, self.alpha_const, self.len_alpha

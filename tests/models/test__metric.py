@@ -13,6 +13,7 @@ from dgs.models.metric.metric import (
     _validate_metric_inputs,
     compute_accuracy,
     compute_cmc,
+    compute_near_k_accuracy,
     CosineDistanceMetric,
     CosineSimilarityMetric,
     EuclideanDistanceMetric,
@@ -356,6 +357,35 @@ class TestMetricAccuracy(unittest.TestCase):
             own_acc = compute_accuracy(prediction=prediction, target=target, topk=None)[1]
             tr_acc = torchreid_acc(output=prediction, target=target, topk=(1,))[0].item()
             self.assertEqual(own_acc, tr_acc)
+
+
+class TestMetricNearKAccuracy(unittest.TestCase):
+    ks = [0, 1, 10, 20, 30]
+
+    @test_multiple_devices
+    def test_near_k_accuracy(self, device):
+        pred = torch.tensor([[0.1], [0.2], [0.3], [0.4]], dtype=torch.float32, device=device)
+        target = torch.tensor([[0.4], [0.4], [0.4], [0.4]], dtype=torch.float32, device=device)
+        res = {0: 1 / 4, 1: 1 / 4, 10: 2 / 4, 20: 3 / 4, 30: 4 / 4}
+        accs = compute_near_k_accuracy(a_pred=pred, a_targ=target, ks=self.ks)
+        self.assertDictEqual(accs, res)
+
+    @test_multiple_devices
+    def test_near_k_accuracy_with_reshaping(self, device):
+        pred = torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32, device=device)
+        target = torch.tensor([0.4, 0.4, 0.4, 0.4], dtype=torch.float32, device=device)
+        res = {0: 1 / 4, 1: 1 / 4, 10: 2 / 4, 20: 3 / 4, 30: 4 / 4}
+        accs = compute_near_k_accuracy(a_pred=pred, a_targ=target, ks=self.ks)
+        self.assertDictEqual(accs, res)
+
+    def test_near_k_accuracy_exceptions(self):
+        with self.assertRaises(ValueError) as e:
+            _ = compute_near_k_accuracy(a_pred=torch.ones(1), a_targ=torch.ones(4), ks=self.ks)
+        self.assertTrue("alpha_pred and alpha_targ must have the same length" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(ValueError) as e:
+            _ = compute_near_k_accuracy(a_pred=torch.ones(4), a_targ=torch.ones(4), ks=[-1])
+        self.assertTrue("ks must be positive" in str(e.exception), msg=e.exception)
 
 
 if __name__ == "__main__":
