@@ -22,13 +22,12 @@ coverage[toml]
 gdown  # torchreid does not import it properly
 imagesize
 matplotlib
-munkres  # munkres is a package for the hungarian (matching) algorithm
 numpy==1.*
 opencv-python
 Pillow
 pylint
 pyyaml==6.0.*
-scipy
+scipy==1.14.*
 sphinx  # sphinx is used to build the docs
 sphinxcontrib.datatemplates
 tb-nightly  # use tb nightly, due to torchreid installing it and it being incompatible with the regular tensorboard

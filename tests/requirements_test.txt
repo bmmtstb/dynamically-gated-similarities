@@ -8,12 +8,11 @@ coverage[toml]
 gdown  # torchreid does not import it properly
 imagesize
 matplotlib
-# munkres
 numpy==1.*
 opencv-python
 pylint
 pyyaml
-scipy
+scipy==1.14.*
 tb-nightly
 terminaltables
 torchreid==0.2.5

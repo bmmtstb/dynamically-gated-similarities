@@ -4,7 +4,7 @@
 
 matplotlib
 numpy==1.*
-scipy
+scipy==1.14.*
 sphinx
 sphinxcontrib.datatemplates
 tqdm

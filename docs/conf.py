@@ -71,10 +71,7 @@ rst_prolog = """
 # tell autodoc that we don't want these packages to be imported
 autodoc_mock_imports = [
     "cv2",
-    "opencv-python",
-    "lapsolver",
     "posetrack21",
-    "pytorch",
     "torch",
     "torcheval",
     "torchvision",

@@ -26,20 +26,15 @@ Activate the environment according to you OS, then install the base requirements
 	pip install -r requirements.txt
 
 
-To properly install the ``lapsolver`` and |torchreid|_-package, we need to run the setup scripts in the submodules / dependencies.
-Both are submodules, make sure that they have been cloned properly.
-There seemed to be multiple issues with the sub-sub-module ``lapsopver/pybind11``.
-If there is no ``CMakeLists.txt``-file in there, make sure to run ```git submodule init && git submodule update``` in that folder.
-And after that make sure the torchreid installation was successful.
+To properly install the |torchreid|_-package, we need to run the setup scripts in the submodules / dependencies.
+All modules in the ``./dependencies`` folder are submodules, make sure that they have been cloned properly.
 
-Some of the respective requirements of |torchreid| have been installed by this packages requirements file already, because the setup script seems broken right now.
+Some of the respective requirements of |torchreid| have been installed by this packages requirements file already.
 
 And finally, make sure to install the dgs module itself.
 
 ::
-	cd ./dependencies/py-lapsolver/
-	python setup.py develop
-	cd ../torchreid
+	cd ./dependencies/torchreid
 	python setup.py develop
 	cd ../..
 	pip install -e .
