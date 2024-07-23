@@ -194,6 +194,22 @@ class State(UserDict):
             )
         )
 
+    def __getitem__(self, item: any) -> any:
+        """Override the getitem call.
+        Use strings to get the keys of this dict.
+        Use integers or slices to extract parts of this :class:`State`.
+
+        Returns:
+            A :class:`State` if item is int or slice, and any if item is a string.
+        """
+        if isinstance(item, str):
+            return self.data[item]
+        if isinstance(item, int):
+            return self.extract(item)
+        if isinstance(item, slice):
+            return collate_states(self.split()[item])
+        raise NotImplementedError(f"Expected item to be str, int or slice, got {type(item)}")
+
     @property
     def bbox(self) -> tvte.BoundingBoxes:
         """Get this States bounding-box."""
@@ -205,7 +221,14 @@ class State(UserDict):
             raise TypeError(f"Expected bounding box, got {type(bbox)}")
         if bbox.shape != self.bbox.shape:
             raise ValueError(f"Can't switch bbox shape. Expected {self.bbox.shape} but got {bbox.shape}")
-        self.data["bbox"] = bbox.to(device=self.bbox.device)
+
+        # switch device if new bbox is on another device
+        if bbox.device != self.bbox.device:
+            self.device = bbox.device
+            self.to(device=bbox.device)
+
+        # set new bbox
+        self.data["bbox"] = bbox
 
     @property
     def device(self):
@@ -319,10 +342,16 @@ class State(UserDict):
         if "keypoints" in self:
             return self.data["keypoints"]
         if "keypoints_path" in self:
-            self.data["keypoints"] = t.load(self.data["keypoints_path"]).to(device=self.device)
+            kp_data = t.load(self.data["keypoints_path"]).to(device=self.device)
+            try:
+                J = self.J
+                j_dim = self.joint_dim
+                self.data["keypoints"], self.joint_weight = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
+            except NotImplementedError:
+                self.data["keypoints"], self.joint_weight = kp_data.split([2, 1], dim=-1)
             return self.data["keypoints"]
         if "crop_path" in self and is_file(kp_path := self.data["crop_path"].replace(".jpg", "_glob.pt")):
-            self.data["keypoints"], self.data["joint_weights"] = (
+            self.data["keypoints"], self.data["joint_weight"] = (
                 t.load(kp_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
             )
             return self.data["keypoints"]
@@ -361,10 +390,19 @@ class State(UserDict):
         if "keypoints_local" in self:
             return self.data["keypoints_local"]
         if "keypoints_local_path" in self:
-            self.data["keypoints_local"] = t.load(self.data["keypoints_local_path"]).to(device=self.device)
+            kp_data = t.load(self.data["keypoints_local_path"]).to(device=self.device)
+            try:
+                J = self.J
+                j_dim = self.joint_dim
+                self.data["keypoints_local"], self.joint_weight = kp_data.reshape((1, J, j_dim + 1)).split(
+                    [2, 1], dim=-1
+                )
+            except NotImplementedError:
+                self.data["keypoints_local"], self.joint_weight = kp_data.split([2, 1], dim=-1)
+
             return self.data["keypoints_local"]
         if "crop_path" in self and is_file(kp_loc_path := self.data["crop_path"].replace(".jpg", ".pt")):
-            self.data["keypoints_local"], self.data["joint_weights"] = (
+            self.data["keypoints_local"], self.data["joint_weight"] = (
                 t.load(kp_loc_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
             )
             return self.data["keypoints_local"]

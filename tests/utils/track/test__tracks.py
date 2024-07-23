@@ -4,7 +4,7 @@ import torch
 from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.utils.config import DEF_VAL
-from dgs.utils.state import State
+from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.track import Track, Tracks, TrackStatus
 from helper import test_multiple_devices
 
@@ -125,6 +125,11 @@ class TestTracks(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             _ = Tracks(N=MAX_LENGTH, thresh=-1)
         self.assertTrue("Threshold must be positive, got -1." in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(TypeError) as e:
+            # noinspection PyTypeChecker
+            _ = Tracks(N=MAX_LENGTH, thresh="1")
+        self.assertTrue("Threshold is expected to be int or None, but got " in str(e.exception), msg=e.exception)
 
     def test_equality(self):
         self.assertTrue(EMPTY_TRACKS == EMPTY_TRACKS)
@@ -352,6 +357,20 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(t.ids_inactive, {first_tid})
         self.assertTrue(t[first_tid].id == first_tid)
 
+    def test_add_empty_states(self):
+        t = Tracks(N=MAX_LENGTH, thresh=3)
+        e_s: State = EMPTY_STATE.copy()
+
+        tid = t.add(tracks={}, new=[e_s])[0]
+        self.assertEqual(t.nof_active, 0)
+        self.assertEqual(t.nof_inactive, 1)
+        _ = t.add(tracks={tid: e_s}, new=[])
+        self.assertEqual(t.nof_active, 0)
+        self.assertEqual(t.nof_inactive, 1)
+        _ = t.add(tracks={tid: e_s}, new=[])
+        self.assertEqual(t.nof_active, 0)
+        self.assertEqual(t.nof_inactive, 0)
+
     def test_add_keep_inactive(self):
         t = Tracks(N=MAX_LENGTH, thresh=5)
         tid = t.add(tracks={}, new=[DUMMY_STATE.copy()])[0]
@@ -366,23 +385,17 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(t.ids_inactive, {tid})
 
     def test_get_states(self):
-        t1 = ONE_TRACKS.copy()
-        r1 = t1.get_states()
-        self.assertTrue(isinstance(r1, list))
-        self.assertTrue(all(isinstance(r, State) for r in r1))
-        self.assertEqual(len(r1), 1)
-
-        t2 = MULTI_TRACKS.copy()
-        r2 = t2.get_states()
-        self.assertTrue(isinstance(r2, list))
-        self.assertTrue(all(isinstance(r, State) for r in r2))
-        self.assertEqual(len(r2), MAX_LENGTH + 1)
-
-        t0 = Tracks(N=MAX_LENGTH)
-        r0 = t0.get_states()
-        self.assertTrue(isinstance(r0, list))
-        self.assertTrue(all(isinstance(r, State) for r in r0))
-        self.assertEqual(len(r0), 0)
+        for t, r_tids, length in [
+            (Tracks(N=MAX_LENGTH), [], 0),
+            (ONE_TRACKS.copy(), [OT_O_ID], 1),
+            (MULTI_TRACKS.copy(), list(MULTI_TRACKS.ids), MAX_LENGTH + 1),
+        ]:
+            with self.subTest(msg="r_tids: {}, length: {}".format(r_tids, length)):
+                s, tids = t.get_states()
+                self.assertTrue(isinstance(s, list))
+                self.assertTrue(all(isinstance(r, State) for r in s))
+                self.assertEqual(len(s), length)
+                self.assertEqual(tids, r_tids)
 
     def test_get_active_states(self):
         t1 = ONE_TRACKS.copy()

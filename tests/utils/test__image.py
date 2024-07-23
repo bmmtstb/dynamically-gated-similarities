@@ -7,7 +7,7 @@ import imagesize
 import numpy as np
 import torch
 import torchvision.transforms.v2 as tvt
-from torchvision import tv_tensors
+from torchvision import tv_tensors as tvte
 from torchvision.transforms.v2.functional import crop as tvt_crop, resize as tvt_resize
 
 from dgs.utils.exceptions import ValidationException
@@ -44,15 +44,15 @@ TEST_IMAGES: dict[str, tuple[int, int, int]] = {
 }
 
 
-def create_bbox(H: int, W: int) -> tv_tensors.BoundingBoxes:
+def create_bbox(H: int, W: int) -> tvte.BoundingBoxes:
     """Create a valid bounding box with its corners on the corners of the original image.
 
     Shape: ``[1 x 4]``
     """
     return validate_bboxes(
-        tv_tensors.BoundingBoxes(
+        tvte.BoundingBoxes(
             torch.tensor([0, 0, W, H]),
-            format=tv_tensors.BoundingBoxFormat.XYWH,
+            format=tvte.BoundingBoxFormat.XYWH,
             canvas_size=(H, W),  # H W
             dtype=torch.float32,
         )
@@ -80,7 +80,7 @@ def create_tensor_batch_data(
     image: Image,
     out_shape: ImgShape,
     mode: str,
-    bbox: tv_tensors.BoundingBoxes = None,
+    bbox: tvte.BoundingBoxes = None,
     key_points: torch.Tensor = None,
     **kwargs,
 ) -> dict[str, any]:
@@ -105,7 +105,7 @@ def create_list_batch_data(
     images: Images,
     out_shape: ImgShape,
     mode: str,
-    bbox: tv_tensors.BoundingBoxes = None,
+    bbox: tvte.BoundingBoxes = None,
     key_points: torch.Tensor = None,
     **kwargs,
 ) -> dict[str, any]:
@@ -146,9 +146,27 @@ class TestImageUtils(unittest.TestCase):
             (62, 46, 256 / 192, [0, 0, 0, 0], "landscape to portrait - tiny values"),
             (46, 62, 192 / 256, [0, 0, 0, 0], "portrait to landscape - tiny values"),
             (81, 107, 0.75, [0, 0, 0, 1], "portrait to portrait - tiny values"),
+            (1e8, 1e8 + 1, 1, [0, 0, 0, 0], "keep similar - huge values"),
         ]:
             with self.subTest(msg=msg):
                 self.assertListEqual(compute_padding(old_w=width, old_h=height, target_aspect=target_aspect), paddings)
+
+    def test_compute_padding_exceptions(self):
+        with self.assertRaises(ValueError) as e:
+            _ = compute_padding(0, 1, 1)
+        self.assertTrue("Old height and width should be greater than zero" in str(e.exception), msg=e.exception)
+        with self.assertRaises(ValueError) as e:
+            _ = compute_padding(1, 0, 1)
+        self.assertTrue("Old height and width should be greater than zero" in str(e.exception), msg=e.exception)
+        with self.assertRaises(ValueError) as e:
+            _ = compute_padding(1, 1, -1)
+        self.assertTrue("Target aspect should be greater than zero, but is -1" in str(e.exception), msg=e.exception)
+        with self.assertRaises(ValueError) as e:
+            _ = compute_padding(1, 1, 1e-12)
+        self.assertTrue("Target aspect should be greater than zero" in str(e.exception), msg=e.exception)
+        with self.assertRaises(ValueError) as e:
+            _ = compute_padding(1, 1, 0)
+        self.assertTrue("Target aspect should be greater than zero, but is 0" in str(e.exception), msg=e.exception)
 
     @test_multiple_devices
     def test_create_mask_from_polygon(self, device: torch.device):
@@ -201,13 +219,18 @@ class TestVideo(unittest.TestCase):
     def test_combine_images_to_video(self):
         for imgs, video_file, out_shape in [
             (
-                tv_tensors.Image(load_video("./tests/test_data/videos/3209828-sd_426_240_25fps.mp4")),
+                tvte.Image(load_video("./tests/test_data/videos/3209828-sd_426_240_25fps.mp4", device="cpu")),
                 "./tests/test_data/video_out/test1.mp4",
                 (345, 3, 240, 426),
             ),
             (
-                load_test_images_list(["866-200x300.jpg", "866-200x300.jpg"]),
+                load_test_image("866-200x300.jpg", device="cpu").squeeze(0),
                 "./tests/test_data/video_out/test2.mpeg",
+                (1, 3, 300, 200),
+            ),
+            (
+                load_test_images_list(["866-200x300.jpg", "866-200x300.jpg"], device="cpu"),
+                "./tests/test_data/video_out/test3.mpeg",
                 (2, 3, 300, 200),
             ),
         ]:
@@ -297,7 +320,7 @@ class TestImage(unittest.TestCase):
                 self.assertTrue(isinstance(image_list, list))
                 self.assertEqual(len(image_list), len(hw))
                 for image, shape in zip(image_list, hw):
-                    self.assertTrue(isinstance(image, tv_tensors.Image))
+                    self.assertTrue(isinstance(image, tvte.Image))
                     self.assertEqual(image.shape, shape)
                     self.assertEqual(image.device, device)
                     self.assertEqual(image.dtype, dtype)
@@ -324,7 +347,7 @@ class TestCustomTransformValidator(unittest.TestCase):
     def test_validate_bboxes_exceptions(self):
         for data, raised_exception in [
             (torch.ones(1, 4), TypeError),
-            (tv_tensors.BoundingBoxes(torch.ones(1, 4), canvas_size=(10, 10), format="XYXY"), ValueError),
+            (tvte.BoundingBoxes(torch.ones(1, 4), canvas_size=(10, 10), format="XYXY"), ValueError),
         ]:
             with self.subTest(msg=f"data: {data}, raised_exception: {raised_exception}"):
                 with self.assertRaises(raised_exception):
@@ -461,7 +484,7 @@ class TestCustomToAspect(unittest.TestCase):
                         # test bbox
                         self.assertTrue(
                             torch.allclose(
-                                tv_tensors.BoundingBoxes(
+                                tvte.BoundingBoxes(
                                     [0, 0, w, h], format="XYWH", canvas_size=(H, W), dtype=torch.float32
                                 ),
                                 new_bboxes,
@@ -530,7 +553,7 @@ class TestCustomToAspect(unittest.TestCase):
                             # test bboxes: bboxes should have shifted xy but the same w and h (without resizing)
                             self.assertTrue(
                                 torch.allclose(
-                                    tv_tensors.BoundingBoxes(
+                                    tvte.BoundingBoxes(
                                         [l, t, W, H], format="XYWH", canvas_size=(H, W), dtype=torch.float32
                                     ),
                                     new_bboxes,
@@ -591,7 +614,7 @@ class TestCustomToAspect(unittest.TestCase):
                         # test bboxes: bboxes should have shifted xy but the same w and h (without resizing)
                         self.assertTrue(
                             torch.allclose(
-                                tv_tensors.BoundingBoxes(
+                                tvte.BoundingBoxes(
                                     [-l, -t, W, H], format="XYWH", canvas_size=(H, W), dtype=torch.float32
                                 ),
                                 new_bboxes,
@@ -675,10 +698,10 @@ class TestCustomCropResize(unittest.TestCase):
                 img = load_test_image(img_name)
                 H, W = img.shape[-2:]
 
-                custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
+                custom_bbox: tvte.BoundingBoxes = tvte.BoundingBoxes(
                     torch.tensor([bbox_l, bbox_t, bbox_w, bbox_h]),
                     canvas_size=(H, W),
-                    format=tv_tensors.BoundingBoxFormat.XYWH,
+                    format=tvte.BoundingBoxFormat.XYWH,
                     dtype=torch.float32,
                 )
 
@@ -737,18 +760,18 @@ class TestCustomCropResize(unittest.TestCase):
                         self.assertEqual(mode, res["mode"])
 
     def test_single_image_3d(self):
-        img = tv_tensors.Image(load_test_image("866-200x300.jpg").squeeze(0))
+        img = tvte.Image(load_test_image("866-200x300.jpg").squeeze(0))
         out_shape = (100, 100)
         data = create_list_batch_data(
             images=[img],
             out_shape=out_shape,
             mode="zero-pad",
-            bbox=tv_tensors.BoundingBoxes([0, 0, 300, 200], canvas_size=(200, 300), format="XYWH"),
+            bbox=tvte.BoundingBoxes([0, 0, 300, 200], canvas_size=(200, 300), format="XYWH"),
             key_points=torch.ones((1, 3, 2)),
         )
         res = CustomCropResize()(data)
         new_img = res["image"]
-        self.assertTrue(isinstance(new_img, tv_tensors.Image))
+        self.assertTrue(isinstance(new_img, tvte.Image))
         self.assertTrue(new_img.ndim == 4)
         self.assertEqual(new_img.shape, torch.Size((1, 3, *out_shape)))
 
@@ -773,10 +796,10 @@ class TestCustomCropResize(unittest.TestCase):
                         img = load_test_image(img_name)
                         H, W = img.shape[-2:]
 
-                        custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
+                        custom_bbox: tvte.BoundingBoxes = tvte.BoundingBoxes(
                             torch.tensor([bbox_l, bbox_t, bbox_w, bbox_h]),
                             canvas_size=(H, W),
-                            format=tv_tensors.BoundingBoxFormat.XYWH,
+                            format=tvte.BoundingBoxFormat.XYWH,
                             dtype=torch.float32,
                         )
                         # diagonal through box
@@ -801,7 +824,7 @@ class TestCustomCropResize(unittest.TestCase):
                         # test image shape:
                         self.assertEqual(new_image.shape, torch.Size((1, 3, *out_shape)))
                         # test image: image is sub-image, shape is: [B x C x H x W]
-                        img_crop = tv_tensors.wrap(tvt_crop(img, bbox_t, bbox_l, bbox_h, bbox_w), like=img)
+                        img_crop = tvte.wrap(tvt_crop(img, bbox_t, bbox_l, bbox_h, bbox_w), like=img)
                         crop_resized_img = transform(
                             create_tensor_batch_data(image=img_crop, mode=mode, out_shape=out_shape, fill=0)
                         )["image"]
@@ -827,10 +850,10 @@ class TestCustomCropResize(unittest.TestCase):
                     imgs: Images = load_test_images_list([img_name for _ in range(B)])
                     H, W = imgs[0].shape[-2:]
 
-                    custom_bbox: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
+                    custom_bbox: tvte.BoundingBoxes = tvte.BoundingBoxes(
                         torch.tensor([[bbox_l, bbox_t, bbox_w, bbox_h], [bbox_l, bbox_t, bbox_w, bbox_h]]),
                         canvas_size=(H, W),
-                        format=tv_tensors.BoundingBoxFormat.XYWH,
+                        format=tvte.BoundingBoxFormat.XYWH,
                         dtype=torch.float32,
                     )
 
@@ -869,7 +892,7 @@ class TestCustomCropResize(unittest.TestCase):
             ),
             (
                 load_test_images_list(["866-200x300.jpg"]),  # just 1 image
-                tv_tensors.BoundingBoxes(torch.zeros((2, 4)), canvas_size=(10, 10), format="xywh"),
+                tvte.BoundingBoxes(torch.zeros((2, 4)), canvas_size=(10, 10), format="xywh"),
                 torch.zeros((2, 21, 2)),
                 ValueError,
                 "Expected the same amount of images 1 and bounding boxes 2",

@@ -8,8 +8,38 @@ import torch as t
 from torchvision import tv_tensors as tvte
 
 from dgs.utils.constants import PROJECT_ROOT
-from dgs.utils.types import FilePaths, Heatmap, Image, Images
+from dgs.utils.types import FilePath, FilePaths, Heatmap, Image, Images
 from tests.helper import load_test_image
+
+__all__ = [
+    "J",
+    "J_DIM",
+    "B",
+    "PID",
+    "PIDS",
+    "IMG_NAME",
+    "DUMMY_IMG",
+    "DUMMY_IMG_BATCH",
+    "DUMMY_IMGS",
+    "DUMMY_KP_TENSOR",
+    "DUMMY_KP",
+    "DUMMY_KP_BATCH",
+    "DUMMY_KP_PATH",
+    "DUMMY_KP_PATH_GLOB",
+    "DUMMY_BBOX_TENSOR",
+    "DUMMY_BBOX",
+    "DUMMY_BBOX_BATCH",
+    "DUMMY_FP_STRING",
+    "DUMMY_FP",
+    "DUMMY_FP_BATCH",
+    "DUMMY_HM_TENSOR",
+    "DUMMY_HM",
+    "DUMMY_HM_BATCH",
+    "DUMMY_WEIGHT",
+    "DUMMY_WEIGHT_BATCH",
+    "DUMMY_DATA",
+    "DUMMY_DATA_BATCH",
+]
 
 J = 17
 J_DIM = 2
@@ -23,6 +53,11 @@ DUMMY_IMG: Image = load_test_image(IMG_NAME)
 DUMMY_IMG_BATCH: Image = tvte.Image(t.cat([DUMMY_IMG.clone() for _ in range(B)]))
 DUMMY_IMGS: Images = [DUMMY_IMG.clone() for _ in range(B)]
 
+# saved pt files include weights (1 x 17 x 3)
+DUMMY_KP_PATH: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/kp.pt")
+DUMMY_KP_PATH_GLOB: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/kp_glob.pt")
+
+# plain key points
 DUMMY_KP_TENSOR: t.Tensor = t.rand((1, J, J_DIM), dtype=t.float32)
 DUMMY_KP = DUMMY_KP_TENSOR.detach().clone()
 DUMMY_KP_BATCH: t.Tensor = t.cat([DUMMY_KP_TENSOR.detach().clone() for _ in range(B)])

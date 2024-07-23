@@ -532,7 +532,7 @@ class Tracks(UserDict):
     def _next_frame(self) -> None:
         self._curr_frame += 1
 
-    def get_states(self) -> list[State]:
+    def get_states(self) -> tuple[list[State], list[TrackID]]:
         """Get the last state of **every** track in this object as a :class:`State`."""
         states: list[State] = []
         tids: list[TrackID] = []
@@ -541,7 +541,7 @@ class Tracks(UserDict):
             states.append(track[-1])
             tids.append(tid)
 
-        return states
+        return states, tids
 
     def get_active_states(self) -> list[State]:
         """Get the last state of every **active** track in this object as a :class:`State`."""

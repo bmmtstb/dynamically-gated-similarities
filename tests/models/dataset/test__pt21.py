@@ -10,10 +10,10 @@ from dgs.models.dataset.posetrack21 import (
 )
 from dgs.models.loader import get_data_loader
 from dgs.utils.config import load_config
+from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import is_abs_dir, mkdir_if_missing
 from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.utils import HidePrint
-from tests.utils.state import *
 
 
 class TestPT21Helpers(unittest.TestCase):

@@ -1,13 +1,17 @@
+import os
 import unittest
 from copy import deepcopy
 
 import numpy as np
-from torchvision import tv_tensors
+import torch
+import torch as t
+from torchvision import tv_tensors as tvte
 
 from dgs.utils.config import DEF_VAL
-from dgs.utils.state import get_ds_data_getter, State
+from dgs.utils.constants import PROJECT_ROOT
+from dgs.utils.state import collate_states, get_ds_data_getter, State
 from dgs.utils.types import Device
-from tests.helper import test_multiple_devices
+from tests.helper import load_test_image, test_multiple_devices
 from . import *
 
 
@@ -29,6 +33,10 @@ class TestState(unittest.TestCase):
     def test_init_with_unknown_kwarg(self):
         ds = State(bbox=DUMMY_BBOX, dummy="dummy")
         self.assertEqual(ds["dummy"], "dummy")
+
+    def test_init_with_none_value(self):
+        ds = State(bbox=DUMMY_BBOX, value=None)
+        self.assertFalse("value" in ds)
 
     def test_init_with_multiple_values(self):
         for fp, bbox, kp, out_fp, out_bbox, out_kp, validate in [
@@ -65,6 +73,20 @@ class TestState(unittest.TestCase):
         with self.assertRaises(NotImplementedError) as e:
             _ = State("dummy", bbox=DUMMY_BBOX)
         self.assertTrue("Unknown arguments" in str(e.exception), msg=e.exception)
+
+    def test_getitems(self):
+        ds = State(bbox=DUMMY_BBOX)
+        self.assertTrue(torch.allclose(ds["bbox"], DUMMY_BBOX))
+        self.assertEqual(ds[0], ds[-1])
+
+        states = State(bbox=DUMMY_BBOX_BATCH)
+        self.assertEqual(states[0], states[-1])
+        self.assertEqual(states[0], ds)
+        self.assertEqual(states[0:3], collate_states([ds for _ in range(2)]))
+
+        with self.assertRaises(NotImplementedError) as e:
+            _ = ds[1.4]
+        self.assertTrue("Expected item to be str, int or slice, got" in str(e.exception), msg=e.exception)
 
 
 class TestStateAttributes(unittest.TestCase):
@@ -137,6 +159,84 @@ class TestStateAttributes(unittest.TestCase):
                     ds = State(**{"bbox": DUMMY_BBOX, scope: DUMMY_KP, "validate": validate})
                     setattr(ds, scopes[(i + 1) % 2], DUMMY_KP)
 
+    @test_multiple_devices
+    def test_get_keypoints_load_from_file(self, device):
+        res_kp, res_weights = t.load(DUMMY_KP_PATH).to(device=device).reshape((1, J, J_DIM + 1)).split([2, 1], dim=-1)
+        for validate in [True, False]:
+            for scope_kp, scope_path, data_path in [
+                ("keypoints", "keypoints_path", DUMMY_KP_PATH),
+                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH),
+            ]:
+                with self.subTest(
+                    msg="s_kp: {}, s_p: {}, data_path: {}, val: {}".format(scope_kp, scope_path, data_path, validate)
+                ):
+                    ds = State(
+                        **{
+                            "bbox": DUMMY_BBOX.to(device=device),
+                            scope_path: data_path,
+                            "validate": validate,
+                            "device": device,
+                        }
+                    )
+                    self.assertEqual(ds[scope_path], data_path)
+                    kp = getattr(ds, scope_kp)
+                    self.assertEqual(kp.device, res_kp.device)
+                    self.assertTrue(t.allclose(kp, res_kp))
+                    self.assertEqual(kp.size(-1), 2)
+                    self.assertTrue(t.allclose(ds.joint_weight, res_weights))
+
+    @test_multiple_devices
+    def test_get_keypoints_from_crop_path(self, device):
+        res_kp, res_weights = t.load(DUMMY_KP_PATH).to(device=device).reshape((1, J, J_DIM + 1)).split([2, 1], dim=-1)
+        for validate in [True, False]:
+            for scope_kp, crop_path, data_path in [
+                ("keypoints", "keypoints_path", DUMMY_KP_PATH_GLOB),
+                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH_GLOB),
+            ]:
+                with self.subTest(
+                    msg="s_kp: {}, c_p: {}, data_path: {}, val: {}".format(scope_kp, crop_path, data_path, validate)
+                ):
+                    ds = State(
+                        **{
+                            "bbox": DUMMY_BBOX.to(device=device),
+                            crop_path: data_path,
+                            "validate": validate,
+                            "device": device,
+                        }
+                    )
+                    self.assertEqual(ds[crop_path], data_path)
+                    kp = getattr(ds, scope_kp)
+                    self.assertEqual(kp.device, res_kp.device)
+                    self.assertTrue(t.allclose(kp, res_kp))
+                    self.assertEqual(kp.size(-1), 2)
+                    self.assertTrue(t.allclose(ds.joint_weight, res_weights))
+
+    def test_get_keypoints_exceptions(self):
+        ds = State(**{"bbox": DUMMY_BBOX})
+        with self.assertRaises(KeyError) as e:
+            _ = getattr(ds, "keypoints")
+        self.assertTrue("There are no key-points in this object" in str(e.exception), msg=e.exception)
+        with self.assertRaises(KeyError) as e:
+            _ = getattr(ds, "keypoints_local")
+        self.assertTrue("There are no local key-points in this object" in str(e.exception), msg=e.exception)
+
+    @test_multiple_devices
+    def test_setting_bbox(self, device: Device):
+        orig_devices: list[Device] = [t.device("cpu")]
+        if t.cuda.is_available():
+            orig_devices.append(t.device("cuda:0"))
+
+        for original_device in orig_devices:
+            with self.subTest(msg=f"original: {original_device}, new_device: {device}"):
+                ds = State(**DUMMY_DATA).to(device=original_device)
+                self.assertEqual(ds.device, t.device(original_device))
+                new_bbox = tvte.BoundingBoxes(
+                    DUMMY_BBOX_TENSOR + 1, format=tvte.BoundingBoxFormat.XYWH, canvas_size=(1000, 1000), device=device
+                )
+                ds.bbox = new_bbox
+                self.assertTrue(t.allclose(ds.bbox, new_bbox))
+                self.assertEqual(t.device(ds.bbox.device), t.device(device))
+
     def test_setting_bbox_exceptions(self):
         ds = State(**DUMMY_DATA)
         with self.assertRaises(TypeError) as e:
@@ -172,7 +272,7 @@ class TestStateAttributes(unittest.TestCase):
 
     def test_get_filepath_fails_as_string(self):
         ds = State(bbox=DUMMY_BBOX)
-        ds.data["filepath"] = DUMMY_FP_STRING
+        ds["filepath"] = DUMMY_FP_STRING
         with self.assertRaises(AssertionError) as e:
             _ = ds.filepath
         self.assertTrue("filepath must be a tuple but got" in str(e.exception), msg=e.exception)
@@ -285,7 +385,7 @@ class TestStateFunctions(unittest.TestCase):
 
     @test_multiple_devices
     def test_to(self, device: Device):
-        bbox = tv_tensors.wrap(DUMMY_BBOX.cpu(), like=DUMMY_BBOX)
+        bbox = tvte.wrap(DUMMY_BBOX.cpu(), like=DUMMY_BBOX)
         kp = DUMMY_KP.cpu()
         cid = t.ones(1, dtype=t.long).cpu()
         ds = State(bbox=bbox, keypoints=kp, class_id=cid, validate=False)
@@ -308,7 +408,7 @@ class TestStateFunctions(unittest.TestCase):
                 ),
                 (
                     State(
-                        bbox=tv_tensors.BoundingBoxes(
+                        bbox=tvte.BoundingBoxes(
                             t.stack([t.tensor([i, i, 7, 9]) for i in range(B)]),
                             canvas_size=(10, 10),
                             format="XYWH",
@@ -329,7 +429,7 @@ class TestStateFunctions(unittest.TestCase):
                     ),
                     [
                         State(
-                            bbox=tv_tensors.BoundingBoxes(t.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"),
+                            bbox=tvte.BoundingBoxes(t.tensor([i, i, 7, 9]), canvas_size=(10, 10), format="XYWH"),
                             keypoints=DUMMY_KP,
                             filepath=(DUMMY_FP_STRING,),
                             tensor=t.ones(1),
@@ -452,7 +552,7 @@ class TestStateFunctions(unittest.TestCase):
         multi_s = State(filepath=DUMMY_FP_BATCH, bbox=DUMMY_BBOX_BATCH, validate=False)
         no_fps = State(bbox=DUMMY_BBOX, validate=False)
         empty_fps = State(
-            bbox=tv_tensors.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
             filepath=tuple(),
             validate=False,
         )
@@ -462,28 +562,28 @@ class TestStateFunctions(unittest.TestCase):
         for obj in [s, multi_s, no_fps]:
             with self.subTest(msg="obj: {}".format(obj)):
                 with self.assertRaises(KeyError) as e:
-                    _ = obj.copy().data["image"]
+                    _ = obj.copy()["image"]
                 self.assertTrue("'image'" in str(e.exception), msg=e.exception)
         # -> succeed if present
-        img_0 = img_ds.data["image"][0]
+        img_0 = img_ds["image"][0]
         self.assertTrue(t.allclose(img_0, orig_img))
 
         # call load_image
         s.load_image(store=False)
-        self.assertTrue("image" not in s.data)
+        self.assertTrue("image" not in s)
         s.load_image(store=True)
-        self.assertTrue("image" in s.data)
-        imgs_1 = s.data["image"]
+        self.assertTrue("image" in s)
+        imgs_1 = s["image"]
         self.assertTrue(isinstance(imgs_1, list))
         img_1 = imgs_1[0]
-        self.assertTrue(isinstance(img_1, tv_tensors.Image))
+        self.assertTrue(isinstance(img_1, tvte.Image))
         self.assertEqual(img_1.shape, orig_img.shape)
         self.assertTrue(t.allclose(img_1, orig_img))
 
         imgs_2 = multi_s.load_image()
         self.assertTrue(isinstance(imgs_2, list))
         for img_2 in imgs_2:
-            self.assertTrue(isinstance(img_2, tv_tensors.Image))
+            self.assertTrue(isinstance(img_2, tvte.Image))
             self.assertEqual(list(img_2.shape), [1] + list(orig_img.shape)[-3:])
             self.assertTrue(t.allclose(img_2, orig_img))
 
@@ -498,46 +598,80 @@ class TestStateFunctions(unittest.TestCase):
         empty_img = empty_fps.load_image()
         self.assertEqual(empty_img, [])
 
+    def test_get_image_and_load(self):
+        s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP)
+        imgs = s.image
+        self.assertTrue("image" not in s)
+        self.assertTrue(all(t.allclose(i, load_test_image(IMG_NAME)) for i in imgs))
+
+    def test_get_image_crop_and_load(self):
+        s = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP)
+        crops = s.image_crop
+        self.assertTrue("image_crop" not in s)
+        self.assertTrue(all(t.allclose(i, load_test_image(IMG_NAME)) for i in crops))
+
+    def test_clean(self):
+        s = State(**DUMMY_DATA)
+        multi_s = State(**DUMMY_DATA_BATCH)
+
+        self.assertTrue("image" in s)
+        self.assertTrue("image_crop" in s)
+        s.clean()
+        self.assertTrue("image" not in s)
+        self.assertTrue("image_crop" not in s)
+
+        self.assertTrue("image" in multi_s)
+        self.assertTrue("image_crop" in multi_s)
+        multi_s.clean(["image", "image_crop", "embedding", "keypoints"])
+        self.assertTrue("image" not in multi_s)
+        self.assertTrue("image_crop" not in multi_s)
+        self.assertTrue("embedding" not in multi_s)
+        self.assertTrue("keypoints" not in multi_s)
+
+        with self.assertRaises(ValueError) as e:
+            _ = s.clean("bbox")
+        self.assertTrue("Cannot clean bounding box!" in str(e.exception), msg=e.exception)
+
+
+class TestImageCrop(unittest.TestCase):
+    orig_img = load_test_image(IMG_NAME)
+
     def test_load_image_crop(self):
-        orig_img = load_test_image(IMG_NAME)
         s = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP, validate=False)
-        multi_s = State(bbox=DUMMY_BBOX_BATCH, crop_path=DUMMY_FP_BATCH, validate=False)
-        no_fps = State(bbox=DUMMY_BBOX, validate=False)
-        empty_fps = State(
-            bbox=tv_tensors.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
-            crop_path=tuple(),
-            validate=False,
-        )
-        img_ds = State(bbox=DUMMY_BBOX, image_crop=orig_img.clone(), keypoints_local=DUMMY_KP, validate=False)
 
         # get using data -> fails if not present yet
-        for obj in [s, multi_s, no_fps]:
-            with self.subTest(msg="obj: {}".format(obj)):
-                with self.assertRaises(KeyError) as e:
-                    _ = obj.copy().data["image_crop"]
-                self.assertTrue("'image_crop'" in str(e.exception), msg=e.exception)
-        # -> succeed if present
-        orig_img = img_ds.data["image_crop"]
-        self.assertTrue(t.allclose(orig_img, orig_img))
+        with self.assertRaises(KeyError) as e:
+            _ = s.copy()["image_crop"]
+        self.assertTrue("'image_crop'" in str(e.exception), msg=e.exception)
 
-        # call load_image_crop
+        # s - call load_image_crop
         s.load_image_crop(store=False)
-        self.assertTrue("image_crop" not in s.data)
+        self.assertTrue("image_crop" not in s)
+        self.assertTrue("keypoints_local" not in s)
         s.load_image_crop(store=True)
-        self.assertTrue("image_crop" in s.data)
-        crop = s.data["image_crop"]
-        self.assertTrue(isinstance(crop, tv_tensors.Image))
-        self.assertEqual(crop.shape, orig_img.shape)
-        self.assertTrue(t.allclose(crop, orig_img))
+        self.assertTrue("image_crop" in s)
+        self.assertTrue("keypoints_local" in s)
+        crop = s["image_crop"]
+        self.assertTrue(isinstance(crop, tvte.Image))
+        self.assertEqual(crop.shape, self.orig_img.shape)
+        self.assertTrue(t.allclose(crop, self.orig_img))
 
+    def test_load_image_crop_with_given_crop(self):
+        # -> succeed if present
+        img_ds = State(bbox=DUMMY_BBOX, image_crop=self.orig_img.clone(), keypoints_local=DUMMY_KP, validate=False)
+        self.assertTrue(t.allclose(img_ds["image_crop"], self.orig_img))
+        self.assertTrue(t.allclose(img_ds.load_image_crop()[0], self.orig_img))
+
+    def test_load_image_crop_batched(self):
+        multi_s = State(bbox=DUMMY_BBOX_BATCH, crop_path=DUMMY_FP_BATCH, validate=False)
         imgs = multi_s.load_image_crop()
-        self.assertTrue(isinstance(imgs, tv_tensors.Image))
-        self.assertEqual(list(imgs.shape), [B] + list(orig_img.shape)[1:])
-        self.assertTrue(t.allclose(imgs, orig_img.repeat_interleave(B, dim=0)))
+        self.assertTrue(isinstance(imgs, tvte.Image))
+        self.assertEqual(list(imgs.shape), [B] + list(self.orig_img.shape)[1:])
+        self.assertTrue(t.allclose(imgs, self.orig_img.repeat_interleave(B, dim=0)))
 
-        self.assertTrue(t.allclose(img_ds.load_image_crop()[0], orig_img))
-
-        # calling load image fails if the filepaths are not given
+    def test_load_image_crop_fails_without_path(self):
+        # calling load image fails if the filepaths aren't given
+        no_fps = State(bbox=DUMMY_BBOX, validate=False)
         with self.assertRaises(AttributeError) as e:
             _ = no_fps.load_image_crop()
         self.assertTrue(
@@ -546,64 +680,92 @@ class TestStateFunctions(unittest.TestCase):
             msg=e.exception,
         )
 
+    def test_load_image_crop_with_zero_length(self):
         # call load image with zero-length image data
+        empty_fps = State(
+            bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            crop_path=tuple(),
+            validate=False,
+        )
         empty_crop = empty_fps.load_image_crop()
         self.assertEqual(empty_crop, [])
 
+    def test_load_image_crop_without_associated_kp_file(self):
+        # make sure local kp don't get set if the crop doesn't have an associated kp file
+        s = State(
+            bbox=DUMMY_BBOX,
+            crop_path=(
+                os.path.join(PROJECT_ROOT, "./tests/test_data/images/866-200x300.jpg"),
+            ),  # there is no respective .pt file
+            keypoints=DUMMY_KP,
+            validate=False,
+        )
+        s.load_image_crop(store=False)
+        self.assertTrue("image_crop" not in s)
+        self.assertTrue("keypoints_local" not in s)
+        s.load_image_crop(store=True)
+        self.assertTrue("image_crop" in s)
+        self.assertTrue("keypoints_local" in s)
+
     def test_load_img_crop_by_extraction(self):
-        single_s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP, keypoints=DUMMY_KP)
-        multi_s = State(bbox=DUMMY_BBOX_BATCH, filepath=DUMMY_FP_BATCH)
+        s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP, keypoints=DUMMY_KP)
 
-        crop = single_s.load_image_crop(store=False)
-        self.assertTrue("keypoints_local" not in single_s.data)
-        self.assertTrue("image_crop" not in single_s.data)
-
-        crop = single_s.load_image_crop(store=True)
-        self.assertTrue("keypoints_local" in single_s.data)
-        self.assertTrue("image_crop" in single_s.data)
-        self.assertTrue(isinstance(crop, tv_tensors.Image))
+        crop = s.load_image_crop(store=False)
+        self.assertTrue(isinstance(crop, tvte.Image))
         self.assertEqual(crop.shape, t.Size((1, 3, *DEF_VAL["images"]["crop_size"])))
-        self.assertEqual(single_s.keypoints_local.shape, DUMMY_KP.shape)
+        self.assertTrue("keypoints_local" not in s)
+        self.assertTrue("image_crop" not in s)
 
+        crop = s.load_image_crop(store=True)
+        self.assertTrue("keypoints_local" in s)
+        self.assertTrue("image_crop" in s)
+        self.assertTrue(isinstance(crop, tvte.Image))
+        self.assertEqual(crop.shape, t.Size((1, 3, *DEF_VAL["images"]["crop_size"])))
+        self.assertEqual(s.keypoints_local.shape, DUMMY_KP.shape)
+
+    def test_load_img_crop_by_extraction_crop_size(self):
+        s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP, keypoints=DUMMY_KP)
         out_size = (100, 100)
-        crops = multi_s.load_image_crop(crop_size=out_size)
-        self.assertTrue(isinstance(crops, tv_tensors.Image))
+
+        crop = s.load_image_crop(store=False, crop_size=out_size)
+        self.assertTrue(isinstance(crop, tvte.Image))
+        self.assertEqual(crop.shape, t.Size((1, 3, *out_size)))
+        self.assertTrue("keypoints_local" not in s)
+        self.assertTrue("image_crop" not in s)
+
+        crop = s.load_image_crop(store=True, crop_size=out_size)
+        self.assertTrue("keypoints_local" in s)
+        self.assertTrue("image_crop" in s)
+        self.assertTrue(isinstance(crop, tvte.Image))
+        self.assertEqual(crop.shape, t.Size((1, 3, *out_size)))
+        self.assertEqual(s.keypoints_local.shape, DUMMY_KP.shape)
+
+    def test_load_img_crop_by_extraction_batched(self):
+        s = State(bbox=DUMMY_BBOX_BATCH, filepath=DUMMY_FP_BATCH)
+
+        crops = s.load_image_crop(store=False)
+        self.assertTrue(isinstance(crops, tvte.Image))
+        self.assertEqual(crops.shape, t.Size((B, 3, *DEF_VAL["images"]["crop_size"])))
+        self.assertFalse("keypoints_local" in s)
+
+        crops = s.load_image_crop(store=True)
+        self.assertTrue(isinstance(crops, tvte.Image))
+        self.assertEqual(crops.shape, t.Size((B, 3, *DEF_VAL["images"]["crop_size"])))
+        self.assertFalse("keypoints_local" in s)  # no key points given
+
+    def test_load_img_crop_by_extraction_batched_with_crop_size(self):
+        s = State(bbox=DUMMY_BBOX_BATCH, filepath=DUMMY_FP_BATCH)
+        out_size = (100, 100)
+
+        crops = s.load_image_crop(store=False, crop_size=out_size)
+        self.assertTrue(isinstance(crops, tvte.Image))
         self.assertEqual(crops.shape, t.Size((B, 3, *out_size)))
-        self.assertFalse("keypoints_local" in multi_s.data)
+        self.assertFalse("keypoints_local" in s)
 
-    def test_get_image_and_load(self):
-        s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP)
-        imgs = s.image
-        self.assertTrue("image" not in s.data)
-        self.assertTrue(all(t.allclose(i, load_test_image(IMG_NAME)) for i in imgs))
-
-    def test_get_image_crop_and_load(self):
-        s = State(bbox=DUMMY_BBOX, crop_path=DUMMY_FP)
-        crops = s.image_crop
-        self.assertTrue("image_crop" not in s.data)
-        self.assertTrue(all(t.allclose(i, load_test_image(IMG_NAME)) for i in crops))
-
-    def test_clean(self):
-        s = State(**DUMMY_DATA)
-        multi_s = State(**DUMMY_DATA_BATCH)
-
-        self.assertTrue("image" in s.data)
-        self.assertTrue("image_crop" in s.data)
-        s.clean()
-        self.assertTrue("image" not in s.data)
-        self.assertTrue("image_crop" not in s.data)
-
-        self.assertTrue("image" in multi_s.data)
-        self.assertTrue("image_crop" in multi_s.data)
-        multi_s.clean(["image", "image_crop", "embedding", "keypoints"])
-        self.assertTrue("image" not in multi_s.data)
-        self.assertTrue("image_crop" not in multi_s.data)
-        self.assertTrue("embedding" not in multi_s.data)
-        self.assertTrue("keypoints" not in multi_s.data)
-
-        with self.assertRaises(ValueError) as e:
-            _ = s.clean("bbox")
-        self.assertTrue("Cannot clean bounding box!" in str(e.exception), msg=e.exception)
+        crops = s.load_image_crop(store=True, crop_size=out_size)
+        self.assertTrue(isinstance(crops, tvte.Image))
+        self.assertEqual(crops.shape, t.Size((B, 3, *out_size)))
+        self.assertFalse("keypoints_local" in s)  # no key points given
 
 
 class TestDataGetter(unittest.TestCase):

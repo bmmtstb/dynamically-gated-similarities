@@ -38,9 +38,9 @@ def test_multiple_devices(func: callable) -> callable:
     return device_wrapper
 
 
-def load_test_image(filename: str) -> Image:
+def load_test_image(filename: str, **kwargs) -> Image:
     """Given the filename of an image in tests/test_data folder, load, validate and return it."""
-    return validate_image(load_image(os.path.join("./tests/test_data/images/", filename)))
+    return validate_image(load_image(os.path.join("./tests/test_data/images/", filename), **kwargs))
 
 
 def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kwargs) -> Image:
@@ -50,9 +50,9 @@ def load_test_images(filenames: Iterable[str], force_reshape: bool = False, **kw
     )
 
 
-def load_test_images_list(filenames: Iterable[str]) -> Images:
+def load_test_images_list(filenames: Iterable[str], **kwargs) -> Images:
     """Given the filename of an image in tests/test_data folder, load, validate and return it."""
-    return [load_test_image(fn) for fn in filenames]
+    return [load_test_image(fn, **kwargs) for fn in filenames]
 
 
 @contextmanager

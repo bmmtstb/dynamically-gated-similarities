@@ -238,6 +238,11 @@ def compute_padding(old_w: int, old_h: int, target_aspect: float) -> list[int]:
     Returns:
         A list of integers as paddings for the left, top, right, and bottom side respectively.
     """
+    if old_h == 0 or old_w == 0:
+        raise ValueError(f"Old height and width should be greater than zero, but are h: {old_h} and w: {old_w}")
+    if target_aspect <= 1e-8:
+        raise ValueError(f"Target aspect should be greater than zero, but is {target_aspect}")
+
     old_aspect: float = old_w / old_h
 
     if abs(old_aspect - target_aspect) < 1e-4:
@@ -252,8 +257,6 @@ def compute_padding(old_w: int, old_h: int, target_aspect: float) -> list[int]:
     if height_padding <= 0 <= width_padding:
         # +1 pixel on the right if new shape is odd
         return [width_padding // 2, 0, width_padding // 2 + (width_padding % 2), 0]
-    if height_padding == width_padding == 0:
-        return [0, 0, 0, 0]
     raise ArithmeticError(
         f"During computing the sizes for padding, something unexpected happened. "
         f"old_w: {old_w}, old_h: {old_h}, targ_asp: {target_aspect}"
