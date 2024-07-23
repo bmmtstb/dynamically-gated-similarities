@@ -183,7 +183,7 @@ def ids_to_one_hot(ids: Union[t.Tensor, t.Tensor], nof_classes: int) -> t.Tensor
     return F.one_hot(ids.long(), nof_classes)  # pylint: disable=not-callable
 
 
-class MemoryTracker:
+class MemoryTracker:  # pragma: no cover
     """A Wrapper for tracking RAM usage.
 
     Args:
