@@ -6,6 +6,7 @@ import os.path
 import time
 
 import torch as t
+from scipy.optimize import linear_sum_assignment
 from torch import nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
@@ -20,7 +21,6 @@ from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Validations
 from dgs.utils.utils import torch_to_numpy
-from lapsolver import solve_dense
 
 dgs_eng_test_validations: Validations = {
     "submission_key": [("any", ["str", ("all", [list, ("forall", str)])])],
@@ -123,7 +123,6 @@ class DGSEngine(EngineModule):
     def _track_step(self, detections: State) -> dict[str, float]:
         """Run one step of tracking."""
         N: int = len(detections)
-        T: int = len(self.tracks)
         updated_tracks: dict[int, State] = {}
         new_states: list[State] = []
         batch_times: dict[str, float] = {}
@@ -131,15 +130,15 @@ class DGSEngine(EngineModule):
         time_batch_start: float = time.time()
 
         # Get the current state from the Tracks and use it to compute the similarity to the current detections.
-        track_state: list[State] = self.tracks.get_states()
+        track_states, tids = self.tracks.get_states()
 
-        for ts in track_state:
+        for ts in track_states:
             ts.load_image_crop(store=True)
             ts.clean(keys="image")
 
         batch_times["data"] = time.time() - time_batch_start
 
-        if len(track_state) == 0 and N > 0:
+        if len(track_states) == 0 and N > 0:
             # No Tracks yet - every detection will be a new track!
             # Make sure to compute the embeddings for every detection, to ensure correct behavior of collate later on
             time_sim_start = time.time()
@@ -151,29 +150,32 @@ class DGSEngine(EngineModule):
             batch_times["match"] = time.time() - time_match_start
         elif N > 0:
             time_sim_start = time.time()
-            similarity = self.model.forward(ds=detections, target=collate_states(track_state))
+            similarity = self.model.forward(ds=detections, target=collate_states(track_states))
             batch_times["similarity"] = time.time() - time_sim_start
 
-            # Solve Linear sum Assignment Problem (LAP) using py-lapsolver.
-            # The goal is to obtain the best combination of Track-IDs and detection-IDs given the probabilities of
-            # a similarity-matrix with a shape of [N x T].
-            # Because the algorithm returns the lowest scores, we need to compute 1-sim as cost matrix.
+            # Solve Linear sum Assignment Problem (LAP/LSA).
+            # Goal: obtain the best combination of Track-IDs and detection-IDs given the probabilities in the
+            # similarity-matrix. Due to adding zeros for empty tracks, the SM has a shape of [N x (T+N)].
+            # The LSA always returns indices of length N because N <= T+N for all positive T.
             # The result is a list of N 2-tuples containing the position
             time_match_start = time.time()
-            cost_matrix = t.ones_like(similarity) - similarity
-            # lapsolver uses numpy arrays instead of torch, therefore, convert but loose computational graph
-            cost_matrix = torch_to_numpy(cost_matrix)
-            rids, cids = solve_dense(cost_matrix)  # rids and cids are ndarray of shape [N]
+            # scipy uses numpy arrays instead of torch, therefore, convert -> but loose computational graph
+            cost_matrix = torch_to_numpy(similarity)
+            rids, cids = linear_sum_assignment(cost_matrix, maximize=True)  # rids and cids are ndarray of shape [N]
+
+            assert 0 <= (cost := cost_matrix[rids, cids].sum()) <= N, (
+                f"expected the cost matrix to be between 0 and N, "
+                f"got r: {rids}, c: {cids}, cm: {cost_matrix}, N: {N}, cost: {cost}"
+            )
 
             assert (
                 N == len(rids) == len(cids)
-            ), f"expected shapes to match - N: {N}, states: {len(track_state)}, rids: {len(rids)}, cids: {len(cids)}"
+            ), f"expected shapes to match - N: {N}, states: {len(track_states)}, rids: {len(rids)}, cids: {len(cids)}"
 
             states: list[State] = detections.split()
-            tids = self.tracks.ids
             for rid, cid in zip(rids, cids):
-                if cid < T and cid in tids:
-                    updated_tracks[cid] = states[rid]
+                if cid < len(tids):
+                    updated_tracks[tids[cid]] = states[rid]
                 else:
                     new_states.append(states[rid])
             batch_times["match"] = time.time() - time_match_start
