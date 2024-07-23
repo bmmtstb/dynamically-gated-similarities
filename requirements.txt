@@ -19,7 +19,7 @@ torchaudio==2.3.*
 av
 black
 coverage[toml]
-gdown  # torchreid does not import it properly
+gdown
 imagesize
 matplotlib
 numpy==1.*

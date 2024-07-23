@@ -28,7 +28,7 @@ vis_sim:
         module_name: "torchreid"
         model_name: "osnet_x0_25"
         nof_classes: 10
-        weights: "pretrained"
+        weights: "./weights/osnet_x0_25_imagenet.pth"
         softmax: true
 
 pose_sim:

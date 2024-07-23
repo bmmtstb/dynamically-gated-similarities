@@ -223,7 +223,7 @@ class State(UserDict):
             raise ValueError(f"Can't switch bbox shape. Expected {self.bbox.shape} but got {bbox.shape}")
 
         # switch device if new bbox is on another device
-        if bbox.device != self.bbox.device:
+        if bbox.device != self.data["bbox"].device:
             self.device = bbox.device
             self.to(device=bbox.device)
 

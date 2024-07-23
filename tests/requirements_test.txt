@@ -5,7 +5,7 @@
 av==11.0.*
 black
 coverage[toml]
-gdown  # torchreid does not import it properly
+gdown
 imagesize
 matplotlib
 numpy==1.*

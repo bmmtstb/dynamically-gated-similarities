@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 
+import gdown
 import torch
 from torch import nn
 from torch.nn.functional import softmax as f_softmax
@@ -184,6 +185,12 @@ class TestDGSModule(unittest.TestCase):
 
     def setUp(self):
         mkdir_if_missing(os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_dgs/"))
+        weights_dir = os.path.join(PROJECT_ROOT, "./weights/")
+        mkdir_if_missing(weights_dir)
+        cached_file = os.path.join(weights_dir, "osnet_x0_25_imagenet.pth")
+
+        if not os.path.exists(cached_file):
+            gdown.download("https://drive.google.com/uc?id=1rb8UN5ZzPKRc_xvtHlyDh-cSz88YX9hs", cached_file, quiet=False)
 
     def tearDown(self):
         dir_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_dgs/")

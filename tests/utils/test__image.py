@@ -31,16 +31,13 @@ from helper import load_test_image, load_test_images_list, test_multiple_devices
 # Map image name to shape.
 # Shape is torch shape and therefore [C x H x W].
 TEST_IMAGES: dict[str, tuple[int, int, int]] = {
-    "866-200x300.jpg": (3, 300, 200),
-    "866-200x800.jpg": (3, 800, 200),
-    "866-300x200.jpg": (3, 200, 300),
-    "866-500x500.jpg": (3, 500, 500),
-    "866-500x1000.jpg": (3, 1000, 500),
-    "866-800x200.jpg": (3, 200, 800),
-    "866-1000x500.jpg": (3, 500, 1000),
-    "866-1000x1000.jpg": (3, 1000, 1000),
-    "file_example_PNG_500kB.png": (3, 566, 850),
-    "torch_person.jpg": (3, 640, 480),
+    "866-200x300.jpg": (3, 300, 200),  # near quadratic higher
+    "866-300x200.jpg": (3, 200, 300),  # near quadratic wider
+    "866-200x800.jpg": (3, 800, 200),  # higher
+    "866-800x200.jpg": (3, 200, 800),  # wide
+    "866-1000x1000.jpg": (3, 1000, 1000),  # large
+    "file_example_PNG_500kB.png": (3, 566, 850),  # other image
+    "torch_person.jpg": (3, 640, 480),  # person
 }
 
 

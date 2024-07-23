@@ -84,8 +84,8 @@ def extract_crops_from_images(
         }
     )
     crop = res["image"]
-    if crop.ndim == 3:
-        crop = tvte.Image(crop.unsqueeze(0))
+    assert crop.ndim == 4, "dummy check the shape of the crop tensor"
+
     return crop, None if kps is None else res["keypoints"]
 
 
