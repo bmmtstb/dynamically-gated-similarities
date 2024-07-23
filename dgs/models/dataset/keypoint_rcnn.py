@@ -41,6 +41,7 @@ rcnn_validations: Validations = {
     "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "bbox_min_size": ["optional", float, ("gte", 1.0)],
     "mask_path": ["optional", str],
+    "weights": ["optional", ("instance", KeypointRCNN_ResNet50_FPN_Weights)],
 }
 
 
@@ -88,6 +89,9 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         If you do not want to discard smaller bounding boxes, make sure to set ``bbox_min_size`` to ``1.0``.
         The size of the bounding boxes is in relation to the original image.
         Default ``DEF_VAL.images.bbox_min_size``.
+    weights (KeypointRCNN_ResNet50_FPN_Weights, optional):
+        The weights to load for the model.
+        Default ``KeypointRCNN_ResNet50_FPN_Weights.COCO_V1``.
     """
 
     def __init__(self, config: Config, path: NodePath) -> None:
@@ -101,7 +105,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         )
 
         self.logger.debug("Loading Keypoint-RCNN Model")
-        self.model = keypointrcnn_resnet50_fpn(weights=KeypointRCNN_ResNet50_FPN_Weights.COCO_V1, progress=True)
+        weights = self.params.get("weights", KeypointRCNN_ResNet50_FPN_Weights.COCO_V1)
+        self.model = keypointrcnn_resnet50_fpn(weights=weights, progress=True)
         self.register_module("model", self.model)
         self.configure_torch_module(module=self.model, train=False)
 

@@ -6,6 +6,7 @@ from unittest.mock import patch
 import torch
 from torch.nn import Module as TorchModule
 from torchvision.io import VideoReader
+from torchvision.models.detection import KeypointRCNN_ResNet50_FPN_Weights
 
 from dgs.models.dataset.dataset import BaseDataset, ImageDataset, VideoDataset
 from dgs.models.dataset.keypoint_rcnn import KeypointRCNNBackbone, KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
@@ -25,12 +26,14 @@ VIDEO_PATH = os.path.abspath(os.path.join(VID_FOLDER_PATH, "3209828-sd_426_240_2
 
 class TestKPRCNNModel(unittest.TestCase):
 
+    weights = KeypointRCNN_ResNet50_FPN_Weights.COCO_V1
+
     @patch.multiple(KeypointRCNNBackbone, __abstractmethods__=set())
     def test_init_model(self):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": ""},
+                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": "", "weights": self.weights},
             },
             get_test_config(),
         )
@@ -45,7 +48,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": ""},
+                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": "", "weights": self.weights},
             },
             get_test_config(),
         )
@@ -60,7 +63,7 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": ""},
+                "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": "", "weights": self.weights},
             },
             get_test_config(),
         )
@@ -78,13 +81,20 @@ class TestKPRCNNModel(unittest.TestCase):
             (IMG_FOLDER_PATH, 14),  # directory
         ]:
             with self.subTest(msg="path: {}, length: {}".format(path, length)):
-                cfg = fill_in_defaults({"kprcnn": {"data_path": path, "dataset_path": ""}}, get_test_config())
+                cfg = fill_in_defaults(
+                    {"kprcnn": {"data_path": path, "dataset_path": "", "weights": self.weights}}, get_test_config()
+                )
                 m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(isinstance(m.data, list))
                 self.assertEqual(len(m.data), length)
 
     def test_init_video_data(self):
-        cfg = fill_in_defaults({"kprcnn": {"data_path": VIDEO_PATH, "dataset_path": ""}}, get_test_config())
+        cfg = fill_in_defaults(
+            {
+                "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": "", "weights": self.weights},
+            },
+            get_test_config(),
+        )
         m = KeypointRCNNVideoBackbone(config=cfg, path=["kprcnn"])
         self.assertTrue(isinstance(m.data, VideoReader))
         self.assertEqual(len(m), 345)
@@ -95,7 +105,16 @@ class TestKPRCNNModel(unittest.TestCase):
             (VIDEO_PATH, TypeError, "Got Video file, but is an Image Dataset"),
         ]:
             with self.subTest(msg="path: {}, exception: {}, err_msg: {}".format(path, exception, err_msg)):
-                cfg = fill_in_defaults({"kprcnn": {"data_path": path, "dataset_path": ""}}, get_test_config())
+                cfg = fill_in_defaults(
+                    {
+                        "kprcnn": {
+                            "data_path": path,
+                            "dataset_path": "",
+                            "weights": self.weights,
+                        }
+                    },
+                    get_test_config(),
+                )
                 with self.assertRaises(exception) as e:
                     _ = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(err_msg in str(e.exception), msg=e.exception)
@@ -108,6 +127,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "score_threshold": 0.9,
                     "data_path": [os.path.abspath(os.path.join(IMG_FOLDER_PATH, "866-256x256.jpg"))],
                     "dataset_path": "",
+                    "weights": self.weights,
                 },
             },
             get_test_config(),
@@ -140,6 +160,7 @@ class TestKPRCNNModel(unittest.TestCase):
                             "iou_threshold": iou_thresh,
                             "data_path": [IMAGE_PATH],
                             "dataset_path": "",
+                            "weights": self.weights,
                         },
                     },
                     get_test_config(),
@@ -182,6 +203,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "force_reshape": True,
                     "image_size": (1024, 1024),  # [H,W]
                     "image_mode": "zero-pad",
+                    "weights": self.weights,
                 },
             },
             get_test_config(),
@@ -215,6 +237,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "image_mode": "zero-pad",
                     "batch_size": 2,
                     "return_lists": True,
+                    "weights": self.weights,
                 },
             },
             get_test_config(),
@@ -240,6 +263,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "iou_threshold": 0.5,
                     "data_path": [IMAGE_PATH, IMAGE_PATH],
                     "dataset_path": "",
+                    "weights": self.weights,
                 },
             },
             get_test_config(),
@@ -284,7 +308,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_dataloader_image(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda:0" if torch.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "module_name": "KeypointRCNNImageBackbone",
                     "score_threshold": 0.5,
@@ -292,6 +316,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "dataset_path": "",
                     "batch_size": 2,
                     "return_lists": True,
+                    "weights": self.weights,
                 },
             },
             get_test_config(),
@@ -326,7 +351,12 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "kprcnn": {"score_threshold": 0.5, "data_path": VIDEO_PATH, "dataset_path": ""},
+                "kprcnn": {
+                    "score_threshold": 0.5,
+                    "data_path": VIDEO_PATH,
+                    "dataset_path": "",
+                    "weights": self.weights,
+                },
             },
             get_test_config(),
         )
@@ -362,6 +392,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "dataset_path": "",
                     "batch_size": 2,
                     "return_lists": True,
+                    "weights": self.weights,
                 },
             },
             get_test_config(),
