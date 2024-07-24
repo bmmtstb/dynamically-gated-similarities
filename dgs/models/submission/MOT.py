@@ -56,8 +56,10 @@ class MOTSubmission(SubmissionFile):
 
         self.data = []
         self.frame_id: int = 1
-        self.bbox_decimals: int = self.params.get("bbox_decimals", DEF_VAL["submission"]["MOT"]["bbox_decimals"])
-        self.score_decimals: int = self.params.get("score_decimals", DEF_VAL["submission"]["MOT"]["score_decimals"])
+        self.bbox_decimals: int = int(self.params.get("bbox_decimals", DEF_VAL["submission"]["MOT"]["bbox_decimals"]))
+        self.score_decimals: int = int(
+            self.params.get("score_decimals", DEF_VAL["submission"]["MOT"]["score_decimals"])
+        )
 
     def append(self, s: State, *_args, **_kwargs) -> None:
         """Given a new state containing the detections of one image, append the data to the submission file."""
@@ -68,7 +70,7 @@ class MOTSubmission(SubmissionFile):
             val = _s.bbox[0, idx].round(decimals=self.bbox_decimals).item()
             if self.bbox_decimals == 0:
                 return str(int(val))
-            return f"{val:.{self.bbox_decimals}}"
+            return f"{val:.{self.bbox_decimals}f}"
 
         if "pred_tid" not in s:
             raise ValueError("The predicted track-ID should be set.")
@@ -81,7 +83,8 @@ class MOTSubmission(SubmissionFile):
         for det in detections:
             tid = det["pred_tid"].item() + 1  # MOT is 1-indexed, but State is 0-indexed
             if "score" in det:
-                conf = f"{round(float(det['score'].item())), self.score_decimals}:.{self.score_decimals}"
+                score = round(float(det["score"].item()), self.score_decimals)
+                conf = f"{score:.{self.score_decimals}f}"
             else:
                 conf = str(1)
             x = det["x"] if "x" in det else -1

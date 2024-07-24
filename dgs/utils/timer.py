@@ -59,6 +59,6 @@ class DifferenceTimer(UserList):
             )
         return (
             f"{str(prepend)}: "
-            f"{str(name)} time average: {self.average():.1} [s], "
-            f"{str(name)} time total: {self.sum():.1} [s]"
+            f"{str(name)} time average: {self.average():.1f} [s], "
+            f"{str(name)} time total: {self.sum():.1f} [s]"
         )

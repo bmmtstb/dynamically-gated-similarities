@@ -340,7 +340,7 @@ class EngineModule(BaseModule, nn.Module):
             # ############ #
             epoch_t.add(time_epoch_start)
             losses.append(epoch_loss)
-            self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2}")
+            self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2f}")
             self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
 
             if self.curr_epoch % self.save_interval == 0:
@@ -410,7 +410,7 @@ class EngineModule(BaseModule, nn.Module):
                 "optimizer": self.optimizer.state_dict(),
                 "lr_scheduler": self.lr_sched.state_dict(),
             },
-            save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name_safe}_{curr_lr:.10}/"),
+            save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name_safe}_{curr_lr:.10f}/"),
             verbose=self.logger.isEnabledFor(logging.INFO),
         )
 

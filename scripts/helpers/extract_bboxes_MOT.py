@@ -61,6 +61,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         own_seqinfo["cropWidth"] = str(crop_w)
         own_seqinfo["cropHeight"] = str(crop_h)
         config[subm_key]["seqinfo_key"] = rcnn_cfg_str
+        write_seq_ini(fp=os.path.join(dataset_path, "./seqinfo.ini"), data=own_seqinfo, key=rcnn_cfg_str)
 
         # modify the configuration
         config[dl_key]["data_path"] = os.path.normpath(os.path.join(dataset_path, f"./{gt_seqinfo['imDir']}/"))
