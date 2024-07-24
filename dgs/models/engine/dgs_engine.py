@@ -160,12 +160,12 @@ class DGSEngine(EngineModule):
             # The result is a list of N 2-tuples containing the position
             time_match_start = time.time()
             # scipy uses numpy arrays instead of torch, therefore, convert -> but loose computational graph
-            cost_matrix = torch_to_numpy(similarity)
-            rids, cids = linear_sum_assignment(cost_matrix, maximize=True)  # rids and cids are ndarray of shape [N]
+            sim_matrix = torch_to_numpy(similarity)
+            rids, cids = linear_sum_assignment(sim_matrix, maximize=True)  # rids and cids are ndarray of shape [N]
 
-            assert 0 <= (cost := cost_matrix[rids, cids].sum()) <= N, (
+            assert 0 <= (cost := sim_matrix[rids, cids].sum()) <= N, (
                 f"expected the cost matrix to be between 0 and N, "
-                f"got r: {rids}, c: {cids}, cm: {cost_matrix}, N: {N}, cost: {cost}"
+                f"got r: {rids}, c: {cids}, cm: {sim_matrix}, N: {N}, cost: {cost}"
             )
 
             assert (
