@@ -67,18 +67,21 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         config[dl_key]["data_path"] = os.path.normpath(os.path.join(dataset_path, f"./{gt_seqinfo['imDir']}/"))
         config[subm_key]["file"] = os.path.normpath(os.path.join(dataset_path, f"./det/{rcnn_cfg_str}.txt"))
 
+        # create img output folder
+        crops_folder = os.path.join(dataset_path, f"./{rcnn_cfg_str}/")
+        mkdir_if_missing(crops_folder)
+
         if os.path.exists(config[subm_key]["file"]):
-            continue
+            # skip if submission file exists and there are as many detections in the crop folder as in the subm. file
+            with open(config[subm_key]["file"], "r", encoding="utf-8") as subm_f:
+                if len(subm_f.readlines()) == len(glob(crops_folder + "/*.jpg")):
+                    continue
 
         dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
 
         # load submission
         submission: MOTSubmission = module_loader(config=config, module_class="submission", key=subm_key)
         submission.seq_info = own_seqinfo
-
-        # create img output folder
-        crops_folder = os.path.join(dataset_path, f"./{rcnn_cfg_str}/")
-        mkdir_if_missing(crops_folder)
 
         batch: list[State]
         s: State
@@ -111,7 +114,15 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
                     continue
 
                 # save the image-crops and local key points
-                save_crops(s, img_dir=crops_folder, _gt_img_id=frame_id, save_kps=True)
+                save_crops(
+                    s,
+                    img_dir=crops_folder,
+                    _gt_img_id=frame_id,
+                    save_kps=True,
+                    crop_size=(crop_h, crop_w),
+                    crop_mode="zero-pad",
+                )
+                assert tuple(s.image_crop.shape[-2:]) == (crop_h, crop_w)
                 # remove image and image crop to free memory
                 s.clean()
         submission.save()
@@ -166,20 +177,29 @@ def run_gt_extractor(dl_key: str) -> None:
                     s.clean()
                     continue
                 # save the image-crops, there are no local key-points
-                save_crops(s, img_dir=crops_folder, _gt_img_id=s["frame_id"][0], save_kps=False)
+                save_crops(
+                    s,
+                    img_dir=crops_folder,
+                    _gt_img_id=s["frame_id"][0],
+                    save_kps=False,
+                    crop_size=(crop_h, crop_w),
+                    crop_mode="zero-pad",
+                )
+                assert tuple(s.image_crop.shape[-2:]) == (crop_h, crop_w)
+
                 # remove image and image crop to free memory
                 s.clean()
 
 
 @t.no_grad()
-def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bool = True) -> None:
+def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bool = True, **kwargs) -> None:
     """Save the image crops."""
     for i in range(_s.B):
         img_path = os.path.join(img_dir, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
         if os.path.exists(img_path):
             continue
         if "image_crop" not in _s or (save_kps and "keypoints_local" not in _s):
-            _s.load_image_crop(store=True)
+            _s.load_image_crop(store=True, **kwargs)
         write_jpeg(
             input=convert_image_dtype(_s.image_crop[i], t.uint8).cpu(),
             filename=img_path,
