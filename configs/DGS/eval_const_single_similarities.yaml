@@ -76,7 +76,7 @@ dgs_Dance_gt:
     base_path: "./data/DanceTrack/val/**/gt/gt.txt"
     # data_path: # will be set in python script
 
-    batch_size: 4
+    batch_size: 8
     return_lists: true
 
     crop_size: !!python/tuple [256, 192]
@@ -90,7 +90,7 @@ dgs_Dance_rcnn_256x192:
     base_path: "./data/DanceTrack/val/**/det/"
     # data_path: # will be set in python script
 
-    batch_size: 4
+    batch_size: 8
     return_lists: true
 
     crop_size: !!python/tuple [256, 192]

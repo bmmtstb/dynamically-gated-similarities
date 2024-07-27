@@ -6,11 +6,13 @@ import os.path
 import sys
 import threading
 import time
+import traceback
 import tracemalloc
 from functools import wraps
 from typing import Union
 
 import numpy as np
+import requests
 import torch as t
 import torch.nn.functional as F
 from torchvision import tv_tensors as tvte
@@ -249,3 +251,69 @@ class MemoryTracker:  # pragma: no cover
             return result
 
         return wrapper
+
+
+def send_discord_notification(message: str) -> None:  # pragma: no cover
+    """Sends a notification message to a Discord channel via a webhook.
+
+    Args:
+        message: The message content to send to the Discord channel.
+
+    Raises:
+        ValueError: If the Discord webhook URL is not set.
+    """
+    DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
+    if not DISCORD_WEBHOOK_URL:
+        raise ValueError("Discord webhook URL is not set. Please set the 'DISCORD_WEBHOOK_URL' environment variable.")
+
+    data = {"content": message}
+    try:
+        response = requests.post(DISCORD_WEBHOOK_URL, json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send Discord notification: {e}")
+
+
+def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pragma: no cover
+    """A decorator that sends a Discord notification when the decorated function
+    completes successfully or fails.
+
+    Args:
+        info: Additional information to send.
+        min_time: Minimum time in seconds the function has to run before sending a notification.
+
+    Returns:
+        function: The decorated function with notification functionality.
+
+    Raises:
+        Exception: Any exception raised by the decorated function is re-raised after sending a notification.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            try:
+                result = func(*args, **kwargs)
+                elapsed_time = time.time() - start_time
+                # return early if the function completed too quickly (e.g. results are already computed)
+                if elapsed_time < min_time:
+                    return result
+                formatted_time = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+                message = f"Function `{func.__name__}` completed successfully in {formatted_time}. {info}"
+                send_discord_notification(message)
+                return result
+            except Exception as e:
+                elapsed_time = time.time() - start_time
+                message = (
+                    f"Function `{func.__name__}` failed after "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}. {info}\n"
+                    f"Error: {traceback.format_exc()}"
+                )
+                send_discord_notification(message)
+                raise e
+
+        return wrapper
+
+    return decorator

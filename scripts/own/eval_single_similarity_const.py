@@ -21,7 +21,7 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
-from dgs.utils.utils import HidePrint
+from dgs.utils.utils import HidePrint, notify_on_completion_or_error
 
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
@@ -47,14 +47,14 @@ KEYS: list[str] = [
     "OSNetIBN_CrossDomainDuke",
     "OSNetAIN_CrossDomainMSMT17",
 ]
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
-# IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
-IOU_THRESHS: list[float] = [1.0]
+IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+# IOU_THRESHS: list[float] = [1.0]
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
+@notify_on_completion_or_error(min_time=1)
 @t.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
@@ -96,6 +96,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
 
 
 # @torch_memory_analysis
+@notify_on_completion_or_error(min_time=1)
 @t.no_grad()
 def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
@@ -155,7 +156,7 @@ if __name__ == "__main__":
 
     cfg = load_config(CONFIG_FILE)
     for DL_KEY in DL_KEYS:
-        print(f"Evaluating on the PT21 ground-truth evaluation dataset with config: {DL_KEY}")
+        print(f"Evaluating on the ground-truth evaluation dataset with config: {DL_KEY}")
         # IoU, OKS, and visual similarity
         for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities")):
             pbar_key.set_postfix_str(DGS_KEY)
@@ -178,15 +179,15 @@ if __name__ == "__main__":
                 raise NotImplementedError
 
     for RCNN_DL_KEY in RCNN_DL_KEYS:
-        print(f"Evaluating on the PT21 val-dataset using KeypointRCNN with config: {RCNN_DL_KEY}")
+        print(f"Evaluating using KeypointRCNN with config: {RCNN_DL_KEY}")
         for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
             score_str = f"{int(score_thresh * 100):03d}"
             pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
-            for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
+            for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh", leave=False)):
                 iou_str = f"{int(iou_thresh * 100):03d}"
                 pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
                 # IoU, OKS, and visual similarity
-                for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities")):
+                for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities", leave=False)):
                     pbar_key.set_postfix_str(DGS_KEY)
 
                     cfg = load_config(CONFIG_FILE)
