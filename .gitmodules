@@ -6,12 +6,6 @@
 	path = dependencies/PoseTrack21
 	url = https://github.com/anDoer/PoseTrack21.git
 	branch = main
-[submodule "py-lapsolver"]
-	path = py-lapsolver
-	url = https://github.com/cheind/py-lapsolver
-[submodule "dependencies/py-lapsolver"]
-	path = dependencies/py-lapsolver
-	url = https://github.com/cheind/py-lapsolver
 [submodule "dependencies/DanceTrack"]
 	path = dependencies/DanceTrack
 	url = git@github.com:bmmtstb/DanceTrack
