@@ -205,7 +205,7 @@ Dance_val:
     dataset_path: "./data/DanceTrack/"
     dataset_paths: "./data/DanceTrack/val/dancetrack*/"
 
-    batch_size: 8
+    batch_size: 16
     return_lists: true
 
     crop_size: !!python/tuple [ 256, 192 ]  # [H,W]

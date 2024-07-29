@@ -21,7 +21,7 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
-from dgs.utils.utils import HidePrint, notify_on_completion_or_error
+from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_discord_notification
 
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
@@ -47,8 +47,8 @@ KEYS: list[str] = [
     "OSNetIBN_CrossDomainDuke",
     "OSNetAIN_CrossDomainMSMT17",
 ]
-IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
-# IOU_THRESHS: list[float] = [1.0]
+
+IOU_THRESHS: list[float] = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 
 
@@ -225,3 +225,5 @@ if __name__ == "__main__":
                         )
                     else:
                         raise NotImplementedError
+
+    send_discord_notification("finished eval single")

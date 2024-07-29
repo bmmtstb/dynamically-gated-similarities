@@ -15,11 +15,12 @@ from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.state import State
 from dgs.utils.types import Config, FilePath
+from dgs.utils.utils import notify_on_completion_or_error, send_discord_notification
 
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-IOU_THRESHS: list[float] = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]  # basically deactivate IoU thresh
+IOU_THRESHS: list[float] = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 RCNN_DL_KEYS: list[str] = [
     # "RCNN_MOT_train",
@@ -41,6 +42,7 @@ DL_KEYS: list[str] = [
 # OUT cropped image and loc_kp: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/rcnn_XXX_YYY/*.jpg" and "...*.pt"
 
 
+@notify_on_completion_or_error(min_time=60)
 @t.no_grad()
 def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
     """Given some configuration, predict and extract the image crops using Keypoint-RCNN."""
@@ -132,6 +134,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         submission.save()
 
 
+@notify_on_completion_or_error(min_time=60)
 @t.no_grad()
 def run_gt_extractor(dl_key: str) -> None:
     """Given some ground-truth annotation data, extract and save the image crops"""
@@ -242,3 +245,5 @@ if __name__ == "__main__":
                 _rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{h}x{w}"
 
                 run_RCNN_extractor(dl_key=RCNN_DL_KEY, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)
+
+    send_discord_notification("finished extracting bboxes for MOT")
