@@ -19,7 +19,7 @@ from dgs.utils.types import Config, FilePath
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-IOU_THRESHS: list[float] = [1.0]  # basically deactivate IoU thresh
+IOU_THRESHS: list[float] = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]  # basically deactivate IoU thresh
 
 RCNN_DL_KEYS: list[str] = [
     # "RCNN_MOT_train",
@@ -74,7 +74,11 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         if os.path.exists(config[subm_key]["file"]):
             # skip if submission file exists and there are as many detections in the crop folder as in the subm. file
             with open(config[subm_key]["file"], "r", encoding="utf-8") as subm_f:
-                if len(subm_f.readlines()) == len(glob(crops_folder + "/*.jpg")):
+                if (
+                    len(subm_f.readlines())
+                    == len(glob(crops_folder + "/*.jpg"))
+                    == len(glob(crops_folder + "/*glob.pt"))
+                ):
                     continue
 
         dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
