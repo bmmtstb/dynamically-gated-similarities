@@ -268,7 +268,7 @@ def send_discord_notification(message: str) -> None:  # pragma: no cover
     if not DISCORD_WEBHOOK_URL:
         raise ValueError("Discord webhook URL is not set. Please set the 'DISCORD_WEBHOOK_URL' environment variable.")
     sender = socket.gethostname()
-    message += f"\n\nSent by: {sender}"
+    message += f"\nSent by: {sender}"
     data = {"content": message}
     try:
         response = requests.post(DISCORD_WEBHOOK_URL, json=data)

@@ -9,6 +9,7 @@ from glob import glob
 
 from dgs.utils.files import read_json
 from dgs.utils.types import FilePath
+from dgs.utils.utils import send_discord_notification
 
 PT21_JOINTS = [
     "right_ankle",
@@ -157,3 +158,5 @@ if __name__ == "__main__":
                 csv_writer.writerow(dict(d))
         replace_dots_with_commas(dance_out_file)
         print(f"Wrote DanceTrack results to: {dance_out_file}")
+
+    send_discord_notification("Finished writing results to csv")
