@@ -18,23 +18,30 @@ for dataset_dir in "$base_dir"/*; do
             continue
         fi
 
+
         name=$(basename "$name_dir")
+	
+	# skip old directories
+	if [[ $name == OLD_* ]]; then
+	    continue
+	fi
 
         # Check if results_json directory exists
         results_json_dir="$name_dir/results_json"
-        if [ ! -d "$results_json_dir" ]; then
+        if [ -d "$results_json_dir" ] && [ -f "$mot_metrics_file" ] && [ -f "$pose_hota_results_file" ]; then
+            # echo "Skipping $name for dataset $dataset because results already exist."
             continue
         fi
-
         echo "Running evaluation $name for dataset $dataset :"
 
-        if [ ! -f "$name_dir/eval_data/total_AP_metrics.json" ]; then
+        if [ ! -f "$name_dir/eval_data/total_MOT_metrics.json" ]; then
           # Run pose evaluation from poseval (originally used by AP)
           python -m poseval.evaluate \
               --groundTruth ./data/PoseTrack21/posetrack_data/val/ \
               --predictions ./"$base_dir"/"$dataset"/"$name"/results_json/ \
               --outputDir ./"$base_dir"/"$dataset"/"$name"/eval_data/ \
-              --evalPoseTracking --evalPoseEstimation --saveEvalPerSequence
+              --evalPoseTracking --saveEvalPerSequence
+              # --evalPoseEstimation  # skipped to speed-up evaluation
         fi
 
         if [ ! -f "$results_json_dir/pose_hota_results.txt" ]; then

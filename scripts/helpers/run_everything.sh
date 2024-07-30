@@ -1,6 +1,11 @@
 #!/bin/bash
 
 {
+  # Run all the image generation
+  echo "Run image generation"
+  python ./scripts/helpers/extract_bboxes_pt21.py
+  python ./scripts/helpers/extract_bboxes_MOT.py
+
   # Run all the evaluation functions
   echo "Run single"
   python ./scripts/own/eval_single_similarity_const.py
