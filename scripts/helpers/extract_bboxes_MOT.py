@@ -1,6 +1,7 @@
 """Run the RCNN backbone over the whole dataset and save the results, so they don't have to be recomputed every time."""
 
 import os
+import time
 from glob import glob
 
 import torch as t
@@ -20,7 +21,7 @@ from dgs.utils.utils import notify_on_completion_or_error, send_discord_notifica
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-IOU_THRESHS: list[float] = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 RCNN_DL_KEYS: list[str] = [
     # "RCNN_MOT_train",
@@ -228,6 +229,7 @@ if __name__ == "__main__":
 
     for RCNN_DL_KEY in RCNN_DL_KEYS:
         print(f"Using Keypoint-RCNN to predict and extract crops for dataloader: {RCNN_DL_KEY}")
+        start_time = time.time()
 
         h, w = config[RCNN_DL_KEY]["crop_size"]
 
@@ -246,4 +248,8 @@ if __name__ == "__main__":
 
                 run_RCNN_extractor(dl_key=RCNN_DL_KEY, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)
 
+        if (elapsed_time := time.time() - start_time) > 30:
+            send_discord_notification(
+                f"extracted MOT bboxes for {RCNN_DL_KEY} in {time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}"
+            )
     send_discord_notification("finished extracting bboxes for MOT")

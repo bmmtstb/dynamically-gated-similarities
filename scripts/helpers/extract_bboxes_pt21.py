@@ -1,6 +1,7 @@
 """Run the RCNN backbone over the whole dataset and save the results, so they don't have to be recomputed every time."""
 
 import os.path
+import time
 from glob import glob
 
 import torch as t
@@ -14,7 +15,7 @@ from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing, read_json
 from dgs.utils.state import State
 from dgs.utils.types import Config, FilePath
-from dgs.utils.utils import HidePrint
+from dgs.utils.utils import HidePrint, send_discord_notification
 
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 SUBM_KEY: str = "submission_pt21"
@@ -28,8 +29,8 @@ RCNN_DL_KEYS: list[str] = [
     "RCNN_PT21_256x192_val",
 ]
 
+IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 
 # IN images: "./data/PoseTrack21/images/{val|train}/DATASET/*.jpg"
 # OUT predictions: "./data/PoseTrack21/posetrack_data/rcnn_XXX_YYY_{val|train}/DATASET.json"
@@ -200,6 +201,7 @@ if __name__ == "__main__":
 
     for RCNN_DL_KEY in RCNN_DL_KEYS:
         print(f"Extracting rcnn: {RCNN_DL_KEY}")
+        start_time = time.time()
 
         rcnn_cfg: Config = load_config(CONFIG_FILE)
         for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold")):
@@ -220,3 +222,9 @@ if __name__ == "__main__":
                     subm_key=SUBM_KEY,
                     rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{RCNN_DL_KEY.rsplit('_', maxsplit=1)[-1]}",
                 )
+
+        if (elapsed_time := time.time() - start_time) > 30:
+            send_discord_notification(
+                f"extracted PT21 bboxes for {RCNN_DL_KEY} in {time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}"
+            )
+    send_discord_notification("finished extracting bboxes for PT21")
