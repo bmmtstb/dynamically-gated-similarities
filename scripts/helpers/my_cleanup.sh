@@ -57,7 +57,7 @@ echo "cleaning code complete"
 echo "creating docs"
 cd docs
 
-/bin/bash ../scripts/custom_build_docs.sh 1> /dev/null
+/bin/bash ../scripts/helpers/custom_build_docs.sh 1> /dev/null
 
 cd ..
 echo "created docs"
