@@ -239,8 +239,9 @@ class BaseDataset(BaseModule, TorchDataset):
                     for i in range(len(ds))
                 )
             ds.load_image_crop()
-            ds.keypoints_local = t.stack([t.load(fp.replace(".jpg", ".pt")) for fp in ds.crop_path]).to(
-                device=self.device
+
+            ds.keypoints_local = ds.keypoints_and_weights_from_paths(
+                tuple(fp.replace(".jpg", ".pt") for fp in ds.crop_path)
             )
             return
 

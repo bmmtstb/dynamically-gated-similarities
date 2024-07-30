@@ -54,8 +54,8 @@ DUMMY_IMG_BATCH: Image = tvte.Image(t.cat([DUMMY_IMG.clone() for _ in range(B)])
 DUMMY_IMGS: Images = [DUMMY_IMG.clone() for _ in range(B)]
 
 # saved pt files include weights (1 x 17 x 3)
-DUMMY_KP_PATH: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/kp.pt")
-DUMMY_KP_PATH_GLOB: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/kp_glob.pt")
+DUMMY_KP_PATH: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/images/11_1.pt")
+DUMMY_KP_PATH_GLOB: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/images/11_1_glob.pt")
 
 # plain key points
 DUMMY_KP_TENSOR: t.Tensor = t.rand((1, J, J_DIM), dtype=t.float32)

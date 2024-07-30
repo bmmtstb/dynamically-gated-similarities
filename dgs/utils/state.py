@@ -22,12 +22,11 @@ from torchvision.utils import save_image
 from dgs.utils.constants import COLORS, SKELETONS
 from dgs.utils.files import is_file, mkdir_if_missing
 from dgs.utils.image import load_image, load_image_list
-from dgs.utils.types import DataGetter, FilePath, FilePaths, Heatmap, Image, Images
+from dgs.utils.types import DataGetter, FilePath, FilePaths, Image, Images
 from dgs.utils.utils import extract_crops_from_images
 from dgs.utils.validation import (
     validate_bboxes,
     validate_filepath,
-    validate_heatmaps,
     validate_image,
     validate_images,
     validate_key_points,
@@ -338,23 +337,36 @@ class State(UserDict):
 
     @property
     def keypoints(self) -> t.Tensor:
-        """Get the key-points. The coordinates are based on the coordinate-frame of the full-image."""
+        """Get the key-points.
+        The coordinates are based on the coordinate-frame of the full-image.
+
+        Optionally loads the key-points from the 'keypoints_path' if given.
+        Otherwise, tries to load the key-points from the 'crop_path' with '_glob.pt' ending if given.
+        If one of the loading methods is used, the `joint_weights` will be set.
+        """
         if "keypoints" in self:
             return self.data["keypoints"]
+
         if "keypoints_path" in self:
-            kp_data = t.load(self.data["keypoints_path"]).to(device=self.device)
-            try:
-                J = self.J
-                j_dim = self.joint_dim
-                self.data["keypoints"], self.joint_weight = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
-            except NotImplementedError:
-                self.data["keypoints"], self.joint_weight = kp_data.split([2, 1], dim=-1)
-            return self.data["keypoints"]
-        if "crop_path" in self and is_file(kp_path := self.data["crop_path"].replace(".jpg", "_glob.pt")):
-            self.data["keypoints"], self.data["joint_weight"] = (
-                t.load(kp_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
+            if isinstance(self["keypoints_path"], str):
+                self["keypoints_path"] = tuple(self["keypoints_path"] for _ in range(self.B))
+            if not isinstance(self["keypoints_path"], tuple):
+                raise NotImplementedError("Unknown format of keypoints_path.")
+
+            self.keypoints = self.keypoints_and_weights_from_paths(self["keypoints_path"])
+            return self["keypoints"]
+
+        if "crop_path" in self:
+            if isinstance(self["crop_path"], str):
+                self["crop_path"] = tuple(self["crop_path"] for _ in range(self.B))
+            if not isinstance(self["crop_path"], tuple):
+                raise NotImplementedError("Unknown crop_path format.")
+
+            self.keypoints = self.keypoints_and_weights_from_paths(
+                tuple(cp.replace(".jpg", "_glob.pt") for cp in self["crop_path"])
             )
-            return self.data["keypoints"]
+            return self["keypoints"]
+
         raise KeyError("There are no key-points in this object.")
 
     @keypoints.setter
@@ -372,40 +384,37 @@ class State(UserDict):
         ).to(device=self.device)
 
     @property
-    def heatmap(self) -> Heatmap:  # pragma: no cover
-        """Get the heatmaps of this State."""
-        return self.data["heatmap"]
-
-    @heatmap.setter
-    def heatmap(self, value: Heatmap) -> None:  # pragma: no cover
-        """Set heatmap with a little bit of validation"""
-        # make sure that heatmap has shape [B x J x h x w]
-        self.data["heatmap"] = (validate_heatmaps(value) if self.validate else value).to(device=self.device)
-
-    @property
     def keypoints_local(self) -> t.Tensor:
         """Get the local key-points.
         The local coordinates are based on the coordinate-frame of the image crops, within the bounding-box.
+
+        Optionally loads the local key-points from the 'keypoints_local_path' if given.
+        Otherwise, tries to load the local key-points from the 'crop_path' with '.pt' ending if given.
+        If one of the loading methods is used, the `joint_weights` will be set.
         """
         if "keypoints_local" in self:
             return self.data["keypoints_local"]
-        if "keypoints_local_path" in self:
-            kp_data = t.load(self.data["keypoints_local_path"]).to(device=self.device)
-            try:
-                J = self.J
-                j_dim = self.joint_dim
-                self.data["keypoints_local"], self.joint_weight = kp_data.reshape((1, J, j_dim + 1)).split(
-                    [2, 1], dim=-1
-                )
-            except NotImplementedError:
-                self.data["keypoints_local"], self.joint_weight = kp_data.split([2, 1], dim=-1)
 
+        if "keypoints_local_path" in self:
+            if isinstance(self["keypoints_local_path"], str):
+                self["keypoints_local_path"] = tuple(self["keypoints_local_path"] for _ in range(self.B))
+            if not isinstance(self["keypoints_local_path"], tuple):
+                raise NotImplementedError("Unknown format of keypoints_local_path.")
+
+            self.keypoints_local = self.keypoints_and_weights_from_paths(self["keypoints_local_path"])
             return self.data["keypoints_local"]
-        if "crop_path" in self and is_file(kp_loc_path := self.data["crop_path"].replace(".jpg", ".pt")):
-            self.data["keypoints_local"], self.data["joint_weight"] = (
-                t.load(kp_loc_path).to(device=self.device).reshape((1, 17, 3)).split([2, 1], dim=-1)
+
+        if "crop_path" in self:
+            if isinstance(self["crop_path"], str):
+                self["crop_path"] = tuple(self["crop_path"] for _ in range(self.B))
+            if not isinstance(self["crop_path"], tuple):
+                raise NotImplementedError("Unknown crop_path format.")
+
+            self.keypoints_local = self.keypoints_and_weights_from_paths(
+                tuple(cp.replace(".jpg", ".pt") for cp in self["crop_path"])
             )
             return self.data["keypoints_local"]
+
         raise KeyError("There are no local key-points in this object.")
 
     @keypoints_local.setter
@@ -467,7 +476,11 @@ class State(UserDict):
 
     @joint_weight.setter
     def joint_weight(self, value: t.Tensor) -> None:
-        self.data["joint_weight"] = (value.view(self.B, self.J, 1) if self.validate else value).to(device=self.device)
+        try:
+            J = self.J
+        except NotImplementedError:
+            J = -1
+        self.data["joint_weight"] = (value.reshape(self.B, J, 1) if self.validate else value).to(device=self.device)
 
     # ######### #
     # FUNCTIONS #
@@ -579,9 +592,9 @@ class State(UserDict):
                 # allow changing the crop_size and other params via kwargs
                 crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
 
-                kps_paths = [f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt" for sub_path in self.crop_path]
+                kps_paths = tuple(f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt" for sub_path in self.crop_path)
                 if all(is_file(path) for path in kps_paths):
-                    loc_kps = t.vstack([t.load(f=path) for path in kps_paths]).to(device=self.device, dtype=t.float32)
+                    loc_kps = self.keypoints_and_weights_from_paths(kps_paths, save_weights=store)
                 else:
                     loc_kps = None
             if store:
@@ -625,6 +638,53 @@ class State(UserDict):
                 self[attr_key] = attr_value.to(*args, **kwargs)
         self.device = self.bbox.device
         return self
+
+    def keypoints_and_weights_from_paths(self, paths: FilePaths, save_weights: bool = True) -> t.Tensor:
+        """Given a tuple of paths, load the (local) key-points and weights from these paths.
+        Does change ``self.joint_weights``,
+        but does not change ``self.keypoints`` or ``self.keypoints_local`` respectively.
+
+        Args:
+            paths: A tuple of paths to the .pt files containing the key-points and weights.
+            save_weights: Whether to save the weights if they were provided.
+
+        Returns:
+            The (local) key-points as :class:`~torch.Tensor`.
+
+        Raises:
+            ValueError: If the number of paths does not match the batch size.
+            FileExistsError: If one of the paths does not exist.
+        """
+        if len(paths) != self.B:
+            raise ValueError(f"There must be a path for every bounding box. Got B: {self.B} and paths: {paths}")
+
+        kps, weights = [], []
+        try:
+            J = self.J
+            j_dim = self.joint_dim
+        except NotImplementedError:
+            J, j_dim = None, None
+
+        for path in paths:
+            if not is_file(path):
+                raise FileExistsError(f"Keypoint file: '{path}' is missing.")
+
+            kp_data = t.load(os.path.normpath(path)).to(device=self.device)
+            if J is not None and j_dim is not None:
+                kp, jw = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
+            else:
+                kp, jw = kp_data.split([2, 1], dim=-1)
+            kps.append(kp)
+            weights.append(jw)
+
+        keypoints = t.cat(kps, dim=0).to(self.device)
+        weights = t.cat(weights, dim=0).to(self.device)
+        if "joint_weights" in self:
+            assert t.allclose(weights, self.joint_weight)
+        elif save_weights:
+            self.joint_weight = weights
+
+        return keypoints
 
     def cast_joint_weight(
         self,

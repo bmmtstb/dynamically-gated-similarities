@@ -161,11 +161,13 @@ class TestStateAttributes(unittest.TestCase):
 
     @test_multiple_devices
     def test_get_keypoints_load_from_file(self, device):
-        res_kp, res_weights = t.load(DUMMY_KP_PATH).to(device=device).reshape((1, J, J_DIM + 1)).split([2, 1], dim=-1)
+        res_kp, res_weights = (
+            t.load(DUMMY_KP_PATH_GLOB).to(device=device).reshape((1, J, J_DIM + 1)).split([2, 1], dim=-1)
+        )
         for validate in [True, False]:
             for scope_kp, scope_path, data_path in [
-                ("keypoints", "keypoints_path", DUMMY_KP_PATH),
-                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH),
+                ("keypoints", "keypoints_path", DUMMY_KP_PATH_GLOB),
+                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH_GLOB),
             ]:
                 with self.subTest(
                     msg="s_kp: {}, s_p: {}, data_path: {}, val: {}".format(scope_kp, scope_path, data_path, validate)
@@ -181,17 +183,55 @@ class TestStateAttributes(unittest.TestCase):
                     self.assertEqual(ds[scope_path], data_path)
                     kp = getattr(ds, scope_kp)
                     self.assertEqual(kp.device, res_kp.device)
+                    self.assertEqual(kp.ndim, 3)
                     self.assertTrue(t.allclose(kp, res_kp))
+                    self.assertEqual(kp.size(0), 1)
                     self.assertEqual(kp.size(-1), 2)
                     self.assertTrue(t.allclose(ds.joint_weight, res_weights))
 
     @test_multiple_devices
+    def test_get_keypoints_load_from_file_batched(self, device):
+        for validate in [True, False]:
+            for B, scope_kp, scope_path, data_path in [
+                (1, "keypoints", "keypoints_path", (DUMMY_KP_PATH_GLOB,)),
+                (2, "keypoints_local", "keypoints_local_path", (DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB)),
+                (3, "keypoints", "keypoints_path", (DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB)),
+            ]:
+                with self.subTest(
+                    msg="B: {}, s_kp: {}, s_p: {}, data_path: {}, val: {}".format(
+                        B, scope_kp, scope_path, data_path, validate
+                    )
+                ):
+                    boxes = tvte.BoundingBoxes(
+                        t.vstack([DUMMY_BBOX_TENSOR for _ in range(B)]),
+                        canvas_size=(10, 10),
+                        format="XYWH",
+                        device=device,
+                    )
+
+                    ds = State(
+                        **{
+                            "bbox": boxes,
+                            scope_path: data_path,
+                            "validate": validate,
+                            "device": device,
+                        }
+                    )
+                    self.assertEqual(ds[scope_path], data_path)
+                    kp = getattr(ds, scope_kp)
+                    self.assertEqual(kp.device, device)
+                    self.assertEqual(kp.ndim, 3)
+                    self.assertEqual(kp.size(0), B)
+                    self.assertEqual(kp.size(-1), 2)
+
+    @test_multiple_devices
     def test_get_keypoints_from_crop_path(self, device):
         res_kp, res_weights = t.load(DUMMY_KP_PATH).to(device=device).reshape((1, J, J_DIM + 1)).split([2, 1], dim=-1)
+        dummy_crop_path = os.path.join(os.path.dirname(DUMMY_KP_PATH), "./11_1.jpg")
         for validate in [True, False]:
             for scope_kp, crop_path, data_path in [
-                ("keypoints", "keypoints_path", DUMMY_KP_PATH_GLOB),
-                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH_GLOB),
+                ("keypoints", "crop_path", dummy_crop_path),  # string
+                ("keypoints", "crop_path", (dummy_crop_path,)),  # tuple
             ]:
                 with self.subTest(
                     msg="s_kp: {}, c_p: {}, data_path: {}, val: {}".format(scope_kp, crop_path, data_path, validate)
@@ -204,12 +244,50 @@ class TestStateAttributes(unittest.TestCase):
                             "device": device,
                         }
                     )
-                    self.assertEqual(ds[crop_path], data_path)
+
                     kp = getattr(ds, scope_kp)
+                    self.assertTrue(isinstance(ds[crop_path], tuple))
                     self.assertEqual(kp.device, res_kp.device)
+                    self.assertEqual(kp.ndim, 3)
                     self.assertTrue(t.allclose(kp, res_kp))
                     self.assertEqual(kp.size(-1), 2)
                     self.assertTrue(t.allclose(ds.joint_weight, res_weights))
+
+    @test_multiple_devices
+    def test_get_keypoints_from_kp_path_batched(self, device):
+        DUMMY_CROP_PATH = os.path.join(os.path.dirname(DUMMY_KP_PATH), "./11_1.pt")
+
+        for validate in [True, False]:
+            for B, scope_kp, kp_path, data_path in [
+                (1, "keypoints", "keypoints_path", (DUMMY_CROP_PATH,)),
+                (2, "keypoints_local", "keypoints_local_path", (DUMMY_CROP_PATH, DUMMY_CROP_PATH)),
+                (3, "keypoints", "keypoints_path", (DUMMY_CROP_PATH, DUMMY_CROP_PATH, DUMMY_CROP_PATH)),
+            ]:
+                with self.subTest(
+                    msg="B: {}, s_kp: {}, c_p: {}, data_path: {}, val: {}".format(
+                        B, scope_kp, kp_path, data_path, validate
+                    )
+                ):
+                    box = tvte.BoundingBoxes(
+                        t.vstack([DUMMY_BBOX_TENSOR for _ in range(B)]),
+                        canvas_size=(10, 10),
+                        format="XYWH",
+                        device=device,
+                    )
+                    ds = State(
+                        **{
+                            "bbox": box,
+                            kp_path: data_path,
+                            "validate": validate,
+                            "device": device,
+                        }
+                    )
+                    self.assertEqual(ds[kp_path], data_path)
+                    kp = getattr(ds, scope_kp)
+                    self.assertEqual(kp.device, device)
+                    self.assertEqual(kp.ndim, 3)
+                    self.assertEqual(kp.size(0), B)
+                    self.assertEqual(kp.size(-1), 2)
 
     def test_get_keypoints_exceptions(self):
         ds = State(**{"bbox": DUMMY_BBOX})
