@@ -165,9 +165,10 @@ class TestStateAttributes(unittest.TestCase):
             t.load(DUMMY_KP_PATH_GLOB).to(device=device).reshape((1, J, J_DIM + 1)).split([2, 1], dim=-1)
         )
         for validate in [True, False]:
-            for scope_kp, scope_path, data_path in [
-                ("keypoints", "keypoints_path", DUMMY_KP_PATH_GLOB),
-                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH_GLOB),
+            for scope_kp, scope_path, data_path, has_weights in [
+                ("keypoints", "keypoints_path", DUMMY_KP_PATH_GLOB, True),
+                ("keypoints", "keypoints_path", DUMMY_KP_PATH_2D, False),
+                ("keypoints_local", "keypoints_local_path", DUMMY_KP_PATH_GLOB, True),
             ]:
                 with self.subTest(
                     msg="s_kp: {}, s_p: {}, data_path: {}, val: {}".format(scope_kp, scope_path, data_path, validate)
@@ -187,15 +188,20 @@ class TestStateAttributes(unittest.TestCase):
                     self.assertTrue(t.allclose(kp, res_kp))
                     self.assertEqual(kp.size(0), 1)
                     self.assertEqual(kp.size(-1), 2)
-                    self.assertTrue(t.allclose(ds.joint_weight, res_weights))
+                    if has_weights:
+                        self.assertTrue("joint_weight" in ds)
+                        self.assertTrue(t.allclose(ds.joint_weight, res_weights))
+                    else:
+                        self.assertFalse("joint_weight" in ds)
 
     @test_multiple_devices
     def test_get_keypoints_load_from_file_batched(self, device):
         for validate in [True, False]:
-            for B, scope_kp, scope_path, data_path in [
-                (1, "keypoints", "keypoints_path", (DUMMY_KP_PATH_GLOB,)),
-                (2, "keypoints_local", "keypoints_local_path", (DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB)),
-                (3, "keypoints", "keypoints_path", (DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB)),
+            for B, scope_kp, scope_path, data_path, has_weights in [
+                (1, "keypoints", "keypoints_path", (DUMMY_KP_PATH_GLOB,), True),
+                (1, "keypoints", "keypoints_path", (DUMMY_KP_PATH_2D,), False),
+                (2, "keypoints_local", "keypoints_local_path", (DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_GLOB), True),
+                (3, "keypoints", "keypoints_path", (DUMMY_KP_PATH_GLOB, DUMMY_KP_PATH_2D, DUMMY_KP_PATH_GLOB), False),
             ]:
                 with self.subTest(
                     msg="B: {}, s_kp: {}, s_p: {}, data_path: {}, val: {}".format(
@@ -223,6 +229,10 @@ class TestStateAttributes(unittest.TestCase):
                     self.assertEqual(kp.ndim, 3)
                     self.assertEqual(kp.size(0), B)
                     self.assertEqual(kp.size(-1), 2)
+                    if has_weights:
+                        self.assertTrue("joint_weight" in ds)
+                    else:
+                        self.assertFalse("joint_weight" in ds)
 
     @test_multiple_devices
     def test_get_keypoints_from_crop_path(self, device):

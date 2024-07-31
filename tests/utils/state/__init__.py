@@ -25,6 +25,7 @@ __all__ = [
     "DUMMY_KP",
     "DUMMY_KP_BATCH",
     "DUMMY_KP_PATH",
+    "DUMMY_KP_PATH_2D",
     "DUMMY_KP_PATH_GLOB",
     "DUMMY_BBOX_TENSOR",
     "DUMMY_BBOX",
@@ -55,6 +56,7 @@ DUMMY_IMGS: Images = [DUMMY_IMG.clone() for _ in range(B)]
 
 # saved pt files include weights (1 x 17 x 3)
 DUMMY_KP_PATH: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/images/11_1.pt")
+DUMMY_KP_PATH_2D: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/kp_2d.pt")
 DUMMY_KP_PATH_GLOB: FilePath = os.path.join(PROJECT_ROOT, "./tests/test_data/images/11_1_glob.pt")
 
 # plain key points

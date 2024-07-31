@@ -672,17 +672,22 @@ class State(UserDict):
             kp_data = t.load(os.path.normpath(path)).to(device=self.device)
             if J is not None and j_dim is not None:
                 kp, jw = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
+            elif j_dim == kp_data.size(-1) or kp_data.size(-1) == 2:
+                kp = kp_data
+                jw = None
             else:
                 kp, jw = kp_data.split([2, 1], dim=-1)
             kps.append(kp)
             weights.append(jw)
 
         keypoints = t.cat(kps, dim=0).to(self.device)
-        weights = t.cat(weights, dim=0).to(self.device)
-        if "joint_weights" in self:
-            assert t.allclose(weights, self.joint_weight)
-        elif save_weights:
-            self.joint_weight = weights
+        # save weights of all are not None
+        if all(w is not None for w in weights):
+            weights = t.cat(weights, dim=0).to(self.device)
+            if "joint_weights" in self:
+                assert t.allclose(weights, self.joint_weight)
+            elif save_weights:
+                self.joint_weight = weights
 
         return keypoints
 

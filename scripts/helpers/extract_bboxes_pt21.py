@@ -51,7 +51,14 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int) -> None:
             filename=img_path,
             quality=DEF_VAL["images"]["jpeg_quality"],
         )
-        t.save(_s.keypoints_local[i].unsqueeze(0).cpu(), str(img_path).replace(".jpg", ".pt"))
+        if "joint_weight" in _s:
+            weights = _s.joint_weight[i].unsqueeze(0).cpu()
+        else:
+            weights = t.ones((1, _s.J, 1), dtype=t.float32)
+        kp_loc = t.cat([_s.keypoints_local[i].unsqueeze(0).cpu(), weights])
+        kp_glob = t.cat([_s.keypoints[i].unsqueeze(0).cpu(), weights])
+        t.save(kp_loc, str(img_path).replace(".jpg", ".pt"))
+        t.save(kp_glob, str(img_path).replace(".jpg", "_glob.pt"))
 
 
 def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
