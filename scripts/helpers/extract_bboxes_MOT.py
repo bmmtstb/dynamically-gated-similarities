@@ -79,8 +79,8 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
             with open(config[subm_key]["file"], "r", encoding="utf-8") as subm_f:
                 if (
                     len(subm_f.readlines())
-                    == len(glob(crops_folder + "/*.jpg"))
-                    == len(glob(crops_folder + "/*glob.pt"))
+                    == len(glob(crops_folder + "./*.jpg"))
+                    == len(glob(crops_folder + "./*glob.pt"))
                 ):
                     continue
 
@@ -100,6 +100,9 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
             file_name = file_name.rstrip(gt_seqinfo["imExt"])
             img_id, _ = file_name.split("_")
             all_crop_ids[int(img_id)] += 1
+
+        if all(i in all_crop_ids.keys() for i in range(1, int(gt_seqinfo["seqLength"]) + 1)):  # 1 indexed
+            continue
 
         assert len(dataloader) >= 0
 
