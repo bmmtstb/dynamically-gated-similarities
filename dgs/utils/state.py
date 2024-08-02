@@ -670,7 +670,7 @@ class State(UserDict):
                 raise FileExistsError(f"Keypoint file: '{path}' is missing.")
 
             kp_data = t.load(os.path.normpath(path)).to(device=self.device)
-            if J is not None and j_dim is not None:
+            if J is not None and j_dim is not None and kp_data.size(-1) != 2:
                 kp, jw = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
             elif j_dim == kp_data.size(-1) or kp_data.size(-1) == 2:
                 kp = kp_data
