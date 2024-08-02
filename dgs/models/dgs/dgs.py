@@ -18,6 +18,7 @@ dgs_validations: Validations = {
     # optional
     "similarity_softmax": ["optional", bool],
     "combined_softmax": ["optional", bool],
+    "new_track_weight": ["optional", float, ("within", (0.0, 1.0))],
 }
 
 
@@ -39,9 +40,12 @@ class DGSModule(BaseModule, nn.Module):
     combined_softmax (bool, optional):
         Whether to compute the softmax after the similarities have been summed up / combined.
         Default ``DEF_VAL.dgs.combined_softmax``.
-
     similarity_softmax (bool, optional):
         Whether to compute the softmax of every resulting similarity matrix (independently) before combining them.
+        Default ``DEF_VAL.dgs.similarity_softmax``.
+    new_track_weight (float, optional):
+        The weight of the new tracks as probability.
+        "0.0" means, that existing tracks will always be preferred, while "1.0" means that new tracks are preferred.
         Default ``DEF_VAL.dgs.similarity_softmax``.
     """
 
@@ -87,6 +91,9 @@ class DGSModule(BaseModule, nn.Module):
         self.register_module(name="combined_softmax", module=combined_softmax)
         self.configure_torch_module(self.combined_softmax)
 
+        # get weight of new tracks
+        self.new_track_weight: t.Tensor = t.tensor(0.0, dtype=self.precision, device=self.device)
+
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
 
@@ -101,12 +108,13 @@ class DGSModule(BaseModule, nn.Module):
         # compute similarity for every module and possibly compute the softmax
         results = [self.similarity_softmax(m(ds, target)) for m in self.sim_mods]
 
-        # combine and possibly compute softmax []
+        # combine and possibly compute softmax
         combined: t.Tensor = self.combined_softmax(self.combine(*results))
 
         # add a number of columns for the empty / new tracks equal to the length of the input
         # every input should be allowed to get assigned to a new track
-        new_track = t.zeros((nof_det, nof_det), dtype=self.precision, device=self.device)
+        # probability of new tracks can be set through params
+        new_track = t.ones((nof_det, nof_det), dtype=self.precision, device=self.device) * self.new_track_weight
         return t.cat([combined, new_track], dim=-1)
 
     def terminate(self) -> None:

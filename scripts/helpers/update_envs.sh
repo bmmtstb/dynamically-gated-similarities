@@ -1,27 +1,36 @@
+#!/bin/bash
+
+# Function to activate virtual environment and install packages
+activate_and_install() {
+    if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+        source "$1"/bin/activate || exit
+    elif [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+        "$1"\\Scripts\\activate || exit
+    else
+        echo "Unsupported OS: $OSTYPE"
+        exit 1
+    fi
+    python -m pip install --upgrade pip
+    pip install --upgrade -r $2
+    pip install -e . # "install" DGS package
+}
+
 ## MAIN
 echo "updating DGS environment"
-source ./venv/bin/activate
-pip install --upgrade pip
-pip install --upgrade -r requirements.txt
-# install torchreid
-cd ./dependencies/torchreid/
+activate_and_install "venv" "requirements.txt"
+# additionally install torchreid
+cd ./dependencies/torchreid/ || exit
 python setup.py develop
 cd ../..
 pip install -e . # "install" DGS package
-source ~/.bashrc
+deactivate
 
 # tests
 echo "updating test environment"
-source ./tests/venv/bin/activate
-pip install --upgrade pip
-pip install --upgrade -r ./tests/requirements_test.txt
-pip install -e . # "install" DGS package
-source ~/.bashrc
+activate_and_install "tests/venv" "./tests/requirements_test.txt"
+deactivate
 
 # docs
 echo "updating docs environment"
-source ./docs/venv/bin/activate
-pip install --upgrade pip
-pip install --upgrade -r ./docs/requirements_docs.txt
-pip install -e . # "install" DGS package
-source ~/.bashrc
+activate_and_install "docs/venv" "./docs/requirements_docs.txt"
+deactivate

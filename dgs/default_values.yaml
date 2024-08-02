@@ -132,6 +132,7 @@ similarity:
 dgs:
     similarity_softmax: true
     combined_softmax: true
+    new_track_weight: 0.0
 
 embed_gen:
     embedding_key: "embedding"

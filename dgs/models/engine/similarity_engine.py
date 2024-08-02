@@ -7,11 +7,12 @@ from datetime import timedelta
 
 import torch as t
 from torch.utils.data import DataLoader as TDataLoader
+from tqdm import tqdm
 
-from dgs.models.engine import EngineModule
+from dgs.models.dgs.dgs import DGSModule
+from dgs.models.engine.engine import EngineModule
 from dgs.models.metric import get_metric, METRICS
 from dgs.models.module import enable_keyboard_interrupt
-from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.types import Config, Metric, Results, Validations
@@ -72,7 +73,7 @@ class SimilarityEngine(EngineModule):
     # The heart of the project might get a little larger...
     # pylint: disable=too-many-arguments
 
-    model: SimilarityModule
+    model: DGSModule
 
     metric: Metric
     """A metric function used to compute the embedding distance."""
@@ -83,7 +84,7 @@ class SimilarityEngine(EngineModule):
     def __init__(
         self,
         config: Config,
-        model: SimilarityModule,
+        model: DGSModule,
         test_loader: TDataLoader,
         val_loader: TDataLoader,
         train_loader: TDataLoader = None,
@@ -98,6 +99,7 @@ class SimilarityEngine(EngineModule):
         self.metric = get_metric(self.params_test["metric"])(
             **self.params_test.get("metric_kwargs", DEF_VAL["engine"]["visual"]["metric_kwargs"])
         )
+
         # Params - Train
 
     def get_data(self, ds: State) -> t.Tensor:
@@ -126,6 +128,13 @@ class SimilarityEngine(EngineModule):
         self.set_model_mode("eval")
 
         start_time: float = time.time()
+
+        for detections in tqdm(self.test_dl, desc="DataLoader"):
+            for detection in tqdm(detections, desc="Tracker", leave=False):
+                self.get_data(detection)
+                self.get_target(detection)
+                # ...
+
         self.print_results(results)
         self.write_results(results, prepend="Test")
 
@@ -139,10 +148,16 @@ class SimilarityEngine(EngineModule):
         self.set_model_mode("eval")
         start_time: float = time.time()
 
-        # ...
+        predictions: list[t.Tensor] = []
+
+        for detections in tqdm(self.test_dl, desc="DataLoader"):
+            for detection in tqdm(detections, desc="Tracker", leave=False):
+                prediction = self.model(self.get_data(detection))
+                predictions.append(prediction)
 
         self.logger.info(f"Predict time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
         self.logger.info(f"#### Prediction of {self.name} complete ####")
+        return predictions
 
     @enable_keyboard_interrupt
     def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:

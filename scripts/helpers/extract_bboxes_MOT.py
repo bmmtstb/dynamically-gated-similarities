@@ -101,7 +101,9 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
             img_id, _ = file_name.split("_")
             all_crop_ids[int(img_id)] += 1
 
-        if all(i in all_crop_ids.keys() for i in range(1, int(gt_seqinfo["seqLength"]) + 1)):  # 1 indexed
+        if all(
+            i in all_crop_ids.keys() and all_crop_ids[i] > 0 for i in range(1, int(gt_seqinfo["seqLength"]) + 1)
+        ):  # 1 indexed
             continue
 
         assert len(dataloader) >= 0
@@ -221,8 +223,8 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bo
                 weights = _s.joint_weight[i].unsqueeze(0).cpu()
             else:
                 weights = t.ones((1, _s.J, 1), dtype=t.float32)
-            kp_loc = t.cat([_s.keypoints_local[i].unsqueeze(0).cpu(), weights])
-            kp_glob = t.cat([_s.keypoints[i].unsqueeze(0).cpu(), weights])
+            kp_loc = t.cat([_s.keypoints_local[i].unsqueeze(0).cpu(), weights], dim=-1)
+            kp_glob = t.cat([_s.keypoints[i].unsqueeze(0).cpu(), weights], dim=-1)
             t.save(kp_loc, str(img_path).replace(".jpg", ".pt"))
             t.save(kp_glob, str(img_path).replace(".jpg", "_glob.pt"))
 

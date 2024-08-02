@@ -15,8 +15,8 @@ from glob import glob
 import torch as t
 from tqdm import tqdm
 
-from dgs.models.dgs import DGSModule
-from dgs.models.engine import DGSEngine
+from dgs.models.dgs.dgs import DGSModule
+from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
@@ -54,7 +54,7 @@ SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
-@notify_on_completion_or_error(min_time=1)
+@notify_on_completion_or_error(min_time=30)
 @t.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
@@ -96,7 +96,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
 
 
 # @torch_memory_analysis
-@notify_on_completion_or_error(min_time=1)
+@notify_on_completion_or_error(min_time=30)
 @t.no_grad()
 def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""

@@ -120,7 +120,7 @@ class DGSEngine(EngineModule):
     def get_target(self, ds: State) -> any:
         return ds["class_id"].long()
 
-    def _track_step(self, detections: State) -> dict[str, float]:
+    def _track_step(self, detections: State, frame_idx: int) -> dict[str, float]:
         """Run one step of tracking."""
         N: int = len(detections)
         updated_tracks: dict[int, State] = {}
@@ -142,7 +142,7 @@ class DGSEngine(EngineModule):
             # No Tracks yet - every detection will be a new track!
             # Make sure to compute the embeddings for every detection, to ensure correct behavior of collate later on
             time_sim_start = time.time()
-            self.model.forward(ds=detections, target=detections)
+            _ = self.model.forward(ds=detections, target=detections)
             batch_times["similarity"] = time.time() - time_sim_start
             # There are no tracks yet, therefore every detection is a new state!
             time_match_start = time.time()
@@ -167,6 +167,7 @@ class DGSEngine(EngineModule):
                 f"expected the cost matrix to be between 0 and N, "
                 f"got r: {rids}, c: {cids}, cm: {sim_matrix}, N: {N}, cost: {cost}"
             )
+            self.writer.add_scalar(tag="Track/cost", scalar_value=cost, global_step=frame_idx)
 
             assert (
                 N == len(rids) == len(cids)
@@ -213,7 +214,7 @@ class DGSEngine(EngineModule):
 
                 N: int = len(detections)
 
-                batch_times = self._track_step(detections=detection)
+                batch_times = self._track_step(detections=detection, frame_idx=frame_idx)
 
                 # get active states and skip adding if there are no active states
                 active_list = self.tracks.get_active_states()
@@ -284,7 +285,7 @@ class DGSEngine(EngineModule):
         # batch get data from the data loader
         for detections in tqdm(self.test_dl, desc="DataLoader"):
             for detection in tqdm(detections, desc="Tracker", leave=False):
-                _ = self._track_step(detections=detection)
+                _ = self._track_step(detections=detection, frame_idx=frame_idx)
 
                 active = collate_states(self.tracks.get_active_states())
 

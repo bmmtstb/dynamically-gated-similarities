@@ -26,7 +26,7 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
-from dgs.utils.utils import HidePrint
+from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_discord_notification
 
 CONFIG_FILE = "./configs/DGS/eval_const_triplet_similarities.yaml"
 
@@ -47,8 +47,7 @@ def get_combinations() -> list[list[int]]:
     return combinations
 
 
-# @torch_memory_analysis
-# @MemoryTracker(interval=7.5, top_n=20)
+@notify_on_completion_or_error(min_time=30, info="triplet")
 @t.no_grad()
 def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
     """Main function to run the code."""
@@ -106,6 +105,7 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 
                 # reset the original log dir
                 config["log_dir"] = orig_log_dir
+        send_discord_notification(f"eval triple completed combination: {dgs_key}")
 
 
 if __name__ == "__main__":
@@ -136,3 +136,4 @@ if __name__ == "__main__":
             cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
             data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
             run(config=cfg, dl_key=RCNN_DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")
+    send_discord_notification("finished eval triple")

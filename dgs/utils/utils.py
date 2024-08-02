@@ -274,7 +274,7 @@ def send_discord_notification(message: str) -> None:  # pragma: no cover
         response = requests.post(DISCORD_WEBHOOK_URL, json=data)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print(f"Failed to send Discord notification: {e}")
+        print(f"Failed to send Discord notification: {e}\n\nGot Message:\n{message}")
 
 
 def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pragma: no cover
@@ -303,15 +303,22 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 if elapsed_time < min_time:
                     return result
                 formatted_time = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
-                message = f"Function `{func.__name__}` completed successfully in {formatted_time}. {info}"
+                message = (
+                    f"Function `{func.__name__}` completed successfully in {formatted_time}. {info}"
+                    f"\nResult: {result}"
+                    f"\nargs: `{','.join(a for a in args)}`"
+                    f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                )
                 send_discord_notification(message)
                 return result
             except Exception as e:
                 elapsed_time = time.time() - start_time
                 message = (
                     f"Function `{func.__name__}` failed after "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}. {info}\n"
-                    f"Error: {traceback.format_exc()}"
+                    f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}. {info}"
+                    f"\nargs: `{','.join(a for a in args)}`"
+                    f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                    f"\nError: {traceback.format_exc()}"
                 )
                 send_discord_notification(message)
                 raise e
