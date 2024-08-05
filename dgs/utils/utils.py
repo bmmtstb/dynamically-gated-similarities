@@ -309,7 +309,10 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 if len(args) > 0:
                     message += f"\nargs: `{','.join(a for a in args)}`"
                 if len(kwargs) > 0:
-                    message += f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                    message += (
+                        f"\nkwargs: "
+                        f"{','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                    )
 
                 send_discord_notification(message)
                 return result
@@ -322,7 +325,10 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 if len(args) > 0:
                     message += f"\nargs: `{','.join(a for a in args)}`"
                 if len(kwargs) > 0:
-                    message += f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                    message += (
+                        f"\nkwargs: "
+                        f"{','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                    )
                 message += f"\nError: {traceback.format_exc()}"
                 send_discord_notification(message)
                 raise e
