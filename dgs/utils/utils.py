@@ -303,12 +303,14 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 if elapsed_time < min_time:
                     return result
                 formatted_time = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
-                message = (
-                    f"Function `{func.__name__}` completed successfully in {formatted_time}. {info}"
-                    f"\nResult: {result}"
-                    f"\nargs: `{','.join(a for a in args)}`"
-                    f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
-                )
+                message = f"Function `{func.__name__}` completed successfully in {formatted_time}. {info}"
+                if result is not None:
+                    message += f"\nResult: {result}"
+                if len(args) > 0:
+                    message += f"\nargs: `{','.join(a for a in args)}`"
+                if len(kwargs) > 0:
+                    message += f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+
                 send_discord_notification(message)
                 return result
             except Exception as e:
@@ -316,10 +318,12 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 message = (
                     f"Function `{func.__name__}` failed after "
                     f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}. {info}"
-                    f"\nargs: `{','.join(a for a in args)}`"
-                    f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
-                    f"\nError: {traceback.format_exc()}"
                 )
+                if len(args) > 0:
+                    message += f"\nargs: `{','.join(a for a in args)}`"
+                if len(kwargs) > 0:
+                    message += f"\nkwargs: {','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                message += f"\nError: {traceback.format_exc()}"
                 send_discord_notification(message)
                 raise e
 

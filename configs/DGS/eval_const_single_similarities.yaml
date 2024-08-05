@@ -70,7 +70,7 @@ dgs_pt21_gt_256x128:
     crop_size: !!python/tuple [256, 128]
     crop_mode: "zero-pad"
 
-dgs_Dance_gt:
+dgs_Dance_gt_val:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/"
     base_path: "./data/DanceTrack/val/**/gt/gt.txt"
@@ -84,10 +84,38 @@ dgs_Dance_gt:
 
     crop_key: "Crops"
 
-dgs_Dance_rcnn_256x192:
+dgs_Dance_gt_train:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    base_path: "./data/DanceTrack/train/**/gt/gt.txt"
+    # data_path: # will be set in python script
+
+    batch_size: 1
+    return_lists: true
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+    crop_key: "Crops"
+
+dgs_Dance_rcnn_256x192_val:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/"
     base_path: "./data/DanceTrack/val/**/det/"
+    # data_path: # will be set in python script
+
+    batch_size: 1
+    return_lists: true
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+    # crop_key:  # will be set in python script
+
+dgs_Dance_rcnn_256x192_test:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    base_path: "./data/DanceTrack/test/**/det/"
     # data_path: # will be set in python script
 
     batch_size: 1

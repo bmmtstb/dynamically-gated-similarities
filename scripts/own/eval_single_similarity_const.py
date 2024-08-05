@@ -195,7 +195,7 @@ if __name__ == "__main__":
                     _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                     if "pt21" in RCNN_DL_KEY:
                         base_path = os.path.normpath(
-                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"
+                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}/"
                         )
                         cfg[RCNN_DL_KEY]["base_path"] = base_path
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
@@ -220,7 +220,7 @@ if __name__ == "__main__":
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"dgs_Dance_{rcnn_cfg_str}_val",
+                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}",
                             dgs_key=DGS_KEY,
                         )
                     else:
