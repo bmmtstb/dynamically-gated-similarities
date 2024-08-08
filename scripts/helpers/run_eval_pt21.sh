@@ -18,23 +18,31 @@ for dataset_dir in "$base_dir"/*; do
             continue
         fi
 
-
         name=$(basename "$name_dir")
 	
-	# skip old directories
-	if [[ $name == OLD_* ]]; then
-	    continue
-	fi
+        # skip old directories
+        if [[ $name == OLD_* ]]; then
+            continue
+        fi
 
         # Check if results_json directory exists
         results_json_dir="$name_dir/results_json"
-        if [ -d "$results_json_dir" ] && [ -f "$mot_metrics_file" ] && [ -f "$pose_hota_results_file" ]; then
+
+        if [ ! -d "$results_json_dir" ]; then
+            echo "Skipping folder $name in $dataset because there is no results_json directory."
+            continue
+        fi
+
+        mot_metrics_file="$name_dir/eval_data/total_MOT_metrics.json"
+        pose_hota_results_file="$results_json_dir/pose_hota_results.txt"
+
+        if [ -f "$mot_metrics_file" ] && [ -f "$pose_hota_results_file" ]; then
             # echo "Skipping $name for dataset $dataset because results already exist."
             continue
         fi
         echo "Running evaluation $name for dataset $dataset :"
 
-        if [ ! -f "$name_dir/eval_data/total_MOT_metrics.json" ]; then
+        if [ ! -f "$mot_metrics_file" ]; then
           # Run pose evaluation from poseval (originally used by AP)
           python -m poseval.evaluate \
               --groundTruth ./data/PoseTrack21/posetrack_data/val/ \
@@ -44,7 +52,7 @@ for dataset_dir in "$base_dir"/*; do
               # --evalPoseEstimation  # skipped to speed-up evaluation
         fi
 
-        if [ ! -f "$results_json_dir/pose_hota_results.txt" ]; then
+        if [ ! -f "$pose_hota_results_file" ]; then
           # Run PoseTrack21 challenge evaluation
           python ./dependencies/PoseTrack21/eval/posetrack21/scripts/run_posetrack_challenge.py \
               --GT_FOLDER ./data/PoseTrack21/posetrack_data/val/ \

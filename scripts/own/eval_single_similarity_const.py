@@ -4,7 +4,7 @@ Use the DGS module to evaluate the performance of the individual similarities.
 Every similarity is evaluated using the DGS module on its own with an alpha value of 1.
 
 The evaluation is run over the ground-truth evaluation set of the PT21 dataset,
-and additionally over the PT21 evaluation set but using the RCNN-dataloader to obtain the predictions.
+and additionally over the PT21 evaluation set but using the RCNN-dataloader to get the predictions.
 """
 
 # pylint: disable=R0801
@@ -204,7 +204,7 @@ if __name__ == "__main__":
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}_val",
+                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}",
                             dgs_key=DGS_KEY,
                         )
                     elif "Dance" in RCNN_DL_KEY:
