@@ -77,7 +77,7 @@ if __name__ == "__main__":
     poseval_out_file = os.path.join(BASE_DIR, "./results_poseval.csv")
     with open(poseval_out_file, "w+", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=";")
-        csv_writer.writerow(["Combined", "Dataset", "Key", "Type"] + PT21_JOINTS)
+        csv_writer.writerow(["Combined", "Dataset", "Key", "Type", "custom_total"] + PT21_JOINTS)
 
         MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
 
@@ -98,7 +98,10 @@ if __name__ == "__main__":
                 # ap
                 for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
                     comb = f"{ds_name}_{conf_key}_{new_k}"
-                    csv_writer.writerow([comb, ds_name, conf_key, new_k] + ap_data[k])
+                    custom_total = sum(
+                        float(val) for val in ap_data[k] if val not in ["neck", "head_top", "head_bottom"]
+                    ) / (len(ap_data[k]) - 2)
+                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
     replace_dots_with_commas(poseval_out_file)
     print(f"Wrote poseval results to: {poseval_out_file}")
 
