@@ -16,7 +16,7 @@ from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.state import State
 from dgs.utils.types import Config, FilePath
-from dgs.utils.utils import notify_on_completion_or_error, send_discord_notification
+from dgs.utils.utils import notify_on_completion_or_error, replace_file_type, send_discord_notification
 
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
@@ -225,8 +225,8 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bo
                 weights = t.ones((1, _s.J, 1), dtype=t.float32)
             kp_loc = t.cat([_s.keypoints_local[i].unsqueeze(0).cpu(), weights], dim=-1)
             kp_glob = t.cat([_s.keypoints[i].unsqueeze(0).cpu(), weights], dim=-1)
-            t.save(kp_loc, str(img_path).replace(".jpg", ".pt"))
-            t.save(kp_glob, str(img_path).replace(".jpg", "_glob.pt"))
+            t.save(kp_loc, replace_file_type(str(img_path), new_type=".pt"))
+            t.save(kp_glob, replace_file_type(str(img_path), new_type="_glob.pt"))
 
 
 if __name__ == "__main__":

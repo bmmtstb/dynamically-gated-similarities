@@ -12,7 +12,14 @@ from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import is_project_file
 from dgs.utils.image import CustomCropResize
 from dgs.utils.types import Device
-from dgs.utils.utils import extract_crops_and_save, extract_crops_from_images, HidePrint, ids_to_one_hot, torch_to_numpy
+from dgs.utils.utils import (
+    extract_crops_and_save,
+    extract_crops_from_images,
+    HidePrint,
+    ids_to_one_hot,
+    replace_file_type,
+    torch_to_numpy,
+)
 from helper import capture_stdout, load_test_image, load_test_images, load_test_images_list, test_multiple_devices
 
 
@@ -24,6 +31,23 @@ class TestUtils(unittest.TestCase):
         ]:
             with self.subTest(msg=f"torch_tensor: {torch_tensor}, numpy_array: {numpy_array}"):
                 self.assertTrue(np.array_equal(torch_to_numpy(torch_tensor), numpy_array))
+
+    def test_replace_image_type(self):
+        for new_file_type, fp, old_types, result in [
+            (".pt", "test.jpg", [".jpg", ".jpeg"], "test.pt"),
+            ("pt", "test.jpg", [".jpg", ".jpeg"], "test.pt"),
+            ("pt", "test.jpg", ["jpg", "jpeg"], "test.pt"),
+            ("pt", "test.jpg", None, "test.pt"),
+        ]:
+            with self.subTest(
+                msg="new_file_type: {}, fp: {}, old_types: {}, result: {}".format(new_file_type, fp, old_types, result)
+            ):
+                self.assertEqual(replace_file_type(fp=fp, new_type=new_file_type, old_types=old_types), result)
+
+    def test_replace_image_type_exceptions(self):
+        with self.assertRaises(ValueError) as e:
+            _ = replace_file_type(fp="test.gif", new_type="dummy", old_types=["jpg", "jpeg"])
+        self.assertTrue("Expected file type '.gif' to be in" in str(e.exception), msg=e.exception)
 
     def test_extract_crops_from_images(self):
         dummy_kp = torch.ones((1, 3, 2))
@@ -167,7 +191,7 @@ class TestUtils(unittest.TestCase):
                     self.assertEqual(len(new_kp), len(img_shapes))
                 for fp in crop_fps:
                     self.assertTrue(is_project_file(fp))
-                    self.assertEqual(is_project_file(str(fp).replace(".jpg", ".pt")), kp is not None)
+                    self.assertEqual(is_project_file(replace_file_type(str(fp), new_type=".pt")), kp is not None)
         # delete crops folder in the end
         shutil.rmtree(crop_target)
 

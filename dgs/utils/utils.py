@@ -41,6 +41,31 @@ def torch_to_numpy(tensor: t.Tensor) -> np.ndarray:
     return tensor.detach().cpu().clone().numpy()
 
 
+def replace_file_type(fp: FilePath, new_type: str, old_types: Union[None, list[str]] = None) -> FilePath:
+    """Replace the file extension of a file path with a new type.
+
+    Args:
+        fp: The original file path.
+        new_type: The new file type to replace the old one.
+        old_types: A list of old file types that are allowed to be replaced.
+
+    Returns:
+        The file path with the new file type.
+
+    Raises:
+        ValueError: If the old file type is not in the list of allowed types.
+    """
+    assert isinstance(new_type, str)
+    if not new_type.startswith("."):
+        new_type = "." + new_type
+    base_path, old_type = os.path.splitext(fp)
+    if old_types is not None:
+        old_types = [str(ot) if str(ot).startswith(".") else "." + str(ot) for ot in old_types]
+        if old_type not in old_types:
+            raise ValueError(f"Expected file type '{old_type}' to be in {old_types} with or without leading dot.")
+    return base_path + new_type
+
+
 def extract_crops_from_images(
     imgs: Images, bboxes: tvte.BoundingBoxes, kps: t.Tensor = None, **kwargs
 ) -> tuple[Image, Union[t.Tensor, None]]:
@@ -153,7 +178,7 @@ def extract_crops_and_save(
             quality=kwargs.get("quality", DEF_VAL["images"]["jpeg_quality"]),
         )
         if key_points is not None:
-            t.save(loc_kps[i].unsqueeze(0), str(fp).replace(".jpg", ".pt"))
+            t.save(loc_kps[i].unsqueeze(0), replace_file_type(str(fp), new_type=".pt"))
 
     return crops.to(device=device), None if key_points is None else loc_kps
 

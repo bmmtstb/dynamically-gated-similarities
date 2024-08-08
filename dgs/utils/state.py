@@ -23,7 +23,7 @@ from dgs.utils.constants import COLORS, SKELETONS
 from dgs.utils.files import is_file, mkdir_if_missing
 from dgs.utils.image import load_image, load_image_list
 from dgs.utils.types import DataGetter, FilePath, FilePaths, Image, Images
-from dgs.utils.utils import extract_crops_from_images
+from dgs.utils.utils import extract_crops_from_images, replace_file_type
 from dgs.utils.validation import (
     validate_bboxes,
     validate_filepath,
@@ -363,7 +363,7 @@ class State(UserDict):
                 raise NotImplementedError("Unknown crop_path format.")
 
             self.keypoints = self.keypoints_and_weights_from_paths(
-                tuple(cp.replace(".jpg", "_glob.pt") for cp in self["crop_path"])
+                tuple(replace_file_type(cp, new_type="_glob.pt") for cp in self["crop_path"])
             )
             return self["keypoints"]
 
@@ -411,7 +411,7 @@ class State(UserDict):
                 raise NotImplementedError("Unknown crop_path format.")
 
             self.keypoints_local = self.keypoints_and_weights_from_paths(
-                tuple(cp.replace(".jpg", ".pt") for cp in self["crop_path"])
+                tuple(replace_file_type(cp, new_type=".pt") for cp in self["crop_path"])
             )
             return self.data["keypoints_local"]
 
@@ -592,7 +592,7 @@ class State(UserDict):
                 # allow changing the crop_size and other params via kwargs
                 crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
 
-                kps_paths = tuple(f"{sub_path.rsplit('.', maxsplit=1)[-2]}.pt" for sub_path in self.crop_path)
+                kps_paths = tuple(replace_file_type(sub_path, new_type=".pt") for sub_path in self.crop_path)
                 if all(is_file(path) for path in kps_paths):
                     loc_kps = self.keypoints_and_weights_from_paths(kps_paths, save_weights=store)
                 else:
