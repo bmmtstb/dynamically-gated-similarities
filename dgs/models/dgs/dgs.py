@@ -92,7 +92,11 @@ class DGSModule(BaseModule, nn.Module):
         self.configure_torch_module(self.combined_softmax)
 
         # get weight of new tracks
-        self.new_track_weight: t.Tensor = t.tensor(0.0, dtype=self.precision, device=self.device)
+        self.new_track_weight: t.Tensor = t.tensor(
+            self.params.get("new_track_weight", DEF_VAL["dgs"]["new_track_weight"]),
+            dtype=self.precision,
+            device=self.device,
+        )
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
