@@ -18,7 +18,7 @@ from dgs.utils.torchtools import close_all_layers
 from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_discord_notification
 
-CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
+CONFIG_FILE = "./configs/DGS/eval_const_track_weight.yaml"
 
 # 0.0 was done in parameter search
 # 1.0 should be pretty much pointless, because every new track is preferred
@@ -39,7 +39,7 @@ SCORE_THRESH: float = 0.85  # PT21
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
-@notify_on_completion_or_error(min_time=30)
+@notify_on_completion_or_error(min_time=30, info="run initial weight")
 @t.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
                 if "pt21" in DL_KEY:
                     base_path = os.path.normpath(
-                        f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}/"
+                        f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"  # fixme
                     )
                     cfg[DL_KEY]["base_path"] = base_path
                     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
