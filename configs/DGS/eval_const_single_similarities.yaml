@@ -1,6 +1,6 @@
 name: "Evaluate-Single"
 description: "Use the DGS tracker with a constant alpha module. 
-With IoU as its only Similarity with an alpha value of 1."
+Run over the whole dataset with a single similarity with a weight of alpha = 1."
 
 device: "cuda:0"
 print_prio: "INFO"

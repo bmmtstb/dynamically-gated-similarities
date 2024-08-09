@@ -60,6 +60,7 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int) -> None:
         t.save(kp_loc, replace_file_type(str(img_path), new_type=".pt"))
         t.save(kp_glob, replace_file_type(str(img_path), new_type="_glob.pt"))
 
+
 def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
     """Predict and save the rcnn results of all the PT21 datasets in the folder given by the config."""
     # pylint: disable=too-many-locals

@@ -1,10 +1,5 @@
 """
-Use the DGS module to evaluate the performance of the individual similarities.
-
-Every similarity is evaluated using the DGS module on its own with an alpha value of 1.
-
-The evaluation is run over the ground-truth evaluation set of the PT21 dataset,
-and additionally over the PT21 evaluation set but using the RCNN-dataloader to get the predictions.
+Script to run an evaluation of the initial weights of the tracks
 """
 
 # pylint: disable=R0801
@@ -25,31 +20,19 @@ from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_disco
 
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
+# 0.0 was done in parameter search
+# 1.0 should be pretty much pointless, because every new track is preferred
+INITIAL_WEIGHTS: list[float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
 DL_KEYS: list[str] = [
-    "dgs_pt21_gt_256x192",
-    "dgs_pt21_gt_256x128",
-    "dgs_Dance_gt",
-]
-RCNN_DL_KEYS: list[str] = [
-    "dgs_pt21_rcnn_256x192",
-    "dgs_pt21_rcnn_256x128",
-    "dgs_Dance_rcnn_256x192",
+    "dgs_pt21_rcnn_256x192_val",
+    "dgs_Dance_rcnn_256x192_val",
 ]
 
-KEYS: list[str] = [
-    "iou",
-    "oks",
-    "OSNet",
-    "OSNetAIN",
-    "Resnet50",
-    "Resnet152",
-    "OSNetAIN_CrossDomainDuke",
-    "OSNetIBN_CrossDomainDuke",
-    "OSNetAIN_CrossDomainMSMT17",
-]
+KEYS: list[str] = ["iou", "oks"]
 
-IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
+IOU_THRESH: float = 0.40  # PT21
+SCORE_THRESH: float = 0.85  # PT21
 
 
 # @torch_memory_analysis
@@ -155,77 +138,61 @@ if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
     cfg = load_config(CONFIG_FILE)
+    iou_str = f"{int(IOU_THRESH * 100):03d}"
+    score_str = f"{int(SCORE_THRESH * 100):03d}"
+
     for DL_KEY in DL_KEYS:
         print(f"Evaluating on the ground-truth evaluation dataset with config: {DL_KEY}")
-        # IoU, OKS, and visual similarity
+
+        _crop_h, _crop_w = cfg[DL_KEY]["crop_size"]
+
+        # run all of IoU, OKS, and possibly visual similarity
         for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities")):
             pbar_key.set_postfix_str(DGS_KEY)
 
-            if DGS_KEY == "oks":
-                # not possible for gt data
-                continue
+            # run over all initial weights
+            for INIT_WEIGHT in (pbar_key := tqdm(INITIAL_WEIGHTS, desc="initial weights")):
+                init_weight_str = f"{int(INIT_WEIGHT * 100):03d}"
+                pbar_key.set_postfix_str(init_weight_str)
+                # set name
+                cfg["name"] = f"Evaluate-Initial-Track-Weight-{init_weight_str}-{DL_KEY}-{DGS_KEY}"
 
-            if "pt21" in DL_KEY:
-                data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["base_path"]) if f.is_file()]
-                assert len(data_paths)
-                run_pt21(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY, dgs_key=DGS_KEY)
-            elif "Dance" in DL_KEY:
-                if DGS_KEY == "oks":
-                    continue
-                data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["base_path"])]
-                assert len(data_paths)
-                run_dance(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY, dgs_key=DGS_KEY)
-            else:
-                raise NotImplementedError
+                # set initial weight
+                cfg[DGS_KEY]["new_track_weight"] = INIT_WEIGHT
 
-    for RCNN_DL_KEY in RCNN_DL_KEYS:
-        print(f"Evaluating using KeypointRCNN with config: {RCNN_DL_KEY}")
-        for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
-            score_str = f"{int(score_thresh * 100):03d}"
-            pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
-            for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh", leave=False)):
-                iou_str = f"{int(iou_thresh * 100):03d}"
-                pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
-                # IoU, OKS, and visual similarity
-                for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities", leave=False)):
-                    pbar_key.set_postfix_str(DGS_KEY)
+                if "pt21" in DL_KEY:
+                    base_path = os.path.normpath(
+                        f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}/"
+                    )
+                    cfg[DL_KEY]["base_path"] = base_path
+                    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+                    assert len(data_paths)
 
-                    cfg = load_config(CONFIG_FILE)
-                    cfg["name"] = f"Evaluate-Single-{DGS_KEY}"
-                    _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
-                    if "pt21" in RCNN_DL_KEY:
-                        base_path = os.path.normpath(
-                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}/"
-                        )
-                        cfg[RCNN_DL_KEY]["base_path"] = base_path
-                        data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-                        assert len(data_paths)
+                    run_pt21(
+                        config=cfg,
+                        dl_key=DL_KEY,
+                        paths=data_paths,
+                        out_key=f"{DL_KEY}_{score_str}_{iou_str}_init_{init_weight_str}",
+                        dgs_key=DGS_KEY,
+                    )
+                elif "Dance" in DL_KEY:
+                    rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{_crop_h}x{_crop_w}"
+                    cfg[DL_KEY]["crop_key"] = rcnn_cfg_str
 
-                        run_pt21(
-                            config=cfg,
-                            dl_key=RCNN_DL_KEY,
-                            paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}",
-                            dgs_key=DGS_KEY,
-                        )
-                    elif "Dance" in RCNN_DL_KEY:
-                        rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{_crop_h}x{_crop_w}"
-                        cfg[RCNN_DL_KEY]["crop_key"] = rcnn_cfg_str
+                    data_paths = [
+                        os.path.normpath(os.path.join(p, f"./{rcnn_cfg_str}.txt"))
+                        for p in glob(cfg[DL_KEY]["base_path"])
+                    ]
+                    assert len(data_paths)
 
-                        data_paths = [
-                            os.path.normpath(os.path.join(p, f"./{rcnn_cfg_str}.txt"))
-                            for p in glob(cfg[RCNN_DL_KEY]["base_path"])
-                        ]
-                        assert len(data_paths)
+                    run_dance(
+                        config=cfg,
+                        dl_key=DL_KEY,
+                        paths=data_paths,
+                        out_key=f"{DL_KEY}_{score_str}_{iou_str}_init_{init_weight_str}",
+                        dgs_key=DGS_KEY,
+                    )
+                else:
+                    raise NotImplementedError
 
-                        run_dance(
-                            config=cfg,
-                            dl_key=RCNN_DL_KEY,
-                            paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}",
-                            dgs_key=DGS_KEY,
-                        )
-                    else:
-                        raise NotImplementedError
-
-    send_discord_notification("finished eval single")
+        send_discord_notification("finished eval initial track weight")
