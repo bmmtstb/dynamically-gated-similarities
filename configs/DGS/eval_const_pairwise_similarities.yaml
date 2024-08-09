@@ -18,29 +18,29 @@ test:
 # DATA #
 # #### #
 
-dgs_pt21_rcnn:
+dgs_pt21_rcnn_256x192_val:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     # crops_folder:  # will be set in python script
     # base_path:  # will be set in python script
+    # data_path:  # will be set in python script
+    
     batch_size: 8
     return_lists: true
-    # data_path:  # will be set in python script
-    image_size: !!python/tuple [ 1024, 1024 ]
-    image_mode: "zero-pad"
+
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
 
-dgs_pt21_gt:
+dgs_pt21_gt_256x192_val:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"
     base_path: "./data/PoseTrack21/posetrack_data/val/"
-    batch_size: 1
-    return_lists: true
     # data_path: # will be set in python script
-    image_size: !!python/tuple [ 1024, 1024 ]
-    image_mode: "zero-pad"
+
+    batch_size: 8
+    return_lists: true
+
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
 

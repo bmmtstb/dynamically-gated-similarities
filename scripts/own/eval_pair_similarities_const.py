@@ -29,20 +29,26 @@ from dgs.utils.types import Config
 from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_discord_notification
 
 CONFIG_FILE = "./configs/DGS/eval_const_pairwise_similarities.yaml"
-MODULES = [
+
+
+DGS_KEYS = [
     "iou_oks",
     "iou_OSNet",
     "oks_OSNet",
-    "iou_OSNetAIN",
-    "oks_OSNetAIN",
+    # "iou_OSNetAIN",
+    # "oks_OSNetAIN",
     "iou_Resnet50",
     "oks_Resnet50",
     "iou_Resnet152",
     "oks_Resnet152",
 ]
 
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
-IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
+IOU_THRESH: float = 0.40  # PT21
+SCORE_THRESH: float = 0.85  # PT21
+INITIAL_WEIGHT: float = 0.7  # FIXME
+
+DL_KEY = "dgs_pt21_gt_256x192_val"
+RCNN_DL_KEY = "dgs_pt21_rcnn_256x192_val"
 
 
 @notify_on_completion_or_error(min_time=30, info="double")
@@ -50,10 +56,13 @@ IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
 def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
     """Main function to run the code."""
     # Combinations of IoU, OKS, and visual similarity
-    for dgs_key in (pbar_key := tqdm(MODULES, desc="combinations")):
+    for dgs_key in (pbar_key := tqdm(DGS_KEYS, desc="combinations")):
         pbar_key.set_postfix_str(dgs_key)
 
         config["name"] = f"Evaluate-Pairwise-Combinations-{dgs_key}"
+
+        # set initial weight
+        config[dgs_key]["new_track_weight"] = INITIAL_WEIGHT
 
         # get sub folders or files and analyse them one-by-one
         for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
@@ -108,32 +117,26 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
-    print("Evaluating on the PT21 ground-truth evaluation dataset")
-    DL_KEY = "dgs_pt21_gt"
+    print("Evaluating pairwise models on the PT21 ground-truth evaluation dataset")
 
     cfg = load_config(CONFIG_FILE)
     base_path = cfg[DL_KEY]["base_path"]
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
     run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY)
 
-    print("Evaluating on the PT21 eval-dataset using KeypointRCNN as prediction backbone")
-    RCNN_DL_KEY = "dgs_pt21_rcnn"
-    for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
-        score_str = f"{int(score_thresh * 100):03d}"
-        pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
-        for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh")):
-            iou_str = f"{int(iou_thresh * 100):03d}"
-            pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
+    print("Evaluating pairwise models on the PT21 validation-dataset using KeypointRCNN as prediction backbone")
+    score_str = f"{int(SCORE_THRESH * 100):03d}"
+    iou_str = f"{int(IOU_THRESH * 100):03d}"
 
-            rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_val"
+    rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_val"
 
-            cfg = load_config(CONFIG_FILE)
+    cfg = load_config(CONFIG_FILE)
 
-            base_path = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/"
-            cfg[RCNN_DL_KEY]["base_path"] = base_path
-            crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
-            cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
-            data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-            run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")
+    base_path = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/"
+    cfg[RCNN_DL_KEY]["base_path"] = base_path
+    crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
+    cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
+    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+    run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")
 
     send_discord_notification("finished eval double")
