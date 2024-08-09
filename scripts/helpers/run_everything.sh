@@ -13,6 +13,8 @@
   python ./scripts/own/eval_pair_similarities_const.py
   echo "Run triplet"
   python ./scripts/own/eval_triplet_similarities_const.py
+  echo "Run evaluation of initial track weight"
+  python ./scripts/own/eval_initial_weighty.py
 
   # Run evaluation
   echo "Run eval"

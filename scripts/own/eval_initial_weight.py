@@ -33,6 +33,8 @@ KEYS: list[str] = ["iou", "oks"]
 
 IOU_THRESH: float = 0.40  # PT21
 SCORE_THRESH: float = 0.85  # PT21
+# IOU_THRESH: float = 0.40  # Dance
+# SCORE_THRESH: float = 0.75  # Dance
 
 
 # @torch_memory_analysis
