@@ -56,7 +56,7 @@ def replace_file_type(fp: FilePath, new_type: str, old_types: Union[None, list[s
         ValueError: If the old file type is not in the list of allowed types.
     """
     assert isinstance(new_type, str)
-    if not new_type.startswith("."):
+    if "." not in new_type:
         new_type = "." + new_type
     base_path, old_type = os.path.splitext(fp)
     if old_types is not None:
