@@ -342,7 +342,7 @@ class State(UserDict):
 
         Optionally loads the key-points from the 'keypoints_path' if given.
         Otherwise, tries to load the key-points from the 'crop_path' with '_glob.pt' ending if given.
-        If one of the loading methods is used, the `joint_weights` will be set.
+        If one of the loading methods is used, the `joint_weight` will be set.
         """
         if "keypoints" in self:
             return self.data["keypoints"]
@@ -390,7 +390,7 @@ class State(UserDict):
 
         Optionally loads the local key-points from the 'keypoints_local_path' if given.
         Otherwise, tries to load the local key-points from the 'crop_path' with '.pt' ending if given.
-        If one of the loading methods is used, the `joint_weights` will be set.
+        If one of the loading methods is used, the `joint_weight` will be set.
         """
         if "keypoints_local" in self:
             return self.data["keypoints_local"]
@@ -641,7 +641,7 @@ class State(UserDict):
 
     def keypoints_and_weights_from_paths(self, paths: FilePaths, save_weights: bool = True) -> t.Tensor:
         """Given a tuple of paths, load the (local) key-points and weights from these paths.
-        Does change ``self.joint_weights``,
+        Does change ``self.joint_weight``,
         but does not change ``self.keypoints`` or ``self.keypoints_local`` respectively.
 
         Args:
@@ -684,9 +684,9 @@ class State(UserDict):
         # save weights of all are not None
         if all(w is not None for w in weights):
             weights = t.cat(weights, dim=0).to(self.device)
-            if "joint_weights" in self:
-                assert t.allclose(weights, self.joint_weight)
-            elif save_weights:
+            if "joint_weight" in self and not t.allclose(weights, self.joint_weight):
+                raise ValueError(f"Expected old and new weights to be close, got: {self.joint_weight} and {weights}")
+            if save_weights:
                 self.joint_weight = weights
 
         return keypoints

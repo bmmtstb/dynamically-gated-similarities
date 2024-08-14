@@ -521,6 +521,7 @@ class PoseTrack21_BBox(BBoxDataset):
             .reshape((1, 17, 3))
             .split([2, 1], dim=-1)
         )
+
         ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,

@@ -232,7 +232,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
 
                 if B == 0:
                     self.assertEqual(batch, EMPTY_STATE)
-                    for k in ["image_crop", "joint_weights", "keypoints", "keypoints_local", "person_id", "class_id"]:
+                    for k in ["image_crop", "joint_weight", "keypoints", "keypoints_local", "person_id", "class_id"]:
                         self.assertTrue(k not in batch)
                     continue
 

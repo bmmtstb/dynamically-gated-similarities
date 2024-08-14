@@ -13,7 +13,7 @@ import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TorchDataset
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
-from torchvision.transforms.v2.functional import to_dtype
+from torchvision.transforms.v2.functional import convert_bounding_box_format, to_dtype
 
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_VAL
@@ -227,6 +227,11 @@ class BaseDataset(BaseModule, TorchDataset):
             )
             return
 
+        # load local keypoints if bbox and keypoints exist
+        if "bbox" in ds and "keypoints" in ds:
+            bbox = convert_bounding_box_format(ds.bbox.detach().clone(), new_format=tvte.BoundingBoxFormat.XYWH)
+            ds.keypoints_local = ds.keypoints - bbox[:, :2].unsqueeze(-2)
+
         # check whether precomputed image crops exist
         if "crops_folder" in self.params:
             if "crop_path" not in ds:
@@ -279,7 +284,7 @@ class BaseDataset(BaseModule, TorchDataset):
         ds.image_crop = tvte.Image(to_dtype(new_state["image"].to(device=self.device), dtype=t.uint8, scale=True))
         if "keypoints" in ds:
             ds.keypoints_local = new_state["keypoints"].to(dtype=t.float32, device=self.device)
-            assert "joint_weights" in ds.data, "visibility should be given"
+            assert "joint_weight" in ds.data, "visibility should be given"
 
     @staticmethod
     def transform_resize_image() -> tvt.Compose:
