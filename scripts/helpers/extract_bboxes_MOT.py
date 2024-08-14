@@ -24,17 +24,17 @@ SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 RCNN_DL_KEYS: list[str] = [
-    # "RCNN_MOT_train",
-    # "RCNN_MOT_test",
-    # "RCNN_Dance_test",
-    # "RCNN_Dance_train",
+    "RCNN_MOT_train",
+    "RCNN_MOT_test",
+    "RCNN_Dance_test",
+    "RCNN_Dance_train",
     "RCNN_Dance_val",
 ]
 
 DL_KEYS: list[str] = [
-    # "MOT_train",
-    # "Dance_train",
-    # "Dance_val",
+    "MOT_train",
+    "Dance_train",
+    "Dance_val",
 ]
 
 # IN images: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/img1/*.jpg"
