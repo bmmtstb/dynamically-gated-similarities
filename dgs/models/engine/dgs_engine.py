@@ -259,7 +259,7 @@ class DGSEngine(EngineModule):
                         **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
 
-                    frame_idx += 1
+                frame_idx += 1
 
             # free up memory by removing the images and crops
             for d in detections:
