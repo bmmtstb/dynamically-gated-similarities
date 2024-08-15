@@ -134,7 +134,7 @@ class DGSEngine(EngineModule):
 
         for ts in track_states:
             ts.load_image_crop(store=True)
-            ts.clean(keys="image")
+            ts.clean(keys=["image"])
 
         batch_times["data"] = time.time() - time_batch_start
 

@@ -80,7 +80,8 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
                 if (
                     len(subm_f.readlines())
                     == len(glob(crops_folder + "./*.jpg"))
-                    == len(glob(crops_folder + "./*glob.pt"))
+                    == (0.5 * len(glob(crops_folder + "./*.pt")))
+                    == len(glob(crops_folder + "./*_glob.pt"))
                 ):
                     continue
 
@@ -100,11 +101,11 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
             file_name = file_name.rstrip(gt_seqinfo["imExt"])
             img_id, _ = file_name.split("_")
             all_crop_ids[int(img_id)] += 1
-
-        if all(
-            i in all_crop_ids.keys() and all_crop_ids[i] > 0 for i in range(1, int(gt_seqinfo["seqLength"]) + 1)
-        ):  # 1 indexed
-            continue
+        #
+        # if all(
+        #     i in all_crop_ids.keys() and all_crop_ids[i] > 0 for i in range(1, int(gt_seqinfo["seqLength"]) + 1)
+        # ):  # 1 indexed
+        #     continue
 
         assert len(dataloader) >= 0
 
