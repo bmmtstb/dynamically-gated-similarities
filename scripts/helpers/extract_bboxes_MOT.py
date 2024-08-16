@@ -95,18 +95,6 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
         s: State
         frame_id = 0
 
-        # get the amount of images per crop id
-        all_crop_ids = {i: 0 for i in range(1, int(gt_seqinfo["seqLength"]) + 1)}
-        for file_name in [os.path.basename(p) for p in glob(os.path.join(crops_folder, f"*{own_seqinfo['imExt']}"))]:
-            file_name = file_name.rstrip(gt_seqinfo["imExt"])
-            img_id, _ = file_name.split("_")
-            all_crop_ids[int(img_id)] += 1
-        #
-        # if all(
-        #     i in all_crop_ids.keys() and all_crop_ids[i] > 0 for i in range(1, int(gt_seqinfo["seqLength"]) + 1)
-        # ):  # 1 indexed
-        #     continue
-
         assert len(dataloader) >= 0
 
         for batch in tqdm(dataloader, desc="batch", leave=False):
@@ -122,7 +110,7 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
                 # append to submission
                 submission.append(s)
 
-                if s.B in (0, all_crop_ids[frame_id]):
+                if s.B == 0:
                     s.clean()
                     continue
 
@@ -210,23 +198,24 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bo
     """Save the image crops."""
     for i in range(_s.B):
         img_path = os.path.join(img_dir, f"{str(_gt_img_id)}_{_s['person_id'][i]}.jpg")
-        if os.path.exists(img_path):
-            continue
-        if "image_crop" not in _s or (save_kps and "keypoints_local" not in _s):
-            _s.load_image_crop(store=True, **kwargs)
-        write_jpeg(
-            input=convert_image_dtype(_s.image_crop[i], t.uint8).cpu(),
-            filename=img_path,
-            quality=DEF_VAL["images"]["jpeg_quality"],
-        )
+
+        if not os.path.exists(img_path):
+            if "image_crop" not in _s or (save_kps and "keypoints_local" not in _s):
+                _s.load_image_crop(store=True, **kwargs)
+
+            write_jpeg(
+                input=convert_image_dtype(_s.image_crop[i], t.uint8).cpu(),
+                filename=img_path,
+                quality=DEF_VAL["images"]["jpeg_quality"],
+            )
         if save_kps:
             if "joint_weight" in _s:
                 weights = _s.joint_weight[i].unsqueeze(0).cpu()
             else:
                 weights = t.ones((1, _s.J, 1), dtype=t.float32)
             kp_loc = t.cat([_s.keypoints_local[i].unsqueeze(0).cpu(), weights], dim=-1)
-            kp_glob = t.cat([_s.keypoints[i].unsqueeze(0).cpu(), weights], dim=-1)
             t.save(kp_loc, replace_file_type(str(img_path), new_type=".pt"))
+            kp_glob = t.cat([_s.keypoints[i].unsqueeze(0).cpu(), weights], dim=-1)
             t.save(kp_glob, replace_file_type(str(img_path), new_type="_glob.pt"))
 
 

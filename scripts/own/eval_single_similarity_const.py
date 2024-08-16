@@ -28,12 +28,14 @@ CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 DL_KEYS: list[str] = [
     "dgs_pt21_gt_256x192",
     "dgs_pt21_gt_256x128",
-    "dgs_Dance_gt",
+    "dgs_Dance_gt_256x192_train",
+    "dgs_Dance_gt_256x192_val",
 ]
 RCNN_DL_KEYS: list[str] = [
     "dgs_pt21_rcnn_256x192",
     "dgs_pt21_rcnn_256x128",
-    "dgs_Dance_rcnn_256x192",
+    "dgs_Dance_rcnn_256x192_val",
+    "dgs_Dance_rcnn_256x192_test",
 ]
 
 KEYS: list[str] = [
