@@ -98,6 +98,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
 
         # change config data
         config["log_dir"] += f"./{out_key}/{dgs_key}/"
+        config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
         # set the new path for the submission file
         subm_key = "submission_MOT"

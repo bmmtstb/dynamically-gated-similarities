@@ -13,6 +13,7 @@ test:
     max_track_length: 1
     save_images: off
     # submission:  # will be set in python script
+    # writer_log_dir_suffix: will be set by python script
 
 # #### #
 # DATA #
