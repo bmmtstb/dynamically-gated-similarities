@@ -56,7 +56,7 @@ def replace_file_type(fp: FilePath, new_type: str, old_types: Union[None, list[s
         ValueError: If the old file type is not in the list of allowed types.
     """
     assert isinstance(new_type, str)
-    if not new_type.startswith("."):
+    if "." not in new_type:
         new_type = "." + new_type
     base_path, old_type = os.path.splitext(fp)
     if old_types is not None:
@@ -294,6 +294,8 @@ def send_discord_notification(message: str) -> None:  # pragma: no cover
         raise ValueError("Discord webhook URL is not set. Please set the 'DISCORD_WEBHOOK_URL' environment variable.")
     sender = socket.gethostname()
     message += f"\nSent by: {sender}"
+    if len(message) > 2000:
+        message = message[:1980] + " ... (truncated)"
     data = {"content": message}
     try:
         response = requests.post(DISCORD_WEBHOOK_URL, json=data)
@@ -332,11 +334,11 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 if result is not None:
                     message += f"\nResult: {result}"
                 if len(args) > 0:
-                    message += f"\nargs: `{','.join(a for a in args)}`"
+                    message += f"\nargs: `{', '.join(a for a in args)}`"
                 if len(kwargs) > 0:
                     message += (
                         f"\nkwargs: "
-                        f"{','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                        f"{', '.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
                     )
 
                 send_discord_notification(message)
@@ -348,13 +350,17 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                     f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}. {info}"
                 )
                 if len(args) > 0:
-                    message += f"\nargs: `{','.join(a for a in args)}`"
+                    message += f"\nargs: `{', '.join(a for a in args)}`"
                 if len(kwargs) > 0:
                     message += (
                         f"\nkwargs: "
-                        f"{','.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
+                        f"{', '.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
                     )
-                message += f"\nError: {traceback.format_exc()}"
+                err_msg = traceback.format_exc()
+                if len(err_msg) > 1000:
+                    message += f"\nError: ... {err_msg[-1000:]}"
+                else:
+                    message += f"\nError: {err_msg}"
                 send_discord_notification(message)
                 raise e
 

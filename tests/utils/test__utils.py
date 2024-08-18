@@ -38,6 +38,7 @@ class TestUtils(unittest.TestCase):
             ("pt", "test.jpg", [".jpg", ".jpeg"], "test.pt"),
             ("pt", "test.jpg", ["jpg", "jpeg"], "test.pt"),
             ("pt", "test.jpg", None, "test.pt"),
+            ("_glob.pt", "test.jpg", None, "test_glob.pt"),
         ]:
             with self.subTest(
                 msg="new_file_type: {}, fp: {}, old_types: {}, result: {}".format(new_file_type, fp, old_types, result)

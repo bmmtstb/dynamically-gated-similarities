@@ -2,10 +2,13 @@
 	path = dependencies/torchreid
 	url = https://github.com/KaiyangZhou/deep-person-reid.git
 	branch = master
-[submodule "PoseTrack21"]
+[submodule "dependencies/PoseTrack21"]
 	path = dependencies/PoseTrack21
-	url = https://github.com/anDoer/PoseTrack21.git
+	url = https://github.com/bmmtstb/PoseTrack21.git
 	branch = main
 [submodule "dependencies/DanceTrack"]
 	path = dependencies/DanceTrack
-	url = git@github.com:bmmtstb/DanceTrack
+	url = https://github.com/bmmtstb/DanceTrack.git
+[submodule "dependencies/poseval"]
+	path = dependencies/poseval
+	url = https://github.com/bmmtstb/poseval.git
