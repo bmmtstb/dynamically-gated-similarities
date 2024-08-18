@@ -49,6 +49,7 @@ test_validations: Validations = {
     # optional
     "normalize": ["optional", bool],
     "writer_kwargs": ["optional", dict],
+    "writer_log_dir_suffix": ["optional", str],
 }
 
 
@@ -94,6 +95,9 @@ class EngineModule(BaseModule, nn.Module):
     writer_kwargs (dict, optional):
         Additional kwargs for the torch writer.
         Default ``DEF_VAL.engine.test.writer_kwargs``.
+    writer_log_dir_suffix (str, optional):
+        Additional subdirectory or name suffix for the torch writer.
+        Default ``DEF_VAL.engine.test.writer_log_dir_suffix``.
 
     Optional Train Params
     ---------------------
@@ -163,7 +167,10 @@ class EngineModule(BaseModule, nn.Module):
 
         # Logging
         self.writer = SummaryWriter(
-            log_dir=self.log_dir,
+            log_dir=os.path.join(
+                self.log_dir,
+                self.params_test.get("writer_log_dir_suffix", DEF_VAL["engine"]["test"]["writer_log_dir_suffix"]),
+            ),
             comment=self.config.get("description"),
             **self.params_test.get("writer_kwargs", DEF_VAL["engine"]["test"]["writer_kwargs"]),
         )

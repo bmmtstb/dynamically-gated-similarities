@@ -83,6 +83,7 @@ base:
 
 engine:
     test:
+        writer_log_dir_suffix: ""
         writer_kwargs: {}
         normalize: false
 

@@ -75,6 +75,8 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 
                 # change config data
                 config["log_dir"] += f"./{out_key}/{dgs_key}_{'_'.join(str(c) for c in combination)}/"
+                config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
+
                 # set the new path for the out file in the log_dir
                 config["submission"]["file"] = os.path.abspath(
                     os.path.normpath(

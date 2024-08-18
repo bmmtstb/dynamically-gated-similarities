@@ -77,6 +77,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
         config[dl_key]["data_path"] = sub_datapath
         config["log_dir"] += f"./{out_key}/{dgs_key}/"
         config["test"]["submission"] = ["submission_pt21"]
+        config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
         # set the new path for the out file in the log_dir
         subm_key = "submission_pt21"
@@ -115,6 +116,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
 
         # change config data
         config["log_dir"] += f"./{out_key}/{dgs_key}/"
+        config["test"]["writer_log_dir_suffix"] = f"./{dataset_name}/"
 
         # set the new path for the submission file
         subm_key = "submission_MOT"
