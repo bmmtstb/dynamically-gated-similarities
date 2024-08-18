@@ -90,7 +90,10 @@ if __name__ == "__main__":
             # mot
             for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
                 comb = f"{ds_name}_{conf_key}_{new_k}"
-                csv_writer.writerow([comb, ds_name, conf_key, new_k] + mot_data[k])
+                custom_total = sum(
+                    float(val) for val in ap_data[k] if val not in ["neck", "head_top", "head_bottom"]
+                ) / (len(ap_data[k]) - 2)
+                csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + mot_data[k])
 
             AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
             if os.path.isfile(AP_file):
