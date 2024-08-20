@@ -35,8 +35,8 @@ DGS_KEYS = [
     "iou_oks",
     "iou_OSNet",
     "oks_OSNet",
-    # "iou_OSNetAIN",
-    # "oks_OSNetAIN",
+    "iou_OSNetAIN",
+    "oks_OSNetAIN",
     "iou_Resnet50",
     "oks_Resnet50",
     "iou_Resnet152",
@@ -45,7 +45,7 @@ DGS_KEYS = [
 
 IOU_THRESH: float = 0.40  # PT21
 SCORE_THRESH: float = 0.85  # PT21
-INITIAL_WEIGHT: float = 0.7  # FIXME
+INITIAL_WEIGHT: float = 0.00  # FIXME
 
 DL_KEY = "dgs_pt21_gt_256x192_val"
 RCNN_DL_KEY = "dgs_pt21_rcnn_256x192_val"
@@ -134,11 +134,15 @@ if __name__ == "__main__":
 
     cfg = load_config(CONFIG_FILE)
 
-    base_path = f"./data/PoseTrack21/posetrack_data/{rcnn_cfg_str}/"
+    base_path = f"./data/PoseTrack21/posetrack_data/{crop_h}x{crop_w}_{rcnn_cfg_str}/"
+    if not os.path.isdir(base_path):
+        send_discord_notification("Double - base path not found")
+        raise ValueError("Double - base path not found")
     cfg[RCNN_DL_KEY]["base_path"] = base_path
     crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
     cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+    assert len(data_paths) > 0, f"No files found in the base_path: {base_path}"
     run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")
 
     send_discord_notification("finished eval double")

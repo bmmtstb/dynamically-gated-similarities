@@ -45,7 +45,7 @@ dgs_pt21_rcnn_256x128:
     crop_size: !!python/tuple [256, 128]
     crop_mode: "zero-pad"
 
-dgs_pt21_gt_256x192:
+dgs_pt21_gt_256x192_val:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"
@@ -58,7 +58,7 @@ dgs_pt21_gt_256x192:
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
 
-dgs_pt21_gt_256x128:
+dgs_pt21_gt_256x128_val:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x128/val/"

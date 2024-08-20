@@ -26,10 +26,10 @@ from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_disco
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
 DL_KEYS: list[str] = [
-    "dgs_pt21_gt_256x192",
-    "dgs_pt21_gt_256x128",
     "dgs_Dance_gt_256x192_train",
     "dgs_Dance_gt_256x192_val",
+    "dgs_pt21_gt_256x192_val",
+    "dgs_pt21_gt_256x128_val",
 ]
 RCNN_DL_KEYS: list[str] = [
     "dgs_pt21_rcnn_256x192",
@@ -56,7 +56,7 @@ SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
-@notify_on_completion_or_error(min_time=30)
+@notify_on_completion_or_error(min_time=30, info="single")
 @t.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
@@ -99,7 +99,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
 
 
 # @torch_memory_analysis
-@notify_on_completion_or_error(min_time=30)
+@notify_on_completion_or_error(min_time=30, info="single")
 @t.no_grad()
 def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
@@ -199,7 +199,7 @@ if __name__ == "__main__":
                     _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                     if "pt21" in RCNN_DL_KEY:
                         base_path = os.path.normpath(
-                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}/"
+                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"  # fixme no hardcoded val
                         )
                         cfg[RCNN_DL_KEY]["base_path"] = base_path
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
@@ -209,7 +209,7 @@ if __name__ == "__main__":
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}",
+                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}_val",  # fixme no hardcoded val
                             dgs_key=DGS_KEY,
                         )
                     elif "Dance" in RCNN_DL_KEY:

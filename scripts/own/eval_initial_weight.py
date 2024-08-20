@@ -22,14 +22,14 @@ CONFIG_FILE = "./configs/DGS/eval_const_track_weight.yaml"
 
 # 0.0 was done in parameter search
 # 1.0 should be pretty much pointless, because every new track is preferred
-INITIAL_WEIGHTS: list[float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+INITIAL_WEIGHTS: list[float] = [-0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 DL_KEYS: list[str] = [
     "dgs_pt21_rcnn_256x192_val",
     "dgs_Dance_rcnn_256x192_val",
 ]
 
-KEYS: list[str] = ["iou", "oks"]
+KEYS: list[str] = ["iou", "oks", "OSNet"]
 
 IOU_THRESH: float = 0.40  # PT21
 SCORE_THRESH: float = 0.85  # PT21
@@ -154,9 +154,9 @@ if __name__ == "__main__":
             pbar_key.set_postfix_str(DGS_KEY)
 
             # run over all initial weights
-            for INIT_WEIGHT in (pbar_key := tqdm(INITIAL_WEIGHTS, desc="initial weights")):
+            for INIT_WEIGHT in (pbar_weights := tqdm(INITIAL_WEIGHTS, desc="initial weights")):
                 init_weight_str = f"{int(INIT_WEIGHT * 100):03d}"
-                pbar_key.set_postfix_str(init_weight_str)
+                pbar_weight.set_postfix_str(init_weight_str)
                 # set name
                 cfg["name"] = f"Evaluate-Initial-Track-Weight-{init_weight_str}-{DL_KEY}-{DGS_KEY}"
 
