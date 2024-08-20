@@ -22,7 +22,7 @@ CONFIG_FILE = "./configs/DGS/eval_const_track_weight.yaml"
 
 # 0.0 was done in parameter search
 # 1.0 should be pretty much pointless, because every new track is preferred
-INITIAL_WEIGHTS: list[float] = [-0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+INITIAL_WEIGHTS: list[float] = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 DL_KEYS: list[str] = [
     "dgs_pt21_rcnn_256x192_val",
