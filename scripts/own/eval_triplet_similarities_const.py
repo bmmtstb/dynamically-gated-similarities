@@ -31,8 +31,8 @@ from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_disco
 CONFIG_FILE = "./configs/DGS/eval_const_triplet_similarities.yaml"
 
 DGS_MODULES: list[str] = ["iou_oks_OSNet", "iou_oks_OSNetAIN", "iou_oks_Resnet50", "iou_oks_Resnet152"]
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95]
-IOU_THRESHS: list[float] = [0.5, 0.6, 0.7, 0.8]
+SCORE_THRESHS: list[float] = [0.85]
+IOU_THRESHS: list[float] = [0.5]
 
 
 def get_combinations() -> list[list[int]]:
