@@ -330,7 +330,9 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                 if elapsed_time < min_time:
                     return result
                 formatted_time = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
-                message = f"Function `{func.__name__}` completed successfully in {formatted_time}. {info}"
+                message = f":white_check_mark: Function `{func.__name__}` completed successfully in {formatted_time}"
+                if len(info) > 0:
+                    message += f". {info}"
                 if result is not None:
                     message += f"\nResult: {result}"
                 if len(args) > 0:
@@ -340,15 +342,16 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                         f"\nkwargs: "
                         f"{', '.join(f'{k}: {v}' for k, v in kwargs.items() if isinstance(v, (int, float, str)))}"
                     )
-
                 send_discord_notification(message)
                 return result
             except Exception as e:
                 elapsed_time = time.time() - start_time
                 message = (
-                    f"Function `{func.__name__}` failed after "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}. {info}"
+                    f":x: Function `{func.__name__}` failed after "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}"
                 )
+                if len(info) > 0:
+                    message += f". {info}"
                 if len(args) > 0:
                     message += f"\nargs: `{', '.join(a for a in args)}`"
                 if len(kwargs) > 0:
@@ -358,9 +361,9 @@ def notify_on_completion_or_error(info: str = "", min_time: float = 0.0):  # pra
                     )
                 err_msg = traceback.format_exc()
                 if len(err_msg) > 1000:
-                    message += f"\nError: ... {err_msg[-1000:]}"
+                    message += f"\n:warning: Error: ... {err_msg[-1000:]}"
                 else:
-                    message += f"\nError: {err_msg}"
+                    message += f"\n:warning: Error: {err_msg}"
                 send_discord_notification(message)
                 raise e
 
