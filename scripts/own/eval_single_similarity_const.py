@@ -198,8 +198,9 @@ if __name__ == "__main__":
                     cfg["name"] = f"Evaluate-Single-{DGS_KEY}"
                     _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                     if "pt21" in RCNN_DL_KEY:
+                        # fixme no hardcoded val
                         base_path = os.path.normpath(
-                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"  # fixme no hardcoded val
+                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"
                         )
                         cfg[RCNN_DL_KEY]["base_path"] = base_path
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]

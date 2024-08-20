@@ -164,8 +164,9 @@ if __name__ == "__main__":
                 cfg[DGS_KEY]["new_track_weight"] = INIT_WEIGHT
 
                 if "pt21" in DL_KEY:
+                    # fixme don't use fixed val
                     base_path = os.path.normpath(
-                        f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"  # fixme
+                        f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"
                     )
                     cfg[DL_KEY]["base_path"] = base_path
                     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
