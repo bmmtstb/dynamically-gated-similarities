@@ -81,7 +81,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
 
 
 # @torch_memory_analysis
-@notify_on_completion_or_error(min_time=30)
+@notify_on_completion_or_error(min_time=30, info="run initial weight")
 @t.no_grad()
 def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
@@ -156,7 +156,7 @@ if __name__ == "__main__":
             # run over all initial weights
             for INIT_WEIGHT in (pbar_weights := tqdm(INITIAL_WEIGHTS, desc="initial weights")):
                 init_weight_str = f"{int(INIT_WEIGHT * 100):03d}"
-                pbar_weight.set_postfix_str(init_weight_str)
+                pbar_weights.set_postfix_str(init_weight_str)
                 # set name
                 cfg["name"] = f"Evaluate-Initial-Track-Weight-{init_weight_str}-{DL_KEY}-{DGS_KEY}"
 
