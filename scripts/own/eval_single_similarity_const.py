@@ -26,10 +26,10 @@ from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_disco
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
 DL_KEYS: list[str] = [
-    "dgs_Dance_gt_256x192_train",
-    "dgs_Dance_gt_256x192_val",
     "dgs_pt21_gt_256x192_val",
     "dgs_pt21_gt_256x128_val",
+    "dgs_Dance_gt_256x192_train",
+    "dgs_Dance_gt_256x192_val",
 ]
 RCNN_DL_KEYS: list[str] = [
     "dgs_pt21_rcnn_256x192",
