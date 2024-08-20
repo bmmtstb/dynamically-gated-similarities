@@ -54,7 +54,7 @@ PT21_METRICS: list[str] = [
     "HOTA_FN(0)",
 ]
 
-POSEVAL_FAULTY: list[str] = ["neck", "head_top", "head_bottom", "total"]
+POSEVAL_FAULTY: list[str] = ["custom_total", "neck", "head_top", "head_bottom", "total"]
 
 BASE_DIR: str = "./results/own/eval/"
 
