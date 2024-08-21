@@ -161,6 +161,7 @@ class DGSEngine(EngineModule):
             time_match_start = time.time()
             # scipy uses numpy arrays instead of torch, therefore, convert -> but loose computational graph
             sim_matrix = torch_to_numpy(similarity)
+            del similarity
             rids, cids = linear_sum_assignment(sim_matrix, maximize=True)  # rids and cids are ndarray of shape [N]
 
             assert 0 <= (cost := sim_matrix[rids, cids].sum()) <= N, (
@@ -172,6 +173,7 @@ class DGSEngine(EngineModule):
             assert (
                 N == len(rids) == len(cids)
             ), f"expected shapes to match - N: {N}, states: {len(track_states)}, rids: {len(rids)}, cids: {len(cids)}"
+            del track_states
 
             states: list[State] = detections.split()
             for rid, cid in zip(rids, cids):
@@ -258,6 +260,8 @@ class DGSEngine(EngineModule):
                         ),
                         **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
+                # remove unused images and crops
+                active.clean()
 
                 frame_idx += 1
 

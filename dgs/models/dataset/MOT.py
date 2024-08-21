@@ -162,6 +162,9 @@ def load_MOT_file(
     assert all(len(os.path.basename(path).split(".")[0]) == img_name_digits for path in all_img_paths)
     img_shape: ImgShape = (int(seqinfo["imHeight"]), int(seqinfo["imWidth"]))
 
+    # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
+    map_pid_to_cid: dict[int, int] = {int(pid): int(i) for i, pid in enumerate(sorted(set(line[1] for line in lines)))}
+
     states = []
     for frame_id in range(1, int(seqinfo["seqLength"]) + 1):
         # get all annotations for the current frame id
@@ -187,6 +190,7 @@ def load_MOT_file(
                 filepath=file_paths,
                 crop_path=crop_paths,
                 person_id=t.tensor([anno[1] for anno in annos], device=device, dtype=t.long),
+                class_id=t.tensor([map_pid_to_cid[anno[1]] for anno in annos], device=device, dtype=t.long),
                 frame_id=[frame_id] * len(annos),
                 validate=False,
             )
