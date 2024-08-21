@@ -114,7 +114,6 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 
                 # reset the original log dir
                 config["log_dir"] = orig_log_dir
-        send_discord_notification(f"eval triple completed combination: {dgs_key}")
 
 
 if __name__ == "__main__":
