@@ -91,3 +91,22 @@ oks:
 pose_sim:
     module_name: "oks"
     format: "coco"
+    
+# Visual - v1 - OSNet_x1_0 pretrained on ImageNet
+
+OSNet:
+    module_name: "DGS"
+    combine: "combine_sim"
+    names: [ "v1_sim" ]
+    combined_softmax: true
+
+v1_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["v1_embed_gen"]
+
+v1_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    weights: "./weights/osnet_x1_0_imagenet.pth"
+    nof_classes: 1000
