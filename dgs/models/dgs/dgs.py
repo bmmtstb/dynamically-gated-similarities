@@ -114,6 +114,7 @@ class DGSModule(BaseModule, nn.Module):
 
         # combine and possibly compute softmax
         combined: t.Tensor = self.combined_softmax(self.combine(*results))
+        del results
 
         # add a number of columns for the empty / new tracks equal to the length of the input
         # every input should be allowed to get assigned to a new track
