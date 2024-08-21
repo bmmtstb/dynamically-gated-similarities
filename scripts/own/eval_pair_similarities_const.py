@@ -133,13 +133,13 @@ if __name__ == "__main__":
     rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_val"
 
     cfg = load_config(CONFIG_FILE)
+    crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
 
     base_path = f"./data/PoseTrack21/posetrack_data/{crop_h}x{crop_w}_{rcnn_cfg_str}/"
     if not os.path.isdir(base_path):
         send_discord_notification("Double - base path not found")
         raise ValueError("Double - base path not found")
     cfg[RCNN_DL_KEY]["base_path"] = base_path
-    crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
     cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
     assert len(data_paths) > 0, f"No files found in the base_path: {base_path}"
