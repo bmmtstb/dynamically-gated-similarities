@@ -857,7 +857,7 @@ class State(UserDict):
             raise ValueError("Cannot clean bounding box!")
         for key in keys:
             if key in self.data:
-                self.data.__delitem__(key)
+                del self.data[key]
             self.data.pop(key, None)
         return self
 
