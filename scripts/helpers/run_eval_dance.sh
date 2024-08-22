@@ -49,6 +49,6 @@ for dir in $dirs; do
                         --PRINT_RESULTS False"
 
         # Execute the Python command
-        eval $python_command
+        eval "$python_command"
     fi
 done

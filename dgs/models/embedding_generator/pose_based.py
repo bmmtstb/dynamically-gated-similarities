@@ -2,8 +2,6 @@
 Different pose based embedding generators.
 """
 
-from typing import Union
-
 import torch as t
 from torch import nn
 from torchvision import tv_tensors as tvte
@@ -11,6 +9,7 @@ from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 
 from dgs.models.embedding_generator.embedding_generator import EmbeddingGeneratorModule
 from dgs.utils.config import DEF_VAL
+from dgs.utils.nn import fc_linear, set_up_hidden_layer_sizes
 from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
@@ -49,30 +48,6 @@ lpbeg_validations: Validations = {
     "hidden_layers": ["optional", ("instance", (list, tuple, None))],
     "nof_kernels": ["optional", int, ("gt", 0)],
 }
-
-
-def set_up_hidden_layer_sizes(
-    input_size: int, output_size: int, hidden_layers: Union[list[int], None] = None
-) -> list[int]:
-    """Given the input and output size of an FC-NN,
-    create a list of the sizes containing each hidden layer in the network.
-    There might be zero hidden layers.
-
-    Params:
-        input_size: The size of the input to the FC-Layers.
-        output_size: Output-size of the FC-Layers.
-        hidden_layers: The dimensionality of each hidden layer in this network. Default None means no hidden layers.
-
-    Returns:
-        The sizes of the hidden layers including input and output size.
-    """
-    layers: list[int] = [input_size]
-    if not (hidden_layers is None or len(hidden_layers) == 0):
-        for hidden_layer in hidden_layers:
-            layers.append(int(hidden_layer))
-    layers.append(output_size)
-
-    return layers
 
 
 @configure_torch_module
@@ -156,37 +131,19 @@ class KeyPointConvolutionPBEG(EmbeddingGeneratorModule, nn.Module):
         hidden_layers_kp = set_up_hidden_layer_sizes(
             input_size=J,
             output_size=0,  # placeholder output size will be ignored during creation
-            hidden_layers=self.params.get(
+            hidden_sizes=self.params.get(
                 "hidden_layers_kp", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["hidden_layers_kp"]
             ),
         )
-        fc1 = nn.Sequential(
-            *[
-                nn.Linear(
-                    in_features=hidden_layers_kp[i],
-                    out_features=hidden_layers_kp[i + 1],
-                    bias=bias,
-                )
-                for i in range(len(hidden_layers_kp) - 2)
-            ],
-        )
+        fc1 = fc_linear(hidden_layers_kp[:-1], bias)
         self.part1 = nn.Sequential(conv, flat, fc1)
 
         hidden_layers_all = set_up_hidden_layer_sizes(
             input_size=hidden_layers_kp[-2] + 4,  # last real layer-size of key point fc layers, defaults to J
             output_size=self.embedding_size,
-            hidden_layers=self.params.get("hidden_layers", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["hidden_layers"]),
+            hidden_sizes=self.params.get("hidden_layers", DEF_VAL["embed_gen"]["pose"]["KPCPBEG"]["hidden_layers"]),
         )
-        self.fc2 = nn.Sequential(
-            *[
-                nn.Linear(
-                    in_features=hidden_layers_all[i],
-                    out_features=hidden_layers_all[i + 1],
-                    bias=bias,
-                )
-                for i in range(len(hidden_layers_all) - 1)
-            ],
-        )
+        self.fc2 = fc_linear(hidden_layers_all, bias)
 
         self.classifier = nn.Sequential(
             nn.Linear(self.embedding_size, self.nof_classes),
@@ -303,7 +260,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         hidden_layers = set_up_hidden_layer_sizes(
             input_size=self.J * self.j_dim + 4,
             output_size=self.embedding_size,
-            hidden_layers=self.params.get("hidden_layers", DEF_VAL["embed_gen"]["pose"]["LPBEG"]["hidden_layers"]),
+            hidden_sizes=self.params.get("hidden_layers", DEF_VAL["embed_gen"]["pose"]["LPBEG"]["hidden_layers"]),
         )
         return self.configure_torch_module(  # send to the target device
             nn.Sequential(
