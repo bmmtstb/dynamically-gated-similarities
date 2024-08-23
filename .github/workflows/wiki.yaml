@@ -1,5 +1,13 @@
 name: "Deploy Docs"
-on: [ push, pull_request ]
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
