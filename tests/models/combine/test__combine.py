@@ -280,6 +280,11 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
             self.model.forward(*(t.ones((self.N, self.D, self.T)) for _ in range(self.N)), alpha_inputs=self.dummy_ai)
         self.assertIn(f"Expected a 3D tensor, but got a tensor with shape", str(e.exception))
 
+    def test_alpha_not_set(self):
+        with self.assertRaises(ValueError) as e:
+            self.model.forward(*self.dummy_t)
+        self.assertTrue("Alpha inputs should be given" in str(e.exception), msg=e.exception)
+
     def test_runtime_error_alpha_input_device(self):
         if t.cuda.is_available():
             # tensor based
@@ -487,6 +492,11 @@ class TestAlphaCombineExceptions(unittest.TestCase):
             with self.assertRaises(RuntimeError) as e:
                 _ = self.model.forward(*self.dummy_t, alpha=alpha)
             self.assertTrue("alpha should be on the same device as the tensors" in str(e.exception), msg=e.exception)
+
+    def test_alpha_not_set(self):
+        with self.assertRaises(ValueError) as e:
+            self.model.forward(*self.dummy_t)
+        self.assertTrue("Alpha should be given" in str(e.exception), msg=e.exception)
 
     def test_value_error_on_2d_alpha(self):
         alpha = t.ones((self.N, self.D + 1))

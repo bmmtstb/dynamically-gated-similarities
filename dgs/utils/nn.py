@@ -28,9 +28,6 @@ def set_up_hidden_layer_sizes(
             layers.append(int(hidden_layer))
     layers.append(output_size)
 
-    if any(l <= 0 for l in layers):
-        raise ValueError(f"Input, hidden or output size is <= 0. Got: {layers}")
-
     return layers
 
 
@@ -57,6 +54,10 @@ def fc_linear(hidden_layers: list[int], bias: Union[bool, list[bool]] = True) ->
             )
     else:
         raise NotImplementedError(f"Bias should be a boolean or a list of booleans. Got: {bias}")
+
+    if any(l <= 0 for l in hidden_layers):
+        raise ValueError(f"Input, hidden or output size is <= 0. Got: {hidden_layers}")
+
     return nn.Sequential(
         *[
             nn.Linear(in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias[i])

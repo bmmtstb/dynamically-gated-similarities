@@ -99,7 +99,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
     def forward(
         self,
         *tensors: t.Tensor,
-        alpha_inputs: Union[t.Tensor, list[t.Tensor], tuple[t.Tensor, ...]],
+        alpha_inputs: Union[t.Tensor, list[t.Tensor], tuple[t.Tensor, ...]] = None,
         **_kwargs,
     ) -> t.Tensor:
         r"""The forward call of this module combines an arbitrary number of similarity matrices
@@ -112,7 +112,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         All tensors should be on the same device and all :math:`s_i` should have the same shape.
 
         Args:
-            tensors: Either a single tensor containing all similarity matrices stacked or an iterable of (Float-)Tensors.
+            tensors: A tuple of (Float-)Tensors.
                 All ``N`` similarity matrices of this iterable should have values in range ``[0,1]``,
                 be of the same shape ``[D x T]``, and be on the same device.
                 If ``tensors`` is a single tensor, it should have the shape ``[N x D x T]``.
@@ -132,6 +132,8 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             RuntimeError: If one of the tensors is not on the correct device.
             TypeError: If one of the tensors or one of the alpha inputs is not of type class:`torch.Tensor`.
         """
+        # pylint: disable=too-many-branches
+
         # validate model
         if not hasattr(self, "alpha_model") or len(self.alpha_model) == 0:
             raise NotImplementedError("The alpha model has not been set.")
@@ -153,6 +155,8 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             raise ValueError(f"Expected a 3D tensor, but got a tensor with shape {tensors.shape}")
 
         # validate alpha inputs
+        if alpha_inputs is None:
+            raise ValueError("Alpha inputs should be given.")
         if not isinstance(alpha_inputs, t.Tensor) and not isinstance(alpha_inputs, (tuple, list)):
             raise TypeError("alpha_inputs should be a tensor or an iterable of (float) tensors.")
         if any(not isinstance(ai, t.Tensor) for ai in alpha_inputs):
@@ -206,7 +210,7 @@ class AlphaCombine(CombineSimilaritiesModule):
 
         self.softmax = self.params.get("softmax", DEF_VAL["combine"]["alpha"]["softmax"])
 
-    def forward(self, *tensors: t.Tensor, alpha: t.Tensor, **_kwargs) -> t.Tensor:
+    def forward(self, *tensors: t.Tensor, alpha: t.Tensor = None, **_kwargs) -> t.Tensor:
         r"""The forward call of this module combines an arbitrary number of similarity matrices
         using an importance weight :math:`\alpha`.
 
@@ -236,6 +240,8 @@ class AlphaCombine(CombineSimilaritiesModule):
         tensors = t.stack(tensors)  # [N x D x T]
 
         # test alpha
+        if alpha is None:
+            raise ValueError("Alpha should be given.")
         if not isinstance(alpha, t.Tensor):
             raise TypeError("alpha should be a (float) tensor.")
         # test combined
