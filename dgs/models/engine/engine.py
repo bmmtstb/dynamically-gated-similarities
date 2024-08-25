@@ -8,6 +8,7 @@ import time
 import warnings
 from abc import abstractmethod
 from datetime import datetime
+from typing import Union
 
 import torch as t
 from matplotlib import pyplot as plt
@@ -451,7 +452,7 @@ class EngineModule(BaseModule, nn.Module):
         return tensor
 
     @abstractmethod
-    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:  # pragma: no cover
+    def _get_train_loss(self, data: Union[State, list[State]], _curr_iter: int) -> t.Tensor:  # pragma: no cover
         """Compute the loss during training given the data.
 
         Different models can have different outputs and a different number of targets.

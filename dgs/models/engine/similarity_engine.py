@@ -103,12 +103,18 @@ class SimilarityEngine(EngineModule):
         # Params - Train
 
     def get_data(self, ds: State) -> t.Tensor:
-        """Use the similarity model to get the data."""
+        """Use the similarity model to obtain the similarity data of the current detections."""
         return self.model.get_data(ds)
 
-    def get_target(self, ds: State) -> any:
-        """Use the similarity model to get the target data."""
-        return self.model.get_target(ds)
+    def get_target(self, ds: State) -> tuple[any, t.Tensor]:
+        """Get the target data.
+
+        For the similarity engine, the target data consists of two parts:
+
+        - the target IDs
+        - the similarity data of the previous step
+        """
+        return ds.class_id, ...
 
     def test(self) -> Results:
         r"""Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
@@ -160,11 +166,20 @@ class SimilarityEngine(EngineModule):
         return predictions
 
     @enable_keyboard_interrupt
-    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:
-        target_ids = self.get_target(data)
+    def _get_train_loss(self, data: list[State], _curr_iter: int) -> t.Tensor:
+        """Calculate the loss for the current frame."""
+        assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
+        # data_old, data_new = data
+        # old_ids = data_old.class_id
+        # new_ids = data_new.class_id
+        # target_ids = ...
+        #
+        # curr_sim_data = self.get_data(data_new)
+        # prev_sim_data = self.get_data(data_old)
 
-        crops = self.get_data(data)
-        pred_id_probs = self.model.predict_ids(crops)
-
-        loss = self.loss(pred_id_probs, target_ids)
+        loss = self.loss(..., ...)
         return loss
+
+    def terminate(self) -> None:
+        self.model.terminate()
+        super().terminate()
