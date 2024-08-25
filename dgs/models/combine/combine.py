@@ -5,11 +5,13 @@ Obtain similarity matrices as a result of one or multiple
 """
 
 from abc import abstractmethod
+from typing import Union
 
 import torch as t
 from torch import nn
 
 from dgs.models.module import BaseModule
+from dgs.utils.config import DEF_VAL
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -26,6 +28,16 @@ static_alpha_validation: Validations = {
     ],
 }
 
+dynamic_alpha_validation: Validations = {
+    # optional
+    "softmax": ["optional", bool],
+}
+
+alpha_combine_validation: Validations = {
+    # optional
+    "softmax": ["optional", bool],
+}
+
 
 class CombineSimilaritiesModule(BaseModule, nn.Module):
     """Given two or more similarity matrices, combine them into a single similarity matrix."""
@@ -40,71 +52,213 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> t.Tensor:
+    def forward(self, *args, **kwargs) -> t.Tensor:  # pragma: no cover
         raise NotImplementedError
 
 
 @configure_torch_module
-class DynamicallyGatedSimilarities(CombineSimilaritiesModule):
-    r"""Use alpha to weight the two similarity matrices
+class DynamicAlphaCombine(CombineSimilaritiesModule):
+    r"""Use inputs and multiple alpha modules to weight the similarity matrices.
 
-    Given a weight :math:`\alpha`, compute the weighted similarity between :math:`S_1` and :math:`S_2`
-    as :math:`S = \alpha \cdot S_1 + (1 - \alpha) \cdot S_2`.
-    Thereby :math:`\alpha` can either be a single float value in :math:`[0, 1]` or a float-tensor of the same shape as
-    :math:`S_1` again with values in :math:`[0,1]`.
+    Notes:
+        The models for computing the per-similarity alpha has to be set manually after the initialization.
 
-    Different shapes of :math:`S_1` and :math:`S_2`
-    -----------------------------------------------
+    Given ``N`` inputs to the alpha module (e.g. the visual embeddings of ``N`` images,
+    or ``N`` different sized inputs like the bbox, pose, and visual embedding of a single crop),
+    compute the alpha weights for the similarity matrices.
+    Then use :math:`\alpha_i` to compute the weighted sum of all the similarity matrices  :math:`S_i`
+    as :math:`S = \sum_N \alpha_i \cdot S_i`.
 
-    It is possible that :math:`S_1` and :math:`S_2` have different shapes in at least one dimension.
+    Every :math:`\alpha_i` can either be a single float value in range :math:`[0, 1]` or
+    a (float-) tensor of the same shape as :math:`S_i` again with values in :math:`[0,1]`.
+    In a single
+
+    Params
+    ------
+
+    Optional Params
+    ---------------
+
+    softmax (bool):
+        Whether to compute the softmax along the last dimension of the resulting weighted similarity matrix.
+        Default ``DEF_VAL.combine.dynamic.softmax``.
     """
 
-    def forward(self, *tensors, alpha: t.Tensor = t.tensor([0.5, 0.5]), **_kwargs) -> t.Tensor:
-        """The forward call of this module combines two weight matrices given a third importance weight :math:`\alpha`.
-        :math:`\alpha` describes how important s1 is, while :math:`(1- \alpha)` does the same for s2.
+    alpha_model: nn.ModuleList
+    """The model that computes the alpha values from given inputs."""
 
-        All tensors should be on the same device and ``s1`` and ``s2`` should have the same shape.
+    softmax: bool
+    """Whether to compute the softmax of the resulting weighted similarity matrix."""
+
+    def __init__(self, config: Config, path: NodePath) -> None:
+        super().__init__(config, path)
+        self.validate_params(dynamic_alpha_validation)
+
+        self.softmax = self.params.get("softmax", DEF_VAL["combine"]["dynamic"]["softmax"])
+
+    def forward(
+        self,
+        *tensors: t.Tensor,
+        alpha_inputs: Union[t.Tensor, list[t.Tensor], tuple[t.Tensor, ...]],
+        **_kwargs,
+    ) -> t.Tensor:
+        r"""The forward call of this module combines an arbitrary number of similarity matrices
+        using an importance weight :math:`\alpha`.
+
+        :math:`\alpha_i` describes how important :math:`s_i` is.
+        The sum of all :math:`\alpha_i` should be 1 by definition given the last layer is a softmax layer.
+        :math:`\alpha` is computed using this class' neural network and the given ``alpha_input`` tensor.
+
+        All tensors should be on the same device and all :math:`s_i` should have the same shape.
 
         Args:
-            tensors (tuple[torch.Tensor, ...]): Two weight matrices as tuple of FloatTensors.
-                Both should have values in range [0,1] and be of the same shape ``[N x T]``.
-            alpha: Weight :math:`\alpha`. Should be a FloatTensor in range [0,1].
-                The shape of :math:`\alpha` can either be ``[]``, ``[1 (x 1)]``, or ``[N x 1]``.
+            tensors: Either a single tensor containing all similarity matrices stacked or an iterable of (Float-)Tensors.
+                All ``N`` similarity matrices of this iterable should have values in range ``[0,1]``,
+                be of the same shape ``[D x T]``, and be on the same device.
+                If ``tensors`` is a single tensor, it should have the shape ``[N x D x T]``.
+                ``N`` can be any number of similarity matrices greater than 0,
+                even though only values greater than 1 really make sense.
+            alpha_inputs: An iterable of tensors or a single tensor that are all on the same device as ``tensors``.
+                If ``alpha_inputs`` is a single tensor, it should have the shape ``[N x sim_size x ...]``.
+                But because the inputs for different similarity matrices can have different shapes,
+                the most common use case is to have a list of ``N`` tensors.
+                Where every tensor has values in range ``[0, 1]`` and is of shape ``[sim_size x ...]``.
+
+        Returns:
+            torch.Tensor: The weighted similarity matrix as tensor of shape ``[D x T]``.
+
+        Raises:
+            ValueError: If alpha or the matrices have invalid shapes.
+            RuntimeError: If one of the tensors is not on the correct device.
+            TypeError: If one of the tensors or one of the alpha inputs is not of type class:`torch.Tensor`.
+        """
+        # validate model
+        if not hasattr(self, "alpha_model") or len(self.alpha_model) == 0:
+            raise NotImplementedError("The alpha model has not been set.")
+        # validate tensors
+        if not isinstance(tensors, tuple):  # pragma: no cover # redundancy
+            raise TypeError("tensors should be a tuple containing (float) tensors.")
+        if any(not isinstance(tensor, t.Tensor) for tensor in tensors):
+            raise TypeError("All similarity matrices should be (float) tensors.")
+        if any(tensor.shape != tensors[0].shape for tensor in tensors):
+            raise ValueError("All similarity matrices should have the same shape.")
+        if any(tensor.device != tensors[0].device for tensor in tensors):
+            raise RuntimeError("All tensors should be on the same device.")
+        if len(self.alpha_model) != len(tensors):
+            raise ValueError(f"There should be as many alpha models {len(self.alpha_model)} as tensors {len(tensors)}.")
+
+        tensors = t.stack(tensors)  # [N x D x T]
+
+        if isinstance(tensors, t.Tensor) and tensors.ndim != 3:
+            raise ValueError(f"Expected a 3D tensor, but got a tensor with shape {tensors.shape}")
+
+        # validate alpha inputs
+        if not isinstance(alpha_inputs, t.Tensor) and not isinstance(alpha_inputs, (tuple, list)):
+            raise TypeError("alpha_inputs should be a tensor or an iterable of (float) tensors.")
+        if any(not isinstance(ai, t.Tensor) for ai in alpha_inputs):
+            raise TypeError("All alpha inputs should be tensors.")
+        if alpha_inputs[0].device != tensors.device or any(ai.device != alpha_inputs[0].device for ai in alpha_inputs):
+            raise RuntimeError("All alpha inputs should be on the same device.")
+        if len(self.alpha_model) != len(alpha_inputs):
+            raise ValueError(
+                f"There should be as many alpha models {len(self.alpha_model)} as alpha inputs {len(alpha_inputs)}."
+            )
+
+        alpha = t.stack([self.alpha_model[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=0).flatten()  # [N]
+
+        s = t.tensordot(alpha, tensors, dims=([0], [0]))  # [N] dot [N x D x T] -> [D x T]
+
+        if self.softmax:
+            s = nn.functional.softmax(s, dim=-1)
+
+        return s
+
+    def terminate(self) -> None:  # pragma: no cover
+        if hasattr(self, "alpha_model"):
+            del self.alpha_model
+
+
+@configure_torch_module
+class AlphaCombine(CombineSimilaritiesModule):
+    r"""Compute a weighted sum of multiple given similarity matrices and given alpha weights.
+
+    More precisely, given a similarity matrix / tensor  with shape ``[N x T]``,
+    and one alpha value per similarity, compute the weighted sum of all the similarity matrices.
+    The module will make sure, that :math:`\sum_N \alpha_i = 1`.
+
+    Params
+    ------
+
+    Optional Params
+    ---------------
+
+    softmax (bool):
+        Whether to compute the softmax along the last dimension of the resulting weighted similarity matrix.
+        Default ``DEF_VAL.combine.alpha.softmax``.
+    """
+
+    softmax: bool
+    """Whether to compute the softmax of the resulting weighted similarity matrix."""
+
+    def __init__(self, config: Config, path: NodePath) -> None:
+        super().__init__(config, path)
+        self.validate_params(alpha_combine_validation)
+
+        self.softmax = self.params.get("softmax", DEF_VAL["combine"]["alpha"]["softmax"])
+
+    def forward(self, *tensors: t.Tensor, alpha: t.Tensor, **_kwargs) -> t.Tensor:
+        r"""The forward call of this module combines an arbitrary number of similarity matrices
+        using an importance weight :math:`\alpha`.
+
+        Args:
+            tensors: ``N`` similarity matrices as a tuple of tensors.
+                All tensors should have values in range ``[0,1]``, be of the same shape ``[D x T]``,
+                and be on the same device.
+            alpha: A tensor containing weights in range ``[0,1]``.
+                Alpha can have one of the following shapes: ``[N]`` or ``[N x D]``.
+                The alpha tensor should be on the same device as the other tensors.
 
         Returns:
             torch.Tensor: The weighted similarity matrix.
 
         Raises:
             ValueError: If alpha or the matrices have invalid shapes.
+            RuntimeError: If the tensors are not on the same device.
+            TypeError: If one of the tensors or alpha is not of type class:`torch.Tensor`.
         """
-        if len(tensors) != 2:
-            raise ValueError(f"There should be exactly two matrices in the tensors argument, got {len(tensors)}")
+        # test tensors
+        if not isinstance(tensors, tuple):
+            raise TypeError(f"tensors should be a tuple containing (float) tensors, got {type(tensors)}.")
         if any(not isinstance(tensor, t.Tensor) for tensor in tensors):
-            raise TypeError("All matrices should be torch (float) tensors.")
-        s1, s2 = tensors
-        if (a_max := t.max(alpha)) > 1.0 or t.min(alpha) < 0.0:
-            raise ValueError(f"alpha should lie in the range [0,1], but got [{t.min(alpha)}, {a_max}]")
+            raise TypeError("All similarity matrices should be (float) tensors.")
+        if any(tensor.device != tensors[0].device for tensor in tensors):
+            raise RuntimeError("All tensors should be on the same device.")
+        tensors = t.stack(tensors)  # [N x D x T]
 
-        if alpha.ndim > 2:
-            alpha.squeeze_()
-            if alpha.ndim >= 2:
-                raise ValueError(f"alpha has the wrong shape {alpha.shape}.")
+        # test alpha
+        if not isinstance(alpha, t.Tensor):
+            raise TypeError("alpha should be a (float) tensor.")
+        # test combined
+        if len(alpha) != len(tensors):
+            raise ValueError(f"Alpha {len(alpha)} should have the same length as the tensors {len(tensors)}.")
+        if alpha.device != tensors.device:
+            raise RuntimeError("alpha should be on the same device as the tensors.")
 
-        if alpha.ndim == 1 and alpha.shape[0] != 1:
-            # [N] -> [N x 1]
-            alpha.unsqueeze_(-1)
-        elif alpha.ndim == 2 and alpha.shape[1] != 1:
-            raise ValueError(f"If alpha is two dimensional, the second dimension has to be 1 but got {alpha.shape}.")
+        if alpha.ndim == 2 and alpha.shape[-1] != tensors.shape[-2]:
+            raise ValueError(f"alpha should have shape [N x D], but got {alpha.shape}")
+        if alpha.ndim == 3 and (alpha.shape[-2] != tensors.shape[-2] or alpha.shape[-1] != tensors.shape[-1]):
+            raise ValueError(f"alpha should have shape [N x D x T], but got {alpha.shape}")
 
-        if s1.shape != s2.shape:
-            raise ValueError(f"s1 and s2 should have the same shapes, but are: {s1.shape} {s2.shape}.")
-        if alpha.ndim > 0 and alpha.shape[0] != 1 and alpha.shape[0] != s1.shape[0]:
-            raise ValueError(
-                f"If the length of the first dimension of alpha is not 1, "
-                f"the first dimension has to equal the first dimension of s1 and s2 but got {alpha.shape}."
-            )
+        if alpha.ndim == 1:
+            s = t.tensordot(alpha, tensors, dims=([0], [0]))  # [N] dot [N x D x T] -> [D x T]
+        else:
+            # fixme add dims for [NxD] and [NxDxT]
+            raise NotImplementedError("Alpha with shape [N x D] or [N x D x T] is not yet implemented.")
 
-        return alpha * s1 + (t.ones_like(alpha) - alpha) * s2
+        if self.softmax:
+            s = nn.functional.softmax(s, dim=-1)
+
+        return s
 
 
 @configure_torch_module

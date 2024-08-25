@@ -154,3 +154,10 @@ embed_gen:
             nof_kernels: 5
             hidden_layers: []
             hidden_layers_kp: []
+            
+combine:
+    dynamic:
+        softmax: true
+    
+    alpha:
+        softmax: true

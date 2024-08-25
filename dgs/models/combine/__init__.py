@@ -8,15 +8,11 @@ from typing import Type
 
 from dgs.utils.loader import get_instance, register_instance
 from dgs.utils.types import Instance
-from .combine import (
-    CombineSimilaritiesModule,
-    DynamicallyGatedSimilarities,
-    StaticAlphaCombine,
-)
+from .combine import AlphaCombine, CombineSimilaritiesModule, DynamicAlphaCombine, StaticAlphaCombine
 
 COMBINE_MODULES: dict[str, Type[CombineSimilaritiesModule]] = {
-    "DGS": DynamicallyGatedSimilarities,
-    "dynamic_alpha": DynamicallyGatedSimilarities,  # alias for DGS
+    "alpha_combine": AlphaCombine,
+    "dynamic_alpha": DynamicAlphaCombine,
     "static_alpha": StaticAlphaCombine,
     "constant_alpha": StaticAlphaCombine,  # alias
 }
