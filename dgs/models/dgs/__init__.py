@@ -9,7 +9,8 @@ from dgs.utils.loader import get_instance, register_instance
 from .dgs import DGSModule
 
 DGS_MODULES: dict[str, Type[DGSModule]] = {
-    "DGS": DGSModule,
+    "DGSModule": DGSModule,
+    "DGS": DGSModule,  # shorthand
 }
 
 

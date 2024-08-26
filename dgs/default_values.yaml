@@ -126,6 +126,7 @@ similarity:
 
     oks:
         softmax: false
+        kp_dim: 2
 
     iou:
         softmax: false

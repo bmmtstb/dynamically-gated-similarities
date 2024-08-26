@@ -18,6 +18,7 @@ oks_validations: Validations = {
     "format": [str, ("in", list(OKS_SIGMAS.keys()))],
     # optional
     "softmax": ["optional", bool],
+    "keypoint_dim": ["optional", int, ("within", (1, 3))],
 }
 
 iou_validations: Validations = {
@@ -35,10 +36,16 @@ class ObjectKeypointSimilarity(SimilarityModule):
     format (str):
         The key point format, e.g., 'coco', 'coco-whole', ... has to be in OKS_SIGMAS.keys().
 
+    Optional Params
+    ---------------
+
     softmax (bool, optional):
         Whether to compute the softmax of the result.
         All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
         Default ``DEF_VAL.similarity.oks.softmax``.
+    keypoint_dim (int, optional):
+        The dimensionality of the key points. So whether 2D or 3D is expected.
+        Default ``DEF_VAL.similarity.oks.kp_dim``.
     """
 
     def __init__(self, config: Config, path: NodePath):
@@ -62,16 +69,16 @@ class ObjectKeypointSimilarity(SimilarityModule):
         if self.params.get("softmax", DEF_VAL["similarity"]["oks"]["softmax"]):
             self.softmax.append(nn.Softmax(dim=-1))
 
-    def get_data(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
-        """Given a :class:`State`, compute the detected / predicted key points with shape ``[B1 x J x 2]``
+        self.kp_dim: int = self.params.get("keypoint_dim", DEF_VAL["similarity"]["oks"]["kp_dim"])
+
+    def get_data(self, ds: State) -> t.Tensor:
+        """Given a :class:`State`, compute the detected / predicted key points with shape ``[B1 x J x 2|3]``
         and the areas of the respective ground-truth bounding-boxes with shape ``[B1]``.
-
-        Notes:
-            To compute the bbox area, it is possible to use the :class:`~torchvision.ops.box_area` function.
-            The box_area function expects that the bounding boxes are given in 'XYXY' format.
         """
-        kps = ds.keypoints.float().view(ds.B, -1, 2)
+        return ds.keypoints.float().view(ds.B, -1, self.kp_dim)
 
+    def get_area(self, ds: State) -> t.Tensor:
+        """Given a :class:`State`, compute the area of the bounding box."""
         bboxes = ds.bbox
 
         if bboxes.format == BoundingBoxFormat.XYXY:
@@ -82,14 +89,14 @@ class ObjectKeypointSimilarity(SimilarityModule):
             bboxes = self.transf_bbox_to_xyxy(bboxes)
             area = box_area(bboxes).float()
 
-        return kps, area
+        return area
 
     def get_target(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
         """Given a :class:`State` obtain the ground truth key points and the key-point-visibility.
-        Both are tensors, the key points are a FloatTensor of shape ``[B2 x J x 2]``
+        Both are tensors, the key points are a FloatTensor of shape ``[B2 x J x 2|3]``
         and the visibility is a BoolTensor of shape ``[B2 x J]``.
         """
-        kps = ds.keypoints.float().view(ds.B, -1, 2)
+        kps = ds.keypoints.float().view(ds.B, -1, self.kp_dim)
         vis = ds.cast_joint_weight(dtype=t.bool).squeeze(-1).view(ds.B, -1)
         return kps, vis
 
@@ -129,7 +136,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
             resulting in probability distributions for each value of the input data.
         """
         # get predicted key-points as [N x J x 2] and bbox area as [N]
-        pred_kps, bbox_area = self.get_data(ds=data)
+        pred_kps = self.get_data(ds=data)
+        bbox_area = self.get_area(ds=data)
         # get ground-truth key-points as [T x J x 2] and visibility as [T x J]
         gt_kps, gt_vis = self.get_target(ds=target)
         assert pred_kps.size(-1) == gt_kps.size(-1), "Key-points should have the same number of dimensions"
@@ -191,7 +199,7 @@ class IntersectionOverUnion(SimilarityModule):
 
     def get_target(self, ds: State) -> BoundingBoxes:
         """Given a :class:`State` obtain the ground-truth bounding-boxes as
-        :class:`torchvision.tv_etnsors.BoundingBoxes` object of size ``[T x 4]``.
+        :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[T x 4]``.
 
         Notes:
             The function :func:`box_iou` expects that the bounding boxes are in the 'XYXY' format.

@@ -29,7 +29,7 @@ test_validations: Validations = {
 
 
 class SimilarityEngine(EngineModule):
-    """An engine for training and testing similarity models independently.
+    """An engine for training and testing similarity models independently and in combinations.
 
     For this model:
 
@@ -102,19 +102,23 @@ class SimilarityEngine(EngineModule):
 
         # Params - Train
 
-    def get_data(self, ds: State) -> t.Tensor:
-        """Use the similarity model to obtain the similarity data of the current detections."""
-        return self.model.get_data(ds)
+    def get_data(self, ds: State) -> list[t.Tensor]:
+        """Use the similarity models of the DGS module to obtain the similarity data of the current detections.
 
-    def get_target(self, ds: State) -> tuple[any, t.Tensor]:
+        For the similarity engine, the data consists of a list of all the input data for the similarities.
+        This means, that for the visual similarity, the embedding is returned,
+        and for the IoU or OKS similarities, the bbox and key point data is returned.
+        The :func:`get_data` function will be called twice, once for the current time-step and once for the previous.
+        """
+        return [sm.get_data(ds) for sm in self.model.sim_mods]
+
+    def get_target(self, ds: State) -> t.Tensor:
         """Get the target data.
 
-        For the similarity engine, the target data consists of two parts:
-
-        - the target IDs
-        - the similarity data of the previous step
+        For the similarity engine, the target data consists of the target- / class-id.
+        The :func:`get_target` function will be called twice, once for the current time-step and once for the previous.
         """
-        return ds.class_id, ...
+        return ds.class_id
 
     def test(self) -> Results:
         r"""Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
@@ -169,17 +173,29 @@ class SimilarityEngine(EngineModule):
     def _get_train_loss(self, data: list[State], _curr_iter: int) -> t.Tensor:
         """Calculate the loss for the current frame."""
         assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
-        # data_old, data_new = data
-        # old_ids = data_old.class_id
-        # new_ids = data_new.class_id
-        # target_ids = ...
-        #
-        # curr_sim_data = self.get_data(data_new)
-        # prev_sim_data = self.get_data(data_old)
+        data_old: State
+        data_new: State
 
-        loss = self.loss(..., ...)
+        data_old, data_new = data
+
+        old_ids = self.get_target(data_old)  # [T]
+        new_ids = self.get_target(data_new)  # [D]
+        # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
+        combined_ids = t.cat((old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]]))
+        # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
+        indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
+
+        # get the input data of the similarity modules for the current step
+        curr_sim_data = self.get_data(data_new)  # [D]
+        alpha = self.model.combine.alpha_model(curr_sim_data)
+
+        # get the similarity matrices as [D x (T + D)]
+        similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
+
+        loss = self.loss(alpha, similarity[indices])
         return loss
 
     def terminate(self) -> None:
         self.model.terminate()
+        del self.model
         super().terminate()

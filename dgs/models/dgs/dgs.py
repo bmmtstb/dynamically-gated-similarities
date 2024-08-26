@@ -49,6 +49,12 @@ class DGSModule(BaseModule, nn.Module):
         Default ``DEF_VAL.dgs.similarity_softmax``.
     """
 
+    sim_mods: nn.ModuleList
+    similarity_softmax: nn.Sequential
+    combine: CombineSimilaritiesModule
+    combined_softmax: nn.Sequential
+    new_track_weight: t.Tensor
+
     def __init__(self, config: Config, path: NodePath):
         BaseModule.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
@@ -85,6 +91,7 @@ class DGSModule(BaseModule, nn.Module):
         self.configure_torch_module(self.combine)
 
         # if wanted, compute the softmax after the similarities have been summed up / combined
+        # but before the new tracks are added
         combined_softmax = nn.Sequential()
         if self.params.get("combined_softmax", DEF_VAL["dgs"]["combined_softmax"]):
             combined_softmax.append(nn.Softmax(dim=-1))
@@ -101,7 +108,7 @@ class DGSModule(BaseModule, nn.Module):
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
 
-    def forward(self, ds: State, target: State) -> t.Tensor:
+    def forward(self, ds: State, target: State, **_kwargs) -> t.Tensor:
         """Given a State containing the current detections and a target, compute the similarity between every pair.
 
         Returns:
@@ -113,7 +120,7 @@ class DGSModule(BaseModule, nn.Module):
         results = [self.similarity_softmax(m(ds, target)) for m in self.sim_mods]
 
         # combine and possibly compute softmax
-        combined: t.Tensor = self.combined_softmax(self.combine(*results))
+        combined: t.Tensor = self.combined_softmax(self.combine(*results, **_kwargs))
         del results
 
         # add a number of columns for the empty / new tracks equal to the length of the input
