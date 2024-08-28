@@ -13,6 +13,7 @@ from .combine import AlphaCombine, CombineSimilaritiesModule, DynamicAlphaCombin
 COMBINE_MODULES: dict[str, Type[CombineSimilaritiesModule]] = {
     "alpha_combine": AlphaCombine,
     "dynamic_alpha": DynamicAlphaCombine,
+    "dac": DynamicAlphaCombine,  # alias
     "static_alpha": StaticAlphaCombine,
     "constant_alpha": StaticAlphaCombine,  # alias
 }

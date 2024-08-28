@@ -140,6 +140,9 @@ class EngineModule(BaseModule, nn.Module):
     test_dl: TorchDataLoader
     """The torch DataLoader containing the test data."""
 
+    val_dl: TorchDataLoader
+    """The torch DataLoader containing the validation data."""
+
     train_dl: TorchDataLoader
     """The torch DataLoader containing the training data."""
 
@@ -151,6 +154,7 @@ class EngineModule(BaseModule, nn.Module):
         config: Config,
         model: nn.Module,
         test_loader: TorchDataLoader,
+        val_loader: TorchDataLoader = None,
         train_loader: TorchDataLoader = None,
         **_kwargs,
     ):
@@ -196,8 +200,11 @@ class EngineModule(BaseModule, nn.Module):
             self.validate_params(train_validations, attrib_name="params_train")
             if train_loader is None:
                 raise InvalidConfigException("is_training is turned on but train_loader is None.")
-            # data loader
+            if val_loader is None:
+                raise InvalidConfigException("is_training is turned on but val_loader is None.")
+            # save train and validation data loader
             self.train_dl = train_loader
+            self.val_dl = val_loader
 
             # epochs
             self.epochs: int = self.params_train.get("epochs", DEF_VAL["engine"]["train"]["epochs"])
@@ -248,9 +255,20 @@ class EngineModule(BaseModule, nn.Module):
             self.logger.info(f"Config Description: {self.config['description']}")
 
         if self.is_training:
+            # train and eval the model
             self.train_model()
 
         self.test()
+
+    @abstractmethod
+    @enable_keyboard_interrupt
+    def evaluate(self) -> Results:
+        """Run tests, defined in Sub-Engine.
+
+        Returns:
+            dict[str, any]: A dictionary containing all the computed accuracies, metrics, ... .
+        """
+        raise NotImplementedError
 
     @abstractmethod
     @enable_keyboard_interrupt
@@ -353,7 +371,7 @@ class EngineModule(BaseModule, nn.Module):
 
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
-                metrics: dict[str, any] = self.test()
+                metrics: dict[str, any] = self.evaluate()
                 self.save_model(epoch=self.curr_epoch, metrics=metrics)
                 self.writer.add_hparams(
                     hparam_dict={

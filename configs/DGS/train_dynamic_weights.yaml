@@ -1,0 +1,74 @@
+name: "Train-Dynamic-Weights-Individually"
+description: "Train and eval a similarity engine with a dynamic alpha combine module.
+Runs over a whole (combined) dataset using all but the first frame of every video for training.
+For evaluation ... TODO ..."
+
+device: "cuda:0"
+print_prio: "INFO"
+is_training: on
+log_dir: "./results/own/eval/"
+log_dir_add_date: false
+
+# ###### #
+# ENGINE #
+# ###### #
+
+engine:
+    module_name: "SimilarityEngine"
+
+test:
+    inactivity_threshold: 15
+    max_track_length: 1
+    save_images: off
+    # submission:  # will be set in python script
+    # writer_log_dir_suffix: will be set by python script
+    metric: ""
+    metric_kwargs: {}
+    acc_k_test: [1,5,10,20,50]
+#    normalize: false
+    writer_kwargs: {}
+    writer_log_dir_suffix: ""
+    
+train:
+    acc_k_train: [1, 5, 10, 20]
+    loss: ""
+    loss_kwargs: {}
+    optimizer: ""
+    optimizer_kwargs:
+        lr: 0.0001  # 1e-4
+    epochs: 5
+    save_interval: 1
+    scheduler: "StepLR"
+    scheduler_kwargs:
+        step_size: 1
+        gamma": 0.1
+
+# ####### #
+# MODULES #
+# ####### #
+
+dac:
+    module_name: "dynamic_alpha"
+    softmax: true
+    
+    
+DGSModule:
+    module_name: "DGS"
+    names: [...]
+    combine: "dac"
+    combined_softmax: true
+    similarity_softmax: false
+    new_track_weight: 0.0
+
+# #### #
+# DATA #
+# #### #
+
+val_dl:
+    ...
+
+test_dl:
+    ...
+
+train_dl:
+    ...

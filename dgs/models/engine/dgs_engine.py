@@ -4,22 +4,25 @@ Engine for a full model of the dynamically gated similarity tracker.
 
 import os.path
 import time
+from datetime import timedelta
 
 import torch as t
 from scipy.optimize import linear_sum_assignment
 from torch import nn
-from torch.utils.data import DataLoader as TorchDataLoader
+from torch.utils.data import DataLoader as TDataLoader, DataLoader as TorchDataLoader
 from tqdm import tqdm
 
 from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.engine import EngineModule
+from dgs.models.metric.metric import compute_near_k_accuracy
+from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.submission import get_submission
 from dgs.models.submission.submission import SubmissionFile
 from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import collate_states, EMPTY_STATE, State
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
-from dgs.utils.types import Config, Validations
+from dgs.utils.types import Config, Results, Validations
 from dgs.utils.utils import torch_to_numpy
 
 dgs_eng_test_validations: Validations = {
@@ -33,16 +36,24 @@ dgs_eng_test_validations: Validations = {
     "draw_kwargs": ["optional", dict],
 }
 
+dgs_eng_train_validations: Validations = {
+    # optional
+    "acc_k_train": ["optional", list, ("forall", ["number"])],
+    "acc_k_eval": ["optional", list, ("forall", ["number"])],
+}
+
 
 class DGSEngine(EngineModule):
-    """An engine class for training and testing the dynamically gated similarity tracker.
+    """An engine class for training and testing the dynamically gated similarity tracker with static or dynamic gates.
 
     For this model:
 
-    - ``get_data()`` should return the State
-    - ``get_target()`` should return the target class IDs
-    - ``train_dl`` contains the training data as usual
-    - ``test_dl`` TODO
+    - ``get_data()`` should return the same as this similarity functions :meth:`SimilarityModule.get_data` call
+    - ``get_target()`` should return the class IDs of the :class:`State` object
+    - ``train_dl`` contains the training data as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset
+    - ``test_dl`` contains the test data as a torch DataLoader
+      containing a regular :class:`ImageDataset` or class:`VideoDataset` datasets
+    - ``val_dl`` contains the validation data as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset
 
     Train Params
     ------------
@@ -52,6 +63,15 @@ class DGSEngine(EngineModule):
 
     submission_key (Union[str, NodePath]):
         The key or the path of keys in the configuration containing the information about the submission file.
+
+
+    Optional Train Params
+    ---------------------
+
+    acc_k_train (list[int|float], optional):
+        A list of values used during training to check whether the accuracy lies within a margin of k percent.
+        Default ``DEF_VAL.engine.sim.acc_k_train``.
+
 
     Optional Test Params
     --------------------
@@ -93,18 +113,43 @@ class DGSEngine(EngineModule):
     # pylint: disable=too-many-arguments,too-many-locals
 
     model: DGSModule
+    """The DGS module containing the similarity models and the alpha model."""
+
     tracks: Tracks
+    """The tracks object containing all the active tracks of this engine."""
+
     submission: SubmissionFile
+    """The submission file to store the results when running the tests."""
+
+    val_dl: TDataLoader
+    """The torch DataLoader containing the validation data."""
+
+    train_dl: TDataLoader
+    """The torch DataLoader containing the train data."""
 
     def __init__(
-        self, config: Config, model: nn.Module, test_loader: TorchDataLoader, train_loader: TorchDataLoader = None
+        self,
+        config: Config,
+        model: nn.Module,
+        test_loader: TorchDataLoader,
+        val_loader: TDataLoader = None,
+        train_loader: TorchDataLoader = None,
     ):
         if not isinstance(model, DGSModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
-        super().__init__(config=config, model=model, test_loader=test_loader, train_loader=train_loader)
+        super().__init__(
+            config=config, model=model, test_loader=test_loader, train_loader=train_loader, val_loader=val_loader
+        )
 
+        # TEST - get params from config
+        self.validate_params(dgs_eng_test_validations, "params_test")
         self.save_images: bool = self.params_test.get("save_images", DEF_VAL["engine"]["dgs"]["save_images"])
 
+        # TRAIN - get params from config
+        if self.is_training:
+            self.validate_params(dgs_eng_train_validations, "params_train")
+
+        # initialize the tracks and the submission file
         self.tracks = Tracks(
             N=self.params_test.get("max_track_length", DEF_VAL["track"]["N"]),
             thresh=self.params_test.get("inactivity_threshold", DEF_VAL["tracks"]["inactivity_threshold"]),
@@ -114,13 +159,26 @@ class DGSEngine(EngineModule):
             get_sub_config(config=self.config, path=self.params_test.get("submission"))["module_name"]
         )(config=self.config, path=self.params_test.get("submission"))
 
-    def get_data(self, ds: State) -> any:
-        return ds
+    def get_data(self, ds: State) -> list[t.Tensor]:
+        """Use the similarity models of the DGS module to obtain the similarity data of the current detections.
 
-    def get_target(self, ds: State) -> any:
-        return ds["class_id"].long()
+        For the similarity engine, the data consists of a list of all the input data for the similarities.
+        This means, that for the visual similarity, the embedding is returned,
+        and for the IoU or OKS similarities, the bbox and key point data is returned.
+        The :func:`get_data` function will be called twice, once for the current time-step and once for the previous.
+        """
+        return [sm.get_data(ds) for sm in self.model.sim_mods]
 
-    def _track_step(self, detections: State, frame_idx: int) -> dict[str, float]:
+    def get_target(self, ds: State) -> t.Tensor:
+        """Get the target data.
+
+        For the similarity engine, the target data consists of the target- / class-id.
+        The :func:`get_target` function will be called twice, once for the current time-step and once for the previous.
+        """
+        return ds.class_id.long()
+
+    @enable_keyboard_interrupt
+    def _track_step(self, detections: State, frame_idx: int) -> Results:
         """Run one step of tracking."""
         N: int = len(detections)
         updated_tracks: dict[int, State] = {}
@@ -194,12 +252,12 @@ class DGSEngine(EngineModule):
 
         return batch_times
 
+    @enable_keyboard_interrupt
     @t.no_grad()
-    def test(self) -> dict[str, any]:
+    def test(self) -> Results:
         """Test the DGS Tracker"""
         # pylint: disable=too-many-statements
 
-        results: dict[str, any] = {}
         detections: list[State]
         detection: State
         frame_idx: int = 0
@@ -208,8 +266,7 @@ class DGSEngine(EngineModule):
         self.set_model_mode("eval")
         close_all_layers(self.model)
 
-        self.logger.debug(f"#### Start Evaluating {self.name} - Epoch {self.curr_epoch} ####")
-        self.logger.debug("Loading, extracting, and predicting data, this might take a while...")
+        self.logger.debug(f"#### Start Test {self.name} - Epoch {self.curr_epoch} ####")
 
         for detections in tqdm(self.test_dl, desc="DataLoader", leave=False):
             for detection in detections:
@@ -239,11 +296,7 @@ class DGSEngine(EngineModule):
                 # print debug info
                 # Add timings and other metrics to the writer
                 self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
-                self.writer.add_scalars(
-                    main_tag="Test/time",
-                    tag_scalar_dict={**batch_times},
-                    global_step=frame_idx,
-                )
+                self.writer.add_scalars(main_tag="Test/time", tag_scalar_dict=batch_times, global_step=frame_idx)
                 # print the resulting image if requested
                 if self.save_images:
                     active.draw(
@@ -271,10 +324,13 @@ class DGSEngine(EngineModule):
 
         self.submission.save()
 
-        self.logger.debug(f"#### Finished Evaluating {self.name} ####")
+        self.tracks.reset()
 
-        return results
+        self.logger.debug(f"#### Finished Test {self.name} ####")
 
+        return {}
+
+    @enable_keyboard_interrupt
     @t.no_grad()
     def predict(self) -> None:
         """Given test data, predict the results without evaluation."""
@@ -319,14 +375,110 @@ class DGSEngine(EngineModule):
                 frame_idx += 1
 
         self.submission.save()
+        self.tracks.reset()
 
         self.logger.info(f"#### Finished Prediction {self.name} ####")
 
-    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:
-        raise NotImplementedError
+    @enable_keyboard_interrupt
+    def _get_train_loss(self, data: list[State], _curr_iter: int) -> t.Tensor:
+        """Calculate the loss for the current frame."""
+
+        assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
+        data_old, data_new = data
+
+        with t.no_grad():
+            old_ids = self.get_target(data_old)  # [T]
+            new_ids = self.get_target(data_new)  # [D]
+            # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
+            combined_ids = t.cat(
+                (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
+            )
+            # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
+            indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
+
+            # get the input data of the similarity modules for the current step
+            curr_sim_data = self.get_data(data_new)  # [D]
+
+            # get the similarity matrices as [D x (T + D)]
+            similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
+
+        alpha = self.model.combine.alpha_model(curr_sim_data)
+
+        loss = self.loss(alpha, similarity[indices])
+        return loss
+
+    @enable_keyboard_interrupt
+    @t.no_grad()
+    def evaluate(self) -> Results:
+        r"""Run the model evaluation on the eval data.
+
+        Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
+        matches the number of correct predictions (:math:`\alpha_{\mathrm{correct}}`)
+        divided by the total number of predictions (:math:`N`).
+
+        With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{correct}}}{N}`
+        :math`\alpha{\mathrm{pred}}` is counted as correct if
+        :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
+
+        Returns:
+            Results dict containing the Accuracy ("acc-k") as the number of correct predictions within k percent.
+        """
+        self.logger.debug("Start Evaluation - set model to eval mode")
+        ks = self.params_test.get("acc_k_test", DEF_VAL["engine"]["sim"]["acc_k_eval"])
+        results: dict[str | int, any] = {"N": 0, **dict(zip(ks, [0] * len(ks)))}
+
+        self.set_model_mode("eval")
+        start_time: float = time.time()
+        frame_idx: int = 0
+
+        for detections in tqdm(self.test_dl, desc="DataLoader"):
+            for data in tqdm(detections, desc="Tracker", leave=False):
+
+                assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
+                data_old, data_new = data
+
+                old_ids = self.get_target(data_old)  # [T]
+                new_ids = self.get_target(data_new)  # [D]
+                # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
+                combined_ids = t.cat(
+                    (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
+                )
+                # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
+                indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
+
+                # get the input data of the similarity modules for the current step
+                curr_sim_data = self.get_data(data_new)  # [D]
+
+                # get the similarity matrices as [D x (T + D)]
+                similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
+                alpha = self.model.combine.alpha_model(curr_sim_data)
+
+                # compare alpha against the correct similarities
+                accuracies = compute_near_k_accuracy(alpha, similarity[indices], ks=ks)
+
+                N = len(alpha)
+                for k, acc in accuracies.items():
+                    results[k] += round(acc * N)
+                results["N"] += N
+
+                self.writer.add_scalars(main_tag="Eval/accu", tag_scalar_dict=accuracies, global_step=frame_idx)
+                frame_idx += 1
+
+        # compute overall accuracy of this dataset given partially data
+        for k in ks:
+            results[f"acc-{k}"] /= results["N"]
+
+        self.print_results(results)
+        self.write_results(results, prepend="Test")
+
+        self.logger.info(f"Evaluation time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
+        self.logger.info(f"#### Evaluation of {self.name} complete ####")
+        return results
 
     def terminate(self) -> None:
         self.submission.terminate()
         self.model.terminate()
+        del self.model
+        self.tracks.reset()
         del self.tracks
         super().terminate()

@@ -10,13 +10,14 @@ from typing import Union
 import torch as t
 from torch import nn
 
+from dgs.models.combine import COMBINE_MODULES
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
 combine_validations: Validations = {
-    "module_name": [str],
+    "module_name": [str, ("in", COMBINE_MODULES.keys())],
 }
 
 static_alpha_validation: Validations = {
@@ -40,7 +41,14 @@ alpha_combine_validation: Validations = {
 
 
 class CombineSimilaritiesModule(BaseModule, nn.Module):
-    """Given two or more similarity matrices, combine them into a single similarity matrix."""
+    """Given two or more similarity matrices, combine them into a single similarity matrix.
+
+    Params
+    ------
+
+    module_name (str):
+        The name of the module that combines the similarities.
+    """
 
     def __init__(self, config: Config, path: NodePath):
         BaseModule.__init__(self, config=config, path=path)

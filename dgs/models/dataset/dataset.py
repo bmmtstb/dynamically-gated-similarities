@@ -517,3 +517,37 @@ class VideoDataset(BaseDataset, ABC):
     @abstractmethod
     def arbitrary_to_ds(self, a: Image, idx: int) -> Union[State, list[State]]:
         raise NotImplementedError
+
+
+class ImageHistoryDataset(BaseDataset, ABC):
+    """A dataset with one index per image ID, the main difference is that in addition to the current frame,
+    the last ``L`` frames are given as well.
+
+    See :class:`.BaseDataset` for more information.
+    """
+
+    def __getitem__(self, idx: int) -> list[State]:
+        """Retrieve the image at index from a given dataset.
+
+        This function should load or precompute the image from the given filepath if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            idx: An index of the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+
+        Returns:
+            A list of :class:`State`s containing all the data of this index.
+        """
+        s: list[State] = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
+        return s
+
+    @abstractmethod
+    def arbitrary_to_ds(self, a: any, idx: int) -> list[State]:
+        """Given a single image ID or filepath, obtain the image, bbox, and possibly more information,
+        then convert everything to a :class:`State` object.
+
+        The index ``idx`` is given additionally, though it might not be used.
+        """
+        raise NotImplementedError
