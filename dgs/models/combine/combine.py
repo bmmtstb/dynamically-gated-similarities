@@ -10,14 +10,13 @@ from typing import Union
 import torch as t
 from torch import nn
 
-from dgs.models.combine import COMBINE_MODULES
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
 combine_validations: Validations = {
-    "module_name": [str, ("in", COMBINE_MODULES.keys())],
+    "module_name": [str],
 }
 
 static_alpha_validation: Validations = {

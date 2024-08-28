@@ -9,7 +9,7 @@ from datetime import timedelta
 import torch as t
 from scipy.optimize import linear_sum_assignment
 from torch import nn
-from torch.utils.data import DataLoader as TDataLoader, DataLoader as TorchDataLoader
+from torch.utils.data import DataLoader as TDataLoader
 from tqdm import tqdm
 
 from dgs.models.dgs.dgs import DGSModule
@@ -131,9 +131,9 @@ class DGSEngine(EngineModule):
         self,
         config: Config,
         model: nn.Module,
-        test_loader: TorchDataLoader,
+        test_loader: TDataLoader,
         val_loader: TDataLoader = None,
-        train_loader: TorchDataLoader = None,
+        train_loader: TDataLoader = None,
     ):
         if not isinstance(model, DGSModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")

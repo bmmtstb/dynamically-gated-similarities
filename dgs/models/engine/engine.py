@@ -128,7 +128,7 @@ class EngineModule(BaseModule, nn.Module):
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
-    # pylint: disable = too-many-instance-attributes
+    # pylint: disable = too-many-instance-attributes, too-many-arguments
 
     loss: nn.Module
     optimizer: optim.Optimizer
