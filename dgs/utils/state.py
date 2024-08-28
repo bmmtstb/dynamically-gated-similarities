@@ -848,9 +848,21 @@ class State(UserDict):
         Args:
             keys: The name of the keys to remove.
                 If a key is not present in self.data, the key is ignored.
+                If keys is None, the default keys ``["image", "image_crop"]`` are removed.
+                If keys is "all", all keys that contain tensors are removed except for the bounding box.
         """
         if keys is None:
             keys = ["image", "image_crop"]
+        elif keys == "all":
+            keys = [
+                k
+                for k, v in self.data.items()
+                if k != "bbox"
+                and (
+                    isinstance(v, t.Tensor)
+                    or (isinstance(v, (list, tuple)) and all(isinstance(sub_v, t.Tensor) for sub_v in v))
+                )
+            ]
         elif isinstance(keys, str):
             keys = [keys]
         if "bbox" in keys:
