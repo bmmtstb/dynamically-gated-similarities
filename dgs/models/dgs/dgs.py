@@ -67,9 +67,7 @@ class DGSModule(BaseModule, nn.Module):
         self.sim_mods = nn.ModuleList(
             [
                 self.configure_torch_module(
-                    get_similarity_module(get_sub_config(config=config, path=[k])["module_name"])(
-                        config=config, path=[k]
-                    ),
+                    get_similarity_module(get_sub_config(config=config, path=k)["module_name"])(config=config, path=k),
                 )
                 for k in names
             ]

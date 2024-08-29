@@ -63,6 +63,8 @@ def get_sub_config(config: Config, path: NodePath) -> Union[Config, any]:
     """
     if not path:
         return config
+    if isinstance(path, str):
+        path = [path]
     if isinstance(config, dict) and path[0] in config:
         return get_sub_config(config[path[0]], path[1:])
     raise KeyError(f"Key {path[0]} does not exist in current configuration {config}.")

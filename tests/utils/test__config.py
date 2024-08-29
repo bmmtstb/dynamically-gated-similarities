@@ -62,8 +62,10 @@ class TestGetSubConfig(unittest.TestCase):
 
     def test_one_deep(self):
         for in_config, path, out_config in [
+            (SIMPLE_CONFIG, "foo", "foo foo"),  # str
             (SIMPLE_CONFIG, ["foo"], "foo foo"),
             (NESTED_CONFIG, ["foo"], 3),
+            (NESTED_CONFIG, "dog", SIMPLE_CONFIG),  # str
             (NESTED_CONFIG, ["dog"], SIMPLE_CONFIG),
         ]:
             with self.subTest(msg=f"Path: {path}"):
