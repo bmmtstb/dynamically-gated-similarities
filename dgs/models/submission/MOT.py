@@ -49,13 +49,16 @@ class MOTSubmission(SubmissionFile):
     ``tuple(<frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>)``
     """
 
+    frame_id: int
+
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
         self.validate_params(mot_submission_validations)
 
-        self.data = []
-        self.frame_id: int = 1
+        # reset data
+        self.clear()
+
         self.bbox_decimals: int = int(self.params.get("bbox_decimals", DEF_VAL["submission"]["MOT"]["bbox_decimals"]))
         self.score_decimals: int = int(
             self.params.get("score_decimals", DEF_VAL["submission"]["MOT"]["score_decimals"])
@@ -120,3 +123,8 @@ class MOTSubmission(SubmissionFile):
         except InvalidPathException as ipe:
             self.logger.exception(f"fp: {self.fp}")
             raise InvalidPathException from ipe
+
+    def clear(self) -> None:
+        """Clear the data."""
+        self.data = []
+        self.frame_id = 1

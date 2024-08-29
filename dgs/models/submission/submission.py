@@ -57,3 +57,9 @@ class SubmissionFile(BaseModule):
         """Terminate the submission file creation."""
         if self.data:
             del self.data
+
+    def clear(self) -> None:
+        """Clear the submission data."""
+        if self.data:
+            del self.data
+        self.data = None
