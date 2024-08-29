@@ -388,6 +388,12 @@ class TestValidateValue(unittest.TestCase):
             (["1", "2", "3"], 1, "contains", False),
             (["1", "2", "3"], "1", "contains", True),
             (..., ..., "optional", True),
+            # combined validations
+            ("dummy", {"dummy": "test"}, "NodePath", True),
+            ("test", {"dummy": "test"}, "NodePath", False),
+            (["dummy"], {"dummy": 1}, "NodePath", True),
+            (["dummy", "test"], {"dummy": {"test": 1}}, "NodePath", True),
+            (["dummy", "dummy"], {"dummy": {"test": 1}}, "NodePath", False),
             # logic
             (1, int, "all", True),
             (None, "None", "all", True),

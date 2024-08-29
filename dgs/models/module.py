@@ -218,10 +218,11 @@ class BaseModule(ABC):
 
                 # case name as string or in tuple with additional values
                 if isinstance(validation, (str, tuple, type)):
-                    if isinstance(validation, (str, type)):  # no additional data, therefore set data to None
-                        validation_name, data = validation, None
+                    if isinstance(validation, (str, type)):  # no additional data, therefore pass current params as data
+                        validation_name, data = validation, self.config
                     else:
                         validation_name, data = validation
+
                     # call predefined validate
                     if validate_value(value=value, data=data, validation=validation_name):
                         continue

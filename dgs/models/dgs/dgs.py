@@ -14,7 +14,7 @@ from dgs.utils.types import Config, NodePath, Validations
 
 dgs_validations: Validations = {
     "names": [list, ("forall", str)],
-    "combine": [str],
+    "combine": ["NodePath"],
     # optional
     "similarity_softmax": ["optional", bool],
     "combined_softmax": ["optional", bool],
@@ -28,11 +28,12 @@ class DGSModule(BaseModule, nn.Module):
     Params
     ------
 
-    names (list[str]):
-        The names of the keys in the configuration containing all the wanted :class:`SimilarityModule` s.
-    combine (str):
-        The name of the key in the configuration containing the parameters for the module to combine the similarities
-        (see the parameters at :class:`.CombineSimilaritiesModule`).
+    names (list[NodePath]):
+        The names or :class:`NodePath` s of the keys within the current configuration
+        which contain all the :class:`SimilarityModule` s used in this module.
+    combine (NodePath):
+        The name or :class:`NodePath` of the key in the current configuration containing the parameters for the
+        :class:`.CombineSimilaritiesModule` used to combine the similarities.
 
     Optional Params
     ---------------
@@ -62,7 +63,7 @@ class DGSModule(BaseModule, nn.Module):
         self.validate_params(dgs_validations)
 
         # list of the modules computing the similarities
-        names = self.params["names"]
+        names: list[NodePath] = self.params["names"]
         self.sim_mods = nn.ModuleList(
             [
                 self.configure_torch_module(

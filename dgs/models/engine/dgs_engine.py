@@ -26,7 +26,7 @@ from dgs.utils.types import Config, Results, Validations
 from dgs.utils.utils import torch_to_numpy
 
 dgs_eng_test_validations: Validations = {
-    "submission_key": [("any", ["str", ("all", [list, ("forall", str)])])],
+    "submission": ["NodePath"],
     # optional
     "inactivity_threshold": ["optional", int, ("gt", 0)],
     "max_track_length": ["optional", int],
