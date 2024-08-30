@@ -5,7 +5,7 @@ Load and register modules.
 from typing import Type, TypeVar, Union
 
 from torch.nn import Module as TModule
-from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
+from torch.utils.data import ConcatDataset as TConcatDataset, DataLoader as TDataLoader, Dataset as TDataset
 
 from dgs.models.dataset.dataset import BaseDataset, dataloader_validations
 from dgs.models.module import BaseModule
@@ -19,7 +19,7 @@ M = TypeVar("M", bound=BaseModule)
 
 def module_loader(
     config: Config, module_class: str, key: Union[NodePath, str], *_, **kwargs
-) -> Union[M, TorchDataLoader]:
+) -> Union[M, TConcatDataset[BaseDataset], TDataLoader]:
     """Load a given module and pass down the configuration
 
     Args:
@@ -50,13 +50,11 @@ def module_loader(
     elif module_class == "dataloader":
         return get_data_loader(config=config, path=path)
     elif module_class == "dataset":
-        # special case: the concatenated PT21 dataset is loaded via function not class
-        if module_name.startswith("PoseTrack21"):
-            from dgs.models.dataset.posetrack21 import get_pose_track_21
+        # special case: a generally concatenated dataset
+        if module_name.startswith("Concat_"):
+            from dgs.models.dataset import get_concatenated_dataset
 
-            return get_pose_track_21(
-                config=config, path=path, ds_name="image" if module_name.endswith("Image") else "bbox"
-            )
+            return get_concatenated_dataset(config=config, path=path, ds_name=module_name[7:])
         from dgs.models.dataset import get_dataset
 
         m = get_dataset(module_name)
@@ -158,7 +156,7 @@ def register_module(name, new_module: Union[Type[M], Type[TModule]], inst_class_
         raise ValueError(f"The instance class name '{inst_class_name}' could not be found.")
 
 
-def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
+def get_data_loader(config: Config, path: NodePath) -> TDataLoader:
     """Set up a torch data loader with some params from config.
 
     Args:
@@ -175,14 +173,14 @@ def get_data_loader(config: Config, path: NodePath) -> TorchDataLoader:
         ds.validate_params(dataloader_validations)
         params = ds.params
     else:
-        assert isinstance(ds, TorchDataset)
+        assert isinstance(ds, TDataset)
         params = get_sub_config(config=config, path=path)
 
     batch_size: int = params.get("batch_size", DEF_VAL["dataloader"]["batch_size"])
     drop_last: bool = params.get("drop_last", DEF_VAL["dataloader"]["drop_last"])
     shuffle: bool = params.get("shuffle", DEF_VAL["dataloader"]["shuffle"])
 
-    data_loader = TorchDataLoader(
+    data_loader = TDataLoader(
         dataset=ds,
         batch_size=batch_size,
         drop_last=drop_last,

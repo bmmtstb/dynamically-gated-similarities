@@ -10,6 +10,7 @@ log_dir: "./tests/test_data/TEST_ds/"
 test_single_dataset_1:
     dataset_path: "./tests/test_data/"
     data_path: "./pt21/pt21_dummy_1.json"
+    paths: ["./pt21/pt21_dummy_1.json"]
     force_img_reshape: false
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
 
@@ -21,35 +22,28 @@ test_single_dataset_2:
 
 test_multi_dataset:
     dataset_path: "./tests/test_data/"
-    data_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json", "./pt21/pt21_dummy_2.json"]
+    paths: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
 
 test_directory_dataset:
     dataset_path: "./tests/test_data/"
-    data_path: "./pt21/"
+    paths: "./pt21/"
     force_img_reshape: true
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
 
-test_json_dataset_multi_images_without_reshape:
-    dataset_path: "./tests/test_data/"
-    data_path: "./pt21/"
-    force_img_reshape: false
-    crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
-
-
 test_dataloader_bbox:
-    module_name: "PoseTrack21"
+    module_name: "Concat_PT21_BBox"
     dataset_path: "./tests/test_data/"
-    data_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
+    paths: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
     batch_size: 2
 
 test_dataloader_img:
-    module_name: "PoseTrack21_Image"
+    module_name: "Concat_PT21_Image"
     dataset_path: "./tests/test_data/"
-    data_path: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
+    paths: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
     batch_size: 1

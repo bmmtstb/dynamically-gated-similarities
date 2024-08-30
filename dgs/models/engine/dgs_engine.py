@@ -38,8 +38,10 @@ dgs_eng_test_validations: Validations = {
 
 dgs_eng_train_validations: Validations = {
     # optional
+    "submission": ["optional", "NodePath"],
     "acc_k_train": ["optional", list, ("forall", ["number"])],
     "acc_k_eval": ["optional", list, ("forall", ["number"])],
+    "eval_accuracy": ["optional", bool],
 }
 
 
@@ -48,12 +50,23 @@ class DGSEngine(EngineModule):
 
     For this model:
 
-    - ``get_data()`` should return the same as this similarity functions :meth:`SimilarityModule.get_data` call
-    - ``get_target()`` should return the class IDs of the :class:`State` object
-    - ``train_dl`` contains the training data as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset
-    - ``test_dl`` contains the test data as a torch DataLoader
+    * ``get_data()`` should return the same as this similarity functions :meth:`SimilarityModule.get_data` call
+    * ``get_target()`` should return the class IDs of the :class:`State` object
+    * ``train_dl`` contains the training data as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset.
+      Additionally, the training data should contain all the training sequences and not just a single video.
+    * ``test_dl`` contains the test data as a torch DataLoader
       containing a regular :class:`ImageDataset` or class:`VideoDataset` datasets
-    - ``val_dl`` contains the validation data as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset
+    * ``val_dl`` contains the validation data.
+      The validation data can be one of the following,
+      depending on the configuration of ``params_train["eval_accuracy"]``:
+
+      * If ``eval_accuracy`` is ``True``,
+        the evaluation data is as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset.
+        Additionally, the validation data should contain all the validation sequences and not just a single video.
+      * If ``eval_accuracy`` is ``False``, the evaluation data is as a torch DataLoader
+        containing a regular :class:`ImageDataset` or class:`VideoDataset` datasets.
+        With one dataset per video.
+
 
     Train Params
     ------------
@@ -61,16 +74,28 @@ class DGSEngine(EngineModule):
     Test Params
     -----------
 
-    submission_key (Union[str, NodePath]):
-        The key or the path of keys in the configuration containing the information about the submission file.
-
+    submission (Union[str, NodePath]):
+        The key or the path of keys in the configuration containing the information about the submission file,
+        which is used to save the test data.
 
     Optional Train Params
     ---------------------
 
     acc_k_train (list[int|float], optional):
         A list of values used during training to check whether the accuracy lies within a margin of k percent.
-        Default ``DEF_VAL.engine.sim.acc_k_train``.
+        Default ``DEF_VAL.engine.dgs.acc_k_train``.
+
+    acc_k_eval (list[int|float], optional):
+        A list of values used during evaluation to check whether the accuracy lies within a margin of k percent.
+        Default ``DEF_VAL.engine.dgs.acc_k_eval``.
+
+    eval_accuracy (bool, optional):
+        Whether to evaluate the alpha-prediction accuracy or the |MOTA|_ / |HOTA|_ of the model during evaluation.
+        Default ``DEF_VAL.engine.dgs.eval_accuracy``.
+
+    submission (Union[str, NodePath]):
+        The key or the path of keys in the configuration containing the information about the submission file,
+        which is used to save the evaluation data, if ``eval_accuracy`` is ``False``.
 
 
     Optional Test Params
@@ -154,10 +179,6 @@ class DGSEngine(EngineModule):
             N=self.params_test.get("max_track_length", DEF_VAL["track"]["N"]),
             thresh=self.params_test.get("inactivity_threshold", DEF_VAL["tracks"]["inactivity_threshold"]),
         )
-
-        self.submission = get_submission(
-            get_sub_config(config=self.config, path=self.params_test.get("submission"))["module_name"]
-        )(config=self.config, path=self.params_test.get("submission"))
 
     def get_data(self, ds: State) -> list[t.Tensor]:
         """Use the similarity models of the DGS module to obtain the similarity data of the current detections.
@@ -256,77 +277,23 @@ class DGSEngine(EngineModule):
     @t.no_grad()
     def test(self) -> Results:
         """Test the DGS Tracker"""
-        # pylint: disable=too-many-statements
-
-        detections: list[State]
-        detection: State
-        frame_idx: int = 0
-
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
         close_all_layers(self.model)
 
+        # set up submission data
+        self.submission = get_submission(
+            get_sub_config(config=self.config, path=self.params_test.get("submission"))["module_name"]
+        )(config=self.config, path=self.params_test.get("submission"))
+
         self.logger.debug(f"#### Start Test {self.name} - Epoch {self.curr_epoch} ####")
+        start_time: float = time.time()
 
-        for detections in tqdm(self.test_dl, desc="DataLoader", leave=False):
-            for detection in detections:
+        self._track(dl=self.test_dl, name="Test")
 
-                N: int = len(detections)
-
-                batch_times = self._track_step(detections=detection, frame_idx=frame_idx)
-
-                # get active states and skip adding if there are no active states
-                active_list = self.tracks.get_active_states()
-
-                # handle empty active list, by setting the filepath, image_id, and frame_id
-                if len(active_list) == 0 or all(a.B == 0 for a in active_list):
-                    active = EMPTY_STATE.copy()
-                    active.filepath = detection.filepath
-                    if "image_id" in detection:
-                        active["image_id"] = detection["image_id"]
-                    if "frame_id" in detection:
-                        active["frame_id"] = detection["frame_id"]
-                    active["pred_tid"] = t.tensor([-1], dtype=t.long, device=detection.device)
-                else:
-                    active = collate_states(active_list)
-
-                # store current submission data
-                self.submission.append(active)
-
-                # print debug info
-                # Add timings and other metrics to the writer
-                self.writer.add_scalar(tag="Test/BatchSize", scalar_value=N, global_step=frame_idx)
-                self.writer.add_scalars(main_tag="Test/time", tag_scalar_dict=batch_times, global_step=frame_idx)
-                # print the resulting image if requested
-                if self.save_images:
-                    active.draw(
-                        save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
-                        show_kp=(
-                            self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"])
-                            if detection.B > 0
-                            else False
-                        ),
-                        show_skeleton=(
-                            self.params_test.get("show_skeleton", DEF_VAL["engine"]["dgs"]["show_skeleton"])
-                            if detection.B > 0
-                            else False
-                        ),
-                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
-                    )
-                # remove unused images and crops
-                active.clean()
-
-                frame_idx += 1
-
-            # free up memory by removing the images and crops
-            for d in detections:
-                d.clean()
-
-        self.submission.save()
-
-        self.tracks.reset()
-
-        self.logger.debug(f"#### Finished Test {self.name} ####")
+        self.logger.debug(
+            f"#### Finished Test {self.name} in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
+        )
 
         return {}
 
@@ -337,7 +304,12 @@ class DGSEngine(EngineModule):
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
         close_all_layers(self.model)
+
         frame_idx: int = 0
+
+        self.submission = get_submission(
+            get_sub_config(config=self.config, path=self.params_test.get("submission"))["module_name"]
+        )(config=self.config, path=self.params_test.get("submission"))
 
         self.logger.info(f"#### Start Prediction {self.name} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
@@ -407,30 +379,79 @@ class DGSEngine(EngineModule):
         loss = self.loss(alpha, similarity[indices])
         return loss
 
-    @enable_keyboard_interrupt
-    @t.no_grad()
-    def evaluate(self) -> Results:
-        r"""Run the model evaluation on the eval data.
-
-        Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
-        matches the number of correct predictions (:math:`\alpha_{\mathrm{correct}}`)
-        divided by the total number of predictions (:math:`N`).
-
-        With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{correct}}}{N}`
-        :math`\alpha{\mathrm{pred}}` is counted as correct if
-        :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
-
-        Returns:
-            Results dict containing the Accuracy ("acc-k") as the number of correct predictions within k percent.
-        """
-        self.logger.debug("Start Evaluation - set model to eval mode")
-        ks = self.params_test.get("acc_k_test", DEF_VAL["engine"]["sim"]["acc_k_eval"])
-        results: dict[str | int, any] = {"N": 0, **dict(zip(ks, [0] * len(ks)))}
-
-        self.set_model_mode("eval")
-        start_time: float = time.time()
+    def _track(self, dl: TDataLoader, name: str) -> None:
+        """Track the data in the DataLoader."""
         frame_idx: int = 0
 
+        # reset submission and track data before starting the tracking
+        self.submission.clear()
+        self.tracks.reset()
+
+        for detections in tqdm(dl, desc="DataLoader", leave=False):
+            for detection in detections:
+
+                N: int = len(detections)
+
+                batch_times = self._track_step(detections=detection, frame_idx=frame_idx)
+
+                # get active states and skip adding if there are no active states
+                active_list = self.tracks.get_active_states()
+
+                # handle empty active list, by setting the filepath, image_id, and frame_id
+                if len(active_list) == 0 or all(a.B == 0 for a in active_list):
+                    active = EMPTY_STATE.copy()
+                    active.filepath = detection.filepath
+                    if "image_id" in detection:
+                        active["image_id"] = detection["image_id"]
+                    if "frame_id" in detection:
+                        active["frame_id"] = detection["frame_id"]
+                    active["pred_tid"] = t.tensor([-1], dtype=t.long, device=detection.device)
+                else:
+                    active = collate_states(active_list)
+
+                # store current submission data
+                self.submission.append(active)
+
+                # print and save debug and writer info
+
+                # Add timings and other metrics to the writer
+                self.writer.add_scalar(tag=f"{name}/BatchSize", scalar_value=N, global_step=frame_idx)
+                self.writer.add_scalars(main_tag=f"{name}/time", tag_scalar_dict=batch_times, global_step=frame_idx)
+
+                # print the resulting image if requested
+                if self.save_images:
+                    active.draw(
+                        save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
+                        show_kp=(
+                            self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"])
+                            if detection.B > 0
+                            else False
+                        ),
+                        show_skeleton=(
+                            self.params_test.get("show_skeleton", DEF_VAL["engine"]["dgs"]["show_skeleton"])
+                            if detection.B > 0
+                            else False
+                        ),
+                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
+                    )
+                # remove unused images and crops
+                active.clean()
+
+                frame_idx += 1
+
+            # free up memory by removing the images and crops
+            for d in detections:
+                d.clean()
+
+        self.submission.save()
+        self.submission.clear()
+        self.tracks.reset()
+
+    def _eval_alpha(self) -> Results:
+        """Evaluate the alpha model by computing the accuracy of the alpha prediction."""
+        frame_idx: int = 0
+        ks = self.params_train.get("acc_k_eval", DEF_VAL["engine"]["sim"]["acc_k_eval"])
+        results: dict[str | int, any] = {"N": 0, **dict(zip(ks, [0] * len(ks)))}
         for detections in tqdm(self.test_dl, desc="DataLoader"):
             for data in tqdm(detections, desc="Tracker", leave=False):
 
@@ -467,15 +488,56 @@ class DGSEngine(EngineModule):
         # compute overall accuracy of this dataset given partially data
         for k in ks:
             results[f"acc-{k}"] /= results["N"]
+        return results
 
-        self.print_results(results)
-        self.write_results(results, prepend="Test")
+    def _eval_tracking(self) -> None:
+        """Prepare to evaluate the tracking performance similar to test but on the evaluation data."""
+        if "submission" not in self.params_train:
+            raise ValueError("The 'submission' key is required in the 'train' parameters  if 'eval_accuracy' is False.")
+        self.submission = get_submission(
+            get_sub_config(config=self.config, path=self.params_train.get("submission"))["module_name"]
+        )(config=self.config, path=self.params_train.get("submission"))
 
-        self.logger.info(f"Evaluation time total: {str(timedelta(seconds=round(time.time() - start_time)))}")
-        self.logger.info(f"#### Evaluation of {self.name} complete ####")
+        self._track(dl=self.eval_dl, name="Eval")
+
+    @enable_keyboard_interrupt
+    @t.no_grad()
+    def evaluate(self) -> Results:
+        r"""Run the model evaluation on the eval data.
+
+        Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
+        matches the number of correct predictions (:math:`\alpha_{\mathrm{correct}}`)
+        divided by the total number of predictions (:math:`N`).
+
+        With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{correct}}}{N}`
+        :math`\alpha{\mathrm{pred}}` is counted as correct if
+        :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
+
+        Returns:
+            Results dict containing the Accuracy ("acc-k") as the number of correct predictions within k percent.
+        """
+        self.logger.debug("Start Evaluation - set model to eval mode")
+
+        self.set_model_mode("eval")
+        close_all_layers(self.model)
+
+        start_time: float = time.time()
+
+        if self.params_train.get("eval_accuracy", DEF_VAL["engine"]["dgs"]["eval_accuracy"]):
+            results = self._eval_alpha()
+            self.print_results(results)
+            self.write_results(results, prepend="Eval")
+        else:
+            self._eval_tracking()
+            results = {}
+
+        self.logger.info(
+            f"#### Evaluation of {self.name} complete in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
+        )
         return results
 
     def terminate(self) -> None:
+        self.submission.clear()
         self.submission.terminate()
         self.model.terminate()
         del self.model

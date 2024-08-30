@@ -70,5 +70,6 @@ val_dl:
 test_dl:
     ...
 
-train_dl:
-    ...
+train_dl_dance:
+    module_name: "Concat_MOTImageHistory"
+    shuffle: true

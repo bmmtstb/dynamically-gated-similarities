@@ -10,7 +10,7 @@ from typing import Union
 import torch as t
 import torchvision
 import torchvision.transforms.v2 as tvt
-from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data import Dataset as TDataset
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
 from torchvision.transforms.v2.functional import convert_bounding_box_format, to_dtype
@@ -26,10 +26,12 @@ from dgs.utils.utils import replace_file_type
 
 base_dataset_validations: Validations = {
     "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
+    "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
     # optional
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "batch_size": ["optional", int, ("gt", 0)],
+    "paths": ["optional", ("any", [("all", [list, ("forall", str)]), str])],
 }
 
 video_dataset_validations: Validations = {
@@ -38,6 +40,7 @@ video_dataset_validations: Validations = {
     "stream": ["optional", str],
     "num_threads": ["optional", int],
     "video_backend": ["optional", str, ("in", ["pyav", "cuda", "video_reader"])],
+    "paths": ["optional", ("any", [("all", [list, ("forall", str)]), str])],
 }
 
 dataloader_validations: Validations = {
@@ -47,8 +50,12 @@ dataloader_validations: Validations = {
     "workers": ["optional", int, ("gte", 0)],
 }
 
+image_hist_validations: Validations = {
+    "L": [int, ("gt", 0)],
+}
 
-class BaseDataset(BaseModule, TorchDataset):
+
+class BaseDataset(BaseModule, TDataset):
     """Base class for custom datasets.
 
     Every dataset is based around the :class:`.State` object,
@@ -100,6 +107,11 @@ class BaseDataset(BaseModule, TorchDataset):
     dataset_path (FilePath):
         Path to the directory of the dataset.
         The value has to either be a local project path, or a valid absolute path.
+    data_path (FilePath):
+        The path to the file containing the data for this dataset.
+        Either from within the ``dataset_path`` directory, or as absolute path.
+        If you want to combine multiple files to a single (concatenated) dataset,
+        check out the function :func:`.get_concatenated_dataset` or the ``paths`` parameter.
 
     Optional Params
     ---------------
@@ -128,6 +140,9 @@ class BaseDataset(BaseModule, TorchDataset):
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
         Default ``DEF_VAL.images.crop_size``.
+    paths (list[FilePath], optional):
+        A list of file paths to concatenate into a single dataset.
+        Will be ignored by the single dataset.
 
     Additional Params for the DataLoader
     ------------------------------------
@@ -445,23 +460,28 @@ class VideoDataset(BaseDataset, ABC):
     Params
     ------
 
-    path (:obj:`.FilePath`):
-        A single path to a video file.
+    data_path (FilePath):
+        The path to the file containing the data for this dataset.
+        Either from within the ``dataset_path`` directory, or as absolute path.
+        If you want to combine multiple files to a single (concatenated) dataset,
+        check out the function :func:`.get_concatenated_dataset` or the ``paths`` parameter.
 
     Optional Params
     ---------------
 
     stream (str):
         Default ``DEF_VAL.video_dataset.stream``.
-
     num_threads (int):
         The number of threads used when loading the video.
         The default is 0 and lets ffmpeg decide the best configuration.
         Default ``DEF_VAL.video_dataset.num_threads``.
-
     video_backend (str):
         The backend to use when loading the video.
         Default ``DEF_VAL.video_dataset.video_backend``.
+    paths (list[FilePath], optional):
+        A list of file paths to concatenate into a single dataset.
+        Will be ignored by the single dataset.
+
     """
 
     data: VideoReader
@@ -526,10 +546,23 @@ class ImageHistoryDataset(BaseDataset, ABC):
     See :class:`.BaseDataset` for more information.
     """
 
-    def __getitem__(self, idx: int) -> list[State]:
-        """Retrieve the image at index from a given dataset.
+    L: int
 
-        This function should load or precompute the image from the given filepath if not done already.
+    def __init__(self, config: Config, path: NodePath) -> None:
+        super().__init__(config, path)
+
+        self.validate_params(image_hist_validations)
+
+        self.L: int = self.params["L"]
+
+    def __len__(self) -> int:
+        """Override len() functionality for torch, to make sure, that the first ``L`` indices can't be picked."""
+        return len(self.data) - self.L
+
+    def __getitem__(self, idx: int) -> list[State]:
+        """Retrieve the image at index from a given dataset plus all the ``L`` images beforehand.
+
+        This function should load or precompute the image and its crops from the given filepath if not done already.
 
         This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
 
@@ -538,13 +571,16 @@ class ImageHistoryDataset(BaseDataset, ABC):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A list of :class:`State`s containing all the data of this index.
+            A list of :class:`State`s containing the next ``L`` :class:`State`s and the current
+            :class:`State`.
+            The indices are from ``idx`` to ``idx + L``, where ``idx + L`` is the current frame.
+
         """
-        s: list[State] = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
+        s: list[State] = self.arbitrary_to_ds(a=self.data[idx : (idx + self.L + 1)], idx=idx)
         return s
 
     @abstractmethod
-    def arbitrary_to_ds(self, a: any, idx: int) -> list[State]:
+    def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
         """Given a single image ID or filepath, obtain the image, bbox, and possibly more information,
         then convert everything to a :class:`State` object.
 
