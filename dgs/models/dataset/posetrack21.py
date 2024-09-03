@@ -331,7 +331,7 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
 
 
 class PoseTrack21_BBox(BBoxDataset):
-    """Load a single precomputed json file from the |PT21| dataset.
+    """Load a single precomputed json file from the |PT21|_ dataset.
 
     Params
     ------

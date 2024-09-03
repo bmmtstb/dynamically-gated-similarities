@@ -141,8 +141,9 @@ class BaseDataset(BaseModule, TDataset):
         The size, the resized image should have.
         Default ``DEF_VAL.images.crop_size``.
     paths (list[FilePath], optional):
-        A list of file paths to concatenate into a single dataset.
+        A list of file paths to concatenate into a single dataset using :func:`.get_concatenated_dataset`.
         Will be ignored by the single dataset.
+        Can contain '*' and similar wildcards used in :func:`glob.glob` to search for multiple files matching a pattern.
 
     Additional Params for the DataLoader
     ------------------------------------

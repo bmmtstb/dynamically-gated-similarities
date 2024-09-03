@@ -5,6 +5,7 @@ Additionally, I implemented a Dataset for the |PT21|_ dataset that can be loaded
 """
 
 import os
+from glob import glob
 from typing import Type
 
 from torch.utils.data import ConcatDataset as TConcatDataset
@@ -61,17 +62,20 @@ def get_concatenated_dataset(config: Config, path: NodePath, ds_name: str) -> TC
 
     # get all the data paths
     data_paths = cfg["paths"]
-    if not isinstance(data_paths, list):
-        if isinstance(data_paths, str) and os.path.exists(data_paths):
-            data_paths = [data_paths]
-        elif isinstance(data_paths, str) and os.path.exists(
-            dir_path := str(os.path.join(cfg["dataset_path"], data_paths))
-        ):
-            data_paths = [
-                os.path.join(dir_path, f) for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))
-            ]
-        else:
-            raise ValueError(f"Either the given 'paths' ({data_paths}) is not a string nor a valid file path.")
+    if isinstance(data_paths, (list, tuple)):
+        pass
+    elif isinstance(data_paths, str) and "*" in data_paths:
+        data_paths = [os.path.normpath(p) for p in glob(data_paths)]
+    elif isinstance(data_paths, str) and os.path.exists(data_paths):
+        data_paths = [data_paths]
+    elif isinstance(data_paths, str) and os.path.exists(dir_path := str(os.path.join(cfg["dataset_path"], data_paths))):
+        data_paths = [
+            os.path.normpath(os.path.join(dir_path, f))
+            for f in os.listdir(dir_path)
+            if os.path.isfile(os.path.join(dir_path, f))
+        ]
+    else:
+        raise ValueError(f"The given 'paths' ({data_paths}) is neither an iterable, a string, nor a valid file path.")
 
     # for every dataset, insert the right data_path into the config and initialize the datasets
     datasets = []
