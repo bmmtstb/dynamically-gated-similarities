@@ -14,7 +14,7 @@ log_dir_add_date: false
 # ###### #
 
 engine:
-    module_name: "SimilarityEngine"
+    module_name: "DGSEngine"
 
 test:
     inactivity_threshold: 15
@@ -24,28 +24,37 @@ test:
     # writer_log_dir_suffix: will be set by python script
     metric: ""
     metric_kwargs: {}
-    acc_k_test: [1,5,10,20,50]
 #    normalize: false
     writer_kwargs: {}
     writer_log_dir_suffix: ""
     
 train:
     acc_k_train: [1, 5, 10, 20]
-    loss: ""
+    acc_k_eval: [0.1, 0.5, 1, 5, 10, 25]
+    loss: "TorchMSELoss"
     loss_kwargs: {}
-    optimizer: ""
+    optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0001  # 1e-4
-    epochs: 5
+        foreach: true
+    epochs: 10
     save_interval: 1
     scheduler: "StepLR"
     scheduler_kwargs:
-        step_size: 1
+        step_size: 5
         gamma": 0.1
 
 # ####### #
 # MODULES #
 # ####### #
+
+submission_pt21:
+    module_name: "PoseTrack21"
+    # file: # will be set in python script
+
+submission_MOT:
+    module_name: "MOT"
+    # file: # will be set in python script
 
 dac:
     module_name: "dynamic_alpha"
@@ -54,7 +63,7 @@ dac:
     
 DGSModule:
     module_name: "DGS"
-    names: [...]
+    # names:  # will be set in python script
     combine: "dac"
     combined_softmax: true
     similarity_softmax: false
@@ -64,12 +73,119 @@ DGSModule:
 # DATA #
 # #### #
 
-val_dl:
-    ...
+test_dl_dance_256x192:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    # data_path: # will be set in python script
+    paths: "./data/DanceTrack/test/**/det/rcnn_075_035_256x192.txt"
+    
+    batch_size: 1
+    return_lists: true
+    
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    
+    crop_key: "rcnn_075_035_256x192"
 
-test_dl:
-    ...
 
-train_dl_dance:
+val_dl_dance_256x192:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    # data_path: # will be set in python script
+    paths: "./data/DanceTrack/val/**/det/rcnn_075_035_256x192.txt"
+#    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+    
+    batch_size: 1
+    return_lists: true
+    
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    
+    crop_key: "rcnn_075_035_256x192"
+
+val_dl_dance_256x192_eval_acc:
+    module_name: "Concat_MOTImageHistory"
+    shuffle: false
+    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+    
+    crop_key: "Crops"
+    crop_size: !!python/tuple [ 256, 192 ]
+    crop_mode: "zero-pad"
+
+
+train_dl_dance_256x192:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
+    paths: "./data/DanceTrack/train/**/gt/gt.txt"
+    
+    crop_key: "Crops"
+    crop_size: !!python/tuple [ 256, 192 ]
+    crop_mode: "zero-pad"
+
+# ################## #
+# SIMILARITY MODULES #
+# ################## #
+
+# BOX - IoU
+
+box_sim:
+    module_name: "iou"
+
+# Pose - OKS - COCO
+
+pose_sim_coco:
+    module_name: "oks"
+    format: "coco"
+
+# Visual - v1 - OSNet_x1_0 pretrained on ImageNet
+
+OSNet_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["OSNet_embed_gen"]
+
+OSNet_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    weights: "./weights/osnet_x1_0_imagenet.pth"
+    nof_classes: 1000
+
+
+# Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
+
+OSNetAIN_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["OSNetAIN_embed_gen" ]
+
+OSNetAIN_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_imagenet.pth"
+    nof_classes: 1000
+
+# Visual - v3 - resnet50 from same-domain Re-ID
+
+Resnet50_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["Resnet50_embed_gen"]
+
+Resnet50_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet50"
+    weights: "pretrained"
+    nof_classes: 1000
+
+# Visual - v4 - resnet152 from same-domain Re-ID
+
+Resnet152_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["Resnet152_embed_gen"]
+
+Resnet152_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet152"
+    weights: "pretrained"
+    nof_classes: 1000

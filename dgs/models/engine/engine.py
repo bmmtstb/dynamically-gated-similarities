@@ -168,7 +168,7 @@ class EngineModule(BaseModule, nn.Module):
 
         # Set up general attributes
         self.register_module("model", model)
-        self.model = self.configure_torch_module(self.model, train=self.is_training)
+        self.model = self.configure_torch_module(self.model)
 
         # Logging
         self.writer = SummaryWriter(
