@@ -93,7 +93,7 @@ def test_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
             config["log_dir"] = orig_log_dir
             continue
 
-        engine = get_dgs_engine(config=config, dl_key=(None, None, dl_key), dgs_key=dgs_key)
+        engine = get_dgs_engine(config=config, dl_keys=(None, None, dl_key), dgs_key=dgs_key)
         engine.test()
         # end processes
         engine.terminate()
@@ -134,7 +134,7 @@ def test_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: 
             config["log_dir"] = orig_log_dir
             continue
 
-        engine = get_dgs_engine(config=config, dl_key=dl_key, dgs_key=dgs_key)
+        engine = get_dgs_engine(config=config, dl_keys=(None, None, dl_key), dgs_key=dgs_key)
         engine.test()
         # end processes
         engine.terminate()
