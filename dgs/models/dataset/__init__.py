@@ -56,31 +56,36 @@ def get_concatenated_dataset(config: Config, path: NodePath, ds_name: str) -> TC
     # get the dataset type to instantiate it faster
     ds_type = get_dataset(name=ds_name)
 
-    cfg = get_sub_config(config=config, path=path)
-    if "paths" not in cfg:
-        raise ValueError(f"No paths given in config. Got: {cfg}")
+    sub_cfg = get_sub_config(config=config, path=path)
+    if "paths" not in sub_cfg:
+        raise ValueError(f"No paths given in config. Got: {sub_cfg}")
 
     # get all the data paths
-    data_paths = cfg["paths"]
-    if isinstance(data_paths, (list, tuple)):
+    paths = sub_cfg["paths"]
+    if isinstance(paths, (list, tuple)):
         pass
-    elif isinstance(data_paths, str) and "*" in data_paths:
-        data_paths = [os.path.normpath(p) for p in glob(data_paths)]
-    elif isinstance(data_paths, str) and os.path.exists(data_paths):
-        data_paths = [data_paths]
-    elif isinstance(data_paths, str) and os.path.exists(dir_path := str(os.path.join(cfg["dataset_path"], data_paths))):
-        data_paths = [
-            os.path.normpath(os.path.join(dir_path, f))
-            for f in os.listdir(dir_path)
-            if os.path.isfile(os.path.join(dir_path, f))
-        ]
+    elif isinstance(paths, str) and "*" in paths:
+        paths = glob(paths)
+    elif isinstance(paths, str) and os.path.exists(paths):
+        paths = [paths]
+    elif isinstance(paths, str) and os.path.exists(dir_path := str(os.path.join(sub_cfg["dataset_path"], paths))):
+        paths = [os.path.join(dir_path, f) for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
     else:
-        raise ValueError(f"The given 'paths' ({data_paths}) is neither an iterable, a string, nor a valid file path.")
+        raise ValueError(f"The given 'paths' ({paths}) is neither an iterable, a string, nor a valid file path.")
 
+    assert len(paths) > 0, f"No paths found with paths: {paths}"
     # for every dataset, insert the right data_path into the config and initialize the datasets
     datasets = []
-    for data_path in tqdm(data_paths, desc="Loading datasets", leave=False):
-        ds_cfg = insert_into_config(path=path, value={"data_path": data_path}, original=config, copy=True)
+    for data_path in tqdm(paths, desc="Loading datasets", leave=False):
+        ds_cfg = insert_into_config(
+            path=path,
+            value={
+                "data_path": os.path.normpath(data_path),
+                "module_name": str(sub_cfg["module_name"]).lstrip("Concat_"),
+            },
+            original=config,
+            copy=True,
+        )
         datasets.append(ds_type(config=ds_cfg, path=path))
 
     return TConcatDataset(datasets)

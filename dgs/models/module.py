@@ -28,6 +28,7 @@ module_validations: Validations = {
     "description": ["optional", str],
     "log_dir": ["optional", str],
     "log_dir_add_date": ["optional", bool],
+    "log_dir_suffix": ["optional", str],
     "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), t.dtype])],
 }
 
@@ -99,6 +100,9 @@ class BaseModule(ABC):
         Whether to append the date to the ``log_dir``.
         If ``True``, The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/").
         Default: ``DEF_VAL.base.log_dir_add_date`` .
+    log_dir_suffix (str, optional):
+        Suffix to add to the log directory.
+        Default: ``DEF_VAL.base.log_dir_suffix`` .
     precision (Union[type, str, torch.dtype], optional)
         The precision at which this module should operate.
         Default: ``DEF_VAL.base.precision`` .
@@ -136,6 +140,7 @@ class BaseModule(ABC):
                         if self.config.get("log_dir_add_date", DEF_VAL["base"]["log_dir_add_date"])
                         else ""
                     ),
+                    self.config.get("log_dir_suffix", DEF_VAL["base"]["log_dir_suffix"]),
                 )
             )
         )
@@ -337,7 +342,8 @@ class BaseModule(ABC):
         If nothing has to be done, just pass.
         Is used for terminating parallel execution and threads in specific models.
         """
-        for handler in self.logger.handlers:
-            self.logger.removeHandler(handler)
-        del self.logger
+        if hasattr(self, "logger"):
+            for handler in self.logger.handlers:
+                self.logger.removeHandler(handler)
+            del self.logger
         t.cuda.empty_cache()

@@ -1,13 +1,23 @@
 name: "Train-Dynamic-Weights-Individually"
-description: "Train and eval a similarity engine with a dynamic alpha combine module.
-Runs over a whole (combined) dataset using all but the first frame of every video for training.
-For evaluation ... TODO ..."
+description: "Train and eval a similarity engine with a dynamic alpha combine module with a single similarity.
+
+During training, this runs over a whole (combined) dataset using all but the first frame of every video for training,
+and the custom ImageHistory dataset classes.
+
+For evaluation one of the following two approaches can be used:
+ - Evaluate the accuracy using the gt data and the accuracy predictions. Here the ImageHistory dataset class is used.
+ - Evaluate using the regular MOTA / HOTA pipeline.
+   Here a regular Image dataset class is used per video, iterating over every video.
+
+The tests are performed using the regular MOTA / HOTA pipeline. Every dataset contains one video."
 
 device: "cuda:0"
-print_prio: "INFO"
+#print_prio: "INFO"
+print_prio: "DEBUG"
 is_training: on
-log_dir: "./results/own/eval/"
+log_dir: "./results/own/eval/train_single/"
 log_dir_add_date: false
+# log_dir_suffix:  # will be set by python script
 
 # ###### #
 # ENGINE #
@@ -20,17 +30,13 @@ test:
     inactivity_threshold: 15
     max_track_length: 1
     save_images: off
-    # submission:  # will be set in python script
+    submission: "submission_pt21"  # will be changed in python script
     # writer_log_dir_suffix: will be set by python script
-    metric: ""
-    metric_kwargs: {}
-#    normalize: false
-    writer_kwargs: {}
-    writer_log_dir_suffix: ""
     
 train:
     acc_k_train: [1, 5, 10, 20]
     acc_k_eval: [0.1, 0.5, 1, 5, 10, 25]
+    # submission:  # will be set in python script
     loss: "TorchMSELoss"
     loss_kwargs: {}
     optimizer: "Adam"
@@ -42,7 +48,7 @@ train:
     scheduler: "StepLR"
     scheduler_kwargs:
         step_size: 5
-        gamma": 0.1
+        gamma: 0.1
 
 # ####### #
 # MODULES #
@@ -59,8 +65,7 @@ submission_MOT:
 dac:
     module_name: "dynamic_alpha"
     softmax: true
-    
-    
+
 DGSModule:
     module_name: "DGS"
     # names:  # will be set in python script
@@ -106,7 +111,14 @@ val_dl_dance_256x192:
 val_dl_dance_256x192_eval_acc:
     module_name: "Concat_MOTImageHistory"
     shuffle: false
-    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+    dataset_path: "./data/DanceTrack/"
+#    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+    paths: "./data/DanceTrack/val_part/**/gt/gt.txt"
+    
+    L: 1
+    
+    batch_size: 1
+    return_lists: true
     
     crop_key: "Crops"
     crop_size: !!python/tuple [ 256, 192 ]
@@ -116,7 +128,14 @@ val_dl_dance_256x192_eval_acc:
 train_dl_dance_256x192:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
-    paths: "./data/DanceTrack/train/**/gt/gt.txt"
+    dataset_path: "./data/DanceTrack/"
+#    paths: "./data/DanceTrack/train/**/gt/gt.txt"
+    paths: "./data/DanceTrack/train_part/**/gt/gt.txt"
+    
+    L: 1
+    
+    batch_size: 1
+    return_lists: true
     
     crop_key: "Crops"
     crop_size: !!python/tuple [ 256, 192 ]

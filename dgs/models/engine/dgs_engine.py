@@ -156,9 +156,10 @@ class DGSEngine(EngineModule):
         self,
         config: Config,
         model: nn.Module,
-        test_loader: TDataLoader,
+        test_loader: TDataLoader = None,
         val_loader: TDataLoader = None,
         train_loader: TDataLoader = None,
+        **_kwargs,
     ):
         if not isinstance(model, DGSModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
@@ -174,7 +175,7 @@ class DGSEngine(EngineModule):
         if self.is_training:
             self.validate_params(dgs_eng_train_validations, "params_train")
 
-        # initialize the tracks and the submission file
+        # initialize the tracks
         self.tracks = Tracks(
             N=self.params_test.get("max_track_length", DEF_VAL["track"]["N"]),
             thresh=self.params_test.get("inactivity_threshold", DEF_VAL["tracks"]["inactivity_threshold"]),
@@ -277,6 +278,10 @@ class DGSEngine(EngineModule):
     @t.no_grad()
     def test(self) -> Results:
         """Test the DGS Tracker"""
+
+        if self.test_dl is None:
+            raise ValueError("The test data loader is required for testing.")
+
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
         close_all_layers(self.model)
@@ -301,6 +306,9 @@ class DGSEngine(EngineModule):
     @t.no_grad()
     def predict(self) -> None:
         """Given test data, predict the results without evaluation."""
+        if self.test_dl is None:
+            raise ValueError("The test data loader is required for testing.")
+
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
         close_all_layers(self.model)
@@ -313,7 +321,9 @@ class DGSEngine(EngineModule):
 
         self.logger.info(f"#### Start Prediction {self.name} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
+        start_time: float = time.time()
         detections: list[State]
+
         # batch get data from the data loader
         for detections in tqdm(self.test_dl, desc="DataLoader"):
             for detection in tqdm(detections, desc="Tracker", leave=False):
@@ -349,13 +359,15 @@ class DGSEngine(EngineModule):
         self.submission.save()
         self.tracks.reset()
 
-        self.logger.info(f"#### Finished Prediction {self.name} ####")
+        self.logger.info(
+            f"#### Finished Prediction {self.name} in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
+        )
 
     @enable_keyboard_interrupt
     def _get_train_loss(self, data: list[State], _curr_iter: int) -> t.Tensor:
         """Calculate the loss for the current frame."""
 
-        assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
+        assert isinstance(data, list) and len(data) == 2, f"Data must be a list of length 2. but got {len(data)}"
         data_old, data_new = data
 
         with t.no_grad():
@@ -374,7 +386,8 @@ class DGSEngine(EngineModule):
             # get the similarity matrices as [D x (T + D)]
             similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
 
-        alpha = self.model.combine.alpha_model(curr_sim_data)
+        # for each of the similarity modules, compute the alpha value of the respective input and sum up the results
+        alpha = t.cat([a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)], dim=0).flatten()
 
         loss = self.loss(alpha, similarity[indices])
         return loss
@@ -386,6 +399,8 @@ class DGSEngine(EngineModule):
         # reset submission and track data before starting the tracking
         self.submission.clear()
         self.tracks.reset()
+
+        self.writer.add_scalar(f"{name}/batch_size", dl.batch_size)
 
         for detections in tqdm(dl, desc="DataLoader", leave=False):
             for detection in detections:
@@ -447,47 +462,65 @@ class DGSEngine(EngineModule):
         self.submission.clear()
         self.tracks.reset()
 
+    @t.no_grad()
     def _eval_alpha(self) -> Results:
         """Evaluate the alpha model by computing the accuracy of the alpha prediction."""
         frame_idx: int = 0
-        ks = self.params_train.get("acc_k_eval", DEF_VAL["engine"]["sim"]["acc_k_eval"])
+        ks = self.params_train.get("acc_k_eval", DEF_VAL["engine"]["dgs"]["acc_k_eval"])
         results: dict[str | int, any] = {"N": 0, **dict(zip(ks, [0] * len(ks)))}
-        for detections in tqdm(self.test_dl, desc="DataLoader"):
-            for data in tqdm(detections, desc="Tracker", leave=False):
+        for data in tqdm(self.val_dl, desc="DataLoader"):
 
-                assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
-                data_old, data_new = data
+            assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
+            data_old, data_new = data
 
-                old_ids = self.get_target(data_old)  # [T]
-                new_ids = self.get_target(data_new)  # [D]
-                # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
-                combined_ids = t.cat(
-                    (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
-                )
-                # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
-                indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
+            old_ids = self.get_target(data_old)  # [T]
+            new_ids = self.get_target(data_new)  # [D]
+            # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
+            combined_ids = t.cat(
+                (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
+            )
+            # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
+            indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
 
-                # get the input data of the similarity modules for the current step
-                curr_sim_data = self.get_data(data_new)  # [D]
+            # get the input data of the similarity modules for the current step
+            curr_sim_data = self.get_data(data_new)  # [D]
 
-                # get the similarity matrices as [D x (T + D)]
-                similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
-                alpha = self.model.combine.alpha_model(curr_sim_data)
+            # get the similarity matrices as [D x (T + D)]
+            similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
+            alpha = t.cat(
+                [a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)], dim=0
+            ).flatten()
 
-                # compare alpha against the correct similarities
-                accuracies = compute_near_k_accuracy(alpha, similarity[indices], ks=ks)
+            # compare alpha against the correct similarities
+            accuracies = compute_near_k_accuracy(alpha, similarity[indices], ks=ks)
 
-                N = len(alpha)
-                for k, acc in accuracies.items():
-                    results[k] += round(acc * N)
-                results["N"] += N
+            N = len(alpha)
+            for k, acc in accuracies.items():
+                results[k] += round(acc * N)
+            results["N"] += N
 
-                self.writer.add_scalars(main_tag="Eval/accu", tag_scalar_dict=accuracies, global_step=frame_idx)
-                frame_idx += 1
+            self.writer.add_scalars(
+                main_tag="Eval/accu", tag_scalar_dict={str(k): v for k, v in accuracies.items()}, global_step=frame_idx
+            )
+
+            # clean up data to save memory
+            if isinstance(data, State):
+                data.clean()
+            elif isinstance(data, list):
+                for d in data:
+                    d.clean()
+            del data
+
+            # End of frame
+            frame_idx += 1
 
         # compute overall accuracy of this dataset given partially data
         for k in ks:
-            results[f"acc-{k}"] /= results["N"]
+            results[f"acc-{k}"] = results[k] / results["N"]
+            results.pop(k)
+
+        results.pop("N")
+
         return results
 
     def _eval_tracking(self) -> None:
@@ -498,7 +531,7 @@ class DGSEngine(EngineModule):
             get_sub_config(config=self.config, path=self.params_train.get("submission"))["module_name"]
         )(config=self.config, path=self.params_train.get("submission"))
 
-        self._track(dl=self.eval_dl, name="Eval")
+        self._track(dl=self.val_dl, name="Eval")
 
     @enable_keyboard_interrupt
     @t.no_grad()
@@ -531,16 +564,19 @@ class DGSEngine(EngineModule):
             self._eval_tracking()
             results = {}
 
-        self.logger.info(
+        self.logger.debug(
             f"#### Evaluation of {self.name} complete in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
         )
         return results
 
     def terminate(self) -> None:
-        self.submission.clear()
-        self.submission.terminate()
-        self.model.terminate()
-        del self.model
-        self.tracks.reset()
-        del self.tracks
+        if hasattr(self, "submission"):
+            self.submission.clear()
+            self.submission.terminate()
+        if hasattr(self, "model"):
+            self.model.terminate()
+            del self.model
+        if hasattr(self, "tracks"):
+            self.tracks.reset()
+            del self.tracks
         super().terminate()

@@ -977,19 +977,26 @@ def collate_states(batch: Union[list[State], State]) -> State:
     return s
 
 
-def collate_lists(batch: Union[State, list[State], list[list[State]]]) -> list[State]:
+def collate_lists(batch: Union[State, list[State], list[list[State]]]) -> Union[list[State], list[list[State]]]:
     """Collate function used to not concatenate a batch of States.
 
     Args:
         batch: Either a batch of States, a single State, or a list containing list of States.
 
     Returns:
-        A list of States. Every State can have a different number of items.
+        A list of States or a list containing list of states. Every State can have a different number of items.
     """
     if isinstance(batch, State):
         return [batch]
     if isinstance(batch, list) and all(isinstance(b, State) for b in batch):
         return batch
+    if (
+        isinstance(batch, list)
+        and len(batch) == 1
+        and isinstance(batch[0], list)
+        and all(isinstance(i, State) for i in batch[0])
+    ):
+        return batch[0]
     if isinstance(batch, list) and all(isinstance(b, list) for b in batch):
-        return [collate_states(b) for b in batch]
+        return [collate_states([batch[i][l] for i in range(len(batch))]) for l in range(len(batch[0]))]
     raise NotImplementedError

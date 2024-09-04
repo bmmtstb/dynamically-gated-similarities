@@ -20,7 +20,7 @@ from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import VIDEO_FORMATS
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
-from dgs.utils.state import State
+from dgs.utils.state import collate_states, State
 from dgs.utils.types import Config, FilePath, Image, NodePath, Validations  # pylint: disable=unused-import
 from dgs.utils.utils import replace_file_type
 
@@ -550,11 +550,14 @@ class ImageHistoryDataset(BaseDataset, ABC):
     L: int
 
     def __init__(self, config: Config, path: NodePath) -> None:
-        super().__init__(config, path)
+        super().__init__(config=config, path=path)
 
         self.validate_params(image_hist_validations)
 
         self.L: int = self.params["L"]
+
+        if not self.params.get("return_lists", False):
+            raise ValueError("The ImageHistoryDataset should always return a list of States.")
 
     def __len__(self) -> int:
         """Override len() functionality for torch, to make sure, that the first ``L`` indices can't be picked."""
@@ -579,6 +582,30 @@ class ImageHistoryDataset(BaseDataset, ABC):
         """
         s: list[State] = self.arbitrary_to_ds(a=self.data[idx : (idx + self.L + 1)], idx=idx)
         return s
+
+    def __getitems__(self, indices: list[int]) -> list[State]:
+        """For every index, retrieve the image at that index from a given dataset plus all the ``L`` images beforehand.
+
+        This function should load or precompute the image-crops from the given filepath if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            indices: A list of indices within the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+                Every index is from ``idx`` to ``idx + L``, where ``idx + L`` is the current frame.
+
+        Returns:
+            A list of :class:`State`s containing the next ``L`` (combined) :class:`State`s and the current
+            (combined) :class:`State`s.
+
+
+        """
+        states: list[list[State]] = []
+        for idx in indices:
+            states.append(self.arbitrary_to_ds(a=self.data[idx : (idx + self.L + 1)], idx=idx))
+        # combine all the indices, all idx+1, ..., idx+L
+        return [collate_states([states[i][l] for i in range(len(states))]) for l in range(self.L)]
 
     @abstractmethod
     def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:

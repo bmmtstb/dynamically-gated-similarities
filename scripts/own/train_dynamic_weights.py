@@ -19,7 +19,7 @@ from dgs.utils.torchtools import init_model_params
 from dgs.utils.types import Config
 from dgs.utils.utils import notify_on_completion_or_error, send_discord_notification
 
-CONFIG_FILE = "./configs/DGS/eval_const_track_weight.yaml"
+CONFIG_FILE = "./configs/DGS/train_dynamic_weights.yaml"
 
 DL_KEYS: list[tuple[str, str, str]] = [
     # DanceTrack with evaluation using the accuracy of the weights
@@ -48,7 +48,7 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
 
 NAMES: dict[str, list[str]] = {
     "box_sim": ["fc_1_box"],
-    "pose_sim_coco": ["fc_1_pose_coco", "conv_1_fc_1_pose_coco"],
+    # "pose_sim_coco": ["fc_1_pose_coco", "conv_1_fc_1_pose_coco"],
     "OSNet_sim": ["fc_1_visual", "fc_2_visual"],
     # "OSNetAIN_sim": ["fc_1_visual", "fc_2_visual"],
     # "Resnet50_sim": ["fc_1_visual", "fc_2_visual"],
@@ -161,11 +161,11 @@ def get_dgs_engine(
     }
     # validation dataset
     if key_train is not None:
-        kwargs["train_dl"] = module_loader(config=config, module_class="dataloader", key=key_train)
+        kwargs["train_loader"] = module_loader(config=config, module_class="dataloader", key=key_train)
     if key_eval is not None:
-        kwargs["eval_dl"] = module_loader(config=config, module_class="dataloader", key=key_eval)
-    if key_train is not None:
-        kwargs["test_dl"] = module_loader(config=config, module_class="dataloader", key=key_test)
+        kwargs["val_loader"] = module_loader(config=config, module_class="dataloader", key=key_eval)
+    if key_test is not None:
+        kwargs["test_loader"] = module_loader(config=config, module_class="dataloader", key=key_test)
 
     return module_loader(config=config, module_class="engine", key=engine_key, **kwargs)
 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     cfg = load_config(CONFIG_FILE)
 
     # for every similarity or combination of similarities
-    for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES, desc="similarities")):
+    for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities")):
         pbar_key.set_postfix_str(SIM_NAME)
 
         for alpha_mod_name in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
@@ -193,10 +193,21 @@ if __name__ == "__main__":
                 # ##################### #
                 print(f"Training on the ground-truth train-dataset with config: {DL_TRAIN} - {alpha_mod_name}")
                 _crop_h, _crop_w = cfg[DL_TRAIN]["crop_size"]
+
+                # modify config
+                cfg["DGSModule"]["names"] = [SIM_NAME]
+                cfg["log_dir_suffix"] = f"./{SIM_NAME}/{alpha_mod_name}/"
+                if "pt21" in DL_TRAIN:
+                    cfg["train"]["submission"] = ["submission_pt21"]
+                elif "dance" in DL_TRAIN:
+                    cfg["train"]["submission"] = ["submission_MOT"]
+                else:
+                    raise NotImplementedError
+
                 engine_train = get_dgs_engine(config=cfg, dl_keys=(DL_TRAIN, DL_EVAL, None))
 
                 # set model and initialize the weights
-                engine_train.model.combine.alpha_model.extend(ALPHA_MODULES[alpha_mod_name])
+                engine_train.model.combine.alpha_model = nn.ModuleList(ALPHA_MODULES[alpha_mod_name])
                 engine_train.model.combine.alpha_model.to(device=engine_train.device)
                 init_model_params(engine_train.model.combine.alpha_model)
 
@@ -213,7 +224,7 @@ if __name__ == "__main__":
                 print("skipping testing for now")
                 # TODO load weights from the best model and test them or from a list of given names, ...
                 # print(f"Testing on the rcnn predictions of the test-dataset: {SIM_NAME} - {DL_TEST}")
-                # if "pt21" in DL_KEY:
+                # if "pt21" in DL_TEST:
                 #     test_pt21(
                 #         config=cfg,
                 #         dl_key=DL_TEST,
@@ -221,7 +232,7 @@ if __name__ == "__main__":
                 #         out_key=f"{DL_TEST}_{alpha_module}",
                 #         dgs_key=SIM_NAME,
                 #     )
-                # elif "Dance" in DL_KEY:
+                # elif "Dance" in DL_TEST:
                 #     test_dance(
                 #         config=cfg,
                 #         dl_key=DL_TEST,

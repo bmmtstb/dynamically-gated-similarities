@@ -78,6 +78,7 @@ base:
     description: ""
     log_dir: "./results/"
     log_dir_add_date: true
+    log_dir_suffix: ""
     precision: "float32"
 
 
