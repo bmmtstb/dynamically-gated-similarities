@@ -12,10 +12,10 @@ For evaluation one of the following two approaches can be used:
 The tests are performed using the regular MOTA / HOTA pipeline. Every dataset contains one video."
 
 device: "cuda:0"
-#print_prio: "INFO"
-print_prio: "DEBUG"
+print_prio: "INFO"
+#print_prio: "DEBUG"
 is_training: on
-log_dir: "./results/own/eval/train_single/"
+log_dir: "./results/own/train_single/"
 log_dir_add_date: false
 # log_dir_suffix:  # will be set by python script
 
@@ -85,7 +85,7 @@ test_dl_dance_256x192:
     paths: "./data/DanceTrack/test/**/det/rcnn_075_035_256x192.txt"
     
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
     
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -101,7 +101,7 @@ val_dl_dance_256x192:
 #    paths: "./data/DanceTrack/val/**/gt/gt.txt"
     
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
     
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -118,7 +118,7 @@ val_dl_dance_256x192_eval_acc:
     L: 1
     
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
     
     crop_key: "Crops"
     crop_size: !!python/tuple [ 256, 192 ]
@@ -135,7 +135,7 @@ train_dl_dance_256x192:
     L: 1
     
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
     
     crop_key: "Crops"
     crop_size: !!python/tuple [ 256, 192 ]

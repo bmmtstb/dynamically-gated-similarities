@@ -200,7 +200,7 @@ class DGSEngine(EngineModule):
         return ds.class_id.long()
 
     @enable_keyboard_interrupt
-    def _track_step(self, detections: State, frame_idx: int) -> Results:
+    def _track_step(self, detections: State, frame_idx: int, name: str) -> Results:
         """Run one step of tracking."""
         N: int = len(detections)
         updated_tracks: dict[int, State] = {}
@@ -248,7 +248,7 @@ class DGSEngine(EngineModule):
                 f"expected the cost matrix to be between 0 and N, "
                 f"got r: {rids}, c: {cids}, cm: {sim_matrix}, N: {N}, cost: {cost}"
             )
-            self.writer.add_scalar(tag="Track/cost", scalar_value=cost, global_step=frame_idx)
+            self.writer.add_scalar(tag=f"{name}/{self.curr_epoch}/cost", scalar_value=cost, global_step=frame_idx)
 
             assert (
                 N == len(rids) == len(cids)
@@ -297,7 +297,8 @@ class DGSEngine(EngineModule):
         self._track(dl=self.test_dl, name="Test")
 
         self.logger.debug(
-            f"#### Finished Test {self.name} in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
+            f"#### Finished Test {self.name} Epoch {self.curr_epoch} "
+            f"in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
         )
 
         return {}
@@ -327,7 +328,7 @@ class DGSEngine(EngineModule):
         # batch get data from the data loader
         for detections in tqdm(self.test_dl, desc="DataLoader"):
             for detection in tqdm(detections, desc="Tracker", leave=False):
-                _ = self._track_step(detections=detection, frame_idx=frame_idx)
+                _ = self._track_step(detections=detection, frame_idx=frame_idx, name="Predict")
 
                 active = collate_states(self.tracks.get_active_states())
 
@@ -394,7 +395,7 @@ class DGSEngine(EngineModule):
 
     def _track(self, dl: TDataLoader, name: str) -> None:
         """Track the data in the DataLoader."""
-        frame_idx: int = 0
+        frame_idx: int = int(self.curr_epoch * len(dl) * dl.batch_size)
 
         # reset submission and track data before starting the tracking
         self.submission.clear()
@@ -402,12 +403,12 @@ class DGSEngine(EngineModule):
 
         self.writer.add_scalar(f"{name}/batch_size", dl.batch_size)
 
-        for detections in tqdm(dl, desc="DataLoader", leave=False):
+        for detections in tqdm(dl, desc=f"DataLoader-ep{self.curr_epoch}", leave=False):
             for detection in detections:
 
                 N: int = len(detections)
 
-                batch_times = self._track_step(detections=detection, frame_idx=frame_idx)
+                batch_times = self._track_step(detections=detection, frame_idx=frame_idx, name="Track")
 
                 # get active states and skip adding if there are no active states
                 active_list = self.tracks.get_active_states()
@@ -465,10 +466,10 @@ class DGSEngine(EngineModule):
     @t.no_grad()
     def _eval_alpha(self) -> Results:
         """Evaluate the alpha model by computing the accuracy of the alpha prediction."""
-        frame_idx: int = 0
+        frame_idx: int = self.curr_epoch * len(self.val_dl) * self.val_dl.batch_size
         ks = self.params_train.get("acc_k_eval", DEF_VAL["engine"]["dgs"]["acc_k_eval"])
         results: dict[str | int, any] = {"N": 0, **dict(zip(ks, [0] * len(ks)))}
-        for data in tqdm(self.val_dl, desc="DataLoader"):
+        for data in tqdm(self.val_dl, desc="DataLoader", leave=False):
 
             assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
             data_old, data_new = data
@@ -500,7 +501,9 @@ class DGSEngine(EngineModule):
             results["N"] += N
 
             self.writer.add_scalars(
-                main_tag="Eval/accu", tag_scalar_dict={str(k): v for k, v in accuracies.items()}, global_step=frame_idx
+                main_tag="Eval/accu",
+                tag_scalar_dict={str(k): v for k, v in accuracies.items()},
+                global_step=frame_idx,
             )
 
             # clean up data to save memory
@@ -516,9 +519,12 @@ class DGSEngine(EngineModule):
 
         # compute overall accuracy of this dataset given partially data
         for k in ks:
-            results[f"acc-{k}"] = results[k] / results["N"]
+            k_name: str = f"acc-{k:05.1f}"  # format 51.4% as 051.4
+            results[k_name] = float(results[k] / results["N"])
+            self.writer.add_scalar(tag=f"Eval/glob-{k_name}", scalar_value=results[k_name], global_step=self.curr_epoch)
             results.pop(k)
 
+        self.writer.add_scalar(tag="Eval/N", scalar_value=int(results["N"]), global_step=self.curr_epoch)
         results.pop("N")
 
         return results
@@ -559,13 +565,14 @@ class DGSEngine(EngineModule):
         if self.params_train.get("eval_accuracy", DEF_VAL["engine"]["dgs"]["eval_accuracy"]):
             results = self._eval_alpha()
             self.print_results(results)
-            self.write_results(results, prepend="Eval")
+            self.write_results(results, prepend=f"Eval/{self.curr_epoch}")
         else:
             self._eval_tracking()
             results = {}
 
         self.logger.debug(
-            f"#### Evaluation of {self.name} complete in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
+            f"#### Evaluation of {self.name} Epoch {self.curr_epoch} "
+            f"complete in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
         )
         return results
 

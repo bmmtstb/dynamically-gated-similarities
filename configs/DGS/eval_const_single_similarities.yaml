@@ -27,7 +27,7 @@ dgs_pt21_rcnn_256x192:
     # base_path:  # will be set in python script
 
     batch_size: 8
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -40,7 +40,7 @@ dgs_pt21_rcnn_256x128:
     # base_path:  # will be set in python script
 
     batch_size: 8
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 128]
     crop_mode: "zero-pad"
@@ -53,7 +53,7 @@ dgs_pt21_gt_256x192_val:
     # data_path: # will be set in python script
 
     batch_size: 8
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -66,7 +66,7 @@ dgs_pt21_gt_256x128_val:
     # data_path: # will be set in python script
 
     batch_size: 8
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 128]
     crop_mode: "zero-pad"
@@ -78,7 +78,7 @@ dgs_Dance_gt_256x192_val:
     # data_path: # will be set in python script
 
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -92,7 +92,7 @@ dgs_Dance_gt_256x192_train:
     # data_path: # will be set in python script
 
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -106,7 +106,7 @@ dgs_Dance_rcnn_256x192_val:
     # data_path: # will be set in python script
 
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
@@ -120,7 +120,7 @@ dgs_Dance_rcnn_256x192_test:
     # data_path: # will be set in python script
 
     batch_size: 1
-    return_lists: true
+    collate_fn: "lists"
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"

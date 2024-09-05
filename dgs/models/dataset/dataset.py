@@ -46,7 +46,7 @@ video_dataset_validations: Validations = {
 dataloader_validations: Validations = {
     "batch_size": ["optional", int],
     "drop_last": ["optional", bool],
-    "return_lists": ["optional", bool],
+    "collate_fn": ["optional", str, ("in", ["lists", "states", "history"])],
     "workers": ["optional", int, ("gte", 0)],
 }
 
@@ -162,10 +162,10 @@ class BaseDataset(BaseModule, TDataset):
         Not fully supported!
         Therefore, default 0, no multi-device.
         Default ``DEF_VAL.dataloader.workers``.
-    return_lists (bool, optional):
-        Whether the DataLoader should return a list of States.
-        The DataLoader will return a single collated State if `return_lists` is `False`.
-        Default ``DEF_VAL.dataloader.return_lists``.
+    collate_fn (bool, optional):
+        Which collate function to use, when collating the States for the DataLoader.
+        Can be ``None`` or one of ``"lists"``, ``"states"``, or ``"history"``.
+        Default ``DEF_VAL.dataloader.collate_fn``.
 
     Default Values
     --------------
@@ -556,7 +556,7 @@ class ImageHistoryDataset(BaseDataset, ABC):
 
         self.L: int = self.params["L"]
 
-        if not self.params.get("return_lists", False):
+        if self.params.get("collate_fn", False) != "history":
             raise ValueError("The ImageHistoryDataset should always return a list of States.")
 
     def __len__(self) -> int:

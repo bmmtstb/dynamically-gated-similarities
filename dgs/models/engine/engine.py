@@ -283,6 +283,8 @@ class EngineModule(BaseModule, nn.Module):
         Returns:
             The current optimizer after training.
         """
+        # pylint: disable=too-many-statements
+
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")
         if (
@@ -388,6 +390,7 @@ class EngineModule(BaseModule, nn.Module):
                 # evaluate current model every few epochs
                 metrics: dict[str, any] = self.evaluate()
                 self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
+
                 self.writer.add_hparams(
                     hparam_dict={
                         "lr": optimizer.param_groups[-1]["lr"],
@@ -395,12 +398,10 @@ class EngineModule(BaseModule, nn.Module):
                         "loss_name": self.params_train["loss"],
                         "loss_kwargs": self.params_train.get("loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]),
                         "optim_name": self.params_train["optimizer"],
-                        "optim_kwargs": self.params_train.get(
-                            "optim_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"]
-                        ),
                         "scheduler": self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]),
-                        "scheduler_kwargs": self.params_train.get(
-                            "scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"]
+                        **dict(self.params_train.get("optim_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"])),
+                        **dict(
+                            self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"])
                         ),
                     },
                     metric_dict=metrics,

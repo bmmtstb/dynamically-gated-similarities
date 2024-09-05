@@ -36,7 +36,7 @@ dataloader:
     drop_last: false
     shuffle: false
     workers: 0  # right now there is no full multi device support
-    return_lists: false
+    collate_fn: null
 
 video_dataset:
     stream: "video"

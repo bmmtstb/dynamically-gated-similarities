@@ -49,13 +49,6 @@ with warnings.catch_warnings():
         # noinspection PyUnresolvedReferences
         from torchreid.reid.data import ImageDataset as TorchreidImageDataset
 
-# Do not allow import of 'PoseTrack21' base dataset
-__all__ = [
-    "validate_pt21_json",
-    "PoseTrack21_BBox",
-    "PoseTrack21_Image",
-    "PoseTrack21Torchreid",
-]
 
 pt21_json_validations: Validations = {
     "crops_folder": [str, ("folder exists", False)],

@@ -11,7 +11,7 @@ from dgs.models.dataset.dataset import BaseDataset, dataloader_validations
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.exceptions import InvalidConfigException
-from dgs.utils.state import collate_lists, collate_states
+from dgs.utils.state import collate_list_of_history, collate_lists, collate_states
 from dgs.utils.types import Config, NodePath
 
 M = TypeVar("M", bound=BaseModule)
@@ -180,14 +180,23 @@ def get_data_loader(config: Config, path: NodePath) -> TDataLoader:
     drop_last: bool = params.get("drop_last", DEF_VAL["dataloader"]["drop_last"])
     shuffle: bool = params.get("shuffle", DEF_VAL["dataloader"]["shuffle"])
 
+    if "collate_fn" not in params:
+        collate_fn = collate_states
+    elif params["collate_fn"] == "lists" or params["collate_fn"] is None:
+        collate_fn = collate_lists
+    elif params["collate_fn"] == "states":
+        collate_fn = collate_states
+    elif params["collate_fn"] == "history":
+        collate_fn = collate_list_of_history
+    else:
+        raise NotImplementedError(f"Collate function '{params['collate_fn']}' not implemented.")
+
     data_loader = TDataLoader(
         dataset=ds,
         batch_size=batch_size,
         drop_last=drop_last,
         num_workers=params.get("workers", DEF_VAL["dataloader"]["workers"]),
         shuffle=shuffle,
-        collate_fn=(
-            collate_lists if params.get("return_lists", DEF_VAL["dataloader"]["return_lists"]) else collate_states
-        ),
+        collate_fn=collate_fn,
     )
     return data_loader

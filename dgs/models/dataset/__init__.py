@@ -81,7 +81,7 @@ def get_concatenated_dataset(config: Config, path: NodePath, ds_name: str) -> TC
             path=path,
             value={
                 "data_path": os.path.normpath(data_path),
-                "module_name": str(sub_cfg["module_name"]).lstrip("Concat_"),
+                "module_name": str(ds_name).lstrip("Concat_"),
             },
             original=config,
             copy=True,

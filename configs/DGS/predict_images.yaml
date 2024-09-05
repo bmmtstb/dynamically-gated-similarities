@@ -27,7 +27,7 @@ dataloader_test:
     batch_size: 8
     score_threshold: 0.75
     iou_threshold: 0.75
-    return_lists: true
+    collate_fn: "lists"
 
 # ####### #
 # MODULES #
