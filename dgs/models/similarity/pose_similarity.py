@@ -3,7 +3,6 @@ Modules for computing the similarity between two poses.
 """
 
 import torch as t
-from torch import nn
 from torchvision.ops import box_area, box_iou
 from torchvision.transforms.v2 import ConvertBoundingBoxFormat
 from torchvision.tv_tensors import BoundingBoxes, BoundingBoxFormat
@@ -17,14 +16,10 @@ from dgs.utils.types import Config, NodePath, Validations
 oks_validations: Validations = {
     "format": [str, ("in", list(OKS_SIGMAS.keys()))],
     # optional
-    "softmax": ["optional", bool],
     "keypoint_dim": ["optional", int, ("within", (1, 3))],
 }
 
-iou_validations: Validations = {
-    # optional
-    "softmax": ["optional", bool],
-}
+iou_validations: Validations = {}
 
 
 class ObjectKeypointSimilarity(SimilarityModule):
@@ -39,10 +34,6 @@ class ObjectKeypointSimilarity(SimilarityModule):
     Optional Params
     ---------------
 
-    softmax (bool, optional):
-        Whether to compute the softmax of the result.
-        All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
-        Default ``DEF_VAL.similarity.oks.softmax``.
     keypoint_dim (int, optional):
         The dimensionality of the key points. So whether 2D or 3D is expected.
         Default ``DEF_VAL.similarity.oks.kp_dim``.
@@ -63,11 +54,6 @@ class ObjectKeypointSimilarity(SimilarityModule):
         self.register_buffer("eps", t.tensor(t.finfo(self.precision).eps, device=self.device, dtype=self.precision))
         # Set up a transform function to convert the bounding boxes if they have the wrong format
         self.transf_bbox_to_xyxy = ConvertBoundingBoxFormat("XYXY")
-
-        # Set up softmax function if requested
-        self.softmax = nn.Sequential()
-        if self.params.get("softmax", DEF_VAL["similarity"]["oks"]["softmax"]):
-            self.softmax.append(nn.Softmax(dim=-1))
 
         self.kp_dim: int = self.params.get("keypoint_dim", DEF_VAL["similarity"]["oks"]["kp_dim"])
 
@@ -169,21 +155,12 @@ class IntersectionOverUnion(SimilarityModule):
     Params
     ------
 
-    softmax (bool, optional):
-        Whether to compute the softmax of the result.
-        All values will lie in the range :math:`[0, 1]`, with softmax, they additionally sum to one.
-        Default ``DEF_VAL.similarity.iou.softmax``.
     """
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
-        self.transform = ConvertBoundingBoxFormat("XYXY")
-
-        # Set up softmax function if requested
-        self.softmax = nn.Sequential()
-        if self.params.get("softmax", DEF_VAL["similarity"]["iou"]["softmax"]):
-            self.softmax.append(nn.Softmax(dim=-1))
+        self.bbox_transform = ConvertBoundingBoxFormat("XYXY")
 
     def get_data(self, ds: State) -> BoundingBoxes:
         """Given a :class:`State` obtain the ground-truth bounding-boxes as
@@ -194,7 +171,7 @@ class IntersectionOverUnion(SimilarityModule):
         """
         bboxes = ds.bbox
         if bboxes.format != BoundingBoxFormat.XYXY:
-            bboxes = self.transform(bboxes)
+            bboxes = self.bbox_transform(bboxes)
         return bboxes
 
     def get_target(self, ds: State) -> BoundingBoxes:
@@ -206,7 +183,7 @@ class IntersectionOverUnion(SimilarityModule):
         """
         bboxes = ds.bbox
         if bboxes.format != BoundingBoxFormat.XYXY:
-            bboxes = self.transform(bboxes)
+            bboxes = self.bbox_transform(bboxes)
         return bboxes
 
     def forward(self, data: State, target: State) -> t.Tensor:

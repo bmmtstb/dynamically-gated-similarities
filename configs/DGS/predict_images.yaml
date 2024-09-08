@@ -37,8 +37,6 @@ dgs:
     module_name: "DGS"
     combine: "combine_similarities"
     names: ["visual_similarity", "pose_similarity", "box_similarity"]
-    similarity_softmax: true
-    combined_softmax: true
 
 combine_similarities:
     module_name: "constant_alpha"

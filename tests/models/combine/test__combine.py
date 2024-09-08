@@ -5,8 +5,15 @@ import numpy as np
 import torch as t
 from torch import nn
 
-from dgs.models.combine import COMBINE_MODULES, get_combine_module, register_combine_module
-from dgs.models.combine.combine import AlphaCombine, CombineSimilaritiesModule, DynamicAlphaCombine, StaticAlphaCombine
+from dgs.models.combine import (
+    AlphaCombine,
+    COMBINE_MODULES,
+    DynamicAlphaCombine,
+    get_combine_module,
+    register_combine_module,
+    StaticAlphaCombine,
+)
+from dgs.models.combine.combine import CombineSimilaritiesModule
 from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException
@@ -317,7 +324,7 @@ class TestConstantAlpha(unittest.TestCase):
 
     default_cfg = fill_in_defaults(
         {
-            "def_comb": {"module_name": "static_alpha", "alpha": [1.0]},
+            "def_comb": {"module_name": "static_alpha", "alpha": [0.5, 0.5], "softmax": False},
         },
         get_test_config(),
     )
@@ -347,40 +354,46 @@ class TestConstantAlpha(unittest.TestCase):
         N = 7
         T = 21
 
-        for alpha, sn, result in [
-            ([1.0, 0.0], (t.ones((N, T)), t.zeros((N, T))), t.ones((N, T))),
-            ([1.0], (t.ones((N, T)),), t.ones((N, T))),
-            ([0.5, 0.5], (t.ones((N, T)), t.zeros((N, T))), 0.5 * t.ones((N, T))),
-            ([0.7, 0.3], (t.ones((N, T)), -1 * t.ones((N, T))), 0.4 * t.ones((N, T))),
-            (
-                [0.2, 0.8],
-                (t.tensor([[5, 0], [0, 5]]).float(), t.tensor([[0, 1.25], [1.25, 0]]).float()),
-                t.ones((2, 2)),
-            ),
-            (
-                [0.25, 0.25, 0.25, 0.25],
-                (t.ones((N, T)), t.ones((N, T)), t.ones((N, T)), t.ones((N, T))),
-                t.ones((N, T)),
-            ),
-            (
-                [0.1, 0.2, 0.3, 0.4],
-                (t.ones((N, T)), t.ones((N, T)), -1 * t.ones((N, T)), t.zeros((N, T))),
-                t.zeros((N, T)),
-            ),
-        ]:
-            with self.subTest(msg="alpha: {}, sn: {}".format(alpha, sn)):
-                m = StaticAlphaCombine(
-                    config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
-                    path=["def_comb"],
-                )
-                self.assertTrue(t.allclose(m.forward(*sn), result), f"r: {result.shape}, sn: {t.stack(sn).shape}")
+        for softmax in [True, False]:
+            for alpha, sn, result in [
+                ([1.0, 0.0], (t.ones((N, T)), t.zeros((N, T))), t.ones((N, T))),
+                ([1.0], (t.ones((N, T)),), t.ones((N, T))),
+                ([0.5, 0.5], (t.ones((N, T)), t.zeros((N, T))), 0.5 * t.ones((N, T))),
+                ([0.7, 0.3], (t.ones((N, T)), -1 * t.ones((N, T))), 0.4 * t.ones((N, T))),
+                (
+                    [0.2, 0.8],
+                    (t.tensor([[5, 0], [0, 5]]).float(), t.tensor([[0, 1.25], [1.25, 0]]).float()),
+                    t.ones((2, 2)),
+                ),
+                (
+                    [0.25, 0.25, 0.25, 0.25],
+                    (t.ones((N, T)), t.ones((N, T)), t.ones((N, T)), t.ones((N, T))),
+                    t.ones((N, T)),
+                ),
+                (
+                    [0.1, 0.2, 0.3, 0.4],
+                    (t.ones((N, T)), t.ones((N, T)), -1 * t.ones((N, T)), t.zeros((N, T))),
+                    t.zeros((N, T)),
+                ),
+            ]:
+                with self.subTest(msg="alpha: {}, sn: {}, softmax; {}".format(alpha, sn, softmax)):
+                    m = StaticAlphaCombine(
+                        config=fill_in_defaults(
+                            {"def_comb": {"module_name": "static_alpha", "alpha": alpha, "softmax": softmax}},
+                            get_test_config(),
+                        ),
+                        path=["def_comb"],
+                    )
+                    if softmax:
+                        result = t.nn.functional.softmax(result, dim=-1)
+                    self.assertTrue(t.allclose(m.forward(*sn), result), f"r: {result.shape}, sn: {t.stack(sn).shape}")
 
     def test_constant_alpha_forward_single_tensor_input(self):
         inp = t.stack(([t.ones((self.D, self.T)), t.zeros((self.D, self.T))]))
         alpha = [0.5, 0.5]
 
         m = StaticAlphaCombine(
-            config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
+            config=self.default_cfg,
             path=["def_comb"],
         )
         r = m(inp)
@@ -393,7 +406,7 @@ class TestConstantAlpha(unittest.TestCase):
         alpha = [0.4, 0.4, 0.2]  # size 3
 
         m = StaticAlphaCombine(
-            config=fill_in_defaults({"def_comb": {"alpha": alpha}}, self.default_cfg),
+            config=fill_in_defaults({"module_name": "static_alpha", "def_comb": {"alpha": alpha}}, self.default_cfg),
             path=["def_comb"],
         )
         with self.assertRaises(ValueError) as e:

@@ -118,8 +118,6 @@ iou_oks:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim", "pose_sim"]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 2 - IoU and Visual - OSNet
 
@@ -127,8 +125,6 @@ iou_OSNet:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "box_sim", "visual_sim_OSNet" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 3 - OKS and Visual - OSNet
 
@@ -136,8 +132,6 @@ oks_OSNet:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim", "visual_sim_OSNet" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 4 - IoU and Visual - OSNetAIN
 
@@ -145,8 +139,6 @@ iou_OSNetAIN:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "box_sim", "visual_sim_OSNetAIN" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 5 - OKS and Visual - OSNetAIN
 
@@ -154,8 +146,6 @@ oks_OSNetAIN:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim", "visual_sim_OSNetAIN" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 6 - IoU and Visual - Resnet50
 
@@ -163,8 +153,6 @@ iou_Resnet50:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "box_sim", "visual_sim_Resnet50" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 7 - OKS and Visual - Resnet50
 
@@ -172,8 +160,6 @@ oks_Resnet50:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim", "visual_sim_Resnet50" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 8 - IoU and Visual - Resnet152
 
@@ -181,8 +167,6 @@ iou_Resnet152:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "box_sim", "visual_sim_Resnet152" ]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 9 - OKS and Visual - Resnet152
 
@@ -190,5 +174,3 @@ oks_Resnet152:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim", "visual_sim_Resnet152" ]
-    similarity_softmax: true
-    combined_softmax: true

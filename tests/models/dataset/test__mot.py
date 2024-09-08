@@ -18,7 +18,7 @@ class TestSeqinfoIni(unittest.TestCase):
     new_path = "./tests/test_data/MOT_test/seqinfo_test.ini"
 
     test_data = {
-        "name": "MOT_test",
+        "name": "MOT_test_1",
         "imDir": "img1",
         "frameRate": "42",
         "seqLength": "3",
@@ -44,7 +44,7 @@ class TestSeqinfoIni(unittest.TestCase):
         data = load_seq_ini(self.seqinfo_path, key="Other")
         self.assertEqual(len(data), 1)
         self.assertTrue("name" in data)
-        self.assertEqual(data["name"], "MOT_other")
+        self.assertEqual(data["name"], "MOT_other_3")
 
     def test_load_seq_ini_exceptions(self):
         with self.assertRaises(InvalidPathException) as e:
@@ -111,7 +111,7 @@ class TestSeqinfoIni(unittest.TestCase):
 
 
 class TestMOTImageDataset(unittest.TestCase):
-    seqinfo_path = "./tests/test_data/seqinfo.ini"
+    seqinfo_path = "./tests/test_data/MOT_test/seqinfo.ini"
     test_cfg = load_config("./tests/test_data/configs/test_config_MOT.yaml")
     logging_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_ds/")
 

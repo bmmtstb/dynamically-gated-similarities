@@ -43,11 +43,10 @@ or to tell the model loader which parameters to use.
     dgs:
         names: [mod1, mod2]
         combine: static_alpha
-        # combined_softmax  # not required
-        similarity_softmax: True
 
     mod1:
-        ...
+        module_name: iou
+        softmax: true
 
     mod2:
         ...
@@ -55,6 +54,8 @@ or to tell the model loader which parameters to use.
     static_alpha:
         module_name: "static_alpha"
         alpha: [0.6, 0.4]
+        softmax: true
+
 
 The :func:`module_loader` function accepts the key as an (keyword) argument,
 together with the path to the configuration file, and the base name of the module.

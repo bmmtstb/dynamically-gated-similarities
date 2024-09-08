@@ -9,6 +9,7 @@ from datetime import timedelta
 import torch as t
 from scipy.optimize import linear_sum_assignment
 from torch import nn
+from torch.autograd import Variable
 from torch.utils.data import DataLoader as TDataLoader
 from tqdm import tqdm
 
@@ -194,7 +195,7 @@ class DGSEngine(EngineModule):
     def get_target(self, ds: State) -> t.Tensor:
         """Get the target data.
 
-        For the similarity engine, the target data consists of the target- / class-id.
+        For the similarity engine, the target data consists of the dataset-unique class-id.
         The :func:`get_target` function will be called twice, once for the current time-step and once for the previous.
         """
         return ds.class_id.long()
@@ -248,7 +249,7 @@ class DGSEngine(EngineModule):
                 f"expected the cost matrix to be between 0 and N, "
                 f"got r: {rids}, c: {cids}, cm: {sim_matrix}, N: {N}, cost: {cost}"
             )
-            self.writer.add_scalar(tag=f"{name}/{self.curr_epoch}/cost", scalar_value=cost, global_step=frame_idx)
+            self.writer.add_scalar(tag=f"{name}/cost", scalar_value=cost, global_step=frame_idx)
 
             assert (
                 N == len(rids) == len(cids)
@@ -314,7 +315,7 @@ class DGSEngine(EngineModule):
         self.set_model_mode("eval")
         close_all_layers(self.model)
 
-        frame_idx: int = 0
+        frame_idx: int = int(self.curr_epoch * len(self.test_dl) * self.test_dl.batch_size)
 
         self.submission = get_submission(
             get_sub_config(config=self.config, path=self.params_test.get("submission"))["module_name"]
@@ -370,16 +371,20 @@ class DGSEngine(EngineModule):
 
         assert isinstance(data, list) and len(data) == 2, f"Data must be a list of length 2. but got {len(data)}"
         data_old, data_new = data
+        del data
 
         with t.no_grad():
             old_ids = self.get_target(data_old)  # [T]
             new_ids = self.get_target(data_new)  # [D]
             # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
             combined_ids = t.cat(
-                (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
+                [old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]]]
             )
-            # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
-            indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
+            # get all the indices of matches between the new_ids and the old_ids
+            # if there is no match, use the ids of newly created tracks (the second  part of the combined_ids)
+            # With B>1 there might be multiple ID matches, therefore, always use the ID of the first match
+            # fixme: actually I want to use a random match, but this is seemingly not possible with pure pytorch
+            first_match = t.argmax((new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1)).byte(), dim=1)
 
             # get the input data of the similarity modules for the current step
             curr_sim_data = self.get_data(data_new)  # [D]
@@ -388,9 +393,15 @@ class DGSEngine(EngineModule):
             similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
 
         # for each of the similarity modules, compute the alpha value of the respective input and sum up the results
-        alpha = t.cat([a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)], dim=0).flatten()
+        alpha = t.cat(
+            [
+                a_m(Variable(curr_sim_data[i], requires_grad=True))
+                for i, a_m in enumerate(self.model.combine.alpha_model)
+            ],
+            dim=0,
+        ).flatten()
 
-        loss = self.loss(alpha, similarity[indices])
+        loss = self.loss(alpha, similarity[t.arange(0, len(new_ids)), first_match])
         return loss
 
     def _track(self, dl: TDataLoader, name: str) -> None:
@@ -551,9 +562,6 @@ class DGSEngine(EngineModule):
         With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{correct}}}{N}`
         :math`\alpha{\mathrm{pred}}` is counted as correct if
         :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
-
-        Returns:
-            Results dict containing the Accuracy ("acc-k") as the number of correct predictions within k percent.
         """
         self.logger.debug("Start Evaluation - set model to eval mode")
 

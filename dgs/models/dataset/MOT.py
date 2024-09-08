@@ -156,6 +156,8 @@ def load_MOT_file(
     seqinfo_key = seqinfo_key if seqinfo_key is not None else DEF_VAL["submission"]["MOT"]["seqinfo_key"]
     seqinfo: dict[str, any] = load_seq_ini(fp=seqinfo_fp, key=seqinfo_key)
 
+    ds_id: str = re.findall(r"\d+", seqinfo["name"])[-1]
+
     crop_key = crop_key if crop_key is not None else DEF_VAL["dataset"]["MOT"]["crop_key"]
     crop_info: dict[str, any] = load_seq_ini(fp=seqinfo_fp, key=crop_key)
 
@@ -169,8 +171,11 @@ def load_MOT_file(
     assert all(len(os.path.basename(path).split(".")[0]) == img_name_digits for path in all_img_paths)
     img_shape: ImgShape = (int(seqinfo["imHeight"]), int(seqinfo["imWidth"]))
 
-    # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
-    map_pid_to_cid: dict[int, int] = {int(pid): int(i) for i, pid in enumerate(sorted(set(line[1] for line in lines)))}
+    # create a mapping from person id to a (custom) class id containing the dataset id
+    # this is necessary, because the person ids are not unique across videos
+    map_pid_to_cid: dict[int, int] = {
+        int(pid): int(f"1{i}{ds_id}") for i, pid in enumerate(sorted(set(line[1] for line in lines)))
+    }
 
     states = []
     for frame_id in range(1, int(seqinfo["seqLength"]) + 1):

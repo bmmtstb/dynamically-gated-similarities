@@ -1024,7 +1024,8 @@ def collate_list_of_history(batch: Union[State, list[State], list[list[State]]])
         return [batch]
     if isinstance(batch, list) and all(isinstance(b, State) for b in batch):
         return batch
-    if (  # a list containing a single list of states
+    # a list containing a single list of states -> no collating necessary
+    if (
         isinstance(batch, list)
         and len(batch) == 1
         and isinstance(batch[0], list)
@@ -1033,8 +1034,9 @@ def collate_list_of_history(batch: Union[State, list[State], list[list[State]]])
         return batch[0]
     # a list containing multiple list of states, all with the same length, containing states
     if isinstance(batch, list) and all(
-        isinstance(b, list) and len(b) == len(batch) and all(isinstance(sub_state, State) for sub_state in b)
+        isinstance(b, list) and len(b) == len(batch[0]) and all(isinstance(sub_state, State) for sub_state in b)
         for b in batch
     ):
         return [collate_states([batch[i][l] for i in range(len(batch))]) for l in range(len(batch[0]))]
-    raise NotImplementedError
+
+    raise NotImplementedError(f"Unknown format of batch - length: {len(batch)} type: {type(batch)}")

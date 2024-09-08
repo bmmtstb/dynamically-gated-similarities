@@ -115,8 +115,6 @@ iou_oks_OSNet:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim", "pose_sim", "vis_sim_OSNet"]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 2 - OSNetAIN
 
@@ -124,8 +122,6 @@ iou_oks_OSNetAIN:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim", "pose_sim", "vis_sim_OSNetAIN"]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 3 - Resnet50
 
@@ -133,8 +129,6 @@ iou_oks_Resnet50:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim", "pose_sim", "vis_sim_Resnet50"]
-    similarity_softmax: true
-    combined_softmax: true
 
 # Combination 4 - Resnet152
 
@@ -142,5 +136,3 @@ iou_oks_Resnet152:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim", "pose_sim", "vis_sim_Resnet152"]
-    similarity_softmax: true
-    combined_softmax: true

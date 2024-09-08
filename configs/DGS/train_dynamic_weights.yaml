@@ -41,9 +41,10 @@ train:
     loss_kwargs: {}
     optimizer: "Adam"
     optimizer_kwargs:
-        lr: 0.0001  # 1e-4
+#        lr: 0.0001  # 1e-4
+        lr: 0.000001  # 1e-6
         foreach: true
-    epochs: 10
+    epochs: 1
     save_interval: 1
     scheduler: "StepLR"
     scheduler_kwargs:
@@ -64,14 +65,12 @@ submission_MOT:
 
 dac:
     module_name: "dynamic_alpha"
-    softmax: true
+    softmax: false
 
 DGSModule:
     module_name: "DGS"
     # names:  # will be set in python script
     combine: "dac"
-    combined_softmax: true
-    similarity_softmax: false
     new_track_weight: 0.0
 
 # #### #
@@ -112,13 +111,13 @@ val_dl_dance_256x192_eval_acc:
     module_name: "Concat_MOTImageHistory"
     shuffle: false
     dataset_path: "./data/DanceTrack/"
-#    paths: "./data/DanceTrack/val/**/gt/gt.txt"
-    paths: "./data/DanceTrack/val_part/**/gt/gt.txt"
+    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+#    paths: "./data/DanceTrack/val_part/**/gt/gt.txt"
     
     L: 1
     
     batch_size: 1
-    collate_fn: "lists"
+    collate_fn: "history"
     
     crop_key: "Crops"
     crop_size: !!python/tuple [ 256, 192 ]
@@ -129,13 +128,13 @@ train_dl_dance_256x192:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
     dataset_path: "./data/DanceTrack/"
-#    paths: "./data/DanceTrack/train/**/gt/gt.txt"
-    paths: "./data/DanceTrack/train_part/**/gt/gt.txt"
+    paths: "./data/DanceTrack/train/**/gt/gt.txt"
+#    paths: "./data/DanceTrack/train_part/**/gt/gt.txt"
     
     L: 1
     
     batch_size: 1
-    collate_fn: "lists"
+    collate_fn: "history"
     
     crop_key: "Crops"
     crop_size: !!python/tuple [ 256, 192 ]
@@ -149,12 +148,14 @@ train_dl_dance_256x192:
 
 box_sim:
     module_name: "iou"
+    softmax: false
 
 # Pose - OKS - COCO
 
 pose_sim_coco:
     module_name: "oks"
     format: "coco"
+    softmax: false
 
 # Visual - v1 - OSNet_x1_0 pretrained on ImageNet
 
@@ -162,6 +163,7 @@ OSNet_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["OSNet_embed_gen"]
+    softmax: false
 
 OSNet_embed_gen:
     module_name: "torchreid"
@@ -176,6 +178,7 @@ OSNetAIN_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["OSNetAIN_embed_gen" ]
+    softmax: false
 
 OSNetAIN_embed_gen:
     module_name: "torchreid"
@@ -189,6 +192,7 @@ Resnet50_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["Resnet50_embed_gen"]
+    softmax: false
 
 Resnet50_embed_gen:
     module_name: "torchreid"
@@ -202,6 +206,7 @@ Resnet152_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["Resnet152_embed_gen"]
+    softmax: false
 
 Resnet152_embed_gen:
     module_name: "torchreid"

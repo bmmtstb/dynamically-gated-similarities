@@ -214,7 +214,7 @@ if __name__ == "__main__":
                 engine_train.train_model()
                 engine_train.terminate()
                 send_discord_notification(
-                    f"finished training and evaluating {SIM_NAME} - {alpha_mod_name} - {DL_TRAIN}"
+                    f"finished training and evaluation of {SIM_NAME} - {alpha_mod_name} - {DL_TRAIN}"
                 )
 
                 # ####### #

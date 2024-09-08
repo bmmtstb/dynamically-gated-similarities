@@ -149,7 +149,6 @@ iou:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim"]
-    combined_softmax: true
 
 box_sim:
     module_name: "iou"
@@ -160,7 +159,6 @@ oks:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim" ]
-    combined_softmax: true
 
 pose_sim:
     module_name: "oks"
@@ -173,7 +171,6 @@ OSNet:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v1_sim" ]
-    combined_softmax: true
 
 v1_sim:
     module_name: "torchreid"
@@ -193,7 +190,6 @@ OSNetAIN:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v2_sim" ]
-    combined_softmax: true
 
 v2_sim:
     module_name: "torchreid"
@@ -212,7 +208,6 @@ Resnet50:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v3_sim" ]
-    combined_softmax: true
 
 v3_sim:
     module_name: "torchreid"
@@ -231,7 +226,6 @@ Resnet152:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v4_sim" ]
-    combined_softmax: true
 
 v4_sim:
     module_name: "torchreid"
@@ -250,7 +244,6 @@ OSNetAIN_CrossDomainDuke:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v5_sim" ]
-    combined_softmax: true
 
 v5_sim:
     module_name: "torchreid"
@@ -269,7 +262,6 @@ OSNetIBN_CrossDomainDuke:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v6_sim" ]
-    combined_softmax: true
 
 v6_sim:
     module_name: "torchreid"
@@ -288,7 +280,6 @@ OSNetAIN_CrossDomainMSMT17:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v7_sim" ]
-    combined_softmax: true
 
 v7_sim:
     module_name: "torchreid"

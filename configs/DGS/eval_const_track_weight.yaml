@@ -73,7 +73,6 @@ iou:
     module_name: "DGS"
     combine: "combine_sim"
     names: ["box_sim"]
-    combined_softmax: true
     # new_track_weight:  # will be set by python script
 
 box_sim:
@@ -85,7 +84,6 @@ oks:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "pose_sim" ]
-    combined_softmax: true
     # new_track_weight:  # will be set by python script
 
 pose_sim:
@@ -98,7 +96,6 @@ OSNet:
     module_name: "DGS"
     combine: "combine_sim"
     names: [ "v1_sim" ]
-    combined_softmax: true
 
 v1_sim:
     module_name: "torchreid"

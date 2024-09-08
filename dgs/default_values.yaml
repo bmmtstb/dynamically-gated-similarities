@@ -117,20 +117,15 @@ engine:
         eval_accuracy: true
 
 similarity:
+    softmax: true
+    
     torchreid:
-        softmax: false
         sim_kwargs: {}
 
     oks:
-        softmax: false
         kp_dim: 2
 
-    iou:
-        softmax: false
-
 dgs:
-    similarity_softmax: true
-    combined_softmax: true
     new_track_weight: 0.0
 
 embed_gen:
@@ -154,8 +149,4 @@ embed_gen:
             hidden_layers_kp: []
             
 combine:
-    dynamic:
-        softmax: true
-    
-    alpha:
-        softmax: true
+    softmax: true

@@ -321,7 +321,7 @@ class EngineModule(BaseModule, nn.Module):
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=0):
             self.logger.debug(f"#### Training - Epoch {self.curr_epoch} ####")
 
-            self.model.zero_grad()  # fixme
+            self.model.zero_grad()  # fixme, is this required?
             optimizer.zero_grad()
 
             epoch_loss = 0
@@ -396,9 +396,9 @@ class EngineModule(BaseModule, nn.Module):
                         "lr": optimizer.param_groups[-1]["lr"],
                         "batch_size": self.train_dl.batch_size,
                         "loss_name": self.params_train["loss"],
-                        "loss_kwargs": self.params_train.get("loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]),
                         "optim_name": self.params_train["optimizer"],
-                        "scheduler": self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]),
+                        "scheduler_name": self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]),
+                        **dict(self.params_train.get("loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"])),
                         **dict(self.params_train.get("optim_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"])),
                         **dict(
                             self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"])
@@ -410,6 +410,11 @@ class EngineModule(BaseModule, nn.Module):
             # handle updating the learning rate scheduler
             lr_sched.step()
 
+            # reset the model and optimizer
+            self.model.zero_grad()
+            optimizer.zero_grad()
+
+            # update and force write the writer
             self.writer.flush()
 
         # ############### #
