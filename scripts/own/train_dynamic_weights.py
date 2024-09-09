@@ -193,10 +193,11 @@ if __name__ == "__main__":
                 # ##################### #
                 print(f"Training on the ground-truth train-dataset with config: {DL_TRAIN} - {alpha_mod_name}")
                 _crop_h, _crop_w = cfg[DL_TRAIN]["crop_size"]
+                lr = cfg["train"]["optimizer_kwargs"]["lr"]
 
                 # modify config
                 cfg["DGSModule"]["names"] = [SIM_NAME]
-                cfg["log_dir_suffix"] = f"./{SIM_NAME}/{alpha_mod_name}/"
+                cfg["log_dir_suffix"] = f"./{SIM_NAME}/{alpha_mod_name}_{lr:.10f}/"
                 if "pt21" in DL_TRAIN:
                     cfg["train"]["submission"] = ["submission_pt21"]
                 elif "dance" in DL_TRAIN:
@@ -204,6 +205,7 @@ if __name__ == "__main__":
                 else:
                     raise NotImplementedError
 
+                # use the modified config and obtain the model used for training
                 engine_train = get_dgs_engine(config=cfg, dl_keys=(DL_TRAIN, DL_EVAL, None))
 
                 # set model and initialize the weights

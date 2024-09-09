@@ -247,7 +247,7 @@ class LinearPBEG(EmbeddingGeneratorModule, nn.Module):
         )
 
         model = self._init_flattened_model()
-        self.register_module(name="model", module=model)
+        self.register_module(name="model", module=self.configure_torch_module(model))
 
         self.bbox_converter = ConvertBoundingBoxFormat(
             format=self.params.get("bbox_format", DEF_VAL["embed_gen"]["pose"]["LPBEG"]["bbox_format"])

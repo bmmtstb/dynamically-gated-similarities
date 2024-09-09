@@ -69,8 +69,7 @@ class DGSModule(BaseModule, nn.Module):
         combine: CombineSimilaritiesModule = get_combine_module(
             name=get_sub_config(config=config, path=[combine_name])["module_name"]
         )(config=config, path=[combine_name])
-        self.register_module(name="combine", module=combine)
-        self.configure_torch_module(self.combine)
+        self.register_module(name="combine", module=self.configure_torch_module(combine))
 
         # get weight of new tracks
         self.new_track_weight: t.Tensor = t.tensor(

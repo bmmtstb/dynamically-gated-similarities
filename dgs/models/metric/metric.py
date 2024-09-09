@@ -322,8 +322,8 @@ class PairwiseDistanceMetric(Metric):
         keepdim = kwargs.pop("keepdim", False)
 
         super().__init__(*args, **kwargs)
-        self.dist = PairwiseDistance(p=p, eps=eps, keepdim=keepdim)
-        self.register_module("PairwiseDistanceModule", self.dist)
+        dist = PairwiseDistance(p=p, eps=eps, keepdim=keepdim)
+        self.register_module("dist", dist)
 
     def forward(self, input1: t.Tensor, input2: t.Tensor) -> t.Tensor:
         """Compute the pairwise distance between the two inputs, where the second dimension has to match.

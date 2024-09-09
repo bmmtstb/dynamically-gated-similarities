@@ -284,13 +284,13 @@ class BaseModule(ABC):
 
     @property
     def is_training(self) -> bool:
-        """Get whether this module is set to training-mode."""
-        return self.config["is_training"]
+        """Get whether this module is set to training-mode. Will prioritize the module's setting over the global one."""
+        return self.params["is_training"] if "is_training" in self.params else self.config["is_training"]
 
     @property
     def device(self) -> t.device:
-        """Get the device of this module."""
-        return t.device(self.config["device"])
+        """Get the device of this module. Will prioritize the module's setting over the global one."""
+        return t.device(self.params["device"]) if "device" in self.params else t.device(self.config["device"])
 
     @property
     def name(self) -> str:
@@ -326,14 +326,15 @@ class BaseModule(ABC):
         Returns:
             The module on the specified device or in parallel.
         """
+
         train: bool = self.is_training if train is None else train
         # set torch mode
         if train:
             module.train()
         else:
             module.eval()
-        # send model to device(s) - multiple devices not supported
-        module = module.to(device=self.device)
+        # send model to device(s) - one model multiple devices currently not supported
+        module.to(device=self.device)
         return module
 
     def terminate(self) -> None:  # pragma: no cover

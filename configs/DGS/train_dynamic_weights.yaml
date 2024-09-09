@@ -170,6 +170,7 @@ OSNet_embed_gen:
     model_name: "osnet_x1_0"
     weights: "./weights/osnet_x1_0_imagenet.pth"
     nof_classes: 1000
+    is_training: off
 
 
 # Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
@@ -185,6 +186,7 @@ OSNetAIN_embed_gen:
     model_name: "osnet_ain_x1_0"
     weights: "./weights/osnet_ain_x1_0_imagenet.pth"
     nof_classes: 1000
+    is_training: off
 
 # Visual - v3 - resnet50 from same-domain Re-ID
 
@@ -199,6 +201,7 @@ Resnet50_embed_gen:
     model_name: "resnet50"
     weights: "pretrained"
     nof_classes: 1000
+    is_training: off
 
 # Visual - v4 - resnet152 from same-domain Re-ID
 
@@ -213,3 +216,4 @@ Resnet152_embed_gen:
     model_name: "resnet152"
     weights: "pretrained"
     nof_classes: 1000
+    is_training: off

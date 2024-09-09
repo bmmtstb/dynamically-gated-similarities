@@ -49,8 +49,7 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
         softmax = nn.Sequential()
         if self.params.get("softmax", DEF_VAL["combine"]["softmax"]):
             softmax.append(nn.Softmax(dim=-1))
-        self.register_module(name="softmax", module=softmax)
-        self.configure_torch_module(self.softmax)
+        self.register_module(name="softmax", module=self.configure_torch_module(softmax))
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)

@@ -84,7 +84,8 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
 
     nof_classes (int):
         The number of classes in the dataset.
-        Used during training to predict the id.
+        Used during training to predict the class-id.
+        For most of the pretrained torchreid models, this ist set to ``1_000``.
 
     """
 
@@ -100,13 +101,14 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
                 "because torchreid does not support different sizes."
             )
         new_cfg = insert_into_config(path=path, value={"embedding_size": 512}, original=config)
+        del config
 
         EmbeddingGeneratorModule.__init__(self, config=new_cfg, path=path)
 
         self.model_weights = self.params.get("weights", DEF_VAL["embed_gen"]["torchreid"]["weights"])
 
         model = self._init_model(self.model_weights == "pretrained")
-        self.add_module(name="model", module=model)
+        self.register_module(name="model", module=self.configure_torch_module(model))
 
         self.image_key = self.params.get("image_key", DEF_VAL["embed_gen"]["torchreid"]["image_key"])
 
@@ -121,8 +123,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         if not pretrained:  # pragma: no cover
             # custom model params
             load_pretrained_weights(m, to_abspath(self.model_weights))
-        # send model to the device
-        return self.configure_torch_module(m, train=False)
+        return m
 
     def predict_embeddings(self, data: t.Tensor) -> t.Tensor:
         """Predict embeddings given some input.

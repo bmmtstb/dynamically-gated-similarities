@@ -106,9 +106,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         self.logger.debug("Loading Keypoint-RCNN Model")
         weights = self.params.get("weights", KeypointRCNN_ResNet50_FPN_Weights.COCO_V1)
-        self.model = keypointrcnn_resnet50_fpn(weights=weights, progress=True)
-        self.register_module("model", self.model)
-        self.configure_torch_module(module=self.model, train=False)
+        model = keypointrcnn_resnet50_fpn(weights=weights, progress=True)
+        self.register_module("model", self.configure_torch_module(module=model, train=False))
 
         self.img_id: t.Tensor = t.tensor(1, dtype=t.long, device=self.device)
 

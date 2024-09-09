@@ -163,8 +163,7 @@ class EngineModule(BaseModule, nn.Module):
         self.test_dl = test_loader
 
         # Set up general attributes
-        self.register_module("model", model)
-        self.model = self.configure_torch_module(self.model)
+        self.register_module("model", self.configure_torch_module(model))
 
         # Logging
         self.writer = SummaryWriter(
