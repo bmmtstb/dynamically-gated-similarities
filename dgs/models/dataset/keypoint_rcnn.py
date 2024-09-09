@@ -94,6 +94,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         Default ``KeypointRCNN_ResNet50_FPN_Weights.COCO_V1``.
     """
 
+    model: nn.Module
+
     def __init__(self, config: Config, path: NodePath) -> None:
         BaseDataset.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
@@ -143,7 +145,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         # predicts a list of {boxes: XYXY[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
         # every image in images can have multiple predictions
-        outputs: list[dict[str, t.Tensor]] = self.model(images)
+        outputs: list[dict[str, t.Tensor]] = self.model.forward(images)
 
         states: list[State] = []
         canvas_size = (max(i.shape[-2] for i in images), max(i.shape[-1] for i in images))

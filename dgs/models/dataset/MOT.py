@@ -14,7 +14,6 @@ from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import mkdir_if_missing, to_abspath
 from dgs.utils.state import EMPTY_STATE, State
 from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
-from dgs.utils.utils import HidePrint
 
 MOT_validations: Validations = {
     # optional
@@ -105,7 +104,7 @@ def load_MOT_file(
     seqinfo_fp: FilePath = None,
     seqinfo_key: str = None,
     crop_key: str = None,
-) -> list[State]:
+) -> tuple[list[State], dict[str, any]]:
     """Given the path to a file in the MOT format, get a list of states.
     Each State contains the data of one image and the respective detections.
 
@@ -207,8 +206,8 @@ def load_MOT_file(
                 validate=False,
             )
         )
-
-    return states
+    assert all("image" not in s.data for s in states)
+    return states, seqinfo
 
 
 def write_MOT_file(fp: FilePath, data: list[tuple[any, ...]], sep=",") -> None:  # pragma: no cover
@@ -252,23 +251,39 @@ class MOTImage(ImageDataset):
         Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
     """
 
+    data: list[State]
+
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
         self.validate_params(MOT_validations)
 
-        self.data = load_MOT_file(
+        self.data, seqinfo = load_MOT_file(
             fp=self.get_path_in_dataset(self.params["data_path"]),
+            device=self.device,
             sep=self.params.get("file_separator", DEF_VAL["dataset"]["MOT"]["file_separator"]),
             crop_key=self.params.get("crop_key", DEF_VAL["dataset"]["MOT"]["crop_key"]),
             seqinfo_fp=self.params.get("seqinfo_path", DEF_VAL["dataset"]["MOT"]["seqinfo_path"]),
             seqinfo_key=self.params.get("seqinfo_key", DEF_VAL["submission"]["MOT"]["seqinfo_key"]),
         )
 
+        if "crops_folder" not in self.params:
+            seqinfo_path = self.params.get(
+                "seqinfo_path", self.get_path_in_dataset(os.path.join(seqinfo["name"], "./seqinfo.ini"))
+            )
+            seqinfo_crop = load_seq_ini(
+                fp=seqinfo_path, key=self.params.get("crop_key", DEF_VAL["dataset"]["MOT"]["crop_key"])
+            )
+
+            self.params["crops_folder"] = self.get_path_in_dataset(
+                os.path.join(seqinfo["name"], str(seqinfo_crop["imDir"]))
+            )
+        if not os.path.exists(self.params["crops_folder"]):
+            raise FileNotFoundError(f"Could not find the crops folder at '{self.params['crops_folder']}'.")
+
     def arbitrary_to_ds(self, a: State, idx: int) -> State:
         """Most of the state is available, now just load the image crops."""
-        with HidePrint():  # don't print, that image crops are computed
-            self.get_image_crops(a)
+        a.load_image_crop(store=True)
         return a
 
 
@@ -297,25 +312,40 @@ class MOTImageHistory(ImageHistoryDataset):
     seqinfo_key (str, optional):
         The key to use in the seqinfo file.
         Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
-
     """
+
+    data: list[State]
 
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
         self.validate_params(MOTHistory_validations)
 
-        self.data: list[State] = load_MOT_file(
+        self.data, seqinfo = load_MOT_file(
             fp=self.get_path_in_dataset(self.params["data_path"]),
             sep=self.params.get("file_separator", DEF_VAL["dataset"]["MOT"]["file_separator"]),
+            device=self.device,
             crop_key=self.params.get("crop_key", DEF_VAL["dataset"]["MOT"]["crop_key"]),
             seqinfo_fp=self.params.get("seqinfo_path", DEF_VAL["dataset"]["MOT"]["seqinfo_path"]),
             seqinfo_key=self.params.get("seqinfo_key", DEF_VAL["submission"]["MOT"]["seqinfo_key"]),
         )
 
+        if "crops_folder" not in self.params:
+            seqinfo_path = self.params.get(
+                "seqinfo_path", self.get_path_in_dataset(os.path.join(seqinfo["name"], "./seqinfo.ini"))
+            )
+            seqinfo_crop = load_seq_ini(
+                fp=seqinfo_path, key=self.params.get("crop_key", DEF_VAL["dataset"]["MOT"]["crop_key"])
+            )
+
+            self.params["crops_folder"] = self.get_path_in_dataset(
+                os.path.join(seqinfo["name"], str(seqinfo_crop["imDir"]))
+            )
+        if not os.path.exists(self.params["crops_folder"]):
+            raise FileNotFoundError(f"Could not find the crops folder at '{self.params['crops_folder']}'.")
+
     def arbitrary_to_ds(self, a: list[State], idx: int) -> list[State]:
         """Make sure"""
-        with HidePrint():  # don't print, that image crops are computed
-            for a_i in a:
-                self.get_image_crops(a_i)
+        for a_i in a:
+            a_i.load_image_crop(store=True)
         return a

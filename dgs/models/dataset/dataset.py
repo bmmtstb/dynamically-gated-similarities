@@ -13,7 +13,7 @@ import torchvision.transforms.v2 as tvt
 from torch.utils.data import Dataset as TDataset
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
-from torchvision.transforms.v2.functional import convert_bounding_box_format, to_dtype
+from torchvision.transforms.v2.functional import to_dtype
 
 from dgs.models.module import BaseModule
 from dgs.utils.config import DEF_VAL
@@ -186,10 +186,15 @@ class BaseDataset(BaseModule, TDataset):
     data: list
     """Arbitrary data, which will be converted using :func:`self.arbitrary_to_ds`"""
 
+    dataset_path: FilePath
+    """The base path to the dataset. Can be used as a starting point for relative paths."""
+
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
         self.validate_params(base_dataset_validations)
+
+        self.dataset_path = self.params["dataset_path"]
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         """Has to override call from BaseModule"""
@@ -237,16 +242,17 @@ class BaseDataset(BaseModule, TDataset):
 
         # State has length zero and image and local key points are just placeholders
         if len(ds) == 0:
-            ds.image_crop = tvte.Image(t.empty((0, 3, 1, 1)), device=ds.device)
-            ds.keypoints_local = t.empty(
+            ds.data["image_crop"] = tvte.Image(t.empty((0, 3, 1, 1)), device=ds.device)
+            ds.data["keypoints_local"] = t.empty(
                 (0, ds.J if "keypoints" in ds else 1, ds.joint_dim if "keypoints" in ds else 2), device=ds.device
             )
             return
 
         # load local keypoints if bbox and keypoints exist
-        if "bbox" in ds and "keypoints" in ds:
-            bbox = convert_bounding_box_format(ds.bbox.detach().clone(), new_format=tvte.BoundingBoxFormat.XYWH)
-            ds.keypoints_local = ds.keypoints - bbox[:, :2].unsqueeze(-2)
+        # fixme this is wrong, because the kps will be transformed if the aspect of the local kps changes
+        # if "bbox" in ds and "keypoints" in ds and "keypoints_local" not in ds and ds["keypoints"] is not None:
+        #     bbox = convert_bounding_box_format(ds.bbox.detach().clone(), new_format=tvte.BoundingBoxFormat.XYWH)
+        #     ds.keypoints_local = ds.keypoints - bbox[:, :2].unsqueeze(-2)
 
         # check whether precomputed image crops exist
         if "crops_folder" in self.params:
@@ -260,20 +266,19 @@ class BaseDataset(BaseModule, TDataset):
                     )
                     for i in range(len(ds))
                 )
-            ds.load_image_crop()
+            ds.load_image_crop(store=True)
 
-            ds.keypoints_local = ds.keypoints_and_weights_from_paths(
-                tuple(replace_file_type(fp, new_type=".pt") for fp in ds.crop_path)
+            ds.data["keypoints_local"] = ds.keypoints_and_weights_from_paths(
+                tuple(replace_file_type(fp, new_type=".pt") for fp in ds.crop_path), save_weights=True
             )
             return
 
         # no crop folder path given, compute the crops
-        self.logger.debug("computing image crops")
         ds.to(self.device)
 
         # load original image, reshape if requested
         if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
-            ds.image = load_image(
+            ds.data["image"] = load_image(
                 ds.filepath,
                 force_reshape=True,
                 mode=self.params.get("image_mode", DEF_VAL["images"]["image_mode"]),
@@ -282,7 +287,7 @@ class BaseDataset(BaseModule, TDataset):
                 device=ds.device,
             )
         else:
-            ds.image = load_image(ds.filepath, device=ds.device, dtype=t.uint8)
+            ds.data["image"] = load_image(ds.filepath, device=ds.device, dtype=t.uint8)
 
         structured_input = {
             "images": ds.image,
@@ -297,9 +302,11 @@ class BaseDataset(BaseModule, TDataset):
         }
         new_state = self.transform_crop_resize()(structured_input)
 
-        ds.image_crop = tvte.Image(to_dtype(new_state["image"].to(device=self.device), dtype=t.uint8, scale=True))
+        ds.data["image_crop"] = tvte.Image(
+            to_dtype(new_state["image"].to(device=self.device), dtype=t.uint8, scale=True)
+        )
         if "keypoints" in ds:
-            ds.keypoints_local = new_state["keypoints"].to(dtype=t.float32, device=self.device)
+            ds.data["keypoints_local"] = new_state["keypoints"].to(dtype=t.float32, device=self.device)
             assert "joint_weight" in ds.data, "visibility should be given"
 
     @staticmethod
@@ -386,7 +393,7 @@ class BaseDataset(BaseModule, TDataset):
             return os.path.normpath(os.path.abspath(path))
         if is_project_file(path) or is_project_dir(path):
             return to_abspath(path)
-        dataset_path = os.path.join(self.params["dataset_path"], str(path))
+        dataset_path = os.path.join(self.dataset_path, str(path))
         if is_project_file(dataset_path) or is_project_dir(dataset_path):
             return to_abspath(dataset_path)
         raise FileNotFoundError(f"Could not find a path to file or directory at {path}")
