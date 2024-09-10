@@ -457,7 +457,7 @@ class EngineModule(BaseModule, nn.Module):
                 "optimizer": optimizer.state_dict(),
                 "lr_scheduler": lr_sched.state_dict(),
             },
-            save_dir=os.path.join(self.log_dir, f"./checkpoints/"),
+            save_dir=os.path.join(self.log_dir, "./checkpoints/"),
             prepend=f"lr{curr_lr}",
             verbose=self.logger.isEnabledFor(logging.INFO),
         )

@@ -75,8 +75,8 @@ class DifferenceTimers(UserDict):
 
     data: dict[str, DifferenceTimer]
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, names: list[str] = None) -> None:
+        super().__init__({name: DifferenceTimer() for name in names or []})
 
     def __getitem__(self, item) -> DifferenceTimer:
         return self.data[item]
