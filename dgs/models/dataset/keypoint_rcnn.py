@@ -267,10 +267,10 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             data_path: FilePath = self.get_path_in_dataset(data_path)
             if is_file(data_path):
                 # single image
-                if any(data_path.lower().endswith(ending) for ending in IMAGE_FORMATS):
+                if data_path.lower().endswith(IMAGE_FORMATS):
                     self.data = [data_path]
                 # video file
-                elif any(data_path.lower().endswith(ending) for ending in VIDEO_FORMATS):
+                elif data_path.lower().endswith(VIDEO_FORMATS):
                     raise TypeError(f"Got Video file, but is an Image Dataset. File: {data_path}")
                 else:
                     raise NotImplementedError(f"Unknown file type. Got '{data_path}'")
@@ -279,7 +279,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 self.data = [
                     os.path.normpath(os.path.join(data_path, child_path))
                     for child_path in tqdm(sorted(os.listdir(data_path)), desc="Loading images", leave=False)
-                    if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
+                    if child_path.lower().endswith(IMAGE_FORMATS)
                 ]
             else:
                 raise NotImplementedError(f"string is neither file nor dir. Got '{data_path}'.")

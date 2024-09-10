@@ -144,7 +144,7 @@ def load_MOT_file(
     """
     # pylint: disable=too-many-arguments,too-many-locals
 
-    if not any(fp.endswith(ending) for ending in [".txt", ".csv"]):
+    if not fp.endswith((".txt", ".csv")):
         raise InvalidPathException(f"Presumed .txt file {fp} does not have .txt ending.")
 
     with open(fp, mode="r", encoding="utf-8") as file:

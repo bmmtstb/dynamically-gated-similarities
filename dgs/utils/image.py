@@ -183,9 +183,7 @@ def combine_images_to_video(
     # get a single tensor containing the images in uint8 format, still in regular image format
     if isinstance(imgs, str):  # pragma: no cover
         paths = tuple(
-            os.path.join(imgs, path)
-            for path in tqdm(os.listdir(imgs))
-            if any(path.lower().endswith(end) for end in IMAGE_FORMATS)
+            os.path.join(imgs, path) for path in tqdm(os.listdir(imgs)) if path.lower().endswith(IMAGE_FORMATS)
         )
         images = load_image(filepath=paths, dtype=t.uint8)
     elif isinstance(imgs, t.Tensor):

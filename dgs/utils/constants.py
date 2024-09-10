@@ -119,7 +119,7 @@ SKELETONS: dict[str, list[tuple[int, int]]] = {
     ],
 }
 
-COLORS: list[str] = list(mcolors.CSS4_COLORS.keys())
+COLORS: tuple[str, ...] = tuple(mcolors.CSS4_COLORS.keys())
 
 KEY_POINT_NAMES: dict[str, list[str]] = {
     "coco": [
@@ -184,12 +184,12 @@ PRECISION_MAP: [str, t.dtype] = {
     "uint8": t.uint8,
 }
 
-IMAGE_FORMATS: list[str] = [".jpg", ".jpeg", ".png"]
+IMAGE_FORMATS: tuple[str, ...] = (".jpg", ".jpeg", ".png")
 """A list of image formats supported by torchvision."""
 
 # pylint: disable=line-too-long
 # fmt: off
-VIDEO_FORMATS: list[str] = [
+VIDEO_FORMATS: tuple[str, ...] = (
     ".264", ".265", ".3g2", ".3gp", ".A64", ".a64", ".adp", ".amr", ".amv", ".asf", ".avc", ".avi", ".avr", ".avs",
     ".avs2", ".avs3", ".bmv", ".cavs", ".cdg", ".cdxl", ".cgi", ".chk", ".cif", ".cpk", ".dat", ".dav", ".dif",
     ".dnxhd", ".dnxhr", ".drc", ".dv", ".dvd", ".f4v", ".flm", ".flv", ".gsm", ".gxf", ".h261", ".h263", ".h264",
@@ -199,7 +199,7 @@ VIDEO_FORMATS: list[str] = [
     ".mvi", ".mxf", ".mxg", ".nut", ".obu", ".ogg", ".ogv", ".psp", ".qcif", ".rcv", ".rgb", ".rm", ".roq", ".sdr2",
     ".ser", ".sga", ".svag", ".svs", ".ts", ".ty", ".ty+", ".v", ".v210", ".vb", ".vc1", ".vc2", ".viv", ".vob",
     ".webm", ".wmv", ".wtv", ".xl", ".xmv", ".y4m", ".yop", ".yuv", ".yuv10"
-]
+)
 """A list of video formats supported by torchvision. Which uses 'pyav' which is based on 'ffmpeg'."""
 # fmt: on
 

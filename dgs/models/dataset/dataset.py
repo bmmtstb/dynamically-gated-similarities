@@ -501,7 +501,7 @@ class VideoDataset(BaseDataset, ABC):
 
         torchvision.set_video_backend(self.params.get("video_backend", DEF_VAL["video_dataset"]["video_backend"]))
 
-        if not any(self.params["data_path"].endswith(ending) for ending in VIDEO_FORMATS):
+        if not self.params["data_path"].endswith(VIDEO_FORMATS):
             raise ValueError(f"File with unknown file format. Got {self.params['data_path']}")
         video_path = self.get_path_in_dataset(self.params["data_path"])
 
