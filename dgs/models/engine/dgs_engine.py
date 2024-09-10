@@ -21,6 +21,7 @@ from dgs.models.submission import get_submission
 from dgs.models.submission.submission import SubmissionFile
 from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import collate_states, EMPTY_STATE, State
+from dgs.utils.timer import DifferenceTimers
 from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Results, Validations
@@ -201,12 +202,18 @@ class DGSEngine(EngineModule):
         return ds.class_id.long()
 
     @enable_keyboard_interrupt
-    def _track_step(self, detections: State, frame_idx: int, name: str) -> Results:
-        """Run one step of tracking."""
+    def _track_step(self, detections: State, frame_idx: int, name: str, timers: DifferenceTimers) -> None:
+        """Run one step of tracking.
+
+        Args:
+            detections: The detections for the current frame as a single :class:`State` object.
+            frame_idx: The current frame index used for logger stuff.
+            name: The name of the current step used for logger stuff.
+            timers: The timers to store the timing information of every step.
+        """
         N: int = len(detections)
         updated_tracks: dict[int, State] = {}
         new_states: list[State] = []
-        batch_times: dict[str, float] = {}
 
         time_batch_start: float = time.time()
 
@@ -217,22 +224,22 @@ class DGSEngine(EngineModule):
             ts.load_image_crop(store=True)
             ts.clean(keys=["image"])
 
-        batch_times["data"] = time.time() - time_batch_start
+        timers.add(name="data", prev_time=time_batch_start)
 
         if len(track_states) == 0 and N > 0:
             # No Tracks yet - every detection will be a new track!
             # Make sure to compute the embeddings for every detection, to ensure correct behavior of collate later on
             time_sim_start = time.time()
             _ = self.model.forward(ds=detections, target=detections)
-            batch_times["similarity"] = time.time() - time_sim_start
+            timers.add(name="similarity", prev_time=time_sim_start)
             # There are no tracks yet, therefore every detection is a new state!
             time_match_start = time.time()
             new_states += detections.split()
-            batch_times["match"] = time.time() - time_match_start
+            timers.add(name="match", prev_time=time_match_start)
         elif N > 0:
             time_sim_start = time.time()
             similarity = self.model.forward(ds=detections, target=collate_states(track_states))
-            batch_times["similarity"] = time.time() - time_sim_start
+            timers.add(name="similarity", prev_time=time_sim_start)
 
             # Solve Linear sum Assignment Problem (LAP/LSA).
             # Goal: obtain the best combination of Track-IDs and detection-IDs given the probabilities in the
@@ -262,18 +269,16 @@ class DGSEngine(EngineModule):
                     updated_tracks[tids[cid]] = states[rid]
                 else:
                     new_states.append(states[rid])
-            batch_times["match"] = time.time() - time_match_start
+            timers.add(name="match", prev_time=time_match_start)
 
         # update tracks
         time_track_update_start = time.time()
         self.tracks.add(tracks=updated_tracks, new=new_states)
+        timers.add(name="track", prev_time=time_track_update_start)
 
-        batch_times["track"] = time.time() - time_track_update_start
-        batch_times["batch"] = time.time() - time_batch_start
-        if N > 0:
-            batch_times["indiv"] = batch_times["batch"] / N
-
-        return batch_times
+        # get the overall timing of the batch
+        batch_time = timers.add(name="batch", prev_time=time_batch_start)
+        timers.add(name="indiv", prev_time=0.0, now=batch_time / N if N > 0 else batch_time)
 
     @enable_keyboard_interrupt
     @t.no_grad()
@@ -323,13 +328,15 @@ class DGSEngine(EngineModule):
 
         self.logger.info(f"#### Start Prediction {self.name} ####")
         self.logger.info("Loading, extracting, and predicting data, this might take a while...")
+
         start_time: float = time.time()
+        timers: DifferenceTimers = DifferenceTimers()
         detections: list[State]
 
         # batch get data from the data loader
         for detections in tqdm(self.test_dl, desc="DataLoader"):
             for detection in tqdm(detections, desc="Tracker", leave=False):
-                _ = self._track_step(detections=detection, frame_idx=frame_idx, name="Predict")
+                self._track_step(detections=detection, frame_idx=frame_idx, name="Predict", timers=timers)
 
                 active = collate_states(self.tracks.get_active_states())
 
@@ -412,14 +419,14 @@ class DGSEngine(EngineModule):
         self.submission.clear()
         self.tracks.reset()
 
-        self.writer.add_scalar(f"{name}/batch_size", dl.batch_size)
+        timers = DifferenceTimers()
 
         for detections in tqdm(dl, desc=f"DataLoader-ep{self.curr_epoch}", leave=False):
             for detection in detections:
 
                 N: int = len(detections)
 
-                batch_times = self._track_step(detections=detection, frame_idx=frame_idx, name="Track")
+                self._track_step(detections=detection, frame_idx=frame_idx, name="Track", timers=timers)
 
                 # get active states and skip adding if there are no active states
                 active_list = self.tracks.get_active_states()
@@ -439,14 +446,13 @@ class DGSEngine(EngineModule):
                 # store current submission data
                 self.submission.append(active)
 
-                # print and save debug and writer info
-
-                # Add timings and other metrics to the writer
-                self.writer.add_scalar(tag=f"{name}/BatchSize", scalar_value=N, global_step=frame_idx)
-                self.writer.add_scalars(main_tag=f"{name}/time", tag_scalar_dict=batch_times, global_step=frame_idx)
+                # ############ #
+                # END OF FRAME #
+                # ############ #
 
                 # print the resulting image if requested
                 if self.save_images:
+                    time_drawing = time.time()
                     active.draw(
                         save_path=os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png"),
                         show_kp=(
@@ -461,14 +467,44 @@ class DGSEngine(EngineModule):
                         ),
                         **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
                     )
+                    timers.add(name="draw", prev_time=time_drawing)
+
+                # Add timings and other metrics to the writer
+                self.writer.add_scalar(tag=f"{name}/Track/batch_size", scalar_value=N, global_step=frame_idx)
+                self.writer.add_scalars(
+                    main_tag=f"{name}/Track/time", tag_scalar_dict=timers.get_last(), global_step=frame_idx
+                )
+
                 # remove unused images and crops
                 active.clean()
 
                 frame_idx += 1
 
+            # ############ #
+            # END OF BATCH #
+            # ############ #
+
             # free up memory by removing the images and crops
             for d in detections:
                 d.clean()
+
+        # ############### #
+        # END OF Tracking #
+        # ############### #
+
+        self.writer.add_hparams(
+            hparam_dict={
+                "name": name,
+                "batch_size": dl.batch_size,
+                "len_dl": len(dl),
+                "curr_epoch": self.curr_epoch,
+                "inactivity_threshold": self.tracks.inactivity_threshold,
+                "max_track_length": self.tracks.N,
+            },
+            metric_dict=timers.get_avgs(),
+            global_step=self.curr_epoch,
+            run_name=f"Track-{name}-{self.name_safe}",
+        )
 
         self.submission.save()
         self.submission.clear()
@@ -529,14 +565,11 @@ class DGSEngine(EngineModule):
             frame_idx += 1
 
         # compute overall accuracy of this dataset given partially data
+        # results will be written to the writer in the evaluate method
         for k in ks:
             k_name: str = f"acc-{k:05.1f}"  # format 51.4% as 051.4
-            results[k_name] = float(results[k] / results["N"])
-            self.writer.add_scalar(tag=f"Eval/glob-{k_name}", scalar_value=results[k_name], global_step=self.curr_epoch)
+            results[k_name] = float(results[k]) / float(results["N"])
             results.pop(k)
-
-        self.writer.add_scalar(tag="Eval/N", scalar_value=int(results["N"]), global_step=self.curr_epoch)
-        results.pop("N")
 
         return results
 
@@ -573,7 +606,7 @@ class DGSEngine(EngineModule):
         if self.params_train.get("eval_accuracy", DEF_VAL["engine"]["dgs"]["eval_accuracy"]):
             results = self._eval_alpha()
             self.print_results(results)
-            self.write_results(results, prepend=f"Eval/{self.curr_epoch}")
+            self.write_results(results, prepend="Eval")
         else:
             self._eval_tracking()
             results = {}

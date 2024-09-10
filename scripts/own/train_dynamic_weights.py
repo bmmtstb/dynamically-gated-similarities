@@ -51,7 +51,7 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
 }
 
 NAMES: dict[str, list[str]] = {
-    "box_sim": ["fc_1_box"],
+    # "box_sim": ["fc_1_box"],
     # "box_sim": ["fc_1_box_sig"],
     "box_sim": ["sig_fc_1_box"],
     # "pose_sim_coco": ["fc_1_pose_coco", "conv_1_fc_1_pose_coco"],

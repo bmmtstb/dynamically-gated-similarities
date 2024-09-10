@@ -25,7 +25,7 @@ from dgs.models.scheduler import get_scheduler, SCHEDULERS
 from dgs.utils.config import DEF_VAL, get_sub_config, save_config
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import State
-from dgs.utils.timer import DifferenceTimer
+from dgs.utils.timer import DifferenceTimer, DifferenceTimers
 from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
 from dgs.utils.types import Config, FilePath, Results, Validations
 from dgs.utils.visualization import torch_show_image
@@ -311,10 +311,8 @@ class EngineModule(BaseModule, nn.Module):
         self.set_model_mode("train")
 
         # initialize variables
-        losses: list[float] = []
+        timers: DifferenceTimers = DifferenceTimers()
         epoch_t: DifferenceTimer = DifferenceTimer()
-        batch_t: DifferenceTimer = DifferenceTimer()
-        data_t: DifferenceTimer = DifferenceTimer()
         data: Union[State, list[State]]
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Train - Epoch", position=0):
@@ -335,17 +333,19 @@ class EngineModule(BaseModule, nn.Module):
                 leave=False,
             ):
                 curr_iter = (self.curr_epoch - 1) * len(self.train_dl) + batch_idx
-                data_t.add(time_batch_start)
+                timers.add(name="data", prev_time=time_batch_start)
 
+                time_optim_start = time.time()
                 # OPTIMIZE MODEL
-                loss = self._get_train_loss(data, curr_iter)
-                self.model.zero_grad()  # fixme
                 optimizer.zero_grad()
+                self.model.zero_grad()
+                loss = self._get_train_loss(data, curr_iter)
                 loss.backward()
                 optimizer.step()
                 # OPTIMIZE END
+                timers.add(name="forwbackw", prev_time=time_optim_start)
+                batch_t = timers.add(name="batch", prev_time=time_batch_start)
 
-                batch_t.add(time_batch_start)
                 epoch_loss += loss.item()
                 self.writer.add_scalars(
                     main_tag="Train/loss",
@@ -354,12 +354,7 @@ class EngineModule(BaseModule, nn.Module):
                 )
                 self.writer.add_scalars(
                     main_tag="Train/time",
-                    tag_scalar_dict={
-                        "data": data_t[-1],
-                        "batch": batch_t[-1],
-                        "indiv": batch_t[-1] / len(data),
-                        "forwbackw": batch_t[-1] - data_t[-1],
-                    },
+                    tag_scalar_dict={"indiv": batch_t / len(data), **timers.get_last()},
                     global_step=curr_iter,
                 )
                 self.writer.add_scalar("Train/lr", optimizer.param_groups[-1]["lr"], global_step=curr_iter)
@@ -381,30 +376,32 @@ class EngineModule(BaseModule, nn.Module):
             # END OF EPOCH #
             # ############ #
             epoch_t.add(time_epoch_start)
-            losses.append(epoch_loss)
-            self.logger.info(f"Training: epoch {self.curr_epoch} loss: {epoch_loss:.2f}")
+            # write the loss to the tensorboard
+            self.writer.add_hparams(
+                run_name=self.name_safe,
+                hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
+                metric_dict={
+                    "epoch_loss": epoch_loss,
+                    **{f"time_avg_{name}": val for name, val in timers.get_avgs().items()},
+                    **{f"time_sum_{name}": val for name, val in timers.get_sums().items()},
+                },
+                global_step=self.curr_epoch,
+            )
+            self.writer.add_scalar(tag="Train/epoch_loss", scalar_value=epoch_loss, global_step=self.curr_epoch)
             self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
 
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
-                metrics: dict[str, any] = self.evaluate()
-                self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
+                with t.no_grad():
+                    metrics: dict[str, any] = self.evaluate()
+                    self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
 
-                self.writer.add_hparams(
-                    hparam_dict={
-                        "lr": optimizer.param_groups[-1]["lr"],
-                        "batch_size": self.train_dl.batch_size,
-                        "loss_name": self.params_train["loss"],
-                        "optim_name": self.params_train["optimizer"],
-                        "scheduler_name": self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]),
-                        **dict(self.params_train.get("loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"])),
-                        **dict(self.params_train.get("optim_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"])),
-                        **dict(
-                            self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"])
-                        ),
-                    },
-                    metric_dict=metrics,
-                )
+                    self.writer.add_hparams(
+                        run_name=self.name_safe,
+                        hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
+                        metric_dict=metrics,
+                        global_step=self.curr_epoch,
+                    )
 
             # handle updating the learning rate scheduler
             lr_sched.step()
@@ -420,8 +417,6 @@ class EngineModule(BaseModule, nn.Module):
         # END OF TRAINING #
         # ############### #
 
-        self.logger.info(data_t.print(name="data", prepend="Training"))
-        self.logger.info(batch_t.print(name="batch", prepend="Training"))
         self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
         self.logger.info("#### Training complete ####")
 
@@ -497,6 +492,44 @@ class EngineModule(BaseModule, nn.Module):
                 delattr(self, attr)
         t.cuda.empty_cache()
         super().terminate()
+
+    def get_hparam_dict(self) -> dict[str, any]:
+        """Get the hyperparameters of the current engine.
+        Child-modules can inherit this method and add additional hyperparameters.
+
+        By default, all parameters from test and training are added to the hparam_dict.
+        """
+
+        def flatten_dict(parent_dict: dict[str, any], parent_key: str, child_dict: dict[str, any]) -> None:
+            """Flatten a nested dictionary in place."""
+            for sub_key, sub_value in child_dict.items():
+                new_key = f"{parent_key}_{sub_key}"
+                if isinstance(sub_value, dict):
+                    flatten_dict(parent_dict, parent_key=new_key, child_dict=sub_value)
+                else:
+                    parent_dict[new_key] = sub_value
+
+        hparams = {
+            "base_lr": self.params_train["optimizer_kwargs"]["lr"],
+            "batch_size_test": self.test_dl.batch_size if self.test_dl is not None else -1,
+            "batch_size_val": self.val_dl.batch_size if self.val_dl is not None else -1,
+            "batch_size_train": self.train_dl.batch_size if self.train_dl is not None else -1,
+        }
+
+        flatten_dict(parent_dict=hparams, parent_key="test", child_dict=self.params_test)
+        flatten_dict(parent_dict=hparams, parent_key="train", child_dict=self.params_train)
+
+        # SummaryWriter - value should be one of int, float, str, bool, or torch.Tensor
+        for k, v in hparams.items():
+            if isinstance(v, dict):
+                flatten_dict(parent_dict=hparams, parent_key=k, child_dict=v)
+            if isinstance(v, (tuple, list)):
+                try:
+                    hparams[k] = t.tensor(v)
+                except ValueError:
+                    hparams[k] = str(v)
+
+        return hparams
 
     def _normalize_test(self, tensor: t.Tensor) -> t.Tensor:
         """If ``params_test.normalize`` is True, we want to obtain the normalized prediction and target."""
