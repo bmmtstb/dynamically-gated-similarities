@@ -317,7 +317,7 @@ class EngineModule(BaseModule, nn.Module):
         data_t: DifferenceTimer = DifferenceTimer()
         data: Union[State, list[State]]
 
-        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=0):
+        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Train - Epoch", position=0):
             self.logger.debug(f"#### Training - Epoch {self.curr_epoch} ####")
 
             self.model.zero_grad()  # fixme, is this required?
@@ -332,7 +332,7 @@ class EngineModule(BaseModule, nn.Module):
                 enumerate(self.train_dl),
                 desc="Train - Batch",
                 position=1,
-                total=len(self.train_dl),
+                leave=False,
             ):
                 curr_iter = (self.curr_epoch - 1) * len(self.train_dl) + batch_idx
                 data_t.add(time_batch_start)
@@ -452,7 +452,7 @@ class EngineModule(BaseModule, nn.Module):
             optimizer: The current optimizer
             lr_sched: The current learning rate scheduler.
         """
-        curr_lr = optimizer.param_groups[-1]["lr"]
+        curr_lr = f"{optimizer.param_groups[-1]['lr']}:.10f".replace(".", "_")
 
         save_checkpoint(
             state={
@@ -462,7 +462,8 @@ class EngineModule(BaseModule, nn.Module):
                 "optimizer": optimizer.state_dict(),
                 "lr_scheduler": lr_sched.state_dict(),
             },
-            save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name_safe}_{curr_lr:.10f}/"),
+            save_dir=os.path.join(self.log_dir, f"./checkpoints/"),
+            prepend=f"lr{curr_lr}",
             verbose=self.logger.isEnabledFor(logging.INFO),
         )
 

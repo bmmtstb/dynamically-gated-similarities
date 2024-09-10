@@ -5,6 +5,7 @@ Train, evaluate, and test the dynamic weights with different individual weights 
 # pylint: disable=R0801
 
 import os
+from glob import glob
 from typing import Union
 
 import torch as t
@@ -30,6 +31,8 @@ DL_KEYS: list[tuple[str, str, str]] = [
 
 ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
     "fc_1_box": fc_linear(hidden_layers=[4, 1]),
+    "sig_fc_1_box": nn.Sequential(nn.Sigmoid(), fc_linear(hidden_layers=[4, 1])),
+    "fc_1_box_sig": nn.Sequential(fc_linear(hidden_layers=[4, 1]), nn.Sigmoid()),
     "fc_1_pose_coco": nn.Sequential(
         nn.Flatten(),
         fc_linear(hidden_layers=[17, 1]),
@@ -40,6 +43,7 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
         fc_linear(hidden_layers=[17, 1]),
     ),
     "fc_1_visual": fc_linear([512, 1]),
+    "fc_1_visual_sig": nn.Sequential(fc_linear([512, 1]), nn.Sigmoid()),
     "fc_2_visual": fc_linear([512, 128, 1]),
     "fc_3_visual": fc_linear([512, 256, 128, 1]),
     "fc_4_visual": fc_linear([512, 256, 128, 64, 1]),
@@ -48,6 +52,8 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
 
 NAMES: dict[str, list[str]] = {
     "box_sim": ["fc_1_box"],
+    # "box_sim": ["fc_1_box_sig"],
+    "box_sim": ["sig_fc_1_box"],
     # "pose_sim_coco": ["fc_1_pose_coco", "conv_1_fc_1_pose_coco"],
     "OSNet_sim": ["fc_1_visual", "fc_2_visual"],
     # "OSNetAIN_sim": ["fc_1_visual", "fc_2_visual"],
@@ -186,37 +192,40 @@ if __name__ == "__main__":
             cfg["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{alpha_mod_name}"
 
             for DL_KEY in DL_KEYS:
-                DL_TRAIN, DL_EVAL, DL_TEST = DL_KEY
+                DL_TRAIN_KEY, DL_EVAL_KEY, DL_TEST_KEY = DL_KEY
 
                 # ##################### #
                 # TRAINING & EVALUATION #
                 # ##################### #
-                print(f"Training on the ground-truth train-dataset with config: {DL_TRAIN} - {alpha_mod_name}")
-                _crop_h, _crop_w = cfg[DL_TRAIN]["crop_size"]
+                print(f"Training on the ground-truth train-dataset with config: {DL_TRAIN_KEY} - {alpha_mod_name}")
+                _crop_h, _crop_w = cfg[DL_TRAIN_KEY]["crop_size"]
                 lr = cfg["train"]["optimizer_kwargs"]["lr"]
 
                 # modify config
                 cfg["DGSModule"]["names"] = [SIM_NAME]
-                cfg["log_dir_suffix"] = f"./{SIM_NAME}/{alpha_mod_name}_{lr:.10f}/"
-                if "pt21" in DL_TRAIN:
+                cfg["log_dir_suffix"] = f"./{DL_TRAIN_KEY}/{SIM_NAME}/{alpha_mod_name}_{lr:.10f}/"
+                if "pt21" in DL_TRAIN_KEY:
                     cfg["train"]["submission"] = ["submission_pt21"]
-                elif "dance" in DL_TRAIN:
+                elif "dance" in DL_TRAIN_KEY:
                     cfg["train"]["submission"] = ["submission_MOT"]
                 else:
                     raise NotImplementedError
 
+                if len(glob(os.path.join(cfg["log_dir"], cfg["log_dir_suffix"], "./checkpoints/lr*-epoch001.pth"))) > 0:
+                    continue
+
                 # use the modified config and obtain the model used for training
-                engine_train = get_dgs_engine(config=cfg, dl_keys=(DL_TRAIN, DL_EVAL, None))
+                engine_train = get_dgs_engine(config=cfg, dl_keys=(DL_TRAIN_KEY, DL_EVAL_KEY, None))
 
                 # set model and initialize the weights
-                engine_train.model.combine.alpha_model = nn.ModuleList(ALPHA_MODULES[alpha_mod_name])
+                engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
                 engine_train.model.combine.alpha_model.to(device=engine_train.device)
                 init_model_params(engine_train.model.combine.alpha_model)
 
                 engine_train.train_model()
                 engine_train.terminate()
                 send_discord_notification(
-                    f"finished training and evaluation of {SIM_NAME} - {alpha_mod_name} - {DL_TRAIN}"
+                    f"finished training and evaluation of {SIM_NAME} - {alpha_mod_name} - {DL_TRAIN_KEY}"
                 )
 
                 # ####### #

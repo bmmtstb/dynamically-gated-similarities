@@ -57,6 +57,7 @@ def save_checkpoint(
     save_dir: FilePath,
     is_best: bool = False,
     remove_module_from_keys: bool = False,
+    prepend: str = "",
     verbose: bool = True,
 ) -> None:
     """Save a given checkpoint.
@@ -67,6 +68,7 @@ def save_checkpoint(
         is_best (bool, optional): if True, this checkpoint will be copied and named
             ``model-best.pth.tar``. Default is False.
         remove_module_from_keys: Whether to remove the 'module.' prepend in the state dict of the module.
+        prepend: A string to prepend to the filename.
         verbose (bool, optional): whether to print a confirmation when the checkpoint has been created. Default is True.
 
     Examples:
@@ -94,7 +96,9 @@ def save_checkpoint(
 
     # save
     epoch = int(state["epoch"])
-    fpath = os.path.join(save_dir, f"epoch-{epoch:0>3}.pth")
+    if len(prepend) > 0 and not prepend.endswith("-"):
+        prepend += "-"
+    fpath = os.path.join(save_dir, f"{prepend}epoch{epoch:0>3}.pth")
     t.save(state, fpath)
     if verbose:
         print(f"Checkpoint saved to '{fpath}'")
