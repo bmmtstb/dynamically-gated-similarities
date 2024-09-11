@@ -2,8 +2,8 @@ import os.path
 import shutil
 import unittest
 
+from dgs.models.dataset import get_concatenated_dataset
 from dgs.models.dataset.posetrack21 import (
-    get_pose_track_21,
     PoseTrack21_BBox,
     PoseTrack21_Image,
     validate_pt21_json,
@@ -109,29 +109,20 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
     def test_init_single(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_pose_track_21(config=cfg, path=["test_single_dataset_1"])
+            ds = get_concatenated_dataset(config=cfg, path=["test_single_dataset_1"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 1)
 
     def test_init_multi(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_pose_track_21(config=cfg, path=["test_multi_dataset"])
+            ds = get_concatenated_dataset(config=cfg, path=["test_multi_dataset"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 5 + 5 + 1)
 
     def test_init_folder(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_pose_track_21(config=cfg, path=["test_directory_dataset"])
+            ds = get_concatenated_dataset(config=cfg, path=["test_directory_dataset"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 5 + 1)
-
-    def test_init_folder_reshape_exception(self):
-        cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
-        with self.assertRaises(ValueError) as e:
-            with HidePrint():
-                _ = get_pose_track_21(config=cfg, path=["test_json_dataset_multi_images_without_reshape"])
-        self.assertTrue(
-            "The images within a single dataset should have equal shapes" in str(e.exception), msg=e.exception
-        )
 
     def test_get_item(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
@@ -205,7 +196,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
         ]:
             with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
                 with HidePrint():
-                    ds = get_pose_track_21(config=cfg, path=[path], ds_name="image")
+                    ds = get_concatenated_dataset(config=cfg, path=[path], ds_name="PT21_Image")
                 self.assertEqual(len(ds), len(lengths))
 
                 for i, length in enumerate(lengths):

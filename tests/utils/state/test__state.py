@@ -700,14 +700,17 @@ class TestStateFunctions(unittest.TestCase):
 
     def test_clean(self):
         s = State(**DUMMY_DATA)
+        s2 = State(**DUMMY_DATA)
         multi_s = State(**DUMMY_DATA_BATCH)
 
+        # check empty clean call
         self.assertTrue("image" in s)
         self.assertTrue("image_crop" in s)
         s.clean()
         self.assertTrue("image" not in s)
         self.assertTrue("image_crop" not in s)
 
+        # check multiple values in keys
         self.assertTrue("image" in multi_s)
         self.assertTrue("image_crop" in multi_s)
         multi_s.clean(["image", "image_crop", "embedding", "keypoints"])
@@ -716,8 +719,32 @@ class TestStateFunctions(unittest.TestCase):
         self.assertTrue("embedding" not in multi_s)
         self.assertTrue("keypoints" not in multi_s)
 
+        # check "all"
+        keys = [
+            "image",
+            "image_crop",
+            "keypoints",
+            "keypoints_local",
+            "joint_weight",
+            "heatmap",
+            "pred_tid",
+            "image_id",
+            "frame_id",
+            "person_id",
+            "class_id",
+            "track_id",
+        ]
+        self.assertTrue("bbox" in s2)
+        for key in keys:
+            self.assertTrue(key in s2, f"key: {key}")
+        s2.clean("all")
+        # bbox should still be present!
+        self.assertTrue("bbox" in s2)
+        for key in keys:
+            self.assertTrue(key not in s2, f"key: {key}")
+
         with self.assertRaises(ValueError) as e:
-            _ = s.clean("bbox")
+            _ = State(**DUMMY_DATA).clean("bbox")
         self.assertTrue("Cannot clean bounding box!" in str(e.exception), msg=e.exception)
 
 

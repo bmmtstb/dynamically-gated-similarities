@@ -53,11 +53,7 @@ class PoseTrack21Submission(SubmissionFile):
         super().__init__(config=config, path=path)
 
         # add the categories to the json data and create the empty lists for the images and annotations
-        self.data = {
-            "images": [],
-            "annotations": [],
-            "categories": PT21_CATEGORIES,
-        }
+        self.clear()
 
     def append(self, s: State, *_args, **_kwargs) -> None:
         """Given data, append to the created |PT21| submission file."""
@@ -154,3 +150,11 @@ class PoseTrack21Submission(SubmissionFile):
             )
 
         return anno_data
+
+    def clear(self) -> None:
+        """Clear the submission data."""
+        self.data = {
+            "images": [],
+            "annotations": [],
+            "categories": PT21_CATEGORIES,
+        }

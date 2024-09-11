@@ -49,9 +49,9 @@ vis_emb_gen:
     nof_classes: 10
 
 dataloader:
-    module_name: "PoseTrack21"
+    module_name: "Concat_PoseTrack21_BBox"
     dataset_path: "./tests/test_data/"
-    data_path: "./pt21/"
+    paths: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"
     batch_size: 2

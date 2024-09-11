@@ -12,24 +12,23 @@ log_dir: "./tests/test_data/TEST_dgs/"
 dgs:
     names: ["vis_sim", "pose_sim", "box_sim"]
     combine: "combine_sims"
-    similarity_softmax: false
-    combined_softmax: true
 
 combine_sims:
     module_name: "constant_alpha"
     alpha: [0.5, 0.30, 0.20]
+    softmax: true
 
 vis_sim:
     module_name: "torchreid"
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: [ "vis_sim", "vis_emb_gen" ]
+    softmax: false
 
     vis_emb_gen:
         module_name: "torchreid"
         model_name: "osnet_x0_25"
         nof_classes: 10
         weights: "./weights/osnet_x0_25_imagenet.pth"
-        softmax: true
 
 pose_sim:
     module_name: "oks"

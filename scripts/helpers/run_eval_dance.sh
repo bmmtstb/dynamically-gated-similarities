@@ -2,8 +2,17 @@
 
 # With lots of love from Chat-GPT
 
-# activate the virtual environment
-source ./venv/bin/activate
+# Check the operating system and activate the virtual environment accordingly
+if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+    # Linux or macOS
+    source ./venv/bin/activate
+elif [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    # Windows
+    ./venv/Scripts/activate
+else
+    echo "Unsupported OS: $OSTYPE"
+    exit 1
+fi
 
 # Define the base directory
 base_dir="./data/DanceTrack/"
@@ -40,6 +49,6 @@ for dir in $dirs; do
                         --PRINT_RESULTS False"
 
         # Execute the Python command
-        eval $python_command
+        eval "$python_command"
     fi
 done

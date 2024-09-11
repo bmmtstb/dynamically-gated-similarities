@@ -3,7 +3,7 @@ import shutil
 import unittest
 
 import gdown
-import torch
+import torch as t
 from torch import nn
 from torch.nn.functional import softmax as f_softmax
 from torchvision.tv_tensors import BoundingBoxes
@@ -36,18 +36,15 @@ class TestDGSModule(unittest.TestCase):
     def test_init_variants(self):
 
         cfg = fill_in_defaults(
-            {PATH[0]: {"similarity_softmax": True, "combined_softmax": True}},
+            {PATH[0]: {"new_track_weight": 0.43}},
             load_config("./tests/test_data/configs/test_config_dgs.yaml"),
         )
 
         with HidePrint():
             m = DGSModule(config=cfg, path=PATH)
 
-        self.assertTrue(isinstance(m.combine, nn.Module))
-        self.assertTrue(len(m.combined_softmax) == 1)
-
-        self.assertTrue(isinstance(m.sim_mods, nn.Module))
-        self.assertTrue(len(m.similarity_softmax) == 1)
+        self.assertTrue(isinstance(m.new_track_weight, t.Tensor))
+        self.assertTrue(t.allclose(m.new_track_weight, t.tensor(0.43)))
 
     def test_forward_equal_inputs(self):
         cfg = load_config("./tests/test_data/configs/test_config_dgs.yaml")
@@ -61,15 +58,15 @@ class TestDGSModule(unittest.TestCase):
         ds_input = State(
             filepath=img_crop_path,
             bbox=BoundingBoxes([0, 0, 100, 100], canvas_size=(256, 256), format="XYXY"),
-            keypoints=torch.ones((J, 2)),
-            joint_weight=torch.ones((J, 1)),
+            keypoints=t.ones((J, 2)),
+            joint_weight=t.ones((J, 1)),
             image_crop=load_test_image(img_name),
         )
 
         r = m.forward(ds_input, ds_input)
 
         self.assertEqual(list(r.shape), [1, 2])
-        self.assertTrue(torch.allclose(r, torch.tensor([1.0, 0], dtype=torch.float32)))
+        self.assertTrue(t.allclose(r, t.tensor([1.0, 0], dtype=t.float32)))
 
     def test_forward(self):
         cfg = load_config("./tests/test_data/configs/test_config_dgs.yaml")
@@ -84,84 +81,84 @@ class TestDGSModule(unittest.TestCase):
                 "image differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((5, J, 2)),
-                    joint_weight=torch.ones((5, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((5, J, 2)),
+                    joint_weight=t.ones((5, J, 1)),
                     validate=False,
                 ),
                 State(
                     filepath=("file_example_PNG_500kB.png", "866-256x256.jpg"),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((2, J, 2)),
-                    joint_weight=torch.ones((2, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((2, J, 2)),
+                    joint_weight=t.ones((2, J, 1)),
                     validate=False,
                 ),
-                torch.ones((5, 2)) * 0.5 * (pose_mod + box_mod) + torch.tensor([0.0, 1.0]).repeat(5, 1) * vis_mod,
-                0.2 * torch.ones((2, 5)),
+                t.ones((5, 2)) * 0.5 * (pose_mod + box_mod) + t.tensor([0.0, 1.0]).repeat(5, 1) * vis_mod,
+                0.2 * t.ones((2, 5)),
             ),
             (
                 "bbox differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((5, J, 2)),
-                    joint_weight=torch.ones((5, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((5, J, 2)),
+                    joint_weight=t.ones((5, J, 1)),
                     validate=False,
                 ),
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(2)),
-                    bbox=BoundingBoxes(torch.tensor([[0, 0, 5, 5], [1, 1, 6, 6]]), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((2, J, 2)),
-                    joint_weight=torch.ones((2, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([[0, 0, 5, 5], [1, 1, 6, 6]]), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((2, J, 2)),
+                    joint_weight=t.ones((2, J, 1)),
                     validate=False,
                 ),
-                torch.ones((5, 2)) * 0.5 * (vis_mod + pose_mod)
-                + f_softmax(torch.tensor([1.0, 16 / 34]).repeat(5, 1), dim=-1) * box_mod,
-                0.2 * torch.ones((2, 5)),
+                t.ones((5, 2)) * 0.5 * (vis_mod + pose_mod)
+                + f_softmax(t.tensor([1.0, 16 / 34]).repeat(5, 1), dim=-1) * box_mod,
+                0.2 * t.ones((2, 5)),
             ),
             (
                 "pose differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((5, J, 2)),
-                    joint_weight=torch.ones((5, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((5, J, 2)),
+                    joint_weight=t.ones((5, J, 1)),
                     validate=False,
                 ),
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(2)),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.stack([-1 * torch.ones((1, J, 2)), torch.ones(1, J, 2)]),
-                    joint_weight=torch.ones((2, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.stack([-1 * t.ones((1, J, 2)), t.ones(1, J, 2)]),
+                    joint_weight=t.ones((2, J, 1)),
                     validate=False,
                 ),
-                torch.ones((5, 2)) * 0.5 * (vis_mod + box_mod)
-                + f_softmax(torch.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * pose_mod,
-                0.2 * torch.ones((2, 5)),
+                t.ones((5, 2)) * 0.5 * (vis_mod + box_mod)
+                + f_softmax(t.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * pose_mod,
+                0.2 * t.ones((2, 5)),
             ),
             (
                 "joint weight differs",
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(5)),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((5, J, 2)),
-                    joint_weight=torch.ones((5, J, 1)),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(5, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((5, J, 2)),
+                    joint_weight=t.ones((5, J, 1)),
                     validate=False,
                 ),
                 State(
                     filepath=tuple("866-256x256.jpg" for _ in range(2)),
-                    bbox=BoundingBoxes(torch.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
-                    keypoints=torch.ones((2, J, 2)),
-                    joint_weight=torch.stack([torch.zeros((1, J, 1)), torch.ones(1, J, 1)]),
+                    bbox=BoundingBoxes(t.tensor([0, 0, 5, 5]).repeat(2, 1), canvas_size=(10, 10), format="XYXY"),
+                    keypoints=t.ones((2, J, 2)),
+                    joint_weight=t.stack([t.zeros((1, J, 1)), t.ones(1, J, 1)]),
                     validate=False,
                 ),
-                torch.ones((5, 2)) * 0.5 * (vis_mod + box_mod)
-                + f_softmax(torch.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * pose_mod,
-                0.2 * torch.ones((2, 5)),
+                t.ones((5, 2)) * 0.5 * (vis_mod + box_mod)
+                + f_softmax(t.tensor([0.0, 1.0]).repeat(5, 1), dim=-1) * pose_mod,
+                0.2 * t.ones((2, 5)),
             ),
         ]:
-            target_shape = torch.Size((len(ds_input), len(ds_target) + len(ds_input)))
-            target_inv_shape = torch.Size((len(ds_target), len(ds_input) + len(ds_target)))
+            target_shape = t.Size((len(ds_input), len(ds_target) + len(ds_input)))
+            target_inv_shape = t.Size((len(ds_target), len(ds_input) + len(ds_target)))
 
             with self.subTest(msg="msg: {}".format(msg)):
                 # make sure the image crops are loaded
@@ -177,11 +174,11 @@ class TestDGSModule(unittest.TestCase):
                 # combined softmax is True
                 out_values = f_softmax(out_values, dim=-1)
                 # add zeros for empty states
-                out_values = torch.cat([out_values, torch.zeros(len(ds_input), len(ds_input))], dim=-1)
-                self.assertTrue(torch.allclose(r, out_values, rtol=1e-3), (r[0], out_values[0]))
+                out_values = t.cat([out_values, t.zeros(len(ds_input), len(ds_input))], dim=-1)
+                self.assertTrue(t.allclose(r, out_values, rtol=1e-3), (r[0], out_values[0]))
 
-                inv_out = torch.cat([inv_out, torch.zeros(len(ds_target), len(ds_target))], dim=-1)
-                self.assertTrue(torch.allclose(r_inv, inv_out, rtol=1e-3), (r_inv, inv_out))
+                inv_out = t.cat([inv_out, t.zeros(len(ds_target), len(ds_target))], dim=-1)
+                self.assertTrue(t.allclose(r_inv, inv_out, rtol=1e-3), (r_inv, inv_out))
 
     def setUp(self):
         mkdir_if_missing(os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_dgs/"))

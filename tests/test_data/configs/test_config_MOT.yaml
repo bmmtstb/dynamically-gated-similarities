@@ -20,12 +20,12 @@ test_dataloader_img:
     module_name: "MOTImage"
     dataset_path: "./tests/test_data/"
     data_path: "./MOT_test/gt/gt.txt"
-    return_lists: true
+    collate_fn: "lists"
     batch_size: 1
 
 test_dataloader_img_batched:
     module_name: "MOTImage"
     dataset_path: "./tests/test_data/"
     data_path: "./MOT_test/gt/gt.txt"
-    return_lists: true
+    collate_fn: "lists"
     batch_size: 2

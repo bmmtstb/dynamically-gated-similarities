@@ -56,9 +56,13 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         nof_classes = 2
         cfg = fill_in_defaults(
             {
-                "is_training": False,
                 "device": "cpu",
-                "embed_gen": {"module_name": "torchreid", "model_name": "osnet_x0_25", "nof_classes": nof_classes},
+                "embed_gen": {
+                    "module_name": "torchreid",
+                    "model_name": "osnet_x0_25",
+                    "nof_classes": nof_classes,
+                    "is_training": False,
+                },
             },
             get_test_config(),
         )
@@ -67,6 +71,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
             m = TorchreidEmbeddingGenerator(config=cfg, path=["embed_gen"])
 
         self.assertTrue(isinstance(m, nn.Module))
+        self.assertFalse(m.is_training)
         self.assertFalse(m.training)
         self.assertTrue(isinstance(m.model, nn.Module))
         self.assertFalse(m.model.training)

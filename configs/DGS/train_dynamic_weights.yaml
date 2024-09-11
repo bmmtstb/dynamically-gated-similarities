@@ -1,0 +1,219 @@
+name: "Train-Dynamic-Weights-Individually"
+description: "Train and eval a similarity engine with a dynamic alpha combine module with a single similarity.
+
+During training, this runs over a whole (combined) dataset using all but the first frame of every video for training,
+and the custom ImageHistory dataset classes.
+
+For evaluation one of the following two approaches can be used:
+ - Evaluate the accuracy using the gt data and the accuracy predictions. Here the ImageHistory dataset class is used.
+ - Evaluate using the regular MOTA / HOTA pipeline.
+   Here a regular Image dataset class is used per video, iterating over every video.
+
+The tests are performed using the regular MOTA / HOTA pipeline. Every dataset contains one video."
+
+device: "cuda:0"
+print_prio: "INFO"
+#print_prio: "DEBUG"
+is_training: on
+log_dir: "./results/own/train_single/"
+log_dir_add_date: false
+# log_dir_suffix:  # will be set by python script
+
+# ###### #
+# ENGINE #
+# ###### #
+
+engine:
+    module_name: "DGSEngine"
+
+test:
+    inactivity_threshold: 15
+    max_track_length: 1
+    save_images: off
+    submission: "submission_pt21"  # will be changed in python script
+    # writer_log_dir_suffix: will be set by python script
+    
+train:
+    acc_k_train: [1, 5, 10, 20]
+    acc_k_eval: [0.1, 0.5, 1, 5, 10, 25]
+    # submission:  # will be set in python script
+    loss: "TorchMSELoss"
+    loss_kwargs: {}
+    optimizer: "Adam"
+    optimizer_kwargs:
+#        lr: 0.0001  # 1e-4
+        lr: 0.000001  # 1e-6
+        foreach: true
+    epochs: 1
+    save_interval: 1
+    scheduler: "StepLR"
+    scheduler_kwargs:
+        step_size: 5
+        gamma: 0.1
+
+# ####### #
+# MODULES #
+# ####### #
+
+submission_pt21:
+    module_name: "PoseTrack21"
+    # file: # will be set in python script
+
+submission_MOT:
+    module_name: "MOT"
+    # file: # will be set in python script
+
+dac:
+    module_name: "dynamic_alpha"
+    softmax: false
+
+DGSModule:
+    module_name: "DGS"
+    # names:  # will be set in python script
+    combine: "dac"
+    new_track_weight: 0.0
+
+# #### #
+# DATA #
+# #### #
+
+test_dl_dance_256x192:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    # data_path: # will be set in python script
+    paths: "./data/DanceTrack/test/**/det/rcnn_075_035_256x192.txt"
+    
+    batch_size: 1
+    collate_fn: "lists"
+    
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    
+    crop_key: "rcnn_075_035_256x192"
+
+
+val_dl_dance_256x192:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/"
+    # data_path: # will be set in python script
+    paths: "./data/DanceTrack/val/**/det/rcnn_075_035_256x192.txt"
+#    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+    
+    batch_size: 1
+    collate_fn: "lists"
+    
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    
+    crop_key: "rcnn_075_035_256x192"
+
+val_dl_dance_256x192_eval_acc:
+    module_name: "Concat_MOTImageHistory"
+    shuffle: false
+    dataset_path: "./data/DanceTrack/"
+    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+#    paths: "./data/DanceTrack/val_part/**/gt/gt.txt"
+    
+    L: 1
+    
+    batch_size: 1
+    collate_fn: "history"
+    
+    crop_key: "Crops"
+    crop_size: !!python/tuple [ 256, 192 ]
+    crop_mode: "zero-pad"
+
+
+train_dl_dance_256x192:
+    module_name: "Concat_MOTImageHistory"
+    shuffle: true
+    dataset_path: "./data/DanceTrack/"
+    paths: "./data/DanceTrack/train/**/gt/gt.txt"
+#    paths: "./data/DanceTrack/train_part/**/gt/gt.txt"
+    
+    L: 1
+    
+    batch_size: 1
+    collate_fn: "history"
+    
+    crop_key: "Crops"
+    crop_size: !!python/tuple [ 256, 192 ]
+    crop_mode: "zero-pad"
+
+# ################## #
+# SIMILARITY MODULES #
+# ################## #
+
+# BOX - IoU
+
+box_sim:
+    module_name: "iou"
+    softmax: false
+
+# Pose - OKS - COCO
+
+pose_sim_coco:
+    module_name: "oks"
+    format: "coco"
+    softmax: false
+
+# Visual - v1 - OSNet_x1_0 pretrained on ImageNet
+
+OSNet_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["OSNet_embed_gen"]
+    softmax: false
+
+OSNet_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    weights: "./weights/osnet_x1_0_imagenet.pth"
+    nof_classes: 1000
+    is_training: off
+
+
+# Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
+
+OSNetAIN_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["OSNetAIN_embed_gen" ]
+    softmax: false
+
+OSNetAIN_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_imagenet.pth"
+    nof_classes: 1000
+    is_training: off
+
+# Visual - v3 - resnet50 from same-domain Re-ID
+
+Resnet50_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["Resnet50_embed_gen"]
+    softmax: false
+
+Resnet50_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet50"
+    weights: "pretrained"
+    nof_classes: 1000
+    is_training: off
+
+# Visual - v4 - resnet152 from same-domain Re-ID
+
+Resnet152_sim:
+    module_name: "torchreid"
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["Resnet152_embed_gen"]
+    softmax: false
+
+Resnet152_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet152"
+    weights: "pretrained"
+    nof_classes: 1000
+    is_training: off

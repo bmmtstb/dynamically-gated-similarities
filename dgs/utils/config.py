@@ -33,7 +33,7 @@ def construct_yaml_tuple(self, node):  # pragma: no cover
 SafeConstructor.add_constructor("tag:yaml.org,2002:python/tuple", construct_yaml_tuple)
 
 
-def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
+def get_sub_config(config: Config, path: NodePath) -> Union[Config, any]:
     """
     Given a full configuration file in nested dict style,
     return the given subtree by using the items in path as node keys.
@@ -63,6 +63,8 @@ def get_sub_config(config: Config, path: list[str]) -> Union[Config, any]:
     """
     if not path:
         return config
+    if isinstance(path, str):
+        path = [path]
     if isinstance(config, dict) and path[0] in config:
         return get_sub_config(config[path[0]], path[1:])
     raise KeyError(f"Key {path[0]} does not exist in current configuration {config}.")

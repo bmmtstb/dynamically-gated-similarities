@@ -19,7 +19,7 @@ from dgs.models.similarity.torchreid import TorchreidVisualSimilarity
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer
-from dgs.utils.types import Config, Metric, Validations
+from dgs.utils.types import Config, Metric, Results, Validations
 
 train_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
@@ -293,6 +293,9 @@ class VisualSimilarityEngine(EngineModule):
         self.logger.info(f"#### Evaluation of {self.name} complete ####")
 
         return results
+
+    def evaluate(self) -> Results:
+        raise NotImplementedError
 
     def predict(self) -> t.Tensor:
         """Predict the visual embeddings for the test data.

@@ -28,6 +28,7 @@ module_validations: Validations = {
     "description": ["optional", str],
     "log_dir": ["optional", str],
     "log_dir_add_date": ["optional", bool],
+    "log_dir_suffix": ["optional", str],
     "precision": ["optional", ("any", [type, ("in", PRECISION_MAP.keys()), t.dtype])],
 }
 
@@ -99,6 +100,9 @@ class BaseModule(ABC):
         Whether to append the date to the ``log_dir``.
         If ``True``, The subdirectory that represents today will be added to the log directory ("./YYYYMMDD/").
         Default: ``DEF_VAL.base.log_dir_add_date`` .
+    log_dir_suffix (str, optional):
+        Suffix to add to the log directory.
+        Default: ``DEF_VAL.base.log_dir_suffix`` .
     precision (Union[type, str, torch.dtype], optional)
         The precision at which this module should operate.
         Default: ``DEF_VAL.base.precision`` .
@@ -136,6 +140,7 @@ class BaseModule(ABC):
                         if self.config.get("log_dir_add_date", DEF_VAL["base"]["log_dir_add_date"])
                         else ""
                     ),
+                    self.config.get("log_dir_suffix", DEF_VAL["base"]["log_dir_suffix"]),
                 )
             )
         )
@@ -218,10 +223,11 @@ class BaseModule(ABC):
 
                 # case name as string or in tuple with additional values
                 if isinstance(validation, (str, tuple, type)):
-                    if isinstance(validation, (str, type)):  # no additional data, therefore set data to None
-                        validation_name, data = validation, None
+                    if isinstance(validation, (str, type)):  # no additional data, therefore pass current params as data
+                        validation_name, data = validation, self.config
                     else:
                         validation_name, data = validation
+
                     # call predefined validate
                     if validate_value(value=value, data=data, validation=validation_name):
                         continue
@@ -278,13 +284,13 @@ class BaseModule(ABC):
 
     @property
     def is_training(self) -> bool:
-        """Get whether this module is set to training-mode."""
-        return self.config["is_training"]
+        """Get whether this module is set to training-mode. Will prioritize the module's setting over the global one."""
+        return self.params["is_training"] if "is_training" in self.params else self.config["is_training"]
 
     @property
     def device(self) -> t.device:
-        """Get the device of this module."""
-        return t.device(self.config["device"])
+        """Get the device of this module. Will prioritize the module's setting over the global one."""
+        return t.device(self.params["device"]) if "device" in self.params else t.device(self.config["device"])
 
     @property
     def name(self) -> str:
@@ -320,14 +326,15 @@ class BaseModule(ABC):
         Returns:
             The module on the specified device or in parallel.
         """
+
         train: bool = self.is_training if train is None else train
         # set torch mode
         if train:
             module.train()
         else:
             module.eval()
-        # send model to device(s) - multiple devices not supported
-        module = module.to(device=self.device)
+        # send model to device(s) - one model multiple devices currently not supported
+        module.to(device=self.device)
         return module
 
     def terminate(self) -> None:  # pragma: no cover
@@ -336,7 +343,8 @@ class BaseModule(ABC):
         If nothing has to be done, just pass.
         Is used for terminating parallel execution and threads in specific models.
         """
-        for handler in self.logger.handlers:
-            self.logger.removeHandler(handler)
-        del self.logger
+        if hasattr(self, "logger"):
+            for handler in self.logger.handlers:
+                self.logger.removeHandler(handler)
+            del self.logger
         t.cuda.empty_cache()

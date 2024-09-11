@@ -36,7 +36,7 @@ dataloader:
     drop_last: false
     shuffle: false
     workers: 0  # right now there is no full multi device support
-    return_lists: false
+    collate_fn: null
 
 video_dataset:
     stream: "video"
@@ -78,6 +78,7 @@ base:
     description: ""
     log_dir: "./results/"
     log_dir_add_date: true
+    log_dir_suffix: ""
     precision: "float32"
 
 
@@ -111,28 +112,20 @@ engine:
         show_keypoints: true
         show_skeleton: true
         draw_kwargs: {}
-
-    sim:
-        metric_kwargs: {}
-        image_key: "image_crop"
         acc_k_train: [ 1, 5, 10, 20, 50 ]
-        acc_k_test: [ 1, 5, 10, 20, 50 ]
-
+        acc_k_eval: [ 1, 5, 10, 20, 50 ]
+        eval_accuracy: true
 
 similarity:
+    softmax: true
+    
     torchreid:
-        softmax: false
         sim_kwargs: {}
 
     oks:
-        softmax: false
-
-    iou:
-        softmax: false
+        kp_dim: 2
 
 dgs:
-    similarity_softmax: true
-    combined_softmax: true
     new_track_weight: 0.0
 
 embed_gen:
@@ -154,3 +147,6 @@ embed_gen:
             nof_kernels: 5
             hidden_layers: []
             hidden_layers_kp: []
+            
+combine:
+    softmax: true

@@ -8,7 +8,7 @@ from glob import glob
 import torch as t
 import torchvision.tv_tensors as tvte
 
-from dgs.models.dataset.dataset import ImageDataset
+from dgs.models.dataset.dataset import ImageDataset, ImageHistoryDataset
 from dgs.utils.config import DEF_VAL
 from dgs.utils.exceptions import InvalidPathException
 from dgs.utils.files import mkdir_if_missing, to_abspath
@@ -17,7 +17,14 @@ from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Valida
 from dgs.utils.utils import HidePrint
 
 MOT_validations: Validations = {
-    "data_path": [str],
+    # optional
+    "file_separator": ["optional", str],
+    "seqinfo_path": ["optional", str],
+    "seqinfo_key": ["optional", str],
+    "crop_key": ["optional", str],
+}
+
+MOTHistory_validations: Validations = {
     # optional
     "file_separator": ["optional", str],
     "seqinfo_path": ["optional", str],
@@ -149,6 +156,8 @@ def load_MOT_file(
     seqinfo_key = seqinfo_key if seqinfo_key is not None else DEF_VAL["submission"]["MOT"]["seqinfo_key"]
     seqinfo: dict[str, any] = load_seq_ini(fp=seqinfo_fp, key=seqinfo_key)
 
+    ds_id: str = re.findall(r"\d+", seqinfo["name"])[-1]
+
     crop_key = crop_key if crop_key is not None else DEF_VAL["dataset"]["MOT"]["crop_key"]
     crop_info: dict[str, any] = load_seq_ini(fp=seqinfo_fp, key=crop_key)
 
@@ -162,8 +171,11 @@ def load_MOT_file(
     assert all(len(os.path.basename(path).split(".")[0]) == img_name_digits for path in all_img_paths)
     img_shape: ImgShape = (int(seqinfo["imHeight"]), int(seqinfo["imWidth"]))
 
-    # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
-    map_pid_to_cid: dict[int, int] = {int(pid): int(i) for i, pid in enumerate(sorted(set(line[1] for line in lines)))}
+    # create a mapping from person id to a (custom) class id containing the dataset id
+    # this is necessary, because the person ids are not unique across videos
+    map_pid_to_cid: dict[int, int] = {
+        int(pid): int(f"1{i}{ds_id}") for i, pid in enumerate(sorted(set(line[1] for line in lines)))
+    }
 
     states = []
     for frame_id in range(1, int(seqinfo["seqLength"]) + 1):
@@ -223,9 +235,6 @@ class MOTImage(ImageDataset):
     Params
     ------
 
-    data_path (FilePath):
-        The local or absolute path to the txt or csv file containing the MOT annotations.
-
     Optional Params
     ---------------
 
@@ -260,4 +269,53 @@ class MOTImage(ImageDataset):
         """Most of the state is available, now just load the image crops."""
         with HidePrint():  # don't print, that image crops are computed
             self.get_image_crops(a)
+        return a
+
+
+class MOTImageHistory(ImageHistoryDataset):
+    """Load a ground-truth- or detection-file in the |MOT|_ format by making sure,
+    that all detections except the first ``L`` ones are loaded and are returned with the history.
+
+    Params
+    ------
+
+    data_path (FilePath):
+        The local or absolute path to the txt or csv file containing the MOT annotations.
+
+    Optional Params
+    ---------------
+
+    file_separator (str, optional):
+        The str or regular expression used to split the lines in the annotation file.
+        Default ``DEF_VAL["dataset"]["MOT"]["file_separator"]``.
+    crop_key (str, optional):
+        The name of the key in the seqinfo file containing the info for the image crops.
+        Default ``DEF_VAL["dataset"]["MOT"]["crop_key"]``.
+    seqinfo_path (str, optional):
+        The optional path to the ``seqinfo.ini`` file.
+        Default ``DEF_VAL["dataset"]["MOT"]["seqinfo_path"]``.
+    seqinfo_key (str, optional):
+        The key to use in the seqinfo file.
+        Default ``DEF_VAL["submission"]["MOT"]["seqinfo_key"]``.
+
+    """
+
+    def __init__(self, config: Config, path: NodePath):
+        super().__init__(config, path)
+
+        self.validate_params(MOTHistory_validations)
+
+        self.data: list[State] = load_MOT_file(
+            fp=self.get_path_in_dataset(self.params["data_path"]),
+            sep=self.params.get("file_separator", DEF_VAL["dataset"]["MOT"]["file_separator"]),
+            crop_key=self.params.get("crop_key", DEF_VAL["dataset"]["MOT"]["crop_key"]),
+            seqinfo_fp=self.params.get("seqinfo_path", DEF_VAL["dataset"]["MOT"]["seqinfo_path"]),
+            seqinfo_key=self.params.get("seqinfo_key", DEF_VAL["submission"]["MOT"]["seqinfo_key"]),
+        )
+
+    def arbitrary_to_ds(self, a: list[State], idx: int) -> list[State]:
+        """Make sure"""
+        with HidePrint():  # don't print, that image crops are computed
+            for a_i in a:
+                self.get_image_crops(a_i)
         return a

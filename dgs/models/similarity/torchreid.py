@@ -18,7 +18,6 @@ torchreid_validations: Config = {
     "metric": [str, ("in", METRICS.keys())],
     "embedding_generator_path": [list, ("forall", str)],
     # optional
-    "softmax": ["optional", bool],
     "metric_kwargs": ["optional", dict],
 }
 
@@ -53,16 +52,6 @@ class TorchreidVisualSimilarity(SimilarityModule):
     metric_kwargs (dict, optional):
         Possibly pass additional kwargs to the similarity function.
         Default ``DEF_VAL.similarity.torchreid.sim_kwargs``.
-    softmax (bool, optional):
-        Whether to compute the softmax of the similarity as the last step of the model.
-        Some metrics do not return a probability distribution or even values in range :math:`[0, 1]`,
-        which makes it hard to sum them up using the :class:`~.CombineSimilaritiesModule` modules.
-        For example, the cosine similarity returns values in range :math:`[-1, 1]`,
-        where 1 means that the vectors are close.
-        On the other hand, the Euclidean distance will be larger for values that are further apart, with no upper limit.
-        You can use the :class:`~.NegativeSoftmaxEuclideanDistance` or
-        :class:`~.NegativeSoftmaxEuclideanSquaredDistance` as metric.
-        Default ``DEF_VAL.similarity.torchreid.softmax``.
     """
 
     model: TorchreidEmbeddingGenerator
@@ -77,11 +66,6 @@ class TorchreidVisualSimilarity(SimilarityModule):
 
         func = self._init_func()
         self.add_module(name="func", module=func)
-
-        self.final = nn.Sequential()
-        self.final = self.final.to(device=self.device)
-        if self.params.get("softmax", DEF_VAL["similarity"]["torchreid"]["softmax"]):
-            self.final.append(nn.Softmax(dim=-1))
 
     def _init_func(self) -> nn.Module:
         """Initialize the similarity function"""
@@ -144,4 +128,4 @@ class TorchreidVisualSimilarity(SimilarityModule):
 
         dist = self.func(pred_embeds, targ_embeds)
 
-        return self.final(dist)
+        return self.softmax(dist)

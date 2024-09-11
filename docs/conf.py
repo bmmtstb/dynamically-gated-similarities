@@ -66,6 +66,10 @@ rst_prolog = """
 .. _torchreid: https://github.com/KaiyangZhou/deep-person-reid
 .. |MOT| replace:: ``MOT``
 .. _MOT: https://motchallenge.net/
+.. |MOTA| replace:: ``MOTA``
+.. _MOTA: _metrics_mota
+.. |HOTA| replace:: ``HOTA``
+.. _HOTA: _metrics_hota
 """
 
 # tell autodoc that we don't want these packages to be imported

@@ -19,7 +19,7 @@ VALIDATIONS: dict[str, Validator] = {
     # types
     "None": (lambda x, _: x is None),
     "not None": (lambda x, _: x is not None),
-    "number": (lambda x, _: isinstance(x, int | float)),
+    "number": (lambda x, _: isinstance(x, (int, float))),
     "callable": (lambda x, _: callable(x)),
     "iterable": (lambda x, _: isinstance(x, Iterable)),
     "sized": (lambda x, _: isinstance(x, Sized)),
@@ -71,6 +71,11 @@ VALIDATIONS: dict[str, Validator] = {
     ),
     "folder exists in folder": (
         lambda x, f: isinstance(x, str) and isinstance(f, str) and os.path.isdir(os.path.join(f, x))
+    ),
+    # complicated recurring validations
+    "NodePath": (
+        lambda x, d: (isinstance(x, str) and x in d)
+        or (isinstance(x, list) and x[0] in d and ((len(x) == 1) or (VALIDATIONS["NodePath"](x[1:], d[x[0]]))))
     ),
     # logical operators, including nested validations
     "eq": (lambda x, d: x == d),

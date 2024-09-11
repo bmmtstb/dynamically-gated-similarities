@@ -848,9 +848,21 @@ class State(UserDict):
         Args:
             keys: The name of the keys to remove.
                 If a key is not present in self.data, the key is ignored.
+                If keys is None, the default keys ``["image", "image_crop"]`` are removed.
+                If keys is "all", all keys that contain tensors are removed except for the bounding box.
         """
         if keys is None:
             keys = ["image", "image_crop"]
+        elif keys == "all":
+            keys = [
+                k
+                for k, v in self.data.items()
+                if k != "bbox"
+                and (
+                    isinstance(v, t.Tensor)
+                    or (isinstance(v, (list, tuple)) and all(isinstance(sub_v, t.Tensor) for sub_v in v))
+                )
+            ]
         elif isinstance(keys, str):
             keys = [keys]
         if "bbox" in keys:
@@ -968,8 +980,15 @@ def collate_states(batch: Union[list[State], State]) -> State:
 def collate_lists(batch: Union[State, list[State], list[list[State]]]) -> list[State]:
     """Collate function used to not concatenate a batch of States.
 
+    Given the batch data, return a list of states.
+    If the batch data is a single state, a list with the single state is returned.
+    If the batch data is a list of states, the list is returned.
+    if the batch data is a list containing list of states,
+    the sub-list of states is collated using the regular :func:`collate_states` function.
+    Thus, a list of collated states is returned.
+
     Args:
-        batch: Either a batch of States, a single State, or a list containing list of States.
+        batch: Either a list of States, a single State, or a list containing list of States.
 
     Returns:
         A list of States. Every State can have a different number of items.
@@ -978,6 +997,46 @@ def collate_lists(batch: Union[State, list[State], list[list[State]]]) -> list[S
         return [batch]
     if isinstance(batch, list) and all(isinstance(b, State) for b in batch):
         return batch
-    if isinstance(batch, list) and all(isinstance(b, list) for b in batch):
+    if isinstance(batch, list) and all(
+        isinstance(b, list) and all(isinstance(sub_state, State) for sub_state in b) for b in batch
+    ):
         return [collate_states(b) for b in batch]
     raise NotImplementedError
+
+
+def collate_list_of_history(batch: Union[State, list[State], list[list[State]]]) -> list[State]:
+    """Collate function used to combine the data returned in the format of a class:`ImageHistoryDataset`.
+
+    With ``N`` detections, a batch of data contains ``N`` lists, each with ``L+1`` States.
+    This functions collates the ``i``-th State of each of the ``N`` lists into a single list of States
+    of length ``L+1``.
+
+    Args:
+        batch: Either a single list with ``L+1`` :class:`States`
+            or a list containing ``N`` list, each containing ``L+1`` :class:`States`.
+            A single State is also supported, even though, this shouldn't really be feasible.
+
+    Returns:
+        A list of States.
+        Because there can be a different number of detections, every State can still have a different number of items.
+    """
+    if isinstance(batch, State):
+        return [batch]
+    if isinstance(batch, list) and all(isinstance(b, State) for b in batch):
+        return batch
+    # a list containing a single list of states -> no collating necessary
+    if (
+        isinstance(batch, list)
+        and len(batch) == 1
+        and isinstance(batch[0], list)
+        and all(isinstance(i, State) for i in batch[0])
+    ):
+        return batch[0]
+    # a list containing multiple list of states, all with the same length, containing states
+    if isinstance(batch, list) and all(
+        isinstance(b, list) and len(b) == len(batch[0]) and all(isinstance(sub_state, State) for sub_state in b)
+        for b in batch
+    ):
+        return [collate_states([batch[i][l] for i in range(len(batch))]) for l in range(len(batch[0]))]
+
+    raise NotImplementedError(f"Unknown format of batch - length: {len(batch)} type: {type(batch)}")

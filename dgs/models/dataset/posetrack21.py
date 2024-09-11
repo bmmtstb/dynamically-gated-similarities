@@ -21,16 +21,15 @@ import os
 import re
 import shutil
 import warnings
-from typing import Type, Union
+from typing import Union
 
 import imagesize
 import numpy as np
 import torch as t
-from torch.utils.data import ConcatDataset, Dataset as TorchDataset
 from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
-from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, dataloader_validations, ImageDataset
+from dgs.models.dataset.dataset import BBoxDataset, ImageDataset
 from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataset
 from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import PROJECT_ROOT
@@ -50,17 +49,8 @@ with warnings.catch_warnings():
         # noinspection PyUnresolvedReferences
         from torchreid.reid.data import ImageDataset as TorchreidImageDataset
 
-# Do not allow import of 'PoseTrack21' base dataset
-__all__ = [
-    "validate_pt21_json",
-    "get_pose_track_21",
-    "PoseTrack21_BBox",
-    "PoseTrack21_Image",
-    "PoseTrack21Torchreid",
-]
 
 pt21_json_validations: Validations = {
-    "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
     "crops_folder": [str, ("folder exists", False)],
     # optional
     "id_map": ["optional", str],
@@ -333,89 +323,12 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
     )
 
 
-def get_pose_track_21(config: Config, path: NodePath, ds_name: str = "bbox") -> Union[BaseDataset, TorchDataset]:
-    """Load PoseTrack JSON files.
-
-    The path parameter can be one of the following:
-
-    - a path to a directory
-    - a single json filepath
-    - a list of json filepaths
-
-    In all cases, the path can be
-        a global path,
-        a path relative to the package,
-        or a local path under the dataset_path directory.
-
-    Args:
-        config (Config): The overall configuration for the tracker.
-        path (NodePath): The path to the dataset-specific parameters.
-        ds_name (str): Name of the dataset type to use.
-            Either "image" for :class:`.PoseTrack21_Image` or "bbox" for :class:`.PoseTrack21_BBox` .
-
-    Returns:
-        An instance of TorchDataset, containing the requested dataset(s) as concatenated torch dataset.
-    """
-    ds = PoseTrack21(config, path)
-    ds.validate_params(pt21_json_validations)
-    ds.validate_params(dataloader_validations)
-
-    ds_type: Union[Type[PoseTrack21_Image], Type[PoseTrack21_BBox]] = (
-        PoseTrack21_Image if ds_name == "image" else PoseTrack21_BBox
-    )
-
-    if isinstance(data_path := ds.params["data_path"], (list, tuple)):
-        print(f"Loading list of datasets from {os.path.normpath(ds.params['dataset_path'])}, paths: {data_path}")
-        return ConcatDataset(
-            [ds_type(config=config, path=path, data_path=ds.get_path_in_dataset(path=p)) for p in tqdm(data_path)]
-        )
-
-    # path is either directory or single json file
-    paths: list[FilePath]
-    abs_path: FilePath = ds.get_path_in_dataset(ds.params["data_path"])
-    if os.path.isfile(abs_path):
-        paths = [abs_path]
-    else:
-        paths = [
-            os.path.normpath(os.path.join(abs_path, child_path))
-            for child_path in os.listdir(abs_path)
-            if child_path.endswith(".json")
-        ]
-        paths.sort()  # make sure systems behave similarly
-
-    if len(paths) == 1:
-        print(f"Loading dataset: {paths[0]}")
-        return ds_type(config=config, path=path, data_path=paths[0])
-
-    return ConcatDataset(
-        [
-            ds_type(config=config, path=path, data_path=p)
-            for p in tqdm(paths, desc=f"Loading datasets: {os.path.normpath(ds.params['dataset_path'])}")
-        ]
-    )
-
-
-class PoseTrack21(BaseDataset):
-    """Non-Abstract class for PoseTrack21 dataset to be able to initialize it in :func:`get_pose_track_21`.
-
-    Should not be instantiated.
-    """
-
-    def __init__(self, config: Config, path: NodePath) -> None:
-        super().__init__(config=config, path=path)
-
-    def arbitrary_to_ds(self, a, idx: int) -> State:
-        raise NotImplementedError
-
-
 class PoseTrack21_BBox(BBoxDataset):
-    """Load a single precomputed json file from the |PT21| dataset.
+    """Load a single precomputed json file from the |PT21|_ dataset.
 
     Params
     ------
 
-    data_path (FilePath):
-        The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
     id_map (FilePath, optional):
         The (local or absolute) path to a json file containing a mapping from person ID to classifier ID.
         Both IDs are python integers, the IDs of the classifier should be continuous and zero-indexed.

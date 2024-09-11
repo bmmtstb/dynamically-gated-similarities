@@ -8,6 +8,7 @@ import time
 import warnings
 from abc import abstractmethod
 from datetime import datetime
+from typing import Union
 
 import torch as t
 from matplotlib import pyplot as plt
@@ -127,10 +128,9 @@ class EngineModule(BaseModule, nn.Module):
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
-    # pylint: disable = too-many-instance-attributes
+    # pylint: disable = too-many-instance-attributes, too-many-arguments
 
     loss: nn.Module
-    optimizer: optim.Optimizer
     model: nn.Module
     writer: SummaryWriter
 
@@ -139,17 +139,18 @@ class EngineModule(BaseModule, nn.Module):
     test_dl: TorchDataLoader
     """The torch DataLoader containing the test data."""
 
+    val_dl: TorchDataLoader
+    """The torch DataLoader containing the validation data."""
+
     train_dl: TorchDataLoader
     """The torch DataLoader containing the training data."""
-
-    lr_sched: optim.lr_scheduler.LRScheduler
-    """The learning-rate scheduler can be changed by setting ``engine.lr_scheduler = ...``."""
 
     def __init__(
         self,
         config: Config,
         model: nn.Module,
         test_loader: TorchDataLoader,
+        val_loader: TorchDataLoader = None,
         train_loader: TorchDataLoader = None,
         **_kwargs,
     ):
@@ -162,8 +163,7 @@ class EngineModule(BaseModule, nn.Module):
         self.test_dl = test_loader
 
         # Set up general attributes
-        self.register_module("model", model)
-        self.model = self.configure_torch_module(self.model, train=self.is_training)
+        self.register_module("model", self.configure_torch_module(model))
 
         # Logging
         self.writer = SummaryWriter(
@@ -174,7 +174,6 @@ class EngineModule(BaseModule, nn.Module):
             comment=self.config.get("description"),
             **self.params_test.get("writer_kwargs", DEF_VAL["engine"]["test"]["writer_kwargs"]),
         )
-        self.writer.add_scalar("Test/batch_size", self.test_dl.batch_size)
         # save config in the out-folder to make sure values haven't changed when validating those files
         save_config(
             filepath=os.path.join(self.log_dir, f"config-{self.name_safe}-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
@@ -195,8 +194,12 @@ class EngineModule(BaseModule, nn.Module):
             self.validate_params(train_validations, attrib_name="params_train")
             if train_loader is None:
                 raise InvalidConfigException("is_training is turned on but train_loader is None.")
-            # data loader
+            if val_loader is None:
+                raise InvalidConfigException("is_training is turned on but val_loader is None.")
+            # save train and validation data loader
             self.train_dl = train_loader
+            self.val_dl = val_loader
+            self.writer.add_scalar("Train/batch_size", self.train_dl.batch_size)
 
             # epochs
             self.epochs: int = self.params_train.get("epochs", DEF_VAL["engine"]["train"]["epochs"])
@@ -206,24 +209,12 @@ class EngineModule(BaseModule, nn.Module):
                 "save_interval", DEF_VAL["engine"]["train"]["save_interval"]
             )
 
-            # modules
+            # set up loss function
             self.loss = get_loss_function(self.params_train["loss"])(
                 **self.params_train.get(
                     "loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]
                 )  # optional loss kwargs
             )
-            self.optimizer = get_optimizer(self.params_train["optimizer"])(
-                self.model.parameters(),
-                **self.params_train.get(
-                    "optimizer_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"]
-                ),  # optional optimizer kwargs
-            )
-            # the learning-rate schedulers need the optimizer for instantiation
-            self.lr_sched = get_scheduler(self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]))(
-                optimizer=self.optimizer,
-                **self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"]),
-            )
-            self.writer.add_scalar("Train/batch_size", self.train_dl.batch_size)
 
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
@@ -247,9 +238,20 @@ class EngineModule(BaseModule, nn.Module):
             self.logger.info(f"Config Description: {self.config['description']}")
 
         if self.is_training:
+            # train and eval the model
             self.train_model()
 
         self.test()
+
+    @abstractmethod
+    @enable_keyboard_interrupt
+    def evaluate(self) -> Results:
+        """Run tests, defined in Sub-Engine.
+
+        Returns:
+            dict[str, any]: A dictionary containing all the computed accuracies, metrics, ... .
+        """
+        raise NotImplementedError
 
     @abstractmethod
     @enable_keyboard_interrupt
@@ -272,13 +274,37 @@ class EngineModule(BaseModule, nn.Module):
         raise NotImplementedError
 
     @enable_keyboard_interrupt
-    def train_model(self) -> None:
+    def train_model(self) -> optim.Optimizer:
         """Train the given model using the given loss function, optimizer, and learning-rate schedulers.
 
         After every epoch, the current model is tested and the current model is saved.
+
+        Returns:
+            The current optimizer after training.
         """
+        # pylint: disable=too-many-statements
+
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")
+        if (
+            self.model is None
+            or not isinstance(self.model, nn.Module)
+            or (isinstance(self.model, nn.Sequential) and len(self.model) == 0)
+        ):
+            raise ValueError("No model was given. Can't continue.")
+
+        # modules
+        optimizer = get_optimizer(self.params_train["optimizer"])(
+            self.model.parameters(),
+            **self.params_train.get(
+                "optimizer_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"]
+            ),  # optional optimizer kwargs
+        )
+        # the learning-rate schedulers need the optimizer for instantiation
+        lr_sched = get_scheduler(self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]))(
+            optimizer=optimizer,
+            **self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"]),
+        )
 
         self.logger.info("#### Start Training ####")
 
@@ -289,13 +315,13 @@ class EngineModule(BaseModule, nn.Module):
         epoch_t: DifferenceTimer = DifferenceTimer()
         batch_t: DifferenceTimer = DifferenceTimer()
         data_t: DifferenceTimer = DifferenceTimer()
-        data: State
+        data: Union[State, list[State]]
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Epoch", position=0):
-            self.logger.info(f"#### Training - Epoch {self.curr_epoch} ####")
+            self.logger.debug(f"#### Training - Epoch {self.curr_epoch} ####")
 
-            self.model.zero_grad()  # fixme
-            self.optimizer.zero_grad()
+            self.model.zero_grad()  # fixme, is this required?
+            optimizer.zero_grad()
 
             epoch_loss = 0
             time_epoch_start = time.time()
@@ -314,9 +340,9 @@ class EngineModule(BaseModule, nn.Module):
                 # OPTIMIZE MODEL
                 loss = self._get_train_loss(data, curr_iter)
                 self.model.zero_grad()  # fixme
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
-                self.optimizer.step()
+                optimizer.step()
                 # OPTIMIZE END
 
                 batch_t.add(time_batch_start)
@@ -336,7 +362,16 @@ class EngineModule(BaseModule, nn.Module):
                     },
                     global_step=curr_iter,
                 )
-                self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
+                self.writer.add_scalar("Train/lr", optimizer.param_groups[-1]["lr"], global_step=curr_iter)
+
+                # clean or remove all the tensors to free up cuda memory
+                if isinstance(data, State):
+                    data.clean()
+                elif isinstance(data, list):
+                    for d in data:
+                        d.clean()
+                del data
+
                 # ############ #
                 # END OF BATCH #
                 # ############ #
@@ -352,29 +387,33 @@ class EngineModule(BaseModule, nn.Module):
 
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
-                metrics: dict[str, any] = self.test()
-                self.save_model(epoch=self.curr_epoch, metrics=metrics)
+                metrics: dict[str, any] = self.evaluate()
+                self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
+
                 self.writer.add_hparams(
                     hparam_dict={
-                        "lr": self.optimizer.param_groups[-1]["lr"],
+                        "lr": optimizer.param_groups[-1]["lr"],
                         "batch_size": self.train_dl.batch_size,
                         "loss_name": self.params_train["loss"],
-                        "loss_kwargs": self.params_train.get("loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]),
                         "optim_name": self.params_train["optimizer"],
-                        "optim_kwargs": self.params_train.get(
-                            "optim_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"]
-                        ),
-                        "scheduler": self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]),
-                        "scheduler_kwargs": self.params_train.get(
-                            "scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"]
+                        "scheduler_name": self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]),
+                        **dict(self.params_train.get("loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"])),
+                        **dict(self.params_train.get("optim_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"])),
+                        **dict(
+                            self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"])
                         ),
                     },
                     metric_dict=metrics,
                 )
 
             # handle updating the learning rate scheduler
-            self.lr_sched.step()
+            lr_sched.step()
 
+            # reset the model and optimizer
+            self.model.zero_grad()
+            optimizer.zero_grad()
+
+            # update and force write the writer
             self.writer.flush()
 
         # ############### #
@@ -388,6 +427,8 @@ class EngineModule(BaseModule, nn.Module):
 
         self.writer.flush()
 
+        return optimizer
+
     def set_model_mode(self, mode: str) -> None:
         """Set model mode to train or test."""
         if mode not in ["train", "test", "eval"]:
@@ -400,34 +441,47 @@ class EngineModule(BaseModule, nn.Module):
         else:
             self.model.eval()
 
-    def save_model(self, epoch: int, metrics: dict[str, any]) -> None:  # pragma: no cover
+    def save_model(
+        self, epoch: int, metrics: dict[str, any], optimizer: optim.Optimizer, lr_sched: optim.lr_scheduler.LRScheduler
+    ) -> None:  # pragma: no cover
         """Save the current model and other weights into a '.pth' file.
 
         Args:
             epoch: The epoch this model is saved.
             metrics: A dict containing the computed metrics for this module.
+            optimizer: The current optimizer
+            lr_sched: The current learning rate scheduler.
         """
-        curr_lr = self.optimizer.param_groups[-1]["lr"]
+        curr_lr = optimizer.param_groups[-1]["lr"]
 
         save_checkpoint(
             state={
                 "model": self.model.state_dict(),
                 "epoch": epoch,
                 "metrics": metrics,
-                "optimizer": self.optimizer.state_dict(),
-                "lr_scheduler": self.lr_sched.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "lr_scheduler": lr_sched.state_dict(),
             },
             save_dir=os.path.join(self.log_dir, f"./checkpoints/{self.name_safe}_{curr_lr:.10f}/"),
             verbose=self.logger.isEnabledFor(logging.INFO),
         )
 
-    def load_model(self, path: FilePath) -> None:  # pragma: no cover
-        """Load the model from a file. Set the start epoch to the epoch specified in the loaded model."""
+    def load_model(
+        self, path: FilePath, optimizer: optim.Optimizer = None, lr_sched: optim.lr_scheduler.LRScheduler = None
+    ) -> None:  # pragma: no cover
+        """Load the model from a file. Set the start epoch to the epoch specified in the loaded model.
+
+        Args:
+            path: The epoch this model is saved.
+            optimizer: The current optimizer. Only required, if training should be resumed.
+            lr_sched: The current learning rate scheduler. Only required, if training should be resumed.
+
+        """
         self.start_epoch = resume_from_checkpoint(
             fpath=path,
             model=self.model,
-            optimizer=self.optimizer if hasattr(self, "optimizer") else None,
-            scheduler=self.lr_sched if hasattr(self, "lr_sched") else None,
+            optimizer=optimizer,
+            scheduler=lr_sched,
             verbose=self.logger.isEnabledFor(logging.DEBUG),
         )
         self.curr_epoch = self.start_epoch
@@ -437,7 +491,7 @@ class EngineModule(BaseModule, nn.Module):
         if hasattr(self, "writer"):
             self.writer.flush()
             self.writer.close()
-        for attr in ["model", "optimizer", "lr_sched", "test_dl", "train_dl", "val_dl", "metric", "loss", "module"]:
+        for attr in ["model", "optimizer", "lr_sched", "test_dl", "train_dl", "val_dl", "loss", "module"]:
             if hasattr(self, attr):
                 delattr(self, attr)
         t.cuda.empty_cache()
@@ -451,7 +505,7 @@ class EngineModule(BaseModule, nn.Module):
         return tensor
 
     @abstractmethod
-    def _get_train_loss(self, data: State, _curr_iter: int) -> t.Tensor:  # pragma: no cover
+    def _get_train_loss(self, data: Union[State, list[State]], _curr_iter: int) -> t.Tensor:  # pragma: no cover
         """Compute the loss during training given the data.
 
         Different models can have different outputs and a different number of targets.

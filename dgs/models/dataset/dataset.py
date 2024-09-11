@@ -10,7 +10,7 @@ from typing import Union
 import torch as t
 import torchvision
 import torchvision.transforms.v2 as tvt
-from torch.utils.data import Dataset as TorchDataset
+from torch.utils.data import Dataset as TDataset
 from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
 from torchvision.transforms.v2.functional import convert_bounding_box_format, to_dtype
@@ -20,16 +20,18 @@ from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import VIDEO_FORMATS
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
-from dgs.utils.state import State
+from dgs.utils.state import collate_states, State
 from dgs.utils.types import Config, FilePath, Image, NodePath, Validations  # pylint: disable=unused-import
 from dgs.utils.utils import replace_file_type
 
 base_dataset_validations: Validations = {
     "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
+    "data_path": [("any", [str, ("all", [list, ("forall", str)])])],
     # optional
     "crop_mode": ["optional", str, ("in", CustomToAspect.modes)],
     "crop_size": ["optional", tuple, ("len", 2), ("forall", [int, ("gt", 0)])],
     "batch_size": ["optional", int, ("gt", 0)],
+    "paths": ["optional", ("any", [("all", [list, ("forall", str)]), str])],
 }
 
 video_dataset_validations: Validations = {
@@ -38,17 +40,22 @@ video_dataset_validations: Validations = {
     "stream": ["optional", str],
     "num_threads": ["optional", int],
     "video_backend": ["optional", str, ("in", ["pyav", "cuda", "video_reader"])],
+    "paths": ["optional", ("any", [("all", [list, ("forall", str)]), str])],
 }
 
 dataloader_validations: Validations = {
     "batch_size": ["optional", int],
     "drop_last": ["optional", bool],
-    "return_lists": ["optional", bool],
+    "collate_fn": ["optional", str, ("in", ["lists", "states", "history"])],
     "workers": ["optional", int, ("gte", 0)],
 }
 
+image_hist_validations: Validations = {
+    "L": [int, ("gt", 0)],
+}
 
-class BaseDataset(BaseModule, TorchDataset):
+
+class BaseDataset(BaseModule, TDataset):
     """Base class for custom datasets.
 
     Every dataset is based around the :class:`.State` object,
@@ -100,6 +107,11 @@ class BaseDataset(BaseModule, TorchDataset):
     dataset_path (FilePath):
         Path to the directory of the dataset.
         The value has to either be a local project path, or a valid absolute path.
+    data_path (FilePath):
+        The path to the file containing the data for this dataset.
+        Either from within the ``dataset_path`` directory, or as absolute path.
+        If you want to combine multiple files to a single (concatenated) dataset,
+        check out the function :func:`.get_concatenated_dataset` or the ``paths`` parameter.
 
     Optional Params
     ---------------
@@ -128,6 +140,10 @@ class BaseDataset(BaseModule, TorchDataset):
     crop_size (tuple[int, int], optional):
         The size, the resized image should have.
         Default ``DEF_VAL.images.crop_size``.
+    paths (list[FilePath], optional):
+        A list of file paths to concatenate into a single dataset using :func:`.get_concatenated_dataset`.
+        Will be ignored by the single dataset.
+        Can contain '*' and similar wildcards used in :func:`glob.glob` to search for multiple files matching a pattern.
 
     Additional Params for the DataLoader
     ------------------------------------
@@ -146,10 +162,10 @@ class BaseDataset(BaseModule, TorchDataset):
         Not fully supported!
         Therefore, default 0, no multi-device.
         Default ``DEF_VAL.dataloader.workers``.
-    return_lists (bool, optional):
-        Whether the DataLoader should return a list of States.
-        The DataLoader will return a single collated State if `return_lists` is `False`.
-        Default ``DEF_VAL.dataloader.return_lists``.
+    collate_fn (bool, optional):
+        Which collate function to use, when collating the States for the DataLoader.
+        Can be ``None`` or one of ``"lists"``, ``"states"``, or ``"history"``.
+        Default ``DEF_VAL.dataloader.collate_fn``.
 
     Default Values
     --------------
@@ -445,23 +461,28 @@ class VideoDataset(BaseDataset, ABC):
     Params
     ------
 
-    path (:obj:`.FilePath`):
-        A single path to a video file.
+    data_path (FilePath):
+        The path to the file containing the data for this dataset.
+        Either from within the ``dataset_path`` directory, or as absolute path.
+        If you want to combine multiple files to a single (concatenated) dataset,
+        check out the function :func:`.get_concatenated_dataset` or the ``paths`` parameter.
 
     Optional Params
     ---------------
 
     stream (str):
         Default ``DEF_VAL.video_dataset.stream``.
-
     num_threads (int):
         The number of threads used when loading the video.
         The default is 0 and lets ffmpeg decide the best configuration.
         Default ``DEF_VAL.video_dataset.num_threads``.
-
     video_backend (str):
         The backend to use when loading the video.
         Default ``DEF_VAL.video_dataset.video_backend``.
+    paths (list[FilePath], optional):
+        A list of file paths to concatenate into a single dataset.
+        Will be ignored by the single dataset.
+
     """
 
     data: VideoReader
@@ -516,4 +537,81 @@ class VideoDataset(BaseDataset, ABC):
 
     @abstractmethod
     def arbitrary_to_ds(self, a: Image, idx: int) -> Union[State, list[State]]:
+        raise NotImplementedError
+
+
+class ImageHistoryDataset(BaseDataset, ABC):
+    """A dataset with one index per image ID, the main difference is that in addition to the current frame,
+    the last ``L`` frames are given as well.
+
+    See :class:`.BaseDataset` for more information.
+    """
+
+    L: int
+
+    def __init__(self, config: Config, path: NodePath) -> None:
+        super().__init__(config=config, path=path)
+
+        self.validate_params(image_hist_validations)
+
+        self.L: int = self.params["L"]
+
+        if self.params.get("collate_fn", False) != "history":
+            raise ValueError("The ImageHistoryDataset should always return a list of States.")
+
+    def __len__(self) -> int:
+        """Override len() functionality for torch, to make sure, that the first ``L`` indices can't be picked."""
+        return len(self.data) - self.L
+
+    def __getitem__(self, idx: int) -> list[State]:
+        """Retrieve the image at index from a given dataset plus all the ``L`` images beforehand.
+
+        This function should load or precompute the image and its crops from the given filepath if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            idx: An index of the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+
+        Returns:
+            A list of :class:`State`s containing the next ``L`` :class:`State`s and the current
+            :class:`State`.
+            The indices are from ``idx`` to ``idx + L``, where ``idx + L`` is the current frame.
+
+        """
+        s: list[State] = self.arbitrary_to_ds(a=self.data[idx : (idx + self.L + 1)], idx=idx)
+        return s
+
+    def __getitems__(self, indices: list[int]) -> list[State]:
+        """For every index, retrieve the image at that index from a given dataset plus all the ``L`` images beforehand.
+
+        This function should load or precompute the image-crops from the given filepath if not done already.
+
+        This method uses the function :func:`self.arbitrary_to_ds` to obtain the data.
+
+        Args:
+            indices: A list of indices within the dataset object.
+                Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
+                Every index is from ``idx`` to ``idx + L``, where ``idx + L`` is the current frame.
+
+        Returns:
+            A list of :class:`State`s containing the next ``L`` (combined) :class:`State`s and the current
+            (combined) :class:`State`s.
+
+
+        """
+        states: list[list[State]] = []
+        for idx in indices:
+            states.append(self.arbitrary_to_ds(a=self.data[idx : (idx + self.L + 1)], idx=idx))
+        # combine all the indices, all idx+1, ..., idx+L
+        return [collate_states([states[i][l] for i in range(len(states))]) for l in range(self.L)]
+
+    @abstractmethod
+    def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
+        """Given a single image ID or filepath, obtain the image, bbox, and possibly more information,
+        then convert everything to a :class:`State` object.
+
+        The index ``idx`` is given additionally, though it might not be used.
+        """
         raise NotImplementedError
