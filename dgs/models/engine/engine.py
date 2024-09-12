@@ -44,6 +44,7 @@ train_validations: Validations = {
     "save_interval": ["optional", int, ("gte", 1)],
     "scheduler": ["optional", ("any", ["callable", ("in", SCHEDULERS)])],
     "scheduler_kwargs": ["optional", dict],
+    "train_load_image_crops": ["optional", bool],
 }
 
 test_validations: Validations = {
@@ -125,6 +126,9 @@ class EngineModule(BaseModule, nn.Module):
     save_interval (int, optional):
         The interval for saving (and evaluating) the model during training.
         Default ``DEF_VAL.engine.train.save_interval``.
+    train_load_image_crops (bool, optional):
+        Whether to load the image crops during training.
+        Default ``DEF_VAL.engine.train.load_image_crops``.
     """
 
     # The engine is the heart of most algorithms and therefore contains a los of stuff.
@@ -144,6 +148,9 @@ class EngineModule(BaseModule, nn.Module):
 
     train_dl: TorchDataLoader
     """The torch DataLoader containing the training data."""
+
+    train_load_image_crops: bool = True
+    """Whether to load the image crops during training."""
 
     def __init__(
         self,
@@ -196,6 +203,7 @@ class EngineModule(BaseModule, nn.Module):
                 raise InvalidConfigException("is_training is turned on but train_loader is None.")
             if val_loader is None:
                 raise InvalidConfigException("is_training is turned on but val_loader is None.")
+
             # save train and validation data loader
             self.train_dl = train_loader
             self.val_dl = val_loader
@@ -214,6 +222,11 @@ class EngineModule(BaseModule, nn.Module):
                 **self.params_train.get(
                     "loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]
                 )  # optional loss kwargs
+            )
+
+            # save values that are used during training
+            self.train_load_image_crops = self.params_train.get(
+                "load_image_crops", DEF_VAL["engine"]["train"]["load_image_crops"]
             )
 
     @enable_keyboard_interrupt
@@ -330,12 +343,21 @@ class EngineModule(BaseModule, nn.Module):
                 enumerate(self.train_dl),
                 desc="Train - Batch",
                 position=1,
+                total=len(self.train_dl),
                 leave=False,
             ):
+                if self.train_load_image_crops:
+                    if isinstance(data, list):
+                        for d in data:
+                            d.load_image_crop(store=True)
+                    elif isinstance(data, State):
+                        data.load_image_crop(store=True)
+
                 curr_iter = (self.curr_epoch - 1) * len(self.train_dl) + batch_idx
                 timers.add(name="data", prev_time=time_batch_start)
 
                 time_optim_start = time.time()
+
                 # OPTIMIZE MODEL
                 optimizer.zero_grad()
                 self.model.zero_grad()
@@ -343,6 +365,7 @@ class EngineModule(BaseModule, nn.Module):
                 loss.backward()
                 optimizer.step()
                 # OPTIMIZE END
+
                 timers.add(name="forwbackw", prev_time=time_optim_start)
                 batch_t = timers.add(name="batch", prev_time=time_batch_start)
 

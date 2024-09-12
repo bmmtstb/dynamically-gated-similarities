@@ -195,6 +195,7 @@ def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod
     else:
         raise NotImplementedError
 
+    cfg["train"]["load_image_crops"] = not any(val in sim_name for val in ["pose_", "box_"])
 
     print(f"Training on the ground-truth train-dataset with config: {dl_train_key} - {alpha_mod_name}")
 
