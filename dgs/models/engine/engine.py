@@ -295,7 +295,7 @@ class EngineModule(BaseModule, nn.Module):
         Returns:
             The current optimizer after training.
         """
-        # pylint: disable=too-many-statements
+        # pylint: disable=too-many-statements,too-many-branches
 
         if self.train_dl is None:
             raise ValueError("No DataLoader for the Training data was given. Can't continue.")

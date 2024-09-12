@@ -453,7 +453,7 @@ class State(UserDict):
         If the crops are not available, try to load them using :func:`load_image_crop` and :attr:`crop_path`.
         """
         if "image_crop" not in self.data:
-            return self.load_image_crop()
+            return self.load_image_crop(store=False)
         return self.data["image_crop"]
 
     @image_crop.setter
@@ -576,6 +576,14 @@ class State(UserDict):
             crop_size: The size of the image crops.
                 Default ``DEF_VAL.images.crop_size``.
         """
+
+        def save_values(crop_: Image, loc_kps_: Union[t.Tensor, None]) -> None:
+            if store:
+                self.data["image_crop"] = crop_
+                if loc_kps_ is not None:
+                    self.data["keypoints_local"] = loc_kps_
+
+        # data already exists
         if (
             "image_crop" in self
             and self.data["image_crop"] is not None
@@ -584,38 +592,37 @@ class State(UserDict):
         ):
             return self.image_crop
 
+        # empty state
         if self.B == 0:
             crop = t.empty((0, 3, 0, 0), device=self.device, dtype=t.long)
-            if store:
-                self.data["image_crop"] = crop
+            save_values(crop_=crop, loc_kps_=None)
             return crop
 
+        # load from crop path
         if "crop_path" in self:
-            if len(self.crop_path) == 0:
-                crop = []
-                loc_kps = t.empty((0, 1, 2), dtype=t.long, device=self.device)
-            else:
-                # allow changing the crop_size and other params via kwargs
-                crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
+            assert (
+                len(self.crop_path) > 0
+            ), f"expected to have at least one entry in crop_path, got: {len(self.crop_path)}"
 
-                kps_paths = tuple(replace_file_type(sub_path, new_type=".pt") for sub_path in self.crop_path)
-                if all(is_file(path) for path in kps_paths):
-                    loc_kps = self.keypoints_and_weights_from_paths(kps_paths, save_weights=store)
-                else:
-                    loc_kps = None
-            if store:
-                self.data["image_crop"] = crop
-                if loc_kps is not None:
-                    self.data["keypoints_local"] = loc_kps
+            # allow changing the crop_size and other params via kwargs
+            crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
+            kps_paths = tuple(replace_file_type(sub_path, new_type=".pt") for sub_path in self.crop_path)
+
+            if all(is_file(path) for path in kps_paths):
+                loc_kps = self.keypoints_and_weights_from_paths(kps_paths, save_weights=store)
+            else:
+                loc_kps = None
+            save_values(crop_=crop, loc_kps_=loc_kps)
             return crop
 
+        # try to extract using image and bbox
         try:
             kps = self.keypoints if "keypoints" in self.data else None
             crop, loc_kps = extract_crops_from_images(imgs=self.image, bboxes=self.bbox, kps=kps, **kwargs)
             if store:
-                self.image_crop = crop
+                self.data["image_crop"] = crop
                 if kps is not None:
-                    self.keypoints_local = loc_kps
+                    self.data["keypoints_local"] = loc_kps
             return crop
         except AttributeError as e:
             raise AttributeError(

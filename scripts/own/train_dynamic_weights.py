@@ -64,11 +64,11 @@ NAMES: dict[str, list[str]] = {
 # @MemoryTracker(interval=7.5, top_n=20)
 @notify_on_completion_or_error(min_time=30, info="run initial weight")
 @t.no_grad()
-def test_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
+def test_pt21(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
-    crop_h, crop_w = config[dl_key]["crop_size"]
-    config[dl_key]["crops_folder"] = (
-        config[dl_key]["base_path"]
+    crop_h, crop_w = cfg[dl_key]["crop_size"]
+    cfg[dl_key]["crops_folder"] = (
+        cfg[dl_key]["base_path"]
         .replace("posetrack_data", f"crops/{crop_h}x{crop_w}")
         .replace(f"{crop_h}x{crop_w}_", "")  # remove redundant from crop folder name iff existing
     )
@@ -77,39 +77,37 @@ def test_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
     for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
         pbar_data.set_postfix_str(os.path.basename(sub_datapath))
         # make sure to have a unique log dir every time
-        orig_log_dir = config["log_dir"]
+        orig_log_dir = cfg["log_dir"]
 
         # change config data
-        config[dl_key]["data_path"] = sub_datapath
-        config["log_dir"] += f"./{out_key}/{dgs_key}/"
-        config["test"]["submission"] = ["submission_pt21"]
+        cfg[dl_key]["data_path"] = sub_datapath
+        cfg["log_dir"] += f"./{out_key}/{dgs_key}/"
+        cfg["test"]["submission"] = ["submission_pt21"]
 
         # set the new path for the out file in the log_dir
         subm_key = "submission_pt21"
-        config[subm_key]["file"] = os.path.abspath(
-            os.path.normpath(
-                f"{config['log_dir']}/results_json/{sub_datapath.split('/')[-1].removesuffix('.json')}.json"
-            )
+        cfg[subm_key]["file"] = os.path.abspath(
+            os.path.normpath(f"{cfg['log_dir']}/results_json/{sub_datapath.split('/')[-1].removesuffix('.json')}.json")
         )
 
-        if os.path.exists(config[subm_key]["file"]):
+        if os.path.exists(cfg[subm_key]["file"]):
             # reset the original log dir
-            config["log_dir"] = orig_log_dir
+            cfg["log_dir"] = orig_log_dir
             continue
 
-        engine = get_dgs_engine(config=config, dl_keys=(None, None, dl_key), dgs_key=dgs_key)
+        engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key), dgs_key=dgs_key)
         engine.test()
         # end processes
         engine.terminate()
 
         # reset the original log dir
-        config["log_dir"] = orig_log_dir
+        cfg["log_dir"] = orig_log_dir
 
 
 # @torch_memory_analysis
 @notify_on_completion_or_error(min_time=30, info="run initial weight")
 @t.no_grad()
-def test_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
+def test_dance(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
 
     # get all the sub folders or files and analyze them one-by-one
@@ -117,39 +115,39 @@ def test_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: 
         dataset_path = os.path.normpath(os.path.dirname(os.path.dirname(sub_datapath)))
         dataset_name = os.path.basename(dataset_path)
         pbar_data.set_postfix_str(dataset_name)
-        config[dl_key]["data_path"] = sub_datapath
+        cfg[dl_key]["data_path"] = sub_datapath
 
         # make sure to have a unique log dir every time
-        orig_log_dir = config["log_dir"]
+        orig_log_dir = cfg["log_dir"]
 
         # change config data
-        config["log_dir"] += f"./{out_key}/{dgs_key}/"
-        config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
+        cfg["log_dir"] += f"./{out_key}/{dgs_key}/"
+        cfg["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
         # set the new path for the submission file
         subm_key = "submission_MOT"
-        config["test"]["submission"] = [subm_key]
-        config[subm_key]["file"] = os.path.abspath(
+        cfg["test"]["submission"] = [subm_key]
+        cfg[subm_key]["file"] = os.path.abspath(
             os.path.normpath(f"{os.path.dirname(dataset_path)}./results_{out_key}_{dgs_key}/{dataset_name}.txt")
         )
 
-        if os.path.exists(config[subm_key]["file"]):
+        if os.path.exists(cfg[subm_key]["file"]):
             # reset the original log dir
-            config["log_dir"] = orig_log_dir
+            cfg["log_dir"] = orig_log_dir
             continue
 
-        engine = get_dgs_engine(config=config, dl_keys=(None, None, dl_key), dgs_key=dgs_key)
+        engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key), dgs_key=dgs_key)
         engine.test()
         # end processes
         engine.terminate()
 
         # reset the original log dir
-        config["log_dir"] = orig_log_dir
+        cfg["log_dir"] = orig_log_dir
 
 
 @t.no_grad()
 def get_dgs_engine(
-    config: Config,
+    cfg: Config,
     dl_keys: tuple[str | None, str | None, str | None],
     engine_key: str = "engine",
     dgs_key: str = "DGSModule",
@@ -161,17 +159,17 @@ def get_dgs_engine(
 
     # the DGSModule will load all the similarity modules internally
     kwargs = {
-        "model": module_loader(config=config, module_class="dgs", key=dgs_key),
+        "model": module_loader(config=cfg, module_class="dgs", key=dgs_key),
     }
     # validation dataset
     if key_train is not None:
-        kwargs["train_loader"] = module_loader(config=config, module_class="dataloader", key=key_train)
+        kwargs["train_loader"] = module_loader(config=cfg, module_class="dataloader", key=key_train)
     if key_eval is not None:
-        kwargs["val_loader"] = module_loader(config=config, module_class="dataloader", key=key_eval)
+        kwargs["val_loader"] = module_loader(config=cfg, module_class="dataloader", key=key_eval)
     if key_test is not None:
-        kwargs["test_loader"] = module_loader(config=config, module_class="dataloader", key=key_test)
+        kwargs["test_loader"] = module_loader(config=cfg, module_class="dataloader", key=key_test)
 
-    return module_loader(config=config, module_class="engine", key=engine_key, **kwargs)
+    return module_loader(config=cfg, module_class="engine", key=engine_key, **kwargs)
 
 
 def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod_name: str, sim_name: str) -> None:
@@ -200,7 +198,7 @@ def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod
     print(f"Training on the ground-truth train-dataset with config: {dl_train_key} - {alpha_mod_name}")
 
     # use the modified config and obtain the model used for training
-    engine_train = get_dgs_engine(config=cfg, dl_keys=(dl_train_key, dl_eval_key, None))
+    engine_train = get_dgs_engine(cfg=cfg, dl_keys=(dl_train_key, dl_eval_key, None))
 
     # set model and initialize the weights
     engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
