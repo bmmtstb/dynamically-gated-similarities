@@ -96,10 +96,10 @@ def save_checkpoint(
 
     # save
     epoch = int(state["epoch"])
-    if len(prepend) > 0 and not prepend.endswith("-"):
-        prepend += "-"
-    fpath = os.path.join(save_dir, f"{prepend}epoch{epoch:0>3}.pth")
-    t.save(state, fpath)
+    if len(prepend) > 0 and not prepend.endswith("_"):
+        prepend += "_"
+    fpath = os.path.normpath(os.path.join(save_dir, f"./{prepend}epoch{epoch:0>3}.pth"))
+    t.save(obj=state, f=fpath)
     if verbose:
         print(f"Checkpoint saved to '{fpath}'")
     if is_best:

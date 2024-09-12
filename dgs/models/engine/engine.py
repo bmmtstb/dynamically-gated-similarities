@@ -361,11 +361,12 @@ class EngineModule(BaseModule, nn.Module):
 
                 # clean or remove all the tensors to free up cuda memory
                 if isinstance(data, State):
-                    data.clean()
+                    data.clean("all")
                 elif isinstance(data, list):
                     for d in data:
-                        d.clean()
+                        d.clean("all")
                 del data
+                del loss
 
                 # ############ #
                 # END OF BATCH #
@@ -376,7 +377,8 @@ class EngineModule(BaseModule, nn.Module):
             # END OF EPOCH #
             # ############ #
             epoch_t.add(time_epoch_start)
-            # write the loss to the tensorboard
+
+            # write and log the loss
             self.writer.add_hparams(
                 run_name=self.name_safe,
                 hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
@@ -396,12 +398,13 @@ class EngineModule(BaseModule, nn.Module):
                     metrics: dict[str, any] = self.evaluate()
                     self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
 
-                    self.writer.add_hparams(
-                        run_name=self.name_safe,
-                        hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
-                        metric_dict=metrics,
-                        global_step=self.curr_epoch,
-                    )
+                    if len(metrics) > 0:
+                        self.writer.add_hparams(
+                            run_name=self.name_safe,
+                            hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
+                            metric_dict=metrics,
+                            global_step=self.curr_epoch,
+                        )
 
             # handle updating the learning rate scheduler
             lr_sched.step()
@@ -417,7 +420,7 @@ class EngineModule(BaseModule, nn.Module):
         # END OF TRAINING #
         # ############### #
 
-        self.logger.info(epoch_t.print(name="epoch", prepend="Training", hms=True))
+        self.logger.debug(epoch_t.print(name=f"epoch {self.curr_epoch}", prepend="Training", hms=True))
         self.logger.info("#### Training complete ####")
 
         self.writer.flush()
@@ -447,7 +450,7 @@ class EngineModule(BaseModule, nn.Module):
             optimizer: The current optimizer
             lr_sched: The current learning rate scheduler.
         """
-        curr_lr = f"{optimizer.param_groups[-1]['lr']}:.10f".replace(".", "_")
+        curr_lr = f"{optimizer.param_groups[-1]['lr']:.10f}".replace(".", "_")
 
         save_checkpoint(
             state={

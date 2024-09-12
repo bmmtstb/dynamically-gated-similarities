@@ -126,6 +126,7 @@ def load_image(
             }
             new_images.append(transform(data)["image"])
         images = new_images
+        del new_images
 
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")

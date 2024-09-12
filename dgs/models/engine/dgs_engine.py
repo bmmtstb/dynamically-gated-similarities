@@ -9,7 +9,6 @@ from datetime import timedelta
 import torch as t
 from scipy.optimize import linear_sum_assignment
 from torch import nn
-from torch.autograd import Variable
 from torch.utils.data import DataLoader as TDataLoader
 from tqdm import tqdm
 
@@ -401,10 +400,7 @@ class DGSEngine(EngineModule):
 
         # for each of the similarity modules, compute the alpha value of the respective input and sum up the results
         alpha = t.cat(
-            [
-                a_m(Variable(curr_sim_data[i], requires_grad=True))
-                for i, a_m in enumerate(self.model.combine.alpha_model)
-            ],
+            [a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)],
             dim=0,
         ).flatten()
 

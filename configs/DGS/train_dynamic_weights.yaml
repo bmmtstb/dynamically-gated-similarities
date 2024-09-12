@@ -1,4 +1,4 @@
-name: "Train-Dynamic-Weights-Individually"
+name: "Train-Dynamic-Weights-Single"
 description: "Train and eval a similarity engine with a dynamic alpha combine module with a single similarity.
 
 During training, this runs over a whole (combined) dataset using all but the first frame of every video for training,
@@ -134,7 +134,7 @@ train_dl_dance_256x192:
     
     L: 1
     
-    batch_size: 1
+    batch_size: 16
     collate_fn: "history"
     
     crop_key: "Crops"

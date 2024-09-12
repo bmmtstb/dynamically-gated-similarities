@@ -283,7 +283,6 @@ class MOTImage(ImageDataset):
 
     def arbitrary_to_ds(self, a: State, idx: int) -> State:
         """Most of the state is available, now just load the image crops."""
-        a.load_image_crop(store=True)
         return a
 
 
@@ -345,7 +344,4 @@ class MOTImageHistory(ImageHistoryDataset):
             raise FileNotFoundError(f"Could not find the crops folder at '{self.params['crops_folder']}'.")
 
     def arbitrary_to_ds(self, a: list[State], idx: int) -> list[State]:
-        """Make sure"""
-        for a_i in a:
-            a_i.load_image_crop(store=True)
         return a

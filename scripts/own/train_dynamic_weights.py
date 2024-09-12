@@ -51,11 +51,9 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
 }
 
 NAMES: dict[str, list[str]] = {
-    # "box_sim": ["fc_1_box"],
-    # "box_sim": ["fc_1_box_sig"],
-    "box_sim": ["sig_fc_1_box"],
+    "box_sim": ["fc_1_box", "fc_1_box_sig", "sig_fc_1_box"],
     # "pose_sim_coco": ["fc_1_pose_coco", "conv_1_fc_1_pose_coco"],
-    "OSNet_sim": ["fc_1_visual", "fc_2_visual"],
+    "OSNet_sim": ["fc_1_visual", "fc_1_visual_sig", "fc_2_visual"],
     # "OSNetAIN_sim": ["fc_1_visual", "fc_2_visual"],
     # "Resnet50_sim": ["fc_1_visual", "fc_2_visual"],
     # "Resnet152_sim": ["fc_1_visual", "fc_2_visual"],
@@ -176,20 +174,57 @@ def get_dgs_engine(
     return module_loader(config=config, module_class="engine", key=engine_key, **kwargs)
 
 
+def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod_name: str, sim_name: str) -> None:
+    """Train and evaluate the DGS engine."""
+    _crop_h, _crop_w = cfg[dl_train_key]["crop_size"]
+    lr = cfg["train"]["optimizer_kwargs"]["lr"]
+
+    # modify config
+    cfg["DGSModule"]["names"] = [sim_name]
+    cfg["log_dir_suffix"] = f"./{dl_train_key}/{sim_name}/{alpha_mod_name}_{lr:.10f}/"
+
+    if len(glob(os.path.join(cfg["log_dir"], cfg["log_dir_suffix"], "./checkpoints/lr*_epoch001.pth"))) > 0:
+        print(f"return train early: {sim_name} - {alpha_mod_name}")
+        return
+
+    # modify config even more
+    if "pt21" in dl_train_key:
+        cfg["train"]["submission"] = ["submission_pt21"]
+    elif "dance" in dl_train_key:
+        cfg["train"]["submission"] = ["submission_MOT"]
+    else:
+        raise NotImplementedError
+
+
+    print(f"Training on the ground-truth train-dataset with config: {dl_train_key} - {alpha_mod_name}")
+
+    # use the modified config and obtain the model used for training
+    engine_train = get_dgs_engine(config=cfg, dl_keys=(dl_train_key, dl_eval_key, None))
+
+    # set model and initialize the weights
+    engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
+    engine_train.model.combine.alpha_model.to(device=engine_train.device)
+    init_model_params(engine_train.model.combine.alpha_model)
+
+    engine_train.train_model()
+    engine_train.terminate()
+    send_discord_notification(f"finished training and evaluation of {sim_name} - {alpha_mod_name} - {dl_train_key}")
+
+
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
-    cfg = load_config(CONFIG_FILE)
+    config = load_config(CONFIG_FILE)
 
     # for every similarity or combination of similarities
     for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities")):
         pbar_key.set_postfix_str(SIM_NAME)
 
-        for alpha_mod_name in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
-            pbar_alpha_mod.set_postfix_str(alpha_mod_name)
+        for ALPHA_MOD_NAME in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
+            pbar_alpha_mod.set_postfix_str(ALPHA_MOD_NAME)
 
             # set name
-            cfg["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{alpha_mod_name}"
+            config["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{ALPHA_MOD_NAME}"
 
             for DL_KEY in DL_KEYS:
                 DL_TRAIN_KEY, DL_EVAL_KEY, DL_TEST_KEY = DL_KEY
@@ -197,42 +232,18 @@ if __name__ == "__main__":
                 # ##################### #
                 # TRAINING & EVALUATION #
                 # ##################### #
-                print(f"Training on the ground-truth train-dataset with config: {DL_TRAIN_KEY} - {alpha_mod_name}")
-                _crop_h, _crop_w = cfg[DL_TRAIN_KEY]["crop_size"]
-                lr = cfg["train"]["optimizer_kwargs"]["lr"]
-
-                # modify config
-                cfg["DGSModule"]["names"] = [SIM_NAME]
-                cfg["log_dir_suffix"] = f"./{DL_TRAIN_KEY}/{SIM_NAME}/{alpha_mod_name}_{lr:.10f}/"
-                if "pt21" in DL_TRAIN_KEY:
-                    cfg["train"]["submission"] = ["submission_pt21"]
-                elif "dance" in DL_TRAIN_KEY:
-                    cfg["train"]["submission"] = ["submission_MOT"]
-                else:
-                    raise NotImplementedError
-
-                if len(glob(os.path.join(cfg["log_dir"], cfg["log_dir_suffix"], "./checkpoints/lr*-epoch001.pth"))) > 0:
-                    continue
-
-                # use the modified config and obtain the model used for training
-                engine_train = get_dgs_engine(config=cfg, dl_keys=(DL_TRAIN_KEY, DL_EVAL_KEY, None))
-
-                # set model and initialize the weights
-                engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
-                engine_train.model.combine.alpha_model.to(device=engine_train.device)
-                init_model_params(engine_train.model.combine.alpha_model)
-
-                engine_train.train_model()
-                engine_train.terminate()
-                send_discord_notification(
-                    f"finished training and evaluation of {SIM_NAME} - {alpha_mod_name} - {DL_TRAIN_KEY}"
+                train_dgs_engine(
+                    cfg=config,
+                    dl_train_key=DL_TRAIN_KEY,
+                    dl_eval_key=DL_EVAL_KEY,
+                    alpha_mod_name=ALPHA_MOD_NAME,
+                    sim_name=SIM_NAME,
                 )
 
                 # ####### #
                 # TESTING #
                 # ####### #
 
-                print("skipping testing for now")
                 # TODO load weights from the best model and test them or from a list of given names, ...
                 # print(f"Testing on the rcnn predictions of the test-dataset: {SIM_NAME} - {DL_TEST}")
                 # if "pt21" in DL_TEST:

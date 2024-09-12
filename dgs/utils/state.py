@@ -584,6 +584,12 @@ class State(UserDict):
         ):
             return self.image_crop
 
+        if self.B == 0:
+            crop = t.empty((0, 3, 0, 0), device=self.device, dtype=t.long)
+            if store:
+                self.data["image_crop"] = crop
+            return crop
+
         if "crop_path" in self:
             if len(self.crop_path) == 0:
                 crop = []

@@ -191,7 +191,7 @@ def get_data_loader(config: Config, path: NodePath) -> TDataLoader:
     else:
         raise NotImplementedError(f"Collate function '{params['collate_fn']}' not implemented.")
 
-    data_loader = TDataLoader(
+    return TDataLoader(
         dataset=ds,
         batch_size=batch_size,
         drop_last=drop_last,
@@ -199,4 +199,3 @@ def get_data_loader(config: Config, path: NodePath) -> TDataLoader:
         shuffle=shuffle,
         collate_fn=collate_fn,
     )
-    return data_loader
