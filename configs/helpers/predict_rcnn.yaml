@@ -73,6 +73,23 @@ RCNN_PT21_256x192_val:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
+RCNN_PT21_256x192_train:
+    module_name: "KeypointRCNNImageBackbone"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/PoseTrack21/"
+    dataset_paths: "./data/PoseTrack21/images/train/**/"
+
+    batch_size: 1
+    collate_fn: "lists"
+
+    # score_threshold:  # set by script
+    # iou_threshold:  # set by script
+    # mask_path:  # set by script
+    bbox_min_size: 50.0
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
 PT21_256x192_val:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
@@ -91,7 +108,7 @@ PT21_256x192_val:
 # MOT20 #
 # ##### #
 
-RCNN_MOT_train:
+RCNN_MOT_256x192_train:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/MOT20/"
@@ -107,7 +124,7 @@ RCNN_MOT_train:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-RCNN_MOT_test:
+RCNN_MOT_256x192_test:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/MOT20/"
@@ -123,7 +140,7 @@ RCNN_MOT_test:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-MOT_train:
+MOT_256x192_train:
     module_name: "MOTImage"
     # data_path:  # will be set in python script
     dataset_path: "./data/MOT20/"
@@ -139,7 +156,7 @@ MOT_train:
 # DanceTrack #
 # ########## #
 
-RCNN_Dance_train:
+RCNN_Dance_256x192_train:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
@@ -155,7 +172,7 @@ RCNN_Dance_train:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-RCNN_Dance_test:
+RCNN_Dance_256x192_test:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
@@ -171,7 +188,7 @@ RCNN_Dance_test:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-RCNN_Dance_val:
+RCNN_Dance_256x192_val:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
@@ -187,7 +204,7 @@ RCNN_Dance_val:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-Dance_train:
+Dance_256x192_train:
     module_name: "MOTImage"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"
@@ -199,7 +216,7 @@ Dance_train:
     crop_size: !!python/tuple [ 256, 192 ]  # [H,W]
     crop_mode: "zero-pad"
 
-Dance_val:
+Dance_256x192_val:
     module_name: "MOTImage"
     # data_path:  # will be set in python script
     dataset_path: "./data/DanceTrack/"

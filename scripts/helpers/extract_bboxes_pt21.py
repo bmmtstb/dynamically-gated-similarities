@@ -2,6 +2,7 @@
 
 import os.path
 import time
+import warnings
 from glob import glob
 
 import torch as t
@@ -29,8 +30,10 @@ RCNN_DL_KEYS: list[str] = [
     "RCNN_PT21_256x192_val",
 ]
 
-IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
+# IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+IOU_THRESHS: list[float] = [0.4]
+# SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
+SCORE_THRESHS: list[float] = [0.85]
 
 # IN images: "./data/PoseTrack21/images/{val|train}/DATASET/*.jpg"
 # OUT predictions: "./data/PoseTrack21/posetrack_data/rcnn_XXX_YYY_{val|train}/DATASET.json"
@@ -73,6 +76,9 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
         pbar_dataset.set_postfix_str(ds_name)
 
         gt_data_path = f"{dataset_path.replace('images', 'posetrack_data').rstrip('/')}.json"
+        if not os.path.exists(gt_data_path):
+            warnings.warn(f"Could not find the ground-truth data at: {gt_data_path}")
+            continue
         gt_imgs = read_json(gt_data_path)["images"]
         gt_img_id_map = [img["image_id"] for img in gt_imgs]  # zero-indexed!
 
@@ -227,6 +233,7 @@ if __name__ == "__main__":
                     config=rcnn_cfg,
                     dl_key=RCNN_DL_KEY,
                     subm_key=SUBM_KEY,
+                    # append val / train / test to config string
                     rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{RCNN_DL_KEY.rsplit('_', maxsplit=1)[-1]}",
                 )
 
