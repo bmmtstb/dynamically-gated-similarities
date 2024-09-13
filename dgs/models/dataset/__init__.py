@@ -6,7 +6,7 @@ Additionally, I implemented a Dataset for the |PT21|_ dataset that can be loaded
 
 import os
 from glob import glob
-from typing import Type
+from typing import Type, Union
 
 from torch.utils.data import ConcatDataset as TConcatDataset
 from tqdm import tqdm
@@ -18,7 +18,7 @@ from .alphapose import AlphaPoseLoader
 from .dataset import BaseDataset
 from .keypoint_rcnn import KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
 from .MOT import MOTImage, MOTImageHistory
-from .posetrack21 import PoseTrack21_BBox, PoseTrack21_Image
+from .posetrack21 import PoseTrack21_BBox, PoseTrack21_Image, PoseTrack21_ImageHistory
 
 DATASETS: dict[str, Type[BaseDataset]] = {
     "PoseTrack21_BBox": PoseTrack21_BBox,
@@ -45,13 +45,16 @@ def register_dataset(name: str, new_ds: Type[BaseDataset]) -> None:
     register_instance(name=name, instance=new_ds, instances=DATASETS, inst_class=BaseDataset)
 
 
-def get_concatenated_dataset(config: Config, path: NodePath, ds_name: str) -> TConcatDataset[BaseDataset]:
+def get_multi_dataset(
+    config: Config, path: NodePath, ds_name: str, concat: bool = True
+) -> Union[TConcatDataset[BaseDataset], list[BaseDataset]]:
     """Create a concatenated dataset from the given configuration and path.
 
     Args:
         config: The overall configuration for the tracker.
         path: The path to the dataset-specific parameters.
         ds_name: The type of dataset to create as a string from all the available datasets.
+        concat: Whether to concatenate the list of datasets in the end. Default: True.
     """
     # get the dataset type to instantiate it faster
     ds_type = get_dataset(name=ds_name)
@@ -88,4 +91,6 @@ def get_concatenated_dataset(config: Config, path: NodePath, ds_name: str) -> TC
         )
         datasets.append(ds_type(config=ds_cfg, path=path))
 
-    return TConcatDataset(datasets)
+    if concat:
+        return TConcatDataset(datasets)
+    return datasets

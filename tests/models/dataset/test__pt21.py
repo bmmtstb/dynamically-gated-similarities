@@ -2,7 +2,7 @@ import os.path
 import shutil
 import unittest
 
-from dgs.models.dataset import get_concatenated_dataset
+from dgs.models.dataset import get_multi_dataset
 from dgs.models.dataset.posetrack21 import (
     PoseTrack21_BBox,
     PoseTrack21_Image,
@@ -109,19 +109,19 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
     def test_init_single(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_concatenated_dataset(config=cfg, path=["test_single_dataset_1"], ds_name="PT21_BBox")
+            ds = get_multi_dataset(config=cfg, path=["test_single_dataset_1"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 1)
 
     def test_init_multi(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_concatenated_dataset(config=cfg, path=["test_multi_dataset"], ds_name="PT21_BBox")
+            ds = get_multi_dataset(config=cfg, path=["test_multi_dataset"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 5 + 5 + 1)
 
     def test_init_folder(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_concatenated_dataset(config=cfg, path=["test_directory_dataset"], ds_name="PT21_BBox")
+            ds = get_multi_dataset(config=cfg, path=["test_directory_dataset"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 5 + 1)
 
     def test_get_item(self):
@@ -196,7 +196,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
         ]:
             with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
                 with HidePrint():
-                    ds = get_concatenated_dataset(config=cfg, path=[path], ds_name="PT21_Image")
+                    ds = get_multi_dataset(config=cfg, path=[path], ds_name="PT21_Image")
                 self.assertEqual(len(ds), len(lengths))
 
                 for i, length in enumerate(lengths):

@@ -52,9 +52,13 @@ def module_loader(
     elif module_class == "dataset":
         # special case: a generally concatenated dataset
         if module_name.startswith("Concat_"):
-            from dgs.models.dataset import get_concatenated_dataset
+            from dgs.models.dataset import get_multi_dataset
 
-            return get_concatenated_dataset(config=config, path=path, ds_name=module_name[7:])
+            return get_multi_dataset(config=config, path=path, ds_name=module_name[7:], concat=True)
+        if module_name.startswith("List_"):
+            from dgs.models.dataset import get_multi_dataset
+
+            return get_multi_dataset(config=config, path=path, ds_name=module_name[5:], concat=False)
         from dgs.models.dataset import get_dataset
 
         m = get_dataset(module_name)
