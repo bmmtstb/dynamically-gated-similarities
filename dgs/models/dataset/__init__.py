@@ -25,6 +25,8 @@ DATASETS: dict[str, Type[BaseDataset]] = {
     "PT21_BBox": PoseTrack21_BBox,  # alias
     "PoseTrack21_Image": PoseTrack21_Image,
     "PT21_Image": PoseTrack21_Image,  # alias
+    "PoseTrack21_ImageHistory": PoseTrack21_ImageHistory,
+    "PT21_ImageHistory": PoseTrack21_ImageHistory,  # alias
     "AlphaPoseLoader": AlphaPoseLoader,
     "KeypointRCNNImageBackbone": KeypointRCNNImageBackbone,
     "KeypointRCNNVideoBackbone": KeypointRCNNVideoBackbone,

@@ -198,7 +198,7 @@ class DGSEngine(EngineModule):
         For the similarity engine, the target data consists of the dataset-unique class-id.
         The :func:`get_target` function will be called twice, once for the current time-step and once for the previous.
         """
-        return ds.class_id.long()
+        return ds.class_id
 
     @enable_keyboard_interrupt
     def _track_step(self, detections: State, frame_idx: int, name: str, timers: DifferenceTimers) -> None:
@@ -535,19 +535,19 @@ class DGSEngine(EngineModule):
                 [a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)], dim=0
             ).flatten()
 
-            # compare alpha against the correct similarities
-            accuracies = compute_near_k_accuracy(alpha, similarity[indices], ks=ks)
-
             N = len(alpha)
-            for k, acc in accuracies.items():
-                results[k] += round(acc * N)
-            results["N"] += N
+            if N > 0:
+                # compare alpha against the correct similarities
+                accuracies = compute_near_k_accuracy(alpha, similarity[indices], ks=ks)
+                for k, acc in accuracies.items():
+                    results[k] += round(float(acc) * float(N))
+                results["N"] += N
 
-            self.writer.add_scalars(
-                main_tag="Eval/accu",
-                tag_scalar_dict={str(k): v for k, v in accuracies.items()},
-                global_step=frame_idx,
-            )
+                self.writer.add_scalars(
+                    main_tag="Eval/accu",
+                    tag_scalar_dict={str(k): v for k, v in accuracies.items()},
+                    global_step=frame_idx,
+                )
 
             # clean up data to save memory
             if isinstance(data, State):

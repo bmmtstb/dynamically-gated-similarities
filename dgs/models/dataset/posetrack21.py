@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import warnings
+from abc import ABC
 from typing import Union
 
 import imagesize
@@ -29,13 +30,13 @@ import torch as t
 from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
-from dgs.models.dataset.dataset import BBoxDataset, ImageDataset
+from dgs.models.dataset.dataset import BaseDataset, BBoxDataset, ImageDataset, ImageHistoryDataset
 from dgs.models.dataset.torchreid_pose_dataset import TorchreidPoseDataset
 from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import PROJECT_ROOT
 from dgs.utils.files import mkdir_if_missing, read_json, to_abspath
 from dgs.utils.state import collate_bboxes, collate_tensors, State
-from dgs.utils.types import Config, Device, FilePath, ImgShape, NodePath, Validations
+from dgs.utils.types import Config, Device, FilePath, FilePaths, ImgShape, NodePath, Validations
 from dgs.utils.utils import extract_crops_and_save
 
 with warnings.catch_warnings():
@@ -323,7 +324,133 @@ def extract_pt21_image_crops(dataset_dir: FilePath = "./data/PoseTrack21", indiv
     )
 
 
-class PoseTrack21_BBox(BBoxDataset):
+class PoseTrack21BaseDataset(BaseDataset, ABC):
+    """Abstract base class for the |PT21|_ based datasets."""
+
+    img_shape: ImgShape
+    """The size of the images in the dataset."""
+
+    skeleton_name = "coco"
+    """The format of the skeleton."""
+
+    nof_kps: int = 17
+    """The number of key points."""
+
+    bbox_format: str = tvte.BoundingBoxFormat.XYWH
+    """The format of the bounding boxes."""
+
+    def __init__(self, config: Config, path: NodePath):
+        super().__init__(config=config, path=path)
+
+        # validate params
+        self.validate_params(pt21_json_validations)
+
+        # validate and get json data
+        self.json: dict[str, list[dict[str, any]]] = read_json(self.get_path_in_dataset(self.params["data_path"]))
+        validate_pt21_json(self.json)
+
+        # create a mapping from image id to full filepath
+        self.map_img_id_to_img_path: dict[int, FilePath] = {
+            img["id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
+            for img in self.json["images"]
+        }
+
+        self._obtain_image_size(fps=list(self.map_img_id_to_img_path.values()))
+
+        # the precomputed image crops lie in a specific folder
+        self.crops_dir: FilePath = self.get_path_in_dataset(self.params.get("crops_folder"))
+
+    @staticmethod
+    def _get_dataset_name_from_img_path(img_path: FilePath) -> str:
+        """Get the dataset name from the image path."""
+        return os.path.basename(os.path.dirname(img_path))
+
+    @staticmethod
+    def _get_dataset_name_from_json_path(json_path: FilePath) -> str:
+        """Get the dataset name from the json path."""
+        return os.path.splitext(os.path.basename(json_path))[0]
+
+    def _obtain_image_size(self, fps: Union[FilePaths, list[FilePath]]) -> None:
+        """Get the size of the images in the dataset."""
+        if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
+            # force reshape, therefore use the given image size
+            self.img_shape: ImgShape = self.params.get("image_size", DEF_VAL["images"]["image_size"])
+            return
+
+        # imagesize.get() output = (w,h) and our own format = (h, w)
+        img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in fps}
+        if len(img_sizes) > 1:
+            raise ValueError(
+                f"The images within a single dataset should have equal shapes. "
+                f"paths: {fps[:5]} ..., shapes: {img_sizes}"
+            )
+        self.img_shape: ImgShape = img_sizes.pop()
+
+    def _get_tensor_from_annos(self, annotations: list[dict[str, any]], key: str, dtype: t.dtype) -> t.Tensor:
+        """Get all values of key from the annotations as tensor with dtype on the correct device."""
+        return t.tensor([d[key] for d in annotations], device=self.device, dtype=dtype).flatten()
+
+    def _get_kps_and_vis(self, d: dict[str, any]) -> tuple[t.Tensor, t.Tensor]:
+        """Get the key-points and visibilities from the data."""
+        kps, vis = (
+            (
+                t.tensor(d["keypoints"], device=self.device, dtype=t.float32)
+                if len(d["keypoints"])
+                else t.zeros((1, self.nof_kps, 3), device=self.device, dtype=t.float32)
+            )
+            .reshape((1, self.nof_kps, 3))
+            .split(split_size=[2, 1], dim=-1)
+        )
+        return kps.reshape((1, self.nof_kps, 2)), vis.reshape((1, self.nof_kps, 1))
+
+    def _get_bbox(self, d: dict[str, any]) -> tvte.BoundingBoxes:
+        """Get the bounding box from the data."""
+        if not hasattr(self, "img_shape") or self.img_shape is None:
+            raise ValueError("Expected the image shape to be set before calling this function.")
+
+        return tvte.BoundingBoxes(
+            t.tensor(d["bbox"], device=self.device, dtype=t.float32),
+            format=self.bbox_format,
+            canvas_size=self.img_shape,
+            dtype=t.float32,
+            device=self.device,
+        )
+
+    def _get_anno_data(
+        self, annos: list[any], anno_ids: list[int]
+    ) -> tuple[t.Tensor, t.Tensor, tvte.BoundingBoxes, tuple[FilePath, ...]]:
+        """Helper for getting the key-points, visibilities, bboxes, and crop paths from a list of annotation IDs."""
+        keypoints: list[t.Tensor] = []
+        visibilities: list[t.Tensor] = []
+        bboxes: list[tvte.BoundingBoxes] = []
+        crop_paths: list[FilePath] = []
+
+        if not hasattr(self, "img_shape") or self.img_shape is None:
+            raise ValueError("Expected the image shape to be set before calling this function.")
+
+        for anno_id in anno_ids:
+            anno = annos[anno_id]
+
+            kps, visibility = self._get_kps_and_vis(d=anno)
+            box = self._get_bbox(d=anno)
+
+            keypoints.append(kps)
+            visibilities.append(visibility)
+            bboxes.append(box)
+            crop_paths.append(anno["crop_path"])
+
+        if len(bboxes) == 0:
+            # return empty objects
+            return (
+                t.empty((0, self.nof_kps, 2)),
+                t.empty((0, self.nof_kps, 1)),
+                tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=self.img_shape, format=self.bbox_format),
+                (),
+            )
+        return collate_tensors(keypoints), collate_tensors(visibilities), collate_bboxes(bboxes), tuple(crop_paths)
+
+
+class PoseTrack21_BBox(BBoxDataset, PoseTrack21BaseDataset):
     """Load a single precomputed json file from the |PT21|_ dataset.
 
     Params
@@ -349,39 +476,11 @@ class PoseTrack21_BBox(BBoxDataset):
         Default ``DEF_VAL.dataset.force_img_reshape``.
     """
 
-    def __init__(self, config: Config, path: NodePath, data_path: FilePath = None) -> None:
+    def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
-        self.validate_params(pt21_json_validations)
-
-        # validate and get the path to the json
-        if data_path is None:
-            data_path: FilePath = self.get_path_in_dataset(self.params["data_path"])
-
-        # validate and get json data
-        json: dict[str, list[dict[str, any]]] = read_json(data_path)
-        validate_pt21_json(json)
-        self.len = len(json["annotations"])
-
-        # create a mapping from image id to full filepath
-        map_img_id_path: dict[int, FilePath] = {
-            img["id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
-            for img in json["images"]
-        }
-        map_img_id_frame_id: dict[int, FilePath] = {img["id"]: str(img["frame_id"]) for img in json["images"]}
-
-        # imagesize.get() output = (w,h) and our own format = (h, w)
-        img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in map_img_id_path.values()}
-        if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
-            # take the biggest value of every dimension
-            self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
-        else:
-            if len(img_sizes) > 1:
-                raise ValueError(
-                    f"The images within a single dataset should have equal shapes. "
-                    f"data_path: {data_path}, shapes: {img_sizes}"
-                )
-            self.img_shape: ImgShape = img_sizes.pop()
+        self.len = len(self.json["annotations"])
+        map_img_id_frame_id: dict[int, FilePath] = {img["id"]: str(img["frame_id"]) for img in self.json["images"]}
 
         # precomputed image crops in a specific folder
         crops_dir: FilePath = self.get_path_in_dataset(self.params.get("crops_folder"))
@@ -390,68 +489,52 @@ class PoseTrack21_BBox(BBoxDataset):
         map_pid_to_cid: dict[int, int] = (
             {int(i): int(j) for i, j in read_json(self.params["id_map"]).items()}
             if "id_map" in self.params and self.params["id_map"] is not None
-            else {int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in json["annotations"])))}
+            else {
+                int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in self.json["annotations"])))
+            }
         )
         # save the image-, person-, and class-ids for later use as torch tensors
-        img_id_list: list[int] = []
         frame_id_list: list[int] = []
-        pid_list: list[int] = []
         cid_list: list[int] = []
 
-        for anno in json["annotations"]:
-            img_id_list.append(int(anno["image_id"]))
+        for anno in self.json["annotations"]:
             frame_id_list.append(int(map_img_id_frame_id[anno["image_id"]]))
-            pid_list.append(int(anno["person_id"]))
             cid_list.append(int(map_pid_to_cid[int(anno["person_id"])]))
             # add image and crop filepaths
-            anno["img_path"] = map_img_id_path[anno["image_id"]]
+            anno["img_path"] = self.map_img_id_to_img_path[anno["image_id"]]
             anno["crop_path"] = os.path.join(
                 crops_dir,
-                re.split(r"[\\/]", anno["img_path"])[-2],  # dataset name
+                self._get_dataset_name_from_img_path(anno["img_path"]),  # dataset name
                 f"{anno['image_id']}_{str(anno['person_id'])}.jpg",
             )
 
-        self.img_ids: t.Tensor = t.tensor(img_id_list, dtype=t.long, device=self.device)
+        self.img_ids: t.Tensor = self._get_tensor_from_annos(self.json["annotations"], key="image_id", dtype=t.long)
+        self.pids: t.Tensor = self._get_tensor_from_annos(self.json["annotations"], key="person_id", dtype=t.long)
         self.frame_ids: t.Tensor = t.tensor(frame_id_list, dtype=t.long, device=self.device)
-        self.pids: t.Tensor = t.tensor(pid_list, dtype=t.long, device=self.device)
         self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
 
         # as np.ndarray to not store large python objects
-        self.data: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
-        self.skeleton_name = "coco"
+        self.data: np.ndarray[dict[str, any]] = np.asarray(self.json["annotations"])
+        del self.json
 
     def __len__(self) -> int:
         return self.len
 
     def arbitrary_to_ds(self, a: dict, idx: int) -> State:
         """Convert raw PoseTrack21 annotations to a :class:`State` object."""
-        keypoints, visibility = (
-            (
-                t.tensor(a["keypoints"], device=self.device, dtype=t.float32)
-                if len(a["keypoints"])
-                else t.zeros((1, 17, 3), device=self.device, dtype=t.float32)
-            )
-            .reshape((1, 17, 3))
-            .split([2, 1], dim=-1)
-        )
+        keypoints, visibility = self._get_kps_and_vis(d=a)
 
         ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             filepath=(a["img_path"],),
-            bbox=tvte.BoundingBoxes(
-                t.tensor(a["bbox"]).float(),
-                format="XYWH",
-                dtype=t.float32,
-                canvas_size=self.img_shape,
-                device=self.device,
-            ),
+            bbox=self._get_bbox(d=a),
             keypoints=keypoints,
             person_id=self.pids[idx],
             # custom values
             class_id=self.cids[idx],
             crop_path=(a["crop_path"],),
-            # additional values which are not required
+            # additional values which might not be required
             joint_weight=visibility,
             image_id=self.img_ids[idx],
             skeleton_name=(self.skeleton_name,),
@@ -466,7 +549,7 @@ class PoseTrack21_BBox(BBoxDataset):
     #     """Get a batch of items at once from the dataset. Does only work for non concatenated datasets."""
 
 
-class PoseTrack21_Image(ImageDataset):
+class PoseTrack21_Image(ImageDataset, PoseTrack21BaseDataset):
     """Load a single precomputed json file from the |PT21| dataset where every index represents one image.
     Every getitem call therefore returns a :class:`.State` object,
     containing zero or more bounding-boxes of people detected on this image.
@@ -474,8 +557,6 @@ class PoseTrack21_Image(ImageDataset):
     Params
     ------
 
-    data_path (FilePath):
-        The path to the json file, either from within the ``dataset_path`` directory, or as absolute path.
     id_map (FilePath, optional):
         The (local or absolute) path to a json file containing a mapping from person ID to classifier ID.
         Both IDs are python integers, the IDs of the classifier should be continuous and zero-indexed.
@@ -498,80 +579,48 @@ class PoseTrack21_Image(ImageDataset):
         Default ``DEF_VAL.dataset.force_img_reshape``.
     """
 
-    def __init__(self, config: Config, path: NodePath, data_path: FilePath = None) -> None:
+    def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config=config, path=path)
 
-        self.validate_params(pt21_json_validations)
-
-        # validate and get the path to the json
-        if data_path is None:
-            data_path: FilePath = self.get_path_in_dataset(self.params["data_path"])
-
-        # validate and get json data
-        json: dict[str, list[dict[str, any]]] = read_json(data_path)
-        validate_pt21_json(json)
-        self.len = len(json["images"])
-
-        # create a mapping from image id to full filepath
-        self.map_img_id_to_path: dict[int, FilePath] = {
-            img["id"]: to_abspath(os.path.join(self.params["dataset_path"], str(img["file_name"])))
-            for img in json["images"]
-        }
-
-        # imagesize.get() output = (w,h) and our own format = (h, w)
-        img_sizes: set[ImgShape] = {imagesize.get(fp)[::-1] for fp in self.map_img_id_to_path.values()}
-        if self.params.get("force_img_reshape", DEF_VAL["dataset"]["force_img_reshape"]):
-            # take the biggest value of every dimension
-            self.img_shape: ImgShape = (max(size[0] for size in img_sizes), max(size[1] for size in img_sizes))
-        else:
-            if len(img_sizes) > 1:
-                raise ValueError(
-                    f"The images within a single dataset should have equal shapes. "
-                    f"data_path: {data_path}, shapes: {img_sizes}"
-                )
-            self.img_shape: ImgShape = img_sizes.pop()
-
-        # precomputed image crops in a specific folder
-        crops_dir: FilePath = self.get_path_in_dataset(self.params.get("crops_folder"))
+        self.len = len(self.json["images"])
 
         # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
         map_pid_to_cid: dict[int, int] = (
             {int(i): int(j) for i, j in read_json(self.params["id_map"]).items()}
             if "id_map" in self.params and self.params["id_map"] is not None
-            else {int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in json["annotations"])))}
+            else {
+                int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in self.json["annotations"])))
+            }
         )
 
         # create a mapping from image id to a list of all annotations
-        self.map_img_id_to_anno_ids: dict[int, list[int]] = {int(img["id"]): [] for img in json["images"]}
+        self.map_img_id_to_anno_ids: dict[int, list[int]] = {int(img["id"]): [] for img in self.json["images"]}
 
-        img_id_list: list[int] = []
-        pid_list: list[int] = []
         cid_list: list[int] = []
 
-        for anno_id, anno in enumerate(json["annotations"]):
+        for anno_id, anno in enumerate(self.json["annotations"]):
             img_id = int(anno["image_id"])
             # append the ID of the current annotation to the annotation-list of the respective image
             self.map_img_id_to_anno_ids[img_id].append(anno_id)
             # save the image-, person-, and class-ids for later use as torch tensors
-            img_id_list.append(img_id)
             pid = int(anno["person_id"])
-            pid_list.append(pid)
             cid_list.append(map_pid_to_cid[pid])
             # add the crop path to annotation
             anno["crop_path"] = os.path.join(
-                crops_dir,
-                re.split(r"[\\/]", self.map_img_id_to_path[img_id])[-2],  # dataset name
+                self.crops_dir,
+                self._get_dataset_name_from_img_path(self.map_img_id_to_img_path[img_id]),
+                # do not use int(anno["image_id"]), because it might remove leading zeros
                 f"{str(anno['image_id'])}_{str(anno['person_id'])}.jpg",  # int() might remove leading zeros
             )
 
-        self.img_ids: t.Tensor = t.tensor(img_id_list, dtype=t.long, device=self.device)
-        self.pids: t.Tensor = t.tensor(pid_list, dtype=t.long, device=self.device)
+        self.img_ids: t.Tensor = self._get_tensor_from_annos(self.json["annotations"], key="image_id", dtype=t.long)
+        self.pids: t.Tensor = self._get_tensor_from_annos(self.json["annotations"], key="person_id", dtype=t.long)
         self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
 
         # store as np.ndarray to not store large python objects
-        self.data: np.ndarray[dict[str, any]] = np.asarray(json["images"])
-        self.annos: np.ndarray[dict[str, any]] = np.asarray(json["annotations"])
-        self.skeleton_name = "coco"
+        self.data: np.ndarray[dict[str, any]] = np.asarray(self.json["images"])
+        self.annos: np.ndarray[dict[str, any]] = np.asarray(self.json["annotations"])
+        del self.json
 
     def __len__(self) -> int:
         return self.len
@@ -581,13 +630,13 @@ class PoseTrack21_Image(ImageDataset):
         img_id: int = int(a["id"])
         anno_ids: list[int] = self.map_img_id_to_anno_ids[img_id]
 
-        keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(anno_ids)
+        keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(annos=self.annos, anno_ids=anno_ids)
 
         ds = State(
             validate=False,  # This is given PT21 data, no need to validate...
             device=self.device,
             # add filepath to tuple even though there is no data to be able to draw the image later
-            filepath=tuple(self.map_img_id_to_path[img_id] for _ in range(max(len(anno_ids), 1))),
+            filepath=tuple(self.map_img_id_to_img_path[img_id] for _ in range(max(len(anno_ids), 1))),
             bbox=bboxes,
             keypoints=keypoints,
             person_id=self.pids[anno_ids].flatten(),
@@ -605,42 +654,6 @@ class PoseTrack21_Image(ImageDataset):
         if self.params.get("load_img_crops", DEF_VAL["dataset"]["pt21"]["load_img_crops"]):
             self.get_image_crops(ds)
         return ds
-
-    def _get_anno_data(
-        self, anno_ids: list[int]
-    ) -> tuple[t.Tensor, t.Tensor, tvte.BoundingBoxes, tuple[FilePath, ...]]:
-        """Helper for getting the key-points, visibilities, bboxes, and crop paths from a list of annotation IDs."""
-        keypoints: list[t.Tensor] = []
-        visibilities: list[t.Tensor] = []
-        bboxes: list[tvte.BoundingBoxes] = []
-        crop_paths: list[FilePath] = []
-
-        for anno_id in anno_ids:
-            anno = self.annos[anno_id]
-
-            kps, visibility = (
-                t.tensor(anno["keypoints"], device=self.device, dtype=t.float32).reshape((1, 17, 3))
-                if len(anno["keypoints"])
-                else t.zeros((1, 17, 3), device=self.device, dtype=t.float32)
-            ).split([2, 1], dim=-1)
-            box = tvte.BoundingBoxes(
-                t.tensor(anno["bbox"]), format="XYWH", dtype=t.float32, canvas_size=self.img_shape, device=self.device
-            )
-
-            keypoints.append(kps.reshape((1, 17, 2)))
-            visibilities.append(visibility.reshape((1, 17, 1)))
-            bboxes.append(box)
-            crop_paths.append(anno["crop_path"])
-
-        if len(bboxes) == 0:
-            # return empty objects
-            return (
-                t.empty((0, 17, 2)),
-                t.empty((0, 17, 1)),
-                tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYWH"),
-                (),
-            )
-        return collate_tensors(keypoints), collate_tensors(visibilities), collate_bboxes(bboxes), tuple(crop_paths)
 
 
 class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
@@ -798,3 +811,78 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
             "For more information for the download see https://github.com/andoer/PoseTrack21 for more details.",
             Warning,
         )
+
+
+class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
+    """A |PT21|_ dataset that creates combined states from a current state and its history."""
+
+    data: np.ndarray[dict[str, any]]
+    """A dict mapping the """
+
+    annos: np.ndarray[dict[str, any]]
+
+    def __init__(self, config: Config, path: NodePath):
+        super().__init__(config=config, path=path)
+
+        # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
+        map_pid_to_cid: dict[int, int] = (
+            {int(i): int(j) for i, j in read_json(self.params["id_map"]).items()}
+            if "id_map" in self.params and self.params["id_map"] is not None
+            else {
+                int(pid): int(i) for i, pid in enumerate(sorted(set(a["person_id"] for a in self.json["annotations"])))
+            }
+        )
+
+        # create a mapping from image id to a list of all annotations
+        self.map_img_id_to_anno_ids: dict[int, list[int]] = {int(img["id"]): [] for img in self.json["images"]}
+
+        cid_list: list[int] = []
+        for anno_id, anno in enumerate(self.json["annotations"]):
+            img_id = int(anno["image_id"])
+            # append the ID of the current annotation to the annotation-list of the respective image
+            self.map_img_id_to_anno_ids[img_id].append(anno_id)
+            # save the image-, person-, and class-ids for later use as torch tensors
+            cid_list.append(map_pid_to_cid[int(anno["person_id"])])
+            # add the crop path to annotation
+            anno["crop_path"] = os.path.join(
+                self.crops_dir,
+                f"./{self._get_dataset_name_from_img_path(self.map_img_id_to_img_path[img_id])}/",
+                # do not use int(anno["image_id"]), because it might remove leading zeros
+                f"{str(anno['image_id'])}_{str(anno['person_id'])}.jpg",
+            )
+
+        self.img_ids: t.Tensor = self._get_tensor_from_annos(self.json["annotations"], key="image_id", dtype=t.long)
+        self.pids: t.Tensor = self._get_tensor_from_annos(self.json["annotations"], key="person_id", dtype=t.long)
+        self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
+
+        # store as np.ndarray to not store large python objects
+        self.data: np.ndarray[dict[str, any]] = np.asarray(self.json["images"])
+        self.annos: np.ndarray[dict[str, any]] = np.asarray(self.json["annotations"])
+        del self.json
+
+    def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
+        """Convert raw PoseTrack21 annotations to a list of :class:`State` objects."""
+        img_ids: list[int] = [int(a_i["id"]) for a_i in a]
+        states = []
+        for img_id in img_ids:
+            anno_ids: list[int] = self.map_img_id_to_anno_ids[img_id]
+
+            keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(annos=self.annos, anno_ids=anno_ids)
+
+            states.append(
+                State(
+                    validate=False,  # This is given PT21 data, no need to validate...
+                    device=self.device,
+                    # add filepath to tuple even though there is no data to be able to draw the image later
+                    filepath=tuple(self.map_img_id_to_img_path[img_id] for _ in range(max(len(anno_ids), 1))),
+                    bbox=bboxes,
+                    keypoints=keypoints,
+                    person_id=self.pids[anno_ids].flatten() if len(anno_ids) else t.empty(0, device=self.device),
+                    # custom values
+                    class_id=self.cids[anno_ids].flatten() if len(anno_ids) else t.empty(0, device=self.device),
+                    crop_path=crop_paths,
+                    joint_weight=visibilities,
+                    # optional values
+                )
+            )
+        return states

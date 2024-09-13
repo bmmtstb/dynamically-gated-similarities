@@ -27,6 +27,7 @@ DL_KEYS: list[tuple[str, str, str]] = [
     ("train_dl_dance_256x192", "val_dl_dance_256x192_eval_acc", "test_dl_dance_256x192"),
     # DanceTrack with evaluation using the MOTA and HOTA metrics
     # ("train_dl_dance_256x192", "val_dl_dance_256x192", "test_dl_dance_256x192"),
+    ("train_dl_pt21_256x192", "val_dl_pt21_256x192_eval_acc", "test_dl_pt21_256x192"),
 ]
 
 ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
@@ -244,6 +245,7 @@ if __name__ == "__main__":
                 # ####### #
 
                 # TODO load weights from the best model and test them or from a list of given names, ...
+                # TODO accept "List_" datasets and test them individually
                 # print(f"Testing on the rcnn predictions of the test-dataset: {SIM_NAME} - {DL_TEST}")
                 # if "pt21" in DL_TEST:
                 #     test_pt21(

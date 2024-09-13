@@ -137,7 +137,65 @@ train_dl_dance_256x192:
     batch_size: 16
     collate_fn: "history"
     
-    crop_key: "Crops"
+    crop_size: !!python/tuple [ 256, 192 ]
+    crop_mode: "zero-pad"
+
+test_dl_pt21_256x192:
+    module_name: "List_KeypointRCNNImageBackbone"
+    dataset_path: "./data/PoseTrack21/"
+    crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
+    # data_path:  # will be set in python script
+
+    batch_size: 1
+    collate_fn: "lists"
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+val_dl_pt21_256x192:
+    module_name: "List_PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    # data_path:  # will be set in python script
+    paths: "./data/PoseTrack21/posetrack_data/val/**.json"
+    crops_folder: "./data/PoseTrack21/crops/256x192/val/"
+    
+    batch_size: 1
+    collate_fn: "lists"
+
+    load_img_crops: false
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+
+
+val_dl_pt21_256x192_eval_acc:
+    module_name: "Concat_PT21_ImageHistory"
+    shuffle: false
+    dataset_path: "./data/PoseTrack21/"
+    paths: "./data/PoseTrack21/posetrack_data/val/*.json"
+    crops_folder: "./data/PoseTrack21/crops/256x192/val/"  # dataset name will be added during init
+    
+    L: 1
+    
+    batch_size: 1
+    collate_fn: "history"
+    
+    load_img_crops: false
+    crop_size: !!python/tuple [ 256, 192 ]
+    crop_mode: "zero-pad"
+
+train_dl_pt21_256x192:
+    module_name: "Concat_PT21_ImageHistory"
+    shuffle: true
+    dataset_path: "./data/PoseTrack21/"
+    paths: "./data/PoseTrack21/posetrack_data/train/*.json"
+    crops_folder: "./data/PoseTrack21/crops/256x192/train/"  # dataset name will be added during init
+    
+    L: 1
+    
+    batch_size: 16
+    collate_fn: "history"
+    
+    load_img_crops: false
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
 
