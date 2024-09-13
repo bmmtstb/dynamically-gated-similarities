@@ -279,10 +279,9 @@ class DGSEngine(EngineModule):
         batch_time = timers.add(name="batch", prev_time=time_batch_start)
         timers.add(name="indiv", prev_time=0.0, now=batch_time / N if N > 0 else batch_time)
 
-    @enable_keyboard_interrupt
     @t.no_grad()
     def test(self) -> Results:
-        """Test the DGS Tracker"""
+        """Test the DGS Tracker on the test_dl."""
 
         if self.test_dl is None:
             raise ValueError("The test data loader is required for testing.")
@@ -308,7 +307,6 @@ class DGSEngine(EngineModule):
 
         return {}
 
-    @enable_keyboard_interrupt
     @t.no_grad()
     def predict(self) -> None:
         """Given test data, predict the results without evaluation."""
@@ -519,10 +517,17 @@ class DGSEngine(EngineModule):
 
             old_ids = self.get_target(data_old)  # [T]
             new_ids = self.get_target(data_new)  # [D]
+
             # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
-            combined_ids = t.cat(
-                (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
-            )
+            # and handle edge cases where either old or new ids are empty
+            if len(old_ids) == 0:
+                combined_ids = new_ids
+            elif len(new_ids) == 0:
+                combined_ids = old_ids
+            else:
+                combined_ids = t.cat(
+                    (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
+                )
             # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
             indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
 

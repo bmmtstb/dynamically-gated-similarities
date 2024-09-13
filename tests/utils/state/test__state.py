@@ -795,15 +795,16 @@ class TestImageCrop(unittest.TestCase):
             msg=e.exception,
         )
 
-    def test_load_image_crop_with_zero_length(self):
+    @test_multiple_devices
+    def test_load_image_crop_with_zero_length(self, device: Device):
         # call load image with zero-length image data
         empty_fps = State(
-            bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"),
+            bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY", device=device),
             crop_path=tuple(),
             validate=False,
         )
         empty_crop = empty_fps.load_image_crop()
-        self.assertEqual(empty_crop, [])
+        self.assertTrue(t.allclose(empty_crop, t.empty((0, 3, 0, 0), device=device, dtype=t.long)))
 
     def test_load_image_crop_without_associated_kp_file(self):
         # make sure local kp don't get set if the crop doesn't have an associated kp file

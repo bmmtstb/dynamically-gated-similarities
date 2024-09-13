@@ -1,4 +1,4 @@
-![Coverage](https://img.shields.io/badge/Coverage-89%25-lime)
+![Coverage](https://img.shields.io/badge/Coverage-88%25-lime)
 [![Run CI](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml)
 [![Deploy Docs](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yaml/badge.svg?branch=master)](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yaml)
 
