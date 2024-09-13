@@ -50,8 +50,13 @@ KEYS: list[str] = [
     "OSNetAIN_CrossDomainMSMT17",
 ]
 
-IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
+# ALL
+# IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+# SCORE_THRESHS: list[float] = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99]
+# PT21
+IOU_THRESHS: list[float] = [0.4]
+SCORE_THRESHS: list[float] = [0.85]
+# Dance
 
 
 # @torch_memory_analysis

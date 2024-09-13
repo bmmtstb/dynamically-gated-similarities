@@ -552,6 +552,12 @@ class ImageHistoryDataset(BaseDataset, ABC):
     the last ``L`` frames are given as well.
 
     See :class:`.BaseDataset` for more information.
+
+    Params
+    ------
+
+    L (int):
+        The number of frames to include in the history.
     """
 
     L: int
