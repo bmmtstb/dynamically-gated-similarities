@@ -91,7 +91,7 @@ class DGSEngine(EngineModule):
         Default ``DEF_VAL.engine.dgs.acc_k_eval``.
 
     eval_accuracy (bool, optional):
-        Whether to evaluate the alpha-prediction accuracy or the |MOTA|_ / |HOTA|_ of the model during evaluation.
+        Whether to evaluate the alpha-prediction accuracy or the |MOTA| / |HOTA| of the model during evaluation.
         Default ``DEF_VAL.engine.dgs.eval_accuracy``.
 
     submission (Union[str, NodePath]):
@@ -584,7 +584,6 @@ class DGSEngine(EngineModule):
 
         self._track(dl=self.val_dl, name="Eval")
 
-    @enable_keyboard_interrupt
     @t.no_grad()
     def evaluate(self) -> Results:
         r"""Run the model evaluation on the eval data.

@@ -14,14 +14,14 @@ Tracking Metrics
 
 .. _metrics_mota:
 
-MOTA
-====
+Multi-Object Tracking Accuracy
+==============================
 
 TODO
 
 .. _metrics_hota:
 
-HOTA
-====
+Higher-Order Tracking Accuracy
+==============================
 
 TODO
