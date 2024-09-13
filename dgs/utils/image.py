@@ -126,6 +126,7 @@ def load_image(
             }
             new_images.append(transform(data)["image"])
         images = new_images
+        del new_images
 
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
@@ -183,9 +184,7 @@ def combine_images_to_video(
     # get a single tensor containing the images in uint8 format, still in regular image format
     if isinstance(imgs, str):  # pragma: no cover
         paths = tuple(
-            os.path.join(imgs, path)
-            for path in tqdm(os.listdir(imgs))
-            if any(path.lower().endswith(end) for end in IMAGE_FORMATS)
+            os.path.join(imgs, path) for path in tqdm(os.listdir(imgs)) if path.lower().endswith(IMAGE_FORMATS)
         )
         images = load_image(filepath=paths, dtype=t.uint8)
     elif isinstance(imgs, t.Tensor):

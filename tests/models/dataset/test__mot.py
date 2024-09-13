@@ -14,8 +14,8 @@ from dgs.utils.utils import HidePrint
 
 class TestSeqinfoIni(unittest.TestCase):
 
-    seqinfo_path = "./tests/test_data/MOT_test/seqinfo.ini"
-    new_path = "./tests/test_data/MOT_test/seqinfo_test.ini"
+    seqinfo_path = "./tests/test_data/MOT_test_1/seqinfo.ini"
+    new_path = "./tests/test_data/MOT_test_1/seqinfo_test.ini"
 
     test_data = {
         "name": "MOT_test_1",
@@ -111,7 +111,7 @@ class TestSeqinfoIni(unittest.TestCase):
 
 
 class TestMOTImageDataset(unittest.TestCase):
-    seqinfo_path = "./tests/test_data/MOT_test/seqinfo.ini"
+    seqinfo_path = "./tests/test_data/MOT_test_1/seqinfo.ini"
     test_cfg = load_config("./tests/test_data/configs/test_config_MOT.yaml")
     logging_path = os.path.join(PROJECT_ROOT, "./tests/test_data/TEST_ds/")
 
@@ -126,10 +126,11 @@ class TestMOTImageDataset(unittest.TestCase):
                 self.assertEqual(len(ds), len(lengths))
 
                 for i, length in enumerate(lengths):
-                    r = ds[i]
+                    r = ds.data[i]
                     self.assertTrue(isinstance(r, State))
                     self.assertEqual(len(r), length, f"r: {r}, i: {i}, len: {length}")
-                    self.assertEqual(r.image_crop.size(0), length)
+                    crop = r.load_image_crop(store=True)
+                    self.assertEqual(len(crop), length)
 
     def test_MOTImage_dataloader(self):
         lengths = [2, 1, 0]

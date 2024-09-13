@@ -119,6 +119,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             num_classes=self.params["nof_classes"],
             pretrained=pretrained,
             use_gpu=self.device.type == "cuda",
+            loss="triplet",
         )
         if not pretrained:  # pragma: no cover
             # custom model params

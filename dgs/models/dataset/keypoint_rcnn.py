@@ -94,6 +94,8 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
         Default ``KeypointRCNN_ResNet50_FPN_Weights.COCO_V1``.
     """
 
+    model: nn.Module
+
     def __init__(self, config: Config, path: NodePath) -> None:
         BaseDataset.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
@@ -143,7 +145,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
         # predicts a list of {boxes: XYXY[N], labels: Int64[N], scores: [N], keypoints: Float[N,J,(x|y|vis)]}
         # every image in images can have multiple predictions
-        outputs: list[dict[str, t.Tensor]] = self.model(images)
+        outputs: list[dict[str, t.Tensor]] = self.model.forward(images)
 
         states: list[State] = []
         canvas_size = (max(i.shape[-2] for i in images), max(i.shape[-1] for i in images))
@@ -265,10 +267,10 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
             data_path: FilePath = self.get_path_in_dataset(data_path)
             if is_file(data_path):
                 # single image
-                if any(data_path.lower().endswith(ending) for ending in IMAGE_FORMATS):
+                if data_path.lower().endswith(IMAGE_FORMATS):
                     self.data = [data_path]
                 # video file
-                elif any(data_path.lower().endswith(ending) for ending in VIDEO_FORMATS):
+                elif data_path.lower().endswith(VIDEO_FORMATS):
                     raise TypeError(f"Got Video file, but is an Image Dataset. File: {data_path}")
                 else:
                     raise NotImplementedError(f"Unknown file type. Got '{data_path}'")
@@ -277,7 +279,7 @@ class KeypointRCNNImageBackbone(KeypointRCNNBackbone, ImageDataset):
                 self.data = [
                     os.path.normpath(os.path.join(data_path, child_path))
                     for child_path in tqdm(sorted(os.listdir(data_path)), desc="Loading images", leave=False)
-                    if any(child_path.lower().endswith(ending) for ending in IMAGE_FORMATS)
+                    if child_path.lower().endswith(IMAGE_FORMATS)
                 ]
             else:
                 raise NotImplementedError(f"string is neither file nor dir. Got '{data_path}'.")

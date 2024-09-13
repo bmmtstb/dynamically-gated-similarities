@@ -99,6 +99,7 @@ engine:
         scheduler_kwargs:
             step_size: 1
             gamma": 0.1
+        load_image_crops: true
 
     visual:
         topk_acc: [1]

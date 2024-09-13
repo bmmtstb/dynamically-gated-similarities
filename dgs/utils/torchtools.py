@@ -57,6 +57,7 @@ def save_checkpoint(
     save_dir: FilePath,
     is_best: bool = False,
     remove_module_from_keys: bool = False,
+    prepend: str = "",
     verbose: bool = True,
 ) -> None:
     """Save a given checkpoint.
@@ -67,6 +68,7 @@ def save_checkpoint(
         is_best (bool, optional): if True, this checkpoint will be copied and named
             ``model-best.pth.tar``. Default is False.
         remove_module_from_keys: Whether to remove the 'module.' prepend in the state dict of the module.
+        prepend: A string to prepend to the filename.
         verbose (bool, optional): whether to print a confirmation when the checkpoint has been created. Default is True.
 
     Examples:
@@ -94,8 +96,10 @@ def save_checkpoint(
 
     # save
     epoch = int(state["epoch"])
-    fpath = os.path.join(save_dir, f"epoch-{epoch:0>3}.pth")
-    t.save(state, fpath)
+    if len(prepend) > 0 and not prepend.endswith("_"):
+        prepend += "_"
+    fpath = os.path.normpath(os.path.join(save_dir, f"./{prepend}epoch{epoch:0>3}.pth"))
+    t.save(obj=state, f=fpath)
     if verbose:
         print(f"Checkpoint saved to '{fpath}'")
     if is_best:
@@ -508,7 +512,7 @@ def init_instance_params(instance: nn.Module) -> None:
 
 
 def torch_memory_analysis(
-    f: callable, file_name: FilePath = "./memory_snapshot.pickle", max_events: int = 100_000_000
+    f: callable, file_name: FilePath = "./memory_snapshot.pickle", max_events: int = 100_000
 ) -> callable:  # pragma: no cover
     """A decorator for torch memory analysis using :func:`torch.cuda.memory._record_memory_history`."""
     # pylint: disable=protected-access
@@ -524,6 +528,31 @@ def torch_memory_analysis(
             t.cuda.memory._dump_snapshot(file_name)
             # stop recording memory
             t.cuda.memory._record_memory_history(enabled=None)
+            print(f"saved torch memory snapshot to: '{file_name}'")
+
+    return decorator
+
+
+def torch_memory_analysis_win(
+    f: callable, file_name: FilePath = "./memory_snapshot.pickle", max_events: int = 100_000
+) -> callable:  # pragma: no cover
+    """A decorator for torch memory analysis using :func:`torch.cuda.memory._record_memory_history_legacy`
+    that works on Windows machines."""
+    # pylint: disable=protected-access
+
+    def decorator(*args, **kwargs):
+        """The decorator."""
+        try:
+            # start memory recording
+            t.cuda.memory._record_memory_history_legacy(
+                enabled=True, trace_alloc_max_entries=max_events, trace_alloc_record_context=True
+            )
+            # call original function
+            f(*args, **kwargs)
+        finally:
+            t.cuda.memory._dump_snapshot(file_name)
+            # stop recording memory
+            t.cuda.memory._record_memory_history_legacy(enabled=False)
             print(f"saved torch memory snapshot to: '{file_name}'")
 
     return decorator

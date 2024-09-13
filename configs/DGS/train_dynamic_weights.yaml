@@ -1,4 +1,4 @@
-name: "Train-Dynamic-Weights-Individually"
+name: "Train-Dynamic-Weights-Single"
 description: "Train and eval a similarity engine with a dynamic alpha combine module with a single similarity.
 
 During training, this runs over a whole (combined) dataset using all but the first frame of every video for training,
@@ -43,6 +43,7 @@ train:
     optimizer_kwargs:
 #        lr: 0.0001  # 1e-4
         lr: 0.000001  # 1e-6
+#        lr: 0.0000001  # 1e-7
         foreach: true
     epochs: 1
     save_interval: 1
@@ -79,7 +80,7 @@ DGSModule:
 
 test_dl_dance_256x192:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/test/"
     # data_path: # will be set in python script
     paths: "./data/DanceTrack/test/**/det/rcnn_075_035_256x192.txt"
     
@@ -94,7 +95,7 @@ test_dl_dance_256x192:
 
 val_dl_dance_256x192:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
     paths: "./data/DanceTrack/val/**/det/rcnn_075_035_256x192.txt"
 #    paths: "./data/DanceTrack/val/**/gt/gt.txt"
@@ -110,7 +111,7 @@ val_dl_dance_256x192:
 val_dl_dance_256x192_eval_acc:
     module_name: "Concat_MOTImageHistory"
     shuffle: false
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/val/"
     paths: "./data/DanceTrack/val/**/gt/gt.txt"
 #    paths: "./data/DanceTrack/val_part/**/gt/gt.txt"
     
@@ -127,13 +128,13 @@ val_dl_dance_256x192_eval_acc:
 train_dl_dance_256x192:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/train/"
     paths: "./data/DanceTrack/train/**/gt/gt.txt"
 #    paths: "./data/DanceTrack/train_part/**/gt/gt.txt"
     
     L: 1
     
-    batch_size: 1
+    batch_size: 16
     collate_fn: "history"
     
     crop_key: "Crops"
