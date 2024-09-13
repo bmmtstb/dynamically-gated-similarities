@@ -20,7 +20,7 @@ echo "updating DGS environment"
 activate_and_install "venv" "requirements.txt"
 # additionally install torchreid
 cd ./dependencies/torchreid/ || exit
-python setup.py develop
+USE_NNPACK=0 python setup.py develop
 cd ../..
 pip install -e . # "install" DGS package
 deactivate
