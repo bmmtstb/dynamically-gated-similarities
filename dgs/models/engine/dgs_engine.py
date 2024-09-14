@@ -384,25 +384,33 @@ class DGSEngine(EngineModule):
             combined_ids = t.cat(
                 [old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]]]
             )
-            # get all the indices of matches between the new_ids and the old_ids
+            # Obtain a matrix describing the matches between the new_ids and the old_ids.
             # if there is no match, use the ids of newly created tracks (the second  part of the combined_ids)
-            # With B>1 there might be multiple ID matches, therefore, always use the ID of the first match
-            # fixme: actually I want to use a random match, but this is seemingly not possible with pure pytorch
-            first_match = t.argmax((new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1)).byte(), dim=1)
+            # With B>1 there might be multiple ID matches, all of those will be tested / counted later on.
+            # [D x D+T]
+            all_matches = new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1)
 
             # get the input data of the similarity modules for the current step
             curr_sim_data = self.get_data(data_new)  # [D]
 
-            # get the similarity matrices as [D x (T + D)]
-            similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
+            # get the similarity matrix as [S x D x (T + D)]
+            similarities = t.stack([m(data_new, data_old) for m in self.model.sim_mods])
+            # get the positions of the maximum similarity for each detection
+            max_sim_indices = t.argmax(similarities, dim=-1)  # [S x D]
+            # The number of correct matches can be obtained by counting the indices where the similarity is highest
+            # and the target-ID of the prediction is the same as the target-ID of the ground truth.
+            # [S]
+            # fixme: is it possible to do this without leaving pytorch or adding python loops?
+            nof_correct = t.stack([all_matches[t.arange(len(new_ids)), msi].count_nonzero() for msi in max_sim_indices])
+            # the training target is the ratio of correct matches to the total number of detections
+            # making sure to handle the cases where either no detections or no correct matches are present
+            target = (nof_correct / len(data_new)).nan_to_num(nan=0.0, posinf=0.0)
 
-        # for each of the similarity modules, compute the alpha value of the respective input and sum up the results
-        alpha = t.cat(
-            [a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)],
-            dim=0,
-        ).flatten()
-
-        loss = self.loss(alpha, similarity[t.arange(0, len(new_ids)), first_match])
+        # For each of the similarity modules, compute the alpha value of each of the respective inputs.
+        # [S x D]
+        alpha = t.stack([a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)])
+        # make sure the target and input have the same shape, by repeating the target for each input
+        loss = self.loss(alpha, target.expand(1, len(data_new)))
         return loss
 
     def _track(self, dl: TDataLoader, name: str) -> None:
