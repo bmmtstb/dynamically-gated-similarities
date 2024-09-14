@@ -912,8 +912,10 @@ def collate_tensors(batch: list[t.Tensor], *_args, **_kwargs) -> t.Tensor:
 
     Will use torch.cat() if the first dimension has a shape of one, otherwise torch.stack()
     """
-    if len(batch) == 0 or all(b.shape and len(b) == 0 for b in batch):
+    if len(batch) == 0:
         return t.empty(0)
+    if all(b.shape and len(b) == 0 for b in batch):
+        return t.empty((0, len(batch)), device=batch[0].device, dtype=batch[0].dtype)
     return t.cat([b if b.shape else b.flatten() for b in batch if (not b.shape) or (b.shape and len(b))])
 
 

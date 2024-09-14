@@ -822,7 +822,8 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
     annos: np.ndarray[dict[str, any]]
 
     def __init__(self, config: Config, path: NodePath):
-        super().__init__(config=config, path=path)
+        PoseTrack21BaseDataset.__init__(self=self, config=config, path=path)
+        ImageHistoryDataset.__init__(self=self, config=config, path=path)
 
         # create a mapping from person id to (custom) zero-indexed class id or load an existing mapping
         map_pid_to_cid: dict[int, int] = (
@@ -860,6 +861,18 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
         self.annos: np.ndarray[dict[str, any]] = np.asarray(self.json["annotations"])
         del self.json
 
+    def __len__(self) -> int:
+        """Force usage of the ImageHistoryDataset.__getitem__ method."""
+        return ImageHistoryDataset.__len__(self=self)
+
+    def __getitem__(self, idx: int) -> list[State]:
+        """Force usage of the ImageHistoryDataset.__getitem__ method."""
+        return ImageHistoryDataset.__getitem__(self=self, idx=idx)
+
+    def __getitems__(self, indices: list[int]) -> list[State]:
+        """Force usage of the ImageHistoryDataset.__getitems__ method."""
+        return ImageHistoryDataset.__getitems__(self=self, indices=indices)
+
     def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
         """Convert raw PoseTrack21 annotations to a list of :class:`State` objects."""
         img_ids: list[int] = [int(a_i["id"]) for a_i in a]
@@ -877,9 +890,9 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
                     filepath=tuple(self.map_img_id_to_img_path[img_id] for _ in range(max(len(anno_ids), 1))),
                     bbox=bboxes,
                     keypoints=keypoints,
-                    person_id=self.pids[anno_ids].flatten() if len(anno_ids) else t.empty(0, device=self.device),
+                    person_id=(self.pids[anno_ids].flatten() if len(anno_ids) > 0 else t.empty(0, device=self.device)),
                     # custom values
-                    class_id=self.cids[anno_ids].flatten() if len(anno_ids) else t.empty(0, device=self.device),
+                    class_id=(self.cids[anno_ids].flatten() if len(anno_ids) > 0 else t.empty(0, device=self.device)),
                     crop_path=crop_paths,
                     joint_weight=visibilities,
                     # optional values

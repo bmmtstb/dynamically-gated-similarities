@@ -207,7 +207,7 @@ class EngineModule(BaseModule, nn.Module):
             # save train and validation data loader
             self.train_dl = train_loader
             self.val_dl = val_loader
-            self.writer.add_scalar("Train/batch_size", self.train_dl.batch_size)
+            # self.writer.add_scalar("Train/batch_size", self.train_dl.batch_size)
 
             # epochs
             self.epochs: int = self.params_train.get("epochs", DEF_VAL["engine"]["train"]["epochs"])
@@ -382,14 +382,12 @@ class EngineModule(BaseModule, nn.Module):
                 )
                 self.writer.add_scalar("Train/lr", optimizer.param_groups[-1]["lr"], global_step=curr_iter)
 
-                # clean or remove all the tensors to free up cuda memory
+                # clean or remove all the image tensors to free up cuda memory
                 if isinstance(data, State):
-                    data.clean("all")
+                    data.clean()
                 elif isinstance(data, list):
                     for d in data:
-                        d.clean("all")
-                del data
-                del loss
+                        d.clean()
 
                 # ############ #
                 # END OF BATCH #
