@@ -16,7 +16,7 @@ import torch as t
 from matplotlib import pyplot as plt
 from torch.utils.data._utils.collate import collate
 from torchvision import tv_tensors as tvte
-from torchvision.transforms.v2.functional import convert_image_dtype
+from torchvision.transforms.v2.functional import convert_bounding_box_format, convert_image_dtype
 from torchvision.utils import save_image
 
 from dgs.utils.constants import COLORS, SKELETONS
@@ -228,6 +228,18 @@ class State(UserDict):
 
         # set new bbox
         self.data["bbox"] = bbox
+
+    @property
+    def bbox_relative(self) -> t.Tensor:
+        """Get the bounding box coordinates in relation to the width and height of the full image.
+
+        The relative bbox is of format XYWH,
+        but can not simply be converted to other formats, therefore it is given as a tensor.
+        All relative coordinates are floating point values and should lie in range ``[0, 1]``.
+        """
+        H, W = self.bbox.canvas_size  # (H, W)
+        xywh = convert_bounding_box_format(self.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
+        return (xywh / t.tensor([W, H, W, H], device=self.device, dtype=t.float32)).nan_to_num(nan=0.0, posinf=0.0)
 
     @property
     def device(self):

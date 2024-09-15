@@ -325,6 +325,48 @@ class TestStateAttributes(unittest.TestCase):
                 self.assertTrue(t.allclose(ds.bbox, new_bbox))
                 self.assertEqual(t.device(ds.bbox.device), t.device(device))
 
+    @test_multiple_devices
+    def test_get_bbox_relative(self, device: Device):
+        xywh = tvte.BoundingBoxes([3, 4, 2, 5], format="XYWH", canvas_size=(10, 5), device=device)
+        xyxy = tvte.BoundingBoxes([3, 4, 5, 9], format="XYXY", canvas_size=(10, 5), device=device)
+        relative = t.tensor([0.6, 0.4, 0.4, 0.5], device=device)
+
+        for bbox, relative in [
+            (xywh, relative),
+            (xyxy, relative),
+            (
+                tvte.BoundingBoxes(t.ones((3, 4)), format="XYWH", canvas_size=(1, 1), device=device),
+                t.ones((3, 4), dtype=t.float32, device=device),
+            ),
+            (
+                tvte.BoundingBoxes(t.ones((3, 4)), format="XYWH", canvas_size=(2, 4), device=device),
+                t.tensor([0.25, 0.5, 0.25, 0.5], dtype=t.float32, device=device).repeat(3, 1),
+            ),
+            # canvas size is 0
+            (
+                tvte.BoundingBoxes(t.ones((3, 4)), format="XYWH", canvas_size=(0, 0), device=device),
+                t.zeros((3, 4), dtype=t.float32, device=device),
+            ),
+            # bbox value is 0
+            (
+                tvte.BoundingBoxes([0, 0, 1, 1], format="XYWH", canvas_size=(10, 5), device=device),
+                t.tensor([0, 0, 1 / 5, 1 / 10], dtype=t.float32, device=device),
+            ),
+            (
+                tvte.BoundingBoxes([1, 1, 0, 0], format="XYWH", canvas_size=(10, 5), device=device),
+                t.tensor([1 / 5, 1 / 10, 0, 0], dtype=t.float32, device=device),
+            ),
+            (
+                tvte.BoundingBoxes(t.zeros((3, 4)), format="XYXY", canvas_size=(0, 0), device=device),
+                t.tensor([0, 0, 0, 0], dtype=t.float32, device=device),
+            ),
+        ]:
+            with self.subTest(msg="dev: {}, bbox: {}, relative: {}".format(device, bbox, relative)):
+                s = State(bbox=bbox, validate=False)
+                r = s.bbox_relative
+                self.assertEqual(r.device, bbox.device)
+                self.assertTrue(t.allclose(r, relative))
+
     def test_setting_bbox_exceptions(self):
         ds = State(**DUMMY_DATA)
         with self.assertRaises(TypeError) as e:
