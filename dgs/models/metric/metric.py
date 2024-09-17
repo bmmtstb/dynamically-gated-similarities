@@ -127,7 +127,6 @@ def compute_accuracy(prediction: t.Tensor, target: t.Tensor, topk: list[int] = N
     target = target.long()
 
     correct: t.Tensor = ids.eq(target.view(-1, 1)).bool()  # [B x max(topk)]
-    del ids, target
 
     res: dict[int, float] = {}
     for k in topk:
@@ -141,9 +140,8 @@ def compute_near_k_accuracy(a_pred: t.Tensor, a_targ: t.Tensor, ks: list[int]) -
     r"""Compute the number of correct predictions within a margin of k percent for all k.
 
     Test whether the predicted alpha probability (:math:`\alpha_{\mathrm{pred}}`)
-    matches the number of correct predictions (:math:`\alpha_{\mathrm{correct}}`)
-    divided by the total number of predictions (:math:`N`).
-    With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{correct}}}{N}`
+    matches the given ground truth probability (:math:`\alpha_{\mathrm{correct}}`).
+    With :math:`\alpha{\mathrm{pred}} = \frac{\alpha_{\mathrm{nof correct}}}{\mathrm{nof total}}`,
     :math`\alpha{\mathrm{pred}}` is counted as correct if
     :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
 
@@ -156,6 +154,12 @@ def compute_near_k_accuracy(a_pred: t.Tensor, a_targ: t.Tensor, ks: list[int]) -
     Returns:
         A dict mapping the integer value ``k`` to the respective accuracy.
     """
+    if a_pred.ndim > 2 or a_targ.ndim > 2:
+        raise NotImplementedError
+    if a_pred.ndim == 2 and a_pred.size(-1) != 1:
+        raise ValueError(f"Alpha pred should be one dimensional. Got: {a_pred.shape}")
+    if a_targ.ndim == 2 and a_targ.size(-1) != 1:
+        raise ValueError(f"Alpha target should be one dimensional. Got: {a_targ.shape}")
     N = len(a_pred)
     if len(a_targ) != N:
         raise ValueError(f"alpha_pred and alpha_targ must have the same length, got {N} and {len(a_targ)}.")
