@@ -95,8 +95,8 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
         if os.path.exists(config[subm_key]["file"]):
             continue
 
-        dl_module = module_loader(config=config, module_class="dataloader", key=dl_key)
-        subm_module: PoseTrack21Submission = module_loader(config=config, module_class="submission", key=subm_key)
+        dl_module = module_loader(config=config, module_type="dataloader", key=dl_key)
+        subm_module: PoseTrack21Submission = module_loader(config=config, module_type="submission", key=subm_key)
 
         batch: list[State]
         for batch in tqdm(dl_module, desc="batch", leave=False):
@@ -192,7 +192,7 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
         config[dl_key]["data_path"] = dataset_path
 
         with HidePrint():
-            dl_module = module_loader(config=config, module_class="dataloader", key=dl_key)
+            dl_module = module_loader(config=config, module_type="dataloader", key=dl_key)
 
         batch: list[State]
         s: State

@@ -98,10 +98,10 @@ def run(config: Config, dl_key: str, paths: list[str], out_key: str) -> None:
 
                 with HidePrint():
                     # validation dataset
-                    val_dl = module_loader(config=config, module_class="dataloader", key=dl_key)
+                    val_dl = module_loader(config=config, module_type="dataloader", key=dl_key)
 
                     # will load all the similarity modules
-                    model: DGSModule = module_loader(config=config, module_class="dgs", key=dgs_key).cuda()
+                    model: DGSModule = module_loader(config=config, module_type="dgs", key=dgs_key).cuda()
                     close_all_layers(model)
 
                     engine = DGSEngine(config=config, model=model, test_loader=val_dl)

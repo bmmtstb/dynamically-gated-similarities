@@ -212,3 +212,17 @@ PT21_CATEGORIES: list[dict] = [
         "skeleton": [list(pair) for pair in SKELETONS["PT21"]],
     }
 ]
+
+MODULE_TYPES: tuple[str, ...] = (
+    "combine",
+    "dataset",
+    "dataloader",
+    "dgs",
+    "embedding_generator",
+    "engine",
+    "loss",
+    "metric",
+    "optimizer",
+    "similarity",
+    "submission",
+)

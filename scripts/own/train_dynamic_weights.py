@@ -160,17 +160,17 @@ def get_dgs_engine(
 
     # the DGSModule will load all the similarity modules internally
     kwargs = {
-        "model": module_loader(config=cfg, module_class="dgs", key=dgs_key),
+        "model": module_loader(config=cfg, module_type="dgs", key=dgs_key),
     }
     # validation dataset
     if key_train is not None:
-        kwargs["train_loader"] = module_loader(config=cfg, module_class="dataloader", key=key_train)
+        kwargs["train_loader"] = module_loader(config=cfg, module_type="dataloader", key=key_train)
     if key_eval is not None:
-        kwargs["val_loader"] = module_loader(config=cfg, module_class="dataloader", key=key_eval)
+        kwargs["val_loader"] = module_loader(config=cfg, module_type="dataloader", key=key_eval)
     if key_test is not None:
-        kwargs["test_loader"] = module_loader(config=cfg, module_class="dataloader", key=key_test)
+        kwargs["test_loader"] = module_loader(config=cfg, module_type="dataloader", key=key_test)
 
-    return module_loader(config=cfg, module_class="engine", key=engine_key, **kwargs)
+    return module_loader(config=cfg, module_type="engine", key=engine_key, **kwargs)
 
 
 def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod_name: str, sim_name: str) -> None:
@@ -205,6 +205,8 @@ def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod
     engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
     engine_train.model.combine.alpha_model.to(device=engine_train.device)
     init_model_params(engine_train.model.combine.alpha_model)
+
+    # fixme: open all layers? necessary?
 
     engine_train.train_model()
     engine_train.terminate()

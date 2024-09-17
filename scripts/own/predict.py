@@ -23,13 +23,13 @@ if __name__ == "__main__":
     # validation dataset
     print("Loading data")
     ds_start_time = time.time()
-    test_dl = module_loader(config=config, module_class="dataloader", key="dataloader_test")
+    test_dl = module_loader(config=config, module_type="dataloader", key="dataloader_test")
     print(f"Total data loading time: {str(timedelta(seconds=round(time.time() - ds_start_time)))}")
 
     module_start_time = time.time()
     with HidePrint():
         # will load all the similarity modules
-        model: DGSModule = module_loader(config=config, module_class="dgs", key="dgs").cuda()
+        model: DGSModule = module_loader(config=config, module_type="dgs", key="dgs").cuda()
         model.eval()
     print(f"Total model loading time: {str(timedelta(seconds=round(time.time() - module_start_time)))}")
 

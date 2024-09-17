@@ -6,6 +6,7 @@ This module does not provide functionality for loading Modules.
 
 from typing import Type, TypeVar
 
+from dgs.utils.constants import MODULE_TYPES
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.types import Instance
 
@@ -81,3 +82,69 @@ def get_instance(instance: Instance, instances: dict[str, Type[I]], inst_class: 
     if isinstance(instance, type) and issubclass(instance, inst_class):
         return instance
     raise InvalidParameterException(f"Instance {instance} is neither string nor a subclass of '{inst_class}'")
+
+
+def get_registered_classes(module_type: str) -> dict[str, type]:
+    """
+
+    Args:
+        module_type: The type of module to get all the registered names from.
+
+    Returns:
+        A set containing all registered names.
+    """
+    # pylint: disable=too-many-branches,import-outside-toplevel,cyclic-import
+
+    if module_type not in MODULE_TYPES:
+        raise ValueError(f"The instance class name '{module_type}' could not be found.")
+
+    if module_type == "combine":
+        from dgs.models.combine import COMBINE_MODULES as modules
+    elif module_type == "dataset":
+        from dgs.models.dataset import DATASETS as modules
+    elif module_type == "dataloader":
+        raise ValueError("dataloaders can not be registered. Did you mean dataset?")
+    elif module_type == "dgs":
+        from dgs.models.dgs import DGS_MODULES as modules
+    elif module_type == "embedding_generator":
+        from dgs.models.embedding_generator import EMBEDDING_GENERATORS as modules
+    elif module_type == "engine":
+        from dgs.models.engine import ENGINES as modules
+    elif module_type == "loss":
+        from dgs.models.loss import LOSS_FUNCTIONS as modules
+    elif module_type == "metric":
+        from dgs.models.metric import METRICS as modules
+    elif module_type == "optimizer":
+        from dgs.models.optimizer import OPTIMIZERS as modules
+    elif module_type == "similarity":
+        from dgs.models.similarity import SIMILARITIES as modules
+    elif module_type == "submission":
+        from dgs.models.submission import SUBMISSION_FORMATS as modules
+    else:
+        raise NotImplementedError
+
+    return modules
+
+
+def get_registered_class_names(module_type: str) -> set[str]:
+    """Get the names of all classes registered in a given module.
+
+    Args:
+        module_type: The type of module to get all the registered names from.
+
+    Returns:
+        A set containing all registered names.
+    """
+    return set(get_registered_classes(module_type=module_type).keys())
+
+
+def get_registered_class_types(module_type: str) -> set[type]:
+    """Get the class types of all classes registered in a given module.
+
+    Args:
+        module_type: The type of module to get all the registered types from.
+
+    Returns:
+        A set containing all registered types.
+    """
+    return set(get_registered_classes(module_type=module_type).values())

@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     # validation dataset
     print("Loading datasets and data loaders")
-    test_dl = module_loader(config=config, module_class="dataloader", key="dataloader_test")
+    test_dl = module_loader(config=config, module_type="dataloader", key="dataloader_test")
 
     module_start_time = time.time()
     # some submodules (especially the torchreid ones) print lots of debug info during model loading.
@@ -28,12 +28,12 @@ if __name__ == "__main__":
     # with HidePrint():
 
     # The overall DGS Module will load all the similarity modules
-    model: DGSModule = module_loader(config=config, module_class="dgs", key="dgs").cuda()
+    model: DGSModule = module_loader(config=config, module_type="dgs", key="dgs").cuda()
     model.eval()
     print(f"Total model loading time: {str(timedelta(seconds=round(time.time() - module_start_time)))}")
 
     # Use module_loader to load the engine, make sure to pass the required engine kwargs as additional kwargs
-    engine = module_loader(config=config, module_class="engine", key="dgs_engine", model=model, test_dl=test_dl)
+    engine = module_loader(config=config, module_type="engine", key="dgs_engine", model=model, test_dl=test_dl)
 
     # Use the engine to predict / track the given data (test_dl)
     engine.predict()

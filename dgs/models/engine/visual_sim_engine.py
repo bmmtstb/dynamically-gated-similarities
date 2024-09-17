@@ -240,7 +240,7 @@ class VisualSimilarityEngine(EngineModule):
 
         return p_embed, t_ids
 
-    @enable_keyboard_interrupt
+    @t.no_grad()
     def test(self) -> dict[str, any]:
         r"""Test the embeddings predicted by the model on the Test-DataLoader.
 
@@ -297,6 +297,7 @@ class VisualSimilarityEngine(EngineModule):
     def evaluate(self) -> Results:
         raise NotImplementedError
 
+    @t.no_grad()
     def predict(self) -> t.Tensor:
         """Predict the visual embeddings for the test data.
 

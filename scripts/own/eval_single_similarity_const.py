@@ -146,10 +146,10 @@ def run(config: Config, dl_key: str, dgs_key: str) -> None:
     """Main function to run the code after all the parameters are set."""
     with HidePrint():
         # validation dataset
-        val_dl = module_loader(config=config, module_class="dataloader", key=dl_key)
+        val_dl = module_loader(config=config, module_type="dataloader", key=dl_key)
 
         # will load all the similarity modules
-        model: DGSModule = module_loader(config=config, module_class="dgs", key=dgs_key)
+        model: DGSModule = module_loader(config=config, module_type="dgs", key=dgs_key)
         close_all_layers(model)
 
         engine = DGSEngine(config=config, model=model, test_loader=val_dl)

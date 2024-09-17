@@ -45,7 +45,7 @@ def enable_keyboard_interrupt(func: callable) -> callable:  # pragma: no cover
     """
 
     @wraps(func)  # pass information to sphinx through the decorator / wrapper
-    def module_wrapper(cls, *args, **kwargs):
+    def keyboard_interrupt_module_wrapper(cls, *args, **kwargs):
         try:
             return func(cls, *args, **kwargs)
         except (KeyboardInterrupt, InterruptedError) as e:
@@ -53,7 +53,7 @@ def enable_keyboard_interrupt(func: callable) -> callable:  # pragma: no cover
                 return cls.terminate()
             raise NotImplementedError(f"Class or function {cls} does not have a terminate method.") from e
 
-    return module_wrapper
+    return keyboard_interrupt_module_wrapper
 
 
 class BaseModule(ABC):

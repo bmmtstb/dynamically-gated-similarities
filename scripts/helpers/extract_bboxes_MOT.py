@@ -87,10 +87,10 @@ def run_RCNN_extractor(dl_key: str, subm_key: str, rcnn_cfg_str: str) -> None:
                 ):
                     continue
 
-        dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
+        dataloader = module_loader(config=config, module_type="dataloader", key=dl_key)
 
         # load submission
-        submission: MOTSubmission = module_loader(config=config, module_class="submission", key=subm_key)
+        submission: MOTSubmission = module_loader(config=config, module_type="submission", key=subm_key)
         submission.seq_info = own_seqinfo
 
         batch: list[State]
@@ -169,7 +169,7 @@ def run_gt_extractor(dl_key: str) -> None:
             continue
 
         # get data loader
-        dataloader = module_loader(config=config, module_class="dataloader", key=dl_key)
+        dataloader = module_loader(config=config, module_type="dataloader", key=dl_key)
         assert len(dataloader) >= 0
 
         batch: list[State]
