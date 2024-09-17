@@ -12,6 +12,9 @@ from .combine import CombineSimilaritiesModule
 from .dynamic import AlphaCombine, DynamicAlphaCombine
 from .static import StaticAlphaCombine
 
+__all__ = ["COMBINE_MODULES", "get_combine_module", "register_combine_module"]
+
+
 COMBINE_MODULES: dict[str, Type[CombineSimilaritiesModule]] = {
     "alpha_combine": AlphaCombine,
     "dynamic_alpha": DynamicAlphaCombine,

@@ -22,6 +22,8 @@ with warnings.catch_warnings():
         # noinspection PyUnresolvedReferences
         from torchreid.reid.losses import CrossEntropyLoss as TorchreidCEL, TripletLoss as TorchreidTL
 
+__all__ = ["LOSS_FUNCTIONS", "register_loss_function", "get_loss_function"]
+
 
 LOSS_FUNCTIONS: dict[str, Type[Loss]] = {
     # own

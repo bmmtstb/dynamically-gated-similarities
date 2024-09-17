@@ -93,6 +93,8 @@ from .pose_similarity import IntersectionOverUnion, ObjectKeypointSimilarity
 from .similarity import SimilarityModule
 from .torchreid import TorchreidVisualSimilarity
 
+__all__ = ["SIMILARITIES", "get_similarity_module", "register_similarity_module"]
+
 SIMILARITIES: dict[str, Type[SimilarityModule]] = {
     "torchreid": TorchreidVisualSimilarity,
     "TorchreidVisualSimilarity": TorchreidVisualSimilarity,

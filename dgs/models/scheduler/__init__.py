@@ -25,6 +25,8 @@ from torch.optim.lr_scheduler import (
 from dgs.utils.loader import get_instance, register_instance
 from dgs.utils.types import Instance, Scheduler
 
+__all__ = ["SCHEDULERS", "register_scheduler", "get_scheduler"]
+
 SCHEDULERS: dict[str, Type[Scheduler]] = {
     "LambdaLR": LambdaLR,
     "MultiplicativeLR": MultiplicativeLR,
@@ -57,7 +59,6 @@ def register_scheduler(sched_name: str, scheduler: Type[Scheduler]) -> None:
 
     Examples::
 
-        import torch
         from dgs.utils.types import Scheduler
         class CustomLinear(Scheduler):
             ...

@@ -7,6 +7,8 @@ from .MOT import MOTSubmission
 from .posetrack21 import PoseTrack21Submission
 from .submission import SubmissionFile
 
+__all__ = ["SUBMISSION_FORMATS", "get_submission", "register_submission"]
+
 SUBMISSION_FORMATS: dict[str, Type[SubmissionFile]] = {
     "None": SubmissionFile,
     "PoseTrack21": PoseTrack21Submission,

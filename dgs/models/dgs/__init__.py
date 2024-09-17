@@ -8,6 +8,8 @@ from typing import Type
 from dgs.utils.loader import get_instance, register_instance
 from .dgs import DGSModule
 
+__all__ = ["DGS_MODULES", "register_dgs_module", "get_dgs_module"]
+
 DGS_MODULES: dict[str, Type[DGSModule]] = {
     "DGSModule": DGSModule,
     "DGS": DGSModule,  # shorthand

@@ -21,6 +21,8 @@ from .metric import (
     TorchreidEuclideanSquaredDistance,
 )
 
+__all__ = ["METRICS", "register_metric", "get_metric"]
+
 METRICS: dict[str, Type[Metric]] = {
     "CosineSimilarity": CosineSimilarityMetric,  # alias
     "CosineSimilarityMetric": CosineSimilarityMetric,
@@ -58,7 +60,6 @@ def register_metric(name: str, new_metric: Type[Metric]) -> None:
 
     Examples::
 
-        import torch
         from torch import nn
         class CustomDistance(Metric):
             def __init__(...):

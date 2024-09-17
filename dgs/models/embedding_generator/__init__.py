@@ -17,6 +17,8 @@ from .embedding_generator import EmbeddingGeneratorModule
 from .pose_based import KeyPointConvolutionPBEG, LinearPBEG
 from .torchreid import TorchreidEmbeddingGenerator
 
+__all__ = ["EMBEDDING_GENERATORS", "register_embedding_generator", "get_embedding_generator"]
+
 EMBEDDING_GENERATORS: dict[str, Type[EmbeddingGeneratorModule]] = {
     "LinearPBEG": LinearPBEG,
     "KeyPointConvolutionPBEG": KeyPointConvolutionPBEG,

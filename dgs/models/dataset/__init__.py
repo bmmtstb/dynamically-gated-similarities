@@ -20,6 +20,8 @@ from .keypoint_rcnn import KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
 from .MOT import MOTImage, MOTImageHistory
 from .posetrack21 import PoseTrack21_BBox, PoseTrack21_Image, PoseTrack21_ImageHistory
 
+__all__ = ["DATASETS", "get_dataset", "register_dataset", "get_multi_dataset"]
+
 DATASETS: dict[str, Type[BaseDataset]] = {
     "PoseTrack21_BBox": PoseTrack21_BBox,
     "PT21_BBox": PoseTrack21_BBox,  # alias

@@ -10,6 +10,8 @@ from torch.optim import Optimizer
 from dgs.utils.loader import get_instance, register_instance
 from dgs.utils.types import Instance
 
+__all__ = ["OPTIMIZERS", "register_optimizer", "get_optimizer"]
+
 OPTIMIZERS: dict[str, Type[Optimizer]] = {
     "Adadelta": optim.Adadelta,
     "Adagrad": optim.Adagrad,
@@ -40,7 +42,6 @@ def register_optimizer(name: str, new_optimizer: Type[Optimizer]) -> None:
 
     Examples::
 
-        import torch
         from torch import optim
         class CustomAdam(optim.Optimizer):
             ...
