@@ -509,6 +509,9 @@ class State(UserDict):
             The extracted State.
         """
         # pylint: disable=too-many-branches
+        if self.B == 0:
+            raise NotImplementedError("Can't extract from a State with size 0.")
+
         if idx >= self.B or idx < -self.B:
             raise IndexError(f"Expected index to lie within ({-self.B}, {self.B - 1}), but got: {idx}")
 
@@ -545,6 +548,8 @@ class State(UserDict):
     def split(self) -> list["State"]:
         """Given a batched State object, split it into a list of single State objects."""
         # pylint: disable=too-many-branches
+        if self.B == 0:
+            raise NotImplementedError("Can't split a State with size 0.")
         if self.B == 1:
             return [self]
         new_data = [{"validate": self.validate} for _ in range(self.B)]
@@ -1047,6 +1052,8 @@ def collate_list_of_history(batch: Union[State, list[State], list[list[State]]])
         A list of States.
         Because there can be a different number of detections, every State can still have a different number of items.
     """
+    if len(batch) == 0 or all(len(sub_b) == 0 for sub_b in batch):
+        raise NotImplementedError(f"batch is empty: {batch}")
     if isinstance(batch, State):
         return [batch]
     if isinstance(batch, list) and all(isinstance(b, State) for b in batch):

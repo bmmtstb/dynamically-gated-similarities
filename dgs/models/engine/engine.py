@@ -321,8 +321,6 @@ class EngineModule(BaseModule, nn.Module):
 
         self.logger.info("#### Start Training ####")
 
-        self.set_model_mode("train")
-
         # initialize variables
         timers: DifferenceTimers = DifferenceTimers()
         epoch_t: DifferenceTimer = DifferenceTimer()
@@ -330,6 +328,9 @@ class EngineModule(BaseModule, nn.Module):
 
         for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Train - Epoch", position=0):
             self.logger.debug(f"#### Training - Epoch {self.curr_epoch} ####")
+
+            # set model mode to train, and make sure to do it here, because the evaluation script will change it
+            self.set_model_mode("train")
 
             self.model.zero_grad()  # fixme, is this required?
             optimizer.zero_grad()
@@ -359,11 +360,12 @@ class EngineModule(BaseModule, nn.Module):
                 time_optim_start = time.time()
 
                 # OPTIMIZE MODEL
-                optimizer.zero_grad()
-                self.model.zero_grad()
-                loss = self._get_train_loss(data, curr_iter)
-                loss.backward()
-                optimizer.step()
+                with t.enable_grad():
+                    optimizer.zero_grad()
+                    self.model.zero_grad()
+                    loss = self._get_train_loss(data, curr_iter)
+                    loss.backward()
+                    optimizer.step()
                 # OPTIMIZE END
 
                 timers.add(name="forwbackw", prev_time=time_optim_start)
@@ -415,24 +417,19 @@ class EngineModule(BaseModule, nn.Module):
 
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
-                with t.no_grad():
-                    metrics: dict[str, any] = self.evaluate()
-                    self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
+                metrics: dict[str, any] = self.evaluate()
+                self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
 
-                    if len(metrics) > 0:
-                        self.writer.add_hparams(
-                            run_name=self.name_safe,
-                            hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
-                            metric_dict=metrics,
-                            global_step=self.curr_epoch,
-                        )
+                if len(metrics) > 0:
+                    self.writer.add_hparams(
+                        run_name=self.name_safe,
+                        hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
+                        metric_dict=metrics,
+                        global_step=self.curr_epoch,
+                    )
 
             # handle updating the learning rate scheduler
             lr_sched.step()
-
-            # reset the model and optimizer
-            self.model.zero_grad()
-            optimizer.zero_grad()
 
             # update and force write the writer
             self.writer.flush()
@@ -563,6 +560,7 @@ class EngineModule(BaseModule, nn.Module):
         return tensor
 
     @abstractmethod
+    @t.enable_grad()
     def _get_train_loss(self, data: Union[State, list[State]], _curr_iter: int) -> t.Tensor:  # pragma: no cover
         """Compute the loss during training given the data.
 
@@ -618,8 +616,10 @@ class EngineModule(BaseModule, nn.Module):
         show_images = False
         self.logger.info(f"#### Results - Epoch {self.curr_epoch} ####")
         for key, value in results.items():
-            if isinstance(value, (int, float)):
+            if isinstance(value, float):
                 self.logger.info(f"{key}: {value:.2%}")
+            elif isinstance(value, int):
+                self.logger.info(f"{key}: {value}")
             elif key.lower() == "cmc":
                 self.logger.info("CMC curve:")
                 for r, cmc_i in value.items():

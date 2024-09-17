@@ -41,15 +41,15 @@ train:
     loss_kwargs: {}
     optimizer: "Adam"
     optimizer_kwargs:
-#        lr: 0.0001  # 1e-4
-        lr: 0.000001  # 1e-6
+        lr: 0.0001  # 1e-4
+#        lr: 0.000001  # 1e-6
 #        lr: 0.0000001  # 1e-7
         foreach: true
-    epochs: 1
+    epochs: 6
     save_interval: 1
     scheduler: "StepLR"
     scheduler_kwargs:
-        step_size: 5
+        step_size: 2
         gamma: 0.1
 
 # ####### #
@@ -172,6 +172,7 @@ val_dl_pt21_256x192_eval_acc:
     shuffle: false
     dataset_path: "./data/PoseTrack21/"
     paths: "./data/PoseTrack21/posetrack_data/val/*.json"
+#    paths: "./data/PoseTrack21/posetrack_data/val_part/*.json"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"  # dataset name will be added during init
     
     L: 1
@@ -188,6 +189,7 @@ train_dl_pt21_256x192:
     shuffle: true
     dataset_path: "./data/PoseTrack21/"
     paths: "./data/PoseTrack21/posetrack_data/train/*.json"
+#    paths: "./data/PoseTrack21/posetrack_data/train_part/*.json"
     crops_folder: "./data/PoseTrack21/crops/256x192/train/"  # dataset name will be added during init
     
     L: 1
@@ -208,6 +210,7 @@ train_dl_pt21_256x192:
 box_sim:
     module_name: "iou"
     softmax: false
+    train_key: "bbox_relative"
 
 # Pose - OKS - COCO
 

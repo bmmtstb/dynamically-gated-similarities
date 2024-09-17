@@ -32,8 +32,6 @@ DL_KEYS: list[tuple[str, str, str]] = [
 
 ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
     "fc_1_box": fc_linear(hidden_layers=[4, 1]),
-    "sig_fc_1_box": nn.Sequential(nn.Sigmoid(), fc_linear(hidden_layers=[4, 1])),
-    "fc_1_box_sig": nn.Sequential(fc_linear(hidden_layers=[4, 1]), nn.Sigmoid()),
     "fc_1_pose_coco": nn.Sequential(
         nn.Flatten(),
         fc_linear(hidden_layers=[17, 1]),
@@ -44,7 +42,6 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
         fc_linear(hidden_layers=[17, 1]),
     ),
     "fc_1_visual": fc_linear([512, 1]),
-    "fc_1_visual_sig": nn.Sequential(fc_linear([512, 1]), nn.Sigmoid()),
     "fc_2_visual": fc_linear([512, 128, 1]),
     "fc_3_visual": fc_linear([512, 256, 128, 1]),
     "fc_4_visual": fc_linear([512, 256, 128, 64, 1]),
@@ -52,7 +49,7 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
 }
 
 NAMES: dict[str, list[str]] = {
-    "box_sim": ["fc_1_box", "fc_1_box_sig", "sig_fc_1_box"],
+    "box_sim": ["fc_1_box"],
     # "pose_sim_coco": ["fc_1_pose_coco", "conv_1_fc_1_pose_coco"],
     "OSNet_sim": ["fc_1_visual", "fc_1_visual_sig", "fc_2_visual"],
     # "OSNetAIN_sim": ["fc_1_visual", "fc_2_visual"],

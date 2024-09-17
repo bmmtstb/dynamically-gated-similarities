@@ -21,7 +21,6 @@ from dgs.models.submission.submission import SubmissionFile
 from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import collate_states, EMPTY_STATE, State
 from dgs.utils.timer import DifferenceTimers
-from dgs.utils.torchtools import close_all_layers
 from dgs.utils.track import Tracks
 from dgs.utils.types import Config, Results, Validations
 from dgs.utils.utils import torch_to_numpy
@@ -190,7 +189,7 @@ class DGSEngine(EngineModule):
         and for the IoU or OKS similarities, the bbox and key point data is returned.
         The :func:`get_data` function will be called twice, once for the current time-step and once for the previous.
         """
-        return [sm.get_data(ds) for sm in self.model.sim_mods]
+        return [sm.get_train_data(ds) for sm in self.model.sim_mods]
 
     def get_target(self, ds: State) -> t.Tensor:
         """Get the target data.
@@ -198,7 +197,10 @@ class DGSEngine(EngineModule):
         For the similarity engine, the target data consists of the dataset-unique class-id.
         The :func:`get_target` function will be called twice, once for the current time-step and once for the previous.
         """
-        return ds.class_id
+        try:
+            return ds.class_id
+        except KeyError as e:
+            raise KeyError(f"State: {ds.data}") from e
 
     @enable_keyboard_interrupt
     def _track_step(self, detections: State, frame_idx: int, name: str, timers: DifferenceTimers) -> None:
@@ -248,7 +250,6 @@ class DGSEngine(EngineModule):
             time_match_start = time.time()
             # scipy uses numpy arrays instead of torch, therefore, convert -> but loose computational graph
             sim_matrix = torch_to_numpy(similarity)
-            del similarity
             rids, cids = linear_sum_assignment(sim_matrix, maximize=True)  # rids and cids are ndarray of shape [N]
 
             assert 0 <= (cost := sim_matrix[rids, cids].sum()) <= N, (
@@ -260,7 +261,6 @@ class DGSEngine(EngineModule):
             assert (
                 N == len(rids) == len(cids)
             ), f"expected shapes to match - N: {N}, states: {len(track_states)}, rids: {len(rids)}, cids: {len(cids)}"
-            del track_states
 
             states: list[State] = detections.split()
             for rid, cid in zip(rids, cids):
@@ -288,7 +288,6 @@ class DGSEngine(EngineModule):
 
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
-        close_all_layers(self.model)
 
         # set up submission data
         self.submission = get_submission(
@@ -315,7 +314,6 @@ class DGSEngine(EngineModule):
 
         # set model to evaluation mode and freeze / close all layers
         self.set_model_mode("eval")
-        close_all_layers(self.model)
 
         frame_idx: int = int(self.curr_epoch * len(self.test_dl) * self.test_dl.batch_size)
 
@@ -342,7 +340,6 @@ class DGSEngine(EngineModule):
 
                 out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
                 if detection.B > 0:
-                    active = collate_states(self.tracks.get_active_states())
                     active.draw(
                         save_path=out_fp,
                         show_kp=self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"]),
@@ -369,29 +366,29 @@ class DGSEngine(EngineModule):
             f"#### Finished Prediction {self.name} in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
         )
 
-    @enable_keyboard_interrupt
-    def _get_train_loss(self, data: list[State], _curr_iter: int) -> t.Tensor:
-        """Calculate the loss for the current frame."""
-
-        assert isinstance(data, list) and len(data) == 2, f"Data must be a list of length 2. but got {len(data)}"
-        data_old, data_new = data
-        del data
-
+    def _get_accuracy(self, data_old: State, data_new: State) -> t.Tensor:
+        """Given the old and new state, compute the accuracy of the similarities as the number of correct matches
+        divided by the total number of detections.
+        """
         with t.no_grad():
-            old_ids = self.get_target(data_old)  # [T]
-            new_ids = self.get_target(data_new)  # [D]
+            old_ids = self.get_target(data_old).flatten()  # [T]
+            new_ids = self.get_target(data_new).flatten()  # [D]
+
             # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
-            combined_ids = t.cat(
-                [old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]]]
-            )
+            # only add new_ids that are not in old_ids
+            if len(old_ids) > 0 and len(new_ids) > 0:
+                combined_ids = t.cat(
+                    [old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]]]
+                )
+            else:
+                # return early with accuracy of zero, because there are no new ids and or no old ids
+                return t.zeros(len(self.model.sim_mods), device=self.device, dtype=t.float32)
+
             # Obtain a matrix describing the matches between the new_ids and the old_ids.
             # if there is no match, use the ids of newly created tracks (the second  part of the combined_ids)
             # With B>1 there might be multiple ID matches, all of those will be tested / counted later on.
             # [D x D+T]
             all_matches = new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1)
-
-            # get the input data of the similarity modules for the current step
-            curr_sim_data = self.get_data(data_new)  # [D]
 
             # get the similarity matrix as [S x D x (T + D)]
             similarities = t.stack([m(data_new, data_old) for m in self.model.sim_mods])
@@ -404,13 +401,28 @@ class DGSEngine(EngineModule):
             nof_correct = t.stack([all_matches[t.arange(len(new_ids)), msi].count_nonzero() for msi in max_sim_indices])
             # the training target is the ratio of correct matches to the total number of detections
             # making sure to handle the cases where either no detections or no correct matches are present
-            target = (nof_correct / len(data_new)).nan_to_num(nan=0.0, posinf=0.0)
+            accuracy = (nof_correct / len(data_new)).nan_to_num(nan=0.0, posinf=0.0)
+            return accuracy
 
-        # For each of the similarity modules, compute the alpha value of each of the respective inputs.
-        # [S x D]
-        alpha = t.stack([a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)])
-        # make sure the target and input have the same shape, by repeating the target for each input
-        loss = self.loss(alpha, target.expand(1, len(data_new)))
+    @enable_keyboard_interrupt
+    def _get_train_loss(self, data: list[State], _curr_iter: int) -> t.Tensor:
+        """Calculate the loss for the current frame."""
+        # fixme: this should support data_old with arbitrary size (or more precise an ImageHistoryDataset with L != 1)
+
+        assert isinstance(data, list) and len(data) == 2, f"Data must be a list of length 2. but got {len(data)}"
+        data_old, data_new = data
+
+        target = self._get_accuracy(data_old=data_old, data_new=data_new)  # [S]
+
+        with t.enable_grad():
+            # get the input data of the similarity modules for the current step
+            curr_sim_data = self.get_data(data_new)  # [D]
+
+            # For each of the similarity modules, compute the alpha value of each of the respective inputs.
+            # [S x D]
+            alpha = t.stack([a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)])
+            # make sure the target and input have the same shape, by repeating the target for each input
+            loss = self.loss(alpha, target.expand(1, len(data_new)))
         return loss
 
     def _track(self, dl: TDataLoader, name: str) -> None:
@@ -438,10 +450,10 @@ class DGSEngine(EngineModule):
                     active = EMPTY_STATE.copy()
                     active.filepath = detection.filepath
                     if "image_id" in detection:
-                        active["image_id"] = detection["image_id"]
+                        active.data["image_id"] = detection["image_id"]
                     if "frame_id" in detection:
-                        active["frame_id"] = detection["frame_id"]
-                    active["pred_tid"] = t.tensor([-1], dtype=t.long, device=detection.device)
+                        active.data["frame_id"] = detection["frame_id"]
+                    active.data["pred_tid"] = t.empty(0, dtype=t.long, device=detection.device)
                 else:
                     active = collate_states(active_list)
 
@@ -517,68 +529,67 @@ class DGSEngine(EngineModule):
         """Evaluate the alpha model by computing the accuracy of the alpha prediction."""
         frame_idx: int = self.curr_epoch * len(self.val_dl) * self.val_dl.batch_size
         ks = self.params_train.get("acc_k_eval", DEF_VAL["engine"]["dgs"]["acc_k_eval"])
-        results: dict[str | int, any] = {"N": 0, **dict(zip(ks, [0] * len(ks)))}
+        S = len(self.model.sim_mods)
+
+        # there might be multiple similarities, therefore create a base value for every k for every similarity
+        results: dict[str | int, any] = {
+            "N": 0,
+            **dict(
+                zip([f"{sim_mod.module_name}-{k}" for k in ks for sim_mod in self.model.sim_mods], [0] * len(ks) * S)
+            ),
+        }
         for data in tqdm(self.val_dl, desc="DataLoader", leave=False):
 
             assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
             data_old, data_new = data
 
-            old_ids = self.get_target(data_old)  # [T]
-            new_ids = self.get_target(data_new)  # [D]
+            D = len(data_new)
+            # nothing to do, if there are no detections
+            if D > 0:
+                accuracy = self._get_accuracy(data_old=data_old, data_new=data_new)  # [S]
 
-            # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
-            # and handle edge cases where either old or new ids are empty
-            if len(old_ids) == 0:
-                combined_ids = new_ids
-            elif len(new_ids) == 0:
-                combined_ids = old_ids
-            else:
-                combined_ids = t.cat(
-                    (old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]])
-                )
-            # the ID of the correct match, and if there is no old ID to match to, use the newly created tracks
-            indices = t.where(new_ids.reshape(-1, 1) == combined_ids.reshape(1, -1))
+                # get the input data of the similarity modules for the current step
+                # and use those to compute all the alpha scores [S]
+                curr_sim_data = self.get_data(data_new)  # [D]
+                alpha: t.Tensor = t.stack(
+                    [a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)]
+                )  # [S x D]
 
-            # get the input data of the similarity modules for the current step
-            curr_sim_data = self.get_data(data_new)  # [D]
-
-            # get the similarity matrices as [D x (T + D)]
-            similarity = self.model.forward(ds=data_new, target=data_old, alpha_inputs=curr_sim_data)
-            alpha = t.cat(
-                [a_m(curr_sim_data[i]) for i, a_m in enumerate(self.model.combine.alpha_model)], dim=0
-            ).flatten()
-
-            N = len(alpha)
-            if N > 0:
                 # compare alpha against the correct similarities
-                accuracies = compute_near_k_accuracy(alpha, similarity[indices], ks=ks)
-                for k, acc in accuracies.items():
-                    results[k] += round(float(acc) * float(N))
-                results["N"] += N
+                # alpha and the accuracy are of shape [S (x D)], therefore evaluate for every s in S
+                for s_i, alpha_i in enumerate(alpha):
+                    sim_name: str = self.model.sim_mods[s_i].module_name
+                    accuracies = compute_near_k_accuracy(a_pred=alpha_i, a_targ=accuracy.repeat(D), ks=ks)
+                    for k, acc in accuracies.items():
+                        results[f"{sim_name}-{k}"] += round(float(acc) * float(D))
+                    self.writer.add_scalars(
+                        main_tag="Eval/accu",
+                        tag_scalar_dict={f"{sim_name}-{k}": v for k, v in accuracies.items()},
+                        global_step=frame_idx,
+                    )
 
-                self.writer.add_scalars(
-                    main_tag="Eval/accu",
-                    tag_scalar_dict={str(k): v for k, v in accuracies.items()},
-                    global_step=frame_idx,
-                )
+                results["N"] += D
 
             # clean up data to save memory
             if isinstance(data, State):
                 data.clean()
-            elif isinstance(data, list):
+            elif isinstance(data, (list, tuple)):
                 for d in data:
                     d.clean()
-            del data
 
             # End of frame
             frame_idx += 1
 
-        # compute overall accuracy of this dataset given partially data
+        # compute overall accuracy of this dataset given partially data (across all the similarities of this module)
         # results will be written to the writer in the evaluate method
         for k in ks:
             k_name: str = f"acc-{k:05.1f}"  # format 51.4% as 051.4
-            results[k_name] = float(results[k]) / float(results["N"])
-            results.pop(k)
+            results[k_name] = sum(float(results[f"{sim_mod.module_name}-{k}"]) for sim_mod in self.model.sim_mods) / (
+                float(results["N"]) * S
+            )
+            # save per-similarity accuracies as percentages
+            for sim_mod in self.model.sim_mods:
+                results.pop(f"{sim_mod.module_name}-{k}")
 
         return results
 
@@ -604,10 +615,9 @@ class DGSEngine(EngineModule):
         :math`\alpha{\mathrm{pred}}` is counted as correct if
         :math:`\alpha{\mathrm{pred}}-k \leq \alpha{\mathrm{correct}} \leq \alpha{\mathrm{pred}}+k`.
         """
-        self.logger.debug("Start Evaluation - set model to eval mode")
+        self.logger.debug("Start Evaluation")
 
         self.set_model_mode("eval")
-        close_all_layers(self.model)
 
         start_time: float = time.time()
 
