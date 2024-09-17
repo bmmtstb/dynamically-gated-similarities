@@ -2,12 +2,17 @@
 Base class for a torch module that contains the heart of the dynamically gated similarity tracker.
 """
 
+from collections.abc import MutableSequence
+from typing import Union
+
 import torch as t
 from torch import nn
 
-from dgs.models.combine import CombineSimilaritiesModule, get_combine_module
+from dgs.models.combine import get_combine_module
+from dgs.models.combine.combine import CombineSimilaritiesModule
 from dgs.models.module import BaseModule
 from dgs.models.similarity import get_similarity_module
+from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
@@ -42,7 +47,7 @@ class DGSModule(BaseModule, nn.Module):
         Default ``DEF_VAL.dgs.similarity_softmax``.
     """
 
-    sim_mods: nn.ModuleList
+    sim_mods: Union[nn.ModuleList, MutableSequence[SimilarityModule]]
     combine: CombineSimilaritiesModule
     new_track_weight: t.Tensor
 
@@ -94,7 +99,6 @@ class DGSModule(BaseModule, nn.Module):
 
         # combine and possibly compute softmax
         combined: t.Tensor = self.combine(*results, **_kwargs)
-        del results
 
         # add a number of columns for the empty / new tracks equal to the length of the input
         # every input should be allowed to get assigned to a new track

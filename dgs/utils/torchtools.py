@@ -8,6 +8,7 @@ import pickle
 import shutil
 import warnings
 from collections import OrderedDict
+from copy import deepcopy
 from functools import partial
 from typing import TypeVar, Union
 
@@ -84,7 +85,7 @@ def save_checkpoint(
     # all the module keys start with 'module.' remove that
     if remove_module_from_keys:
         # remove 'module.' in state_dict's keys
-        state_dict = state["module"]
+        state_dict = deepcopy(state["module"])
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             if k.startswith("module."):

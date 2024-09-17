@@ -876,6 +876,11 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
     def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
         """Convert raw PoseTrack21 annotations to a list of :class:`State` objects."""
         img_ids: list[int] = [int(a_i["id"]) for a_i in a]
+        if len(img_ids) == 0:
+            raise NotImplementedError(
+                f"No image ids given for {idx} in dataset: {self._get_dataset_name_from_img_path(a[0]['crop_path'])}\n"
+                f"states: {a}"
+            )
         states = []
         for img_id in img_ids:
             anno_ids: list[int] = self.map_img_id_to_anno_ids[img_id]
