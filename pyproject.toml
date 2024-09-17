@@ -65,6 +65,7 @@ omit = [
     "*/engine/*",  # engine cant really be tested without data
     "visualization.py",  # printing is hard to test
     "alphapose.py",  # alphapose is not yet fully supported
+    "*/venv/*",  # all source files
 ]
 
 [tool.coverage.paths]

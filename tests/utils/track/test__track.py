@@ -1,6 +1,6 @@
 import unittest
 
-import torch
+import torch as t
 from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.utils.state import collate_bboxes, State
@@ -43,7 +43,7 @@ class TestTrack(unittest.TestCase):
             _ = Track(
                 N=MAX_LENGTH,
                 curr_frame=0,
-                states=[State(bbox=BoundingBoxes(torch.ones(2, 4), format="XYWH", canvas_size=(10, 10)))],
+                states=[State(bbox=BoundingBoxes(t.ones(2, 4), format="XYWH", canvas_size=(10, 10)))],
             )
         self.assertTrue("The batch size of all the States '[2]' must be 1." in str(e.exception), msg=e.exception)
 
@@ -110,7 +110,7 @@ class TestTrackProperties(unittest.TestCase):
             _ = EMPTY_TRACK.device
         self.assertTrue("Can not get the device of an empty Track" in str(e.exception), msg=e.exception)
 
-        self.assertEqual(ONE_TRACK.device, torch.device("cpu"))
+        self.assertEqual(ONE_TRACK.device, t.device("cpu"))
 
     def test_N(self):
         self.assertEqual(EMPTY_TRACK.N, MAX_LENGTH)
@@ -122,18 +122,18 @@ class TestTrackProperties(unittest.TestCase):
     def test_id(self):
         for val_id, res_id in [
             (2, 2),
-            (torch.tensor(2), 2),
-            (torch.tensor([2]), 2),
+            (t.tensor(2), 2),
+            (t.tensor([2]), 2),
         ]:
             with self.subTest(msg="val_id: {}, res_id: {}".format(val_id, res_id)):
-                t = ONE_TRACK.copy()
-                self.assertEqual(t.id, -1)
-                t.id = val_id
-                self.assertEqual(t.id, res_id)
+                tr = ONE_TRACK.copy()
+                self.assertEqual(tr.id, -1)
+                tr.id = val_id
+                self.assertEqual(tr.id, res_id)
 
-        t = ONE_TRACK.copy()
+        tr = ONE_TRACK.copy()
         with self.assertRaises(NotImplementedError) as e:
-            t.id = "2"
+            tr.id = "2"
         self.assertTrue(
             f"unknown type for ID, expected int but got '{type('2')}' - '2'" in str(e.exception), msg=e.exception
         )
@@ -142,23 +142,23 @@ class TestTrackProperties(unittest.TestCase):
 class TestTrackFunctions(unittest.TestCase):
 
     def test_append(self):
-        t = Track(N=MAX_LENGTH, curr_frame=0)
-        self.assertEqual(t.status, TrackStatus.New)
+        tr = Track(N=MAX_LENGTH, curr_frame=0)
+        self.assertEqual(tr.status, TrackStatus.New)
 
         for i in range(MAX_LENGTH + 3):
-            t.append(State(bbox=BoundingBoxes([0, 0, i, i], format="XYXY", canvas_size=(100, 100))))
-            self.assertEqual(len(t), min(i + 1, MAX_LENGTH))
-            self.assertTrue(torch.allclose(t[-1].bbox.data, torch.tensor([0, 0, i, i])))
-            self.assertEqual(t.nof_active, i + 1)
-            self.assertEqual(t.status, TrackStatus.Active)
+            tr.append(State(bbox=BoundingBoxes([0, 0, i, i], format="XYXY", canvas_size=(100, 100))))
+            self.assertEqual(len(tr), min(i + 1, MAX_LENGTH))
+            self.assertTrue(t.allclose(tr[-1].bbox.data, t.tensor([0, 0, i, i])))
+            self.assertEqual(tr.nof_active, i + 1)
+            self.assertEqual(tr.status, TrackStatus.Active)
 
     def test_append_wrong_shape(self):
-        t = ONE_TRACK.copy()
+        tr = ONE_TRACK.copy()
         with self.assertRaises(ValueError) as e:
-            t.append(State(bbox=BoundingBoxes(torch.ones((2, 4)), format="XYXY", canvas_size=(100, 100))))
+            tr.append(State(bbox=BoundingBoxes(t.ones((2, 4)), format="XYXY", canvas_size=(100, 100))))
         self.assertTrue("only get a State with the a batch size of 1, but got 2" in str(e.exception), msg=e.exception)
         # status should not have changed
-        self.assertEqual(t.status, TrackStatus.New)
+        self.assertEqual(tr.status, TrackStatus.New)
 
     def test_clear(self):
         empty = EMPTY_TRACK.copy()
@@ -172,34 +172,34 @@ class TestTrackFunctions(unittest.TestCase):
         self.assertEqual(full, EMPTY_TRACK)
 
     def test_status(self):
-        t = Track(N=MAX_LENGTH, curr_frame=0, tid=1)
-        self.assertEqual(t.status, TrackStatus.New)
-        self.assertEqual(t.id, 1)
+        tr = Track(N=MAX_LENGTH, curr_frame=0, tid=1)
+        self.assertEqual(tr.status, TrackStatus.New)
+        self.assertEqual(tr.id, 1)
 
-        t.append(DUMMY_STATE)
-        self.assertEqual(t.status, TrackStatus.Active)
-        self.assertEqual(t.nof_active, 1)
-        self.assertEqual(t.id, 1)
+        tr.append(DUMMY_STATE)
+        self.assertEqual(tr.status, TrackStatus.Active)
+        self.assertEqual(tr.nof_active, 1)
+        self.assertEqual(tr.id, 1)
 
-        t.set_inactive()
-        self.assertEqual(t.status, TrackStatus.Inactive)
-        self.assertEqual(t.nof_active, 0)
-        self.assertEqual(t.id, 1)
+        tr.set_inactive()
+        self.assertEqual(tr.status, TrackStatus.Inactive)
+        self.assertEqual(tr.nof_active, 0)
+        self.assertEqual(tr.id, 1)
 
-        t.set_active()
-        self.assertEqual(t.status, TrackStatus.Active)
-        self.assertEqual(t.nof_active, 0)
-        self.assertEqual(t.id, 1)
+        tr.set_active()
+        self.assertEqual(tr.status, TrackStatus.Active)
+        self.assertEqual(tr.nof_active, 0)
+        self.assertEqual(tr.id, 1)
 
-        t.append(DUMMY_STATE)
-        self.assertEqual(t.status, TrackStatus.Active)
-        self.assertEqual(t.nof_active, 1)
-        self.assertEqual(t.id, 1)
+        tr.append(DUMMY_STATE)
+        self.assertEqual(tr.status, TrackStatus.Active)
+        self.assertEqual(tr.nof_active, 1)
+        self.assertEqual(tr.id, 1)
 
-        t.set_removed()
-        self.assertEqual(t.status, TrackStatus.Removed)
-        self.assertEqual(t.nof_active, 0)
-        self.assertEqual(t.id, -1)
+        tr.set_removed()
+        self.assertEqual(tr.status, TrackStatus.Removed)
+        self.assertEqual(tr.nof_active, 0)
+        self.assertEqual(tr.id, -1)
 
     def test_set_status(self):
         for status, tid in [
@@ -210,13 +210,13 @@ class TestTrackFunctions(unittest.TestCase):
             (TrackStatus.Removed, ...),
         ]:
             with self.subTest(msg="status: {}, tid: {}".format(status, tid)):
-                t = ONE_TRACK.copy()
-                t.set_status(status, tid=tid)
-                self.assertEqual(t.status, status)
+                tr = ONE_TRACK.copy()
+                tr.set_status(status, tid=tid)
+                self.assertEqual(tr.status, status)
 
     def test_age(self):
-        t = Track(N=MAX_LENGTH, curr_frame=0)
-        self.assertEqual(t.age(10), 10)
+        tr = Track(N=MAX_LENGTH, curr_frame=0)
+        self.assertEqual(tr.age(10), 10)
 
     @test_multiple_devices
     def test_to(self, device):
@@ -238,7 +238,7 @@ class TestTrackFunctions(unittest.TestCase):
         self.assertTrue(isinstance(stacked, State))
         self.assertEqual(len(stacked), MAX_LENGTH)
         self.assertTrue(
-            torch.allclose(
+            t.allclose(
                 stacked.bbox,
                 State(
                     bbox=collate_bboxes(

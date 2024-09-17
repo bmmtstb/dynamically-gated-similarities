@@ -1,7 +1,7 @@
 import os
 import unittest
 
-import torch
+import torch as t
 from torch import nn
 from torchvision.tv_tensors import BoundingBoxes
 
@@ -42,7 +42,7 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         ds = State(
             filepath=(fp,),
             validate=False,
-            keypoints=torch.ones(1, J, 2),
+            keypoints=t.ones(1, J, 2),
             bbox=BoundingBoxes([0, 0, 1, 1], format="xyxy", canvas_size=(1, 1)),
             crop_path=(fp,),
             image_crop=img,
@@ -83,8 +83,8 @@ class TestTorchreidEmbeddingGenerator(unittest.TestCase):
         ds = State(
             filepath=fps,
             validate=False,
-            keypoints=torch.ones(1, J, 2),
-            bbox=BoundingBoxes(torch.ones((B, 4)), format="xyxy", canvas_size=(1, 1)),
+            keypoints=t.ones(1, J, 2),
+            bbox=BoundingBoxes(t.ones((B, 4)), format="xyxy", canvas_size=(1, 1)),
             crop_path=fps,
             image_crop=img,
         )

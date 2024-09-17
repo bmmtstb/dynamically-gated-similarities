@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.loss import (
@@ -42,10 +42,10 @@ class TestLoss(unittest.TestCase):
 
     def test_custom_cross_entropy_loss(self):
         cel = CrossEntropyLoss()
-        inputs = torch.tensor([[0, 1], [0.5, 0.5], [1, 0]], dtype=torch.float32)
-        targets = torch.tensor([[0, 1], [0, 1], [0, 1]], dtype=torch.float32)
+        inputs = t.tensor([[0, 1], [0.5, 0.5], [1, 0]], dtype=t.float32)
+        targets = t.tensor([[0, 1], [0, 1], [0, 1]], dtype=t.float32)
         logits = nn.functional.log_softmax(inputs, dim=1)
-        self.assertTrue(torch.allclose(cel(logits, targets), nn.functional.cross_entropy(logits, targets)))
+        self.assertTrue(t.allclose(cel(logits, targets), nn.functional.cross_entropy(logits, targets)))
 
     def test_compare_own_and_torchreid_loss(self):
         B = 7
@@ -56,12 +56,12 @@ class TestLoss(unittest.TestCase):
         )
         own_loss = get_loss_function("CrossEntropyLoss")(label_smoothing=eps)
         for _ in range(10):
-            inputs = torch.rand((B, C), dtype=torch.float32)
-            targets = torch.randint(low=0, high=C, size=(B,), dtype=torch.long)
+            inputs = t.rand((B, C), dtype=t.float32)
+            targets = t.randint(low=0, high=C, size=(B,), dtype=t.long)
 
             l1 = reid_loss(inputs.detach().clone(), targets.detach().clone())
             l2 = own_loss(inputs.detach().clone(), targets.detach().clone())
-            self.assertTrue(torch.allclose(l1, l2))
+            self.assertTrue(t.allclose(l1, l2))
 
 
 if __name__ == "__main__":

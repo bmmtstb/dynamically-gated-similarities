@@ -2,7 +2,7 @@ import os
 import unittest
 
 import numpy as np
-import torch
+import torch as t
 from torchvision import tv_tensors
 
 from dgs.utils.constants import PROJECT_ROOT
@@ -24,21 +24,21 @@ J = 20
 B = 10
 IMG_NAME = "866-200x300.jpg"
 
-DUMMY_IMAGE_TENSOR: torch.Tensor = torch.ones((1, 3, 10, 20)).byte()
+DUMMY_IMAGE_TENSOR: t.Tensor = t.ones((1, 3, 10, 20)).byte()
 DUMMY_IMAGE: tv_tensors.Image = tv_tensors.Image(DUMMY_IMAGE_TENSOR)
 
-DUMMY_KEY_POINTS_TENSOR: torch.Tensor = torch.rand((1, J, 2))
-DUMMY_KEY_POINTS: torch.Tensor = DUMMY_KEY_POINTS_TENSOR.detach().clone()
+DUMMY_KEY_POINTS_TENSOR: t.Tensor = t.rand((1, J, 2))
+DUMMY_KEY_POINTS: t.Tensor = DUMMY_KEY_POINTS_TENSOR.detach().clone()
 
-DUMMY_BBOX_TENSOR: torch.Tensor = torch.ones((1, 4)) * 10
+DUMMY_BBOX_TENSOR: t.Tensor = t.ones((1, 4)) * 10
 DUMMY_BBOX: tv_tensors.BoundingBoxes = tv_tensors.BoundingBoxes(
     DUMMY_BBOX_TENSOR, format=tv_tensors.BoundingBoxFormat.XYWH, canvas_size=(1000, 1000)
 )
 
-DUMMY_ID: torch.Tensor = torch.ones(1).long()
+DUMMY_ID: t.Tensor = t.ones(1).long()
 
-DUMMY_HM_TENSOR: torch.Tensor = torch.distributions.uniform.Uniform(0, 1).sample(torch.Size((1, J, 10, 20))).float()
-DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=torch.float32)
+DUMMY_HM_TENSOR: t.Tensor = t.distributions.uniform.Uniform(0, 1).sample(t.Size((1, J, 10, 20))).float()
+DUMMY_HM: tv_tensors.Mask = tv_tensors.Mask(DUMMY_HM_TENSOR, dtype=t.float32)
 
 DUMMY_FP_STRING: str = f"./tests/test_data/images/{IMG_NAME}"
 DUMMY_FP: FilePaths = (os.path.normpath(os.path.join(PROJECT_ROOT, "./tests/test_data/images/" + IMG_NAME)),)
@@ -55,34 +55,34 @@ class TestValidateImage(unittest.TestCase):
             (
                 DUMMY_IMAGE_TENSOR.squeeze_(),
                 None,
-                tv_tensors.Image(torch.ones((3, 10, 20)).byte()),
+                tv_tensors.Image(t.ones((3, 10, 20)).byte()),
             ),
-            (torch.ones((1, 1, 1, 3, 10, 20)).byte(), 4, DUMMY_IMAGE),
+            (t.ones((1, 1, 1, 3, 10, 20)).byte(), 4, DUMMY_IMAGE),
             (
-                torch.ones((1, 1, 1, 3, 10, 20)).byte(),
+                t.ones((1, 1, 1, 3, 10, 20)).byte(),
                 None,
-                tv_tensors.Image(torch.ones((1, 1, 1, 3, 10, 20)).byte()),
+                tv_tensors.Image(t.ones((1, 1, 1, 3, 10, 20)).byte()),
             ),
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
-                self.assertTrue(torch.allclose(validate_image(images=image, dims=dims), output))
+                self.assertTrue(t.allclose(validate_image(images=image, dims=dims), output))
 
     def test_validate_image_exceptions(self):
         for image, dims, exception_type in [
             (np.ones((1, 3, 10, 20), dtype=int), None, TypeError),
-            (torch.ones((1, 3, 10, 20)).bool(), None, TypeError),  # bool tensor
-            (torch.ones((1, 2, 10, 20)).byte(), None, ValueError),
-            (torch.ones((1, 10, 10, 20)).byte(), None, ValueError),
-            (torch.ones((1, 0, 10, 20)).byte(), None, ValueError),
-            (torch.ones((10, 20)).byte(), None, ValueError),
-            (torch.ones(1000).byte(), None, ValueError),
+            (t.ones((1, 3, 10, 20)).bool(), None, TypeError),  # bool tensor
+            (t.ones((1, 2, 10, 20)).byte(), None, ValueError),
+            (t.ones((1, 10, 10, 20)).byte(), None, ValueError),
+            (t.ones((1, 0, 10, 20)).byte(), None, ValueError),
+            (t.ones((10, 20)).byte(), None, ValueError),
+            (t.ones(1000).byte(), None, ValueError),
         ]:
             with self.subTest(msg=f"image: {image}, dims: {dims}"):
                 with self.assertRaises(exception_type):
                     validate_image(images=image, dims=dims)
 
     def test_img_length(self):
-        self.assertTrue(torch.allclose(validate_image(DUMMY_IMAGE, length=1, dims=None), DUMMY_IMAGE))
+        self.assertTrue(t.allclose(validate_image(DUMMY_IMAGE, length=1, dims=None), DUMMY_IMAGE))
 
     def test_img_length_exception(self):
         with self.assertRaises(ValidationException) as e:
@@ -103,7 +103,7 @@ class TestValidateImages(unittest.TestCase):
                 res_img = validate_images(images=images)
                 self.assertEqual(len(images), len(output))
                 self.assertEqual(len(images), len(res_img))
-                self.assertTrue(all(torch.allclose(res, out) for res, out in zip(res_img, output)))
+                self.assertTrue(all(t.allclose(res, out) for res, out in zip(res_img, output)))
 
     def test_validate_images_exceptions(self):
         for images, exception_type, err_msg in [
@@ -124,20 +124,20 @@ class TestValidateKeyPoints(unittest.TestCase):
             (DUMMY_KEY_POINTS, 3, 20, 2, DUMMY_KEY_POINTS),
             (DUMMY_KEY_POINTS_TENSOR, None, None, None, DUMMY_KEY_POINTS),
             (DUMMY_KEY_POINTS, None, None, None, DUMMY_KEY_POINTS),
-            (torch.ones((1, 10, 3)), 3, None, None, torch.ones((1, 10, 3))),  # test 3d
-            (torch.ones((1, 10, 3)), None, None, None, torch.ones((1, 10, 3))),
-            (torch.ones((10, 3)), 3, None, None, torch.ones((1, 10, 3))),  # make more dims
+            (t.ones((1, 10, 3)), 3, None, None, t.ones((1, 10, 3))),  # test 3d
+            (t.ones((1, 10, 3)), None, None, None, t.ones((1, 10, 3))),
+            (t.ones((10, 3)), 3, None, None, t.ones((1, 10, 3))),  # make more dims
             (
-                torch.ones((1, 1, 1, 10, 3)),
+                t.ones((1, 1, 1, 10, 3)),
                 3,
                 None,
                 None,
-                torch.ones((1, 10, 3)),
+                t.ones((1, 10, 3)),
             ),  # reduce the number of dimensions
         ]:
             with self.subTest(msg=f"key points: {key_points}, dims: {dims}"):
                 self.assertTrue(
-                    torch.allclose(
+                    t.allclose(
                         validate_key_points(
                             key_points=key_points, dims=dims, joint_dim=joint_dim, nof_joints=nof_joints
                         ),
@@ -148,18 +148,18 @@ class TestValidateKeyPoints(unittest.TestCase):
     def test_validate_key_points_exception(self):
         for key_points, dims, nof_joints, joint_dim, exception_type in [
             (np.ones((1, 10, 2), dtype=int), None, None, None, TypeError),
-            (torch.ones(1, 100, 1), None, None, None, ValueError),
-            (torch.ones(10, 100, 4), None, None, None, ValueError),
-            (torch.ones(10, 100, 4), None, None, None, ValueError),
-            (torch.ones(1, 100, 2), None, 50, None, ValueError),
-            (torch.ones(1, 100, 2), None, None, 3, ValueError),
+            (t.ones(1, 100, 1), None, None, None, ValueError),
+            (t.ones(10, 100, 4), None, None, None, ValueError),
+            (t.ones(10, 100, 4), None, None, None, ValueError),
+            (t.ones(1, 100, 2), None, 50, None, ValueError),
+            (t.ones(1, 100, 2), None, None, 3, ValueError),
         ]:
             with self.subTest(f"dims: {dims}, nof_joints: {nof_joints}, joint_dim: {joint_dim}"):
                 with self.assertRaises(exception_type):
                     validate_key_points(key_points=key_points, dims=dims, joint_dim=joint_dim, nof_joints=nof_joints)
 
     def test_kp_length(self):
-        self.assertTrue(torch.allclose(validate_key_points(DUMMY_KEY_POINTS, length=1, dims=None), DUMMY_KEY_POINTS))
+        self.assertTrue(t.allclose(validate_key_points(DUMMY_KEY_POINTS, length=1, dims=None), DUMMY_KEY_POINTS))
 
     def test_kp_length_exception(self):
         with self.assertRaises(ValidationException) as e:
@@ -175,15 +175,15 @@ class TestValidateBBoxes(unittest.TestCase):
             (DUMMY_BBOX, None, None, DUMMY_BBOX),
             (DUMMY_BBOX, None, tv_tensors.BoundingBoxFormat.XYWH, DUMMY_BBOX),
             (
-                tv_tensors.BoundingBoxes(torch.ones(4), format="XYWH", canvas_size=(10, 10)),
+                tv_tensors.BoundingBoxes(t.ones(4), format="XYWH", canvas_size=(10, 10)),
                 2,
                 None,
-                tv_tensors.BoundingBoxes(torch.ones((1, 4)), format="XYWH", canvas_size=(10, 10)),
+                tv_tensors.BoundingBoxes(t.ones((1, 4)), format="XYWH", canvas_size=(10, 10)),
             ),
         ]:
             with self.subTest(msg=f"bboxes: {bboxes}, dims: {dims}"):
                 self.assertTrue(
-                    torch.allclose(
+                    t.allclose(
                         validate_bboxes(bboxes=bboxes, dims=dims, box_format=box_format),
                         output,
                     )
@@ -191,7 +191,7 @@ class TestValidateBBoxes(unittest.TestCase):
 
     def test_validate_bboxes_exceptions(self):
         for bboxes, dims, box_format, exception_type in [
-            (torch.ones((1, 4)), 2, None, TypeError),
+            (t.ones((1, 4)), 2, None, TypeError),
             (np.ones((1, 4)), 2, None, TypeError),
             (DUMMY_BBOX, None, tv_tensors.BoundingBoxFormat.XYXY, ValueError),
             (DUMMY_BBOX, None, tv_tensors.BoundingBoxFormat.CXCYWH, ValueError),
@@ -201,7 +201,7 @@ class TestValidateBBoxes(unittest.TestCase):
                     validate_bboxes(bboxes=bboxes, dims=dims, box_format=box_format),
 
     def test_bbox_length(self):
-        self.assertTrue(torch.allclose(validate_bboxes(DUMMY_BBOX, length=1, dims=None), DUMMY_BBOX))
+        self.assertTrue(t.allclose(validate_bboxes(DUMMY_BBOX, length=1, dims=None), DUMMY_BBOX))
 
     def test_bbox_length_exception(self):
         with self.assertRaises(ValidationException) as e:
@@ -213,18 +213,18 @@ class TestValidateDimensions(unittest.TestCase):
 
     def test_validate_dimensions(self):
         for tensor, dims, l, output in [
-            (torch.ones((1, 1)), 2, None, torch.ones((1, 1))),
-            (torch.ones((1, 1)), 2, 1, torch.ones((1, 1))),
-            (torch.ones((2, 2, 2)), 3, 2, torch.ones((2, 2, 2))),
-            (torch.ones((1, 1, 1, 1, 5)), 1, 5, torch.ones(5)),
-            (torch.ones(5), 5, None, torch.ones((1, 1, 1, 1, 5))),
-            (torch.ones((2, 1, 5)), 2, 2, torch.ones((2, 5))),
-            (np.ones((2, 5), dtype=np.int32), 2, None, torch.ones(size=(2, 5), dtype=torch.int32)),
-            ([[13, 7]], 2, 13, torch.tensor([[13, 7]])),
+            (t.ones((1, 1)), 2, None, t.ones((1, 1))),
+            (t.ones((1, 1)), 2, 1, t.ones((1, 1))),
+            (t.ones((2, 2, 2)), 3, 2, t.ones((2, 2, 2))),
+            (t.ones((1, 1, 1, 1, 5)), 1, 5, t.ones(5)),
+            (t.ones(5), 5, None, t.ones((1, 1, 1, 1, 5))),
+            (t.ones((2, 1, 5)), 2, 2, t.ones((2, 5))),
+            (np.ones((2, 5), dtype=np.int32), 2, None, t.ones(size=(2, 5), dtype=t.int32)),
+            ([[13, 7]], 2, 13, t.tensor([[13, 7]])),
         ]:
             with self.subTest(msg=f"tensor: {tensor}, dims: {dims}"):
                 self.assertTrue(
-                    torch.allclose(
+                    t.allclose(
                         validate_dimensions(tensor=tensor, dims=dims),
                         output,
                     )
@@ -234,8 +234,8 @@ class TestValidateDimensions(unittest.TestCase):
         for tensor, dims, exception_type in [
             ([[1, 1], [1]], 1, TypeError),
             ("dummy", 1, TypeError),
-            (torch.ones((2, 2, 5)), 2, ValueError),
-            (torch.ones((2, 1, 5)), 1, ValueError),
+            (t.ones((2, 2, 5)), 2, ValueError),
+            (t.ones((2, 1, 5)), 1, ValueError),
         ]:
             with self.subTest(msg=f"tensor: {tensor}, dims: {dims}, exception_type={exception_type}"):
                 with self.assertRaises(exception_type):
@@ -243,7 +243,7 @@ class TestValidateDimensions(unittest.TestCase):
 
     def test_validate_dimensions_exceptions_length(self):
         with self.assertRaises(ValidationException) as e:
-            _ = validate_dimensions(torch.ones((5, 2)), dims=2, length=2)
+            _ = validate_dimensions(t.ones((5, 2)), dims=2, length=2)
         self.assertTrue("length is expected to be" in str(e.exception), msg=e.exception)
 
 
@@ -309,29 +309,29 @@ class TestValidateIDs(unittest.TestCase):
 
     def test_validate_ids(self):
         for tensor, output in [
-            (1, torch.ones(1).to(dtype=torch.long)),
-            (123456, torch.tensor([123456]).long()),
-            (torch.ones((1, 1, 100, 1)).int(), torch.ones(100).to(dtype=torch.long)),
-            (torch.ones((2, 1)).long(), torch.ones(2).to(dtype=torch.long)),
-            (torch.ones(20).to(dtype=torch.int32), torch.ones(20).to(dtype=torch.long)),
-            (torch.tensor([[1, 2, 3, 4]]), torch.tensor([1, 2, 3, 4]).long()),
+            (1, t.ones(1).to(dtype=t.long)),
+            (123456, t.tensor([123456]).long()),
+            (t.ones((1, 1, 100, 1)).int(), t.ones(100).to(dtype=t.long)),
+            (t.ones((2, 1)).long(), t.ones(2).to(dtype=t.long)),
+            (t.ones(20).to(dtype=t.int32), t.ones(20).to(dtype=t.long)),
+            (t.tensor([[1, 2, 3, 4]]), t.tensor([1, 2, 3, 4]).long()),
         ]:
             with self.subTest(msg=f"ids: {tensor}"):
-                self.assertTrue(torch.allclose(validate_ids(ids=tensor), output))
+                self.assertTrue(t.allclose(validate_ids(ids=tensor), output))
 
     def test_validate_ids_exceptions(self):
         for tensor, exception_type in [
             (np.ones((1, 10)), TypeError),
-            (torch.ones((2, 5)).float(), TypeError),
-            (torch.ones((2, 5)).int(), ValueError),
-            (torch.ones((1, 2, 1, 5)).int(), ValueError),
+            (t.ones((2, 5)).float(), TypeError),
+            (t.ones((2, 5)).int(), ValueError),
+            (t.ones((1, 2, 1, 5)).int(), ValueError),
         ]:
             with self.subTest():
                 with self.assertRaises(exception_type):
                     validate_ids(ids=tensor),
 
     def test_ids_length(self):
-        self.assertTrue(torch.allclose(validate_ids(DUMMY_ID, length=1), DUMMY_ID))
+        self.assertTrue(t.allclose(validate_ids(DUMMY_ID, length=1), DUMMY_ID))
 
     def test_ids_length_exception(self):
         with self.assertRaises(ValidationException) as e:
@@ -344,24 +344,24 @@ class TestValidateHeatmaps(unittest.TestCase):
     def test_validate_heatmaps(self):
         for tensor, dims, n_j, output in [
             (DUMMY_HM_TENSOR, None, None, DUMMY_HM),
-            (torch.zeros((J, 10, 20)), 4, J, tv_tensors.Mask(torch.zeros((1, J, 10, 20)))),
-            (torch.zeros((1, 1, J, 10, 20)), 3, J, tv_tensors.Mask(torch.zeros((J, 10, 20)))),
+            (t.zeros((J, 10, 20)), 4, J, tv_tensors.Mask(t.zeros((1, J, 10, 20)))),
+            (t.zeros((1, 1, J, 10, 20)), 3, J, tv_tensors.Mask(t.zeros((J, 10, 20)))),
         ]:
             with self.subTest(msg=f"heatmap: {tensor}"):
-                self.assertTrue(torch.allclose(validate_heatmaps(tensor, dims=dims, nof_joints=n_j), output))
+                self.assertTrue(t.allclose(validate_heatmaps(tensor, dims=dims, nof_joints=n_j), output))
 
     def test_validate_heatmaps_exceptions(self):
         for tensor, n_j, exception_type in [
             (np.ones((1, 10)), None, TypeError),
-            (torch.ones((2, 5)), J, ValueError),
-            (torch.ones((J + 1, 2, 5)), J, ValueError),
+            (t.ones((2, 5)), J, ValueError),
+            (t.ones((J + 1, 2, 5)), J, ValueError),
         ]:
             with self.subTest(f"shape: {tensor.shape}, n_j: {n_j}, excp: {exception_type}"):
                 with self.assertRaises(exception_type):
                     validate_heatmaps(tensor, nof_joints=n_j),
 
     def test_hm_length(self):
-        self.assertTrue(torch.allclose(validate_heatmaps(DUMMY_HM, length=1, dims=None), DUMMY_HM))
+        self.assertTrue(t.allclose(validate_heatmaps(DUMMY_HM, length=1, dims=None), DUMMY_HM))
 
     def test_hm_length_exception(self):
         with self.assertRaises(ValidationException) as e:
@@ -457,14 +457,14 @@ class TestValidateValue(unittest.TestCase):
         for value, data, validation, valid in [
             ("cuda", str, "any", True),
             ("cuda", ("in", ["cuda", "cpu"]), "any", True),
-            ("cuda", [("in", ["cuda", "cpu"]), ("instance", torch.device)], "any", True),
-            ("cpu", [("in", ["cuda", "cpu"]), ("instance", torch.device)], "any", True),
-            ("gpu", [("in", ["cuda", "cpu"]), ("instance", torch.device)], "any", False),
-            (torch.device("cuda"), [("in", ["cuda", "cpu"]), ("instance", torch.device)], "any", True),
-            ("cuda", [("in", ["cuda", "cpu"]), ("instance", torch.device)], "xor", True),
-            ("cpu", [("in", ["cuda", "cpu"]), ("instance", torch.device)], "xor", True),
-            ("gpu", [("in", ["cuda", "cpu"]), ("instance", torch.device)], "xor", False),
-            (torch.device("cuda"), [("in", ["cuda", "cpu"]), ("instance", torch.device)], "xor", True),
+            ("cuda", [("in", ["cuda", "cpu"]), ("instance", t.device)], "any", True),
+            ("cpu", [("in", ["cuda", "cpu"]), ("instance", t.device)], "any", True),
+            ("gpu", [("in", ["cuda", "cpu"]), ("instance", t.device)], "any", False),
+            (t.device("cuda"), [("in", ["cuda", "cpu"]), ("instance", t.device)], "any", True),
+            ("cuda", [("in", ["cuda", "cpu"]), ("instance", t.device)], "xor", True),
+            ("cpu", [("in", ["cuda", "cpu"]), ("instance", t.device)], "xor", True),
+            ("gpu", [("in", ["cuda", "cpu"]), ("instance", t.device)], "xor", False),
+            (t.device("cuda"), [("in", ["cuda", "cpu"]), ("instance", t.device)], "xor", True),
             (None, "None", "all", True),
             (None, ("not", "not None"), "all", True),
             (None, ["None", ("not", "not None")], "all", True),

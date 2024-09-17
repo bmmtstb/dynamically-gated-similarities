@@ -1,6 +1,6 @@
 import unittest
 
-import torch
+import torch as t
 from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.models.similarity import SimilarityModule
@@ -29,30 +29,30 @@ class TestPoseSimilarities(unittest.TestCase):
         ds1 = State(
             filepath=("",),
             bbox=bbox1,
-            keypoints=torch.ones((J, 2)),
+            keypoints=t.ones((J, 2)),
             validate=False,
-            joint_weight=torch.ones(J),
+            joint_weight=t.ones(J),
         )
         ds2 = State(
             filepath=("",),
             bbox=bbox2,
-            keypoints=torch.ones((1, J, 2)),
+            keypoints=t.ones((1, J, 2)),
             validate=False,
-            joint_weight=torch.ones((1, J, 1)),
+            joint_weight=t.ones((1, J, 1)),
         )
         ds3 = State(
             filepath=("", ""),
             bbox=bbox3,
-            keypoints=torch.zeros((2, J, 2)),
+            keypoints=t.zeros((2, J, 2)),
             validate=False,
-            joint_weight=torch.stack([torch.zeros(J), torch.ones(J)]),
+            joint_weight=t.stack([t.zeros(J), t.ones(J)]),
         )
         ds4 = State(
             filepath=("", "", ""),
             bbox=bbox4,
-            keypoints=torch.ones((3, J, 2)),
+            keypoints=t.ones((3, J, 2)),
             validate=False,
-            joint_weight=torch.stack([torch.zeros(J), torch.ones(J), torch.ones(J)]),
+            joint_weight=t.stack([t.zeros(J), t.ones(J), t.ones(J)]),
         )
 
         oks12 = sim(ds1, ds2)
@@ -68,14 +68,14 @@ class TestPoseSimilarities(unittest.TestCase):
         self.assertEqual(tuple(oks34.shape), (2, 3))
         self.assertEqual(tuple(oks43.shape), (3, 2))
 
-        self.assertTrue(torch.allclose(oks12, torch.ones(1)))
-        self.assertTrue(torch.allclose(oks12, oks21))
-        self.assertTrue(torch.allclose(oks13[0, 0], torch.zeros(1)))
-        self.assertTrue(torch.allclose(oks13, oks23))
+        self.assertTrue(t.allclose(oks12, t.ones(1)))
+        self.assertTrue(t.allclose(oks12, oks21))
+        self.assertTrue(t.allclose(oks13[0, 0], t.zeros(1)))
+        self.assertTrue(t.allclose(oks13, oks23))
 
-        self.assertTrue(torch.allclose(oks14, torch.tensor([[0, 1, 1]], dtype=torch.float32)), oks14)
-        self.assertTrue(torch.allclose(oks34[0], torch.tensor([0, 0, 0], dtype=torch.float32)), oks34)
-        self.assertTrue(torch.allclose(oks34[0], oks43[:, 0]), oks34)
+        self.assertTrue(t.allclose(oks14, t.tensor([[0, 1, 1]], dtype=t.float32)), oks14)
+        self.assertTrue(t.allclose(oks34[0], t.tensor([0, 0, 0], dtype=t.float32)), oks34)
+        self.assertTrue(t.allclose(oks34[0], oks43[:, 0]), oks34)
 
     def test_iou(self):
         cfg = fill_in_defaults({"iou": {"module_name": "iou", "softmax": False}}, default_cfg=self.default_cfg.copy())
@@ -91,25 +91,25 @@ class TestPoseSimilarities(unittest.TestCase):
         ds1 = State(
             filepath=("",),
             bbox=bbox1,
-            keypoints=torch.ones((J, 2)),
+            keypoints=t.ones((J, 2)),
             validate=False,
         )
         ds2 = State(
             filepath=("",),
             bbox=bbox2,
-            keypoints=torch.ones((J, 2)),
+            keypoints=t.ones((J, 2)),
             validate=False,
         )
         ds3 = State(
             filepath=("",),
             bbox=bbox3,
-            keypoints=torch.zeros((1, J, 2)),
+            keypoints=t.zeros((1, J, 2)),
             validate=False,
         )
         ds4 = State(
             filepath=("", "", ""),
             bbox=bbox4,
-            keypoints=torch.ones((3, J, 2)),
+            keypoints=t.ones((3, J, 2)),
             validate=False,
         )
 
@@ -121,20 +121,18 @@ class TestPoseSimilarities(unittest.TestCase):
         iou44 = sim(ds4, ds4)
 
         self.assertEqual(list(iou12.shape), [1, 1])
-        self.assertTrue(torch.allclose(iou12, torch.tensor(16 / 34)))
-        self.assertTrue(torch.allclose(iou13, iou12))
+        self.assertTrue(t.allclose(iou12, t.tensor(16 / 34)))
+        self.assertTrue(t.allclose(iou13, iou12))
         self.assertEqual(iou23.item(), 1.0)
 
         self.assertEqual(list(iou24.shape), [1, 3])
         self.assertEqual(list(iou42.shape), [3, 1])
-        self.assertTrue(torch.allclose(iou24, torch.tensor([16 / 34, 1.0, 16 / 34])))
-        self.assertTrue(torch.allclose(iou24, iou42.T))
+        self.assertTrue(t.allclose(iou24, t.tensor([16 / 34, 1.0, 16 / 34])))
+        self.assertTrue(t.allclose(iou24, iou42.T))
 
         self.assertEqual(list(iou44.shape), [3, 3])
         self.assertTrue(
-            torch.allclose(
-                iou44, torch.tensor([[1.0, 16 / 34, 9 / 41], [16 / 34, 1.0, 16 / 34], [9 / 41, 16 / 34, 1.0]])
-            )
+            t.allclose(iou44, t.tensor([[1.0, 16 / 34, 9 / 41], [16 / 34, 1.0, 16 / 34], [9 / 41, 16 / 34, 1.0]]))
         )
 
 

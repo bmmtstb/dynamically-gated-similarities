@@ -1,6 +1,6 @@
 import unittest
 
-import torch
+import torch as t
 from torchvision.tv_tensors import BoundingBoxes
 
 from dgs.utils.config import DEF_VAL
@@ -12,12 +12,12 @@ from helper import test_multiple_devices
 def _track_w_params(
     track: Track, tid: int = 0, nof_a: int = 0, status: TrackStatus = TrackStatus.New, start: int = 0
 ) -> Track:
-    t = track.copy()
-    t.id = tid
-    t._nof_active = nof_a
-    t._status = status
-    t._start_frame = start
-    return t
+    track_ = track.copy()
+    track_.id = tid
+    track_._nof_active = nof_a
+    track_._status = status
+    track_._start_frame = start
+    return track_
 
 
 THRESH: int = 2
@@ -107,10 +107,10 @@ class TestTracks(unittest.TestCase):
                     self.assertEqual(tracks.removed[tid].nof_active, nof_act)
 
     def test_init(self):
-        t = Tracks(N=MAX_LENGTH, thresh=THRESH)
-        self.assertEqual(len(t.data), 0)
-        self.assertEqual(len(t.inactive), 0)
-        self.assertEqual(t.inactivity_threshold, THRESH)
+        tr = Tracks(N=MAX_LENGTH, thresh=THRESH)
+        self.assertEqual(len(tr.data), 0)
+        self.assertEqual(len(tr.inactive), 0)
+        self.assertEqual(tr.inactivity_threshold, THRESH)
 
         # test without explicit thresh
         no_thresh = Tracks(N=MAX_LENGTH)
@@ -140,18 +140,18 @@ class TestTracks(unittest.TestCase):
 
     def test_copy(self):
         t1 = ONE_TRACKS.copy()
-        t = t1.copy()
-        t.reset()
+        tr = t1.copy()
+        tr.reset()
         t1.add(tracks={OT_O_ID: DUMMY_STATE.copy()}, new=[DUMMY_STATE.copy()])
-        self.assertEqual(len(t), 0)
+        self.assertEqual(len(tr), 0)
         self.assertEqual(len(t1), 2)
 
     def test_reset(self):
         for tracks in [EMPTY_TRACKS, ONE_TRACKS, MULTI_TRACKS]:
             with self.subTest(msg="tracks: {}".format(tracks)):
-                t = tracks.copy()
-                t.reset()
-                self.assertTrue(t == EMPTY_TRACKS)
+                tr = tracks.copy()
+                tr.reset()
+                self.assertTrue(tr == EMPTY_TRACKS)
 
         self.assertEqual(len(ONE_TRACKS[OT_O_ID]), 1)
         self.assertEqual(len(MULTI_TRACKS[MT_ACT_ID]), 4)
@@ -160,10 +160,10 @@ class TestTracks(unittest.TestCase):
             self.assertEqual(len(MULTI_TRACKS[tid]), 1)
 
     def test_next_frame(self):
-        t = EMPTY_TRACKS.copy()
-        self.assertEqual(t._curr_frame, 0)
-        t._next_frame()
-        self.assertEqual(t._curr_frame, 1)
+        tr = EMPTY_TRACKS.copy()
+        self.assertEqual(tr._curr_frame, 0)
+        tr._next_frame()
+        self.assertEqual(tr._curr_frame, 1)
 
     def test_remove_tid(self):
         t0 = EMPTY_TRACKS.copy()
@@ -202,14 +202,14 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(t_own.status, TrackStatus.Removed)
 
     def test_reactivate_track(self):
-        t = MULTI_TRACKS.copy()
-        t.reactivate_track(MT_DEL_ID)
-        self.assertTrue(MT_DEL_ID in t.ids)
-        self.assertFalse(MT_DEL_ID in t.ids_removed)
-        self.assertFalse(MT_DEL_ID in t.removed)
-        self.assertEqual(t[MT_DEL_ID].status, TrackStatus.Reactivated)
-        self.assertEqual(t[MT_DEL_ID].nof_active, 0)
-        self.assertEqual(t[MT_DEL_ID]._start_frame, 1)
+        tr = MULTI_TRACKS.copy()
+        tr.reactivate_track(MT_DEL_ID)
+        self.assertTrue(MT_DEL_ID in tr.ids)
+        self.assertFalse(MT_DEL_ID in tr.ids_removed)
+        self.assertFalse(MT_DEL_ID in tr.removed)
+        self.assertEqual(tr[MT_DEL_ID].status, TrackStatus.Reactivated)
+        self.assertEqual(tr[MT_DEL_ID].nof_active, 0)
+        self.assertEqual(tr[MT_DEL_ID]._start_frame, 1)
 
         with self.assertRaises(KeyError) as e:
             EMPTY_TRACKS.copy().reactivate_track(1)
@@ -224,25 +224,25 @@ class TestTracks(unittest.TestCase):
 
     @test_multiple_devices
     def test_to(self, device):
-        t = ONE_TRACKS.copy()
-        self.assertTrue(t[OT_O_ID].device == torch.device("cpu"))
-        t.to(device=device)
-        self.assertTrue(t[OT_O_ID].device == device)
+        tr = ONE_TRACKS.copy()
+        self.assertTrue(tr[OT_O_ID].device == t.device("cpu"))
+        tr.to(device=device)
+        self.assertTrue(tr[OT_O_ID].device == device)
 
     def test_handle_inactive(self):
-        t = Tracks(N=MAX_LENGTH, thresh=2)
-        tid = t.add({}, new=[DUMMY_STATE.copy()])[0]
-        self.assertEqual(t.ids_active, {tid})
-        self.assertEqual(t.ids_inactive, set())
+        tr = Tracks(N=MAX_LENGTH, thresh=2)
+        tid = tr.add({}, new=[DUMMY_STATE.copy()])[0]
+        self.assertEqual(tr.ids_active, {tid})
+        self.assertEqual(tr.ids_inactive, set())
 
-        t._handle_inactive({tid})
-        self.assertEqual(t.ids_active, set())
-        self.assertEqual(t.ids_inactive, {tid})
-        self.assertEqual(t.inactive[tid], 1)
+        tr._handle_inactive({tid})
+        self.assertEqual(tr.ids_active, set())
+        self.assertEqual(tr.ids_inactive, {tid})
+        self.assertEqual(tr.inactive[tid], 1)
 
-        t._handle_inactive({tid})
-        self.assertEqual(t.ids_active, set())
-        self.assertEqual(t.ids_inactive, set())
+        tr._handle_inactive({tid})
+        self.assertEqual(tr.ids_active, set())
+        self.assertEqual(tr.ids_inactive, set())
 
     def test_add_empty_tracks(self):
         t0 = EMPTY_TRACKS.copy()
@@ -312,77 +312,77 @@ class TestTracks(unittest.TestCase):
         self.assertTrue(track[-1], DUMMY_STATE)
 
     def test_reset_deleted(self):
-        t = MULTI_TRACKS.copy()
-        self.assertEqual(t.nof_removed, 1)
-        t.reset_deleted()
-        self.assertEqual(t.removed, {})
-        self.assertEqual(t.ids_removed, set())
-        self.assertEqual(t.nof_removed, 0)
+        tr = MULTI_TRACKS.copy()
+        self.assertEqual(tr.nof_removed, 1)
+        tr.reset_deleted()
+        self.assertEqual(tr.removed, {})
+        self.assertEqual(tr.ids_removed, set())
+        self.assertEqual(tr.nof_removed, 0)
 
     def test_add(self):
-        t = Tracks(N=MAX_LENGTH, thresh=2)
+        tr = Tracks(N=MAX_LENGTH, thresh=2)
 
-        first_tid = t.add(tracks={}, new=[DUMMY_STATE.copy()])[0]
-        self.assertEqual(len(t), 1)
-        self.assertEqual(t.ids_active, {first_tid})
-        self.assertEqual(t.ids_inactive, set())
-        self.assertTrue(t[first_tid].id == first_tid)
+        first_tid = tr.add(tracks={}, new=[DUMMY_STATE.copy()])[0]
+        self.assertEqual(len(tr), 1)
+        self.assertEqual(tr.ids_active, {first_tid})
+        self.assertEqual(tr.ids_inactive, set())
+        self.assertTrue(tr[first_tid].id == first_tid)
 
-        second_tid = t.add(tracks={0: DUMMY_STATE.copy()}, new=[DUMMY_STATE.copy()])[0]
-        self.assertEqual(len(t), 2)
-        self.assertEqual(t.ids_active, {first_tid, second_tid})
-        self.assertEqual(t.ids_inactive, set())
-        self.assertTrue(t[first_tid].id == first_tid)
-        self.assertTrue(t[second_tid].id == second_tid)
+        second_tid = tr.add(tracks={0: DUMMY_STATE.copy()}, new=[DUMMY_STATE.copy()])[0]
+        self.assertEqual(len(tr), 2)
+        self.assertEqual(tr.ids_active, {first_tid, second_tid})
+        self.assertEqual(tr.ids_inactive, set())
+        self.assertTrue(tr[first_tid].id == first_tid)
+        self.assertTrue(tr[second_tid].id == second_tid)
 
-        t.add(tracks={0: DUMMY_STATE.copy()}, new=[])
-        self.assertTrue(d == MULTI_TRACKS.data[k] for k, d in t.data.items())
-        self.assertEqual(len(t), 2)
-        self.assertEqual(t.ids_active, {first_tid})
-        self.assertEqual(t.ids_inactive, {second_tid})
-        self.assertTrue(t[first_tid].id == first_tid)
-        self.assertTrue(t[second_tid].id == second_tid)
+        tr.add(tracks={0: DUMMY_STATE.copy()}, new=[])
+        self.assertTrue(d == MULTI_TRACKS.data[k] for k, d in tr.data.items())
+        self.assertEqual(len(tr), 2)
+        self.assertEqual(tr.ids_active, {first_tid})
+        self.assertEqual(tr.ids_inactive, {second_tid})
+        self.assertTrue(tr[first_tid].id == first_tid)
+        self.assertTrue(tr[second_tid].id == second_tid)
 
-        t.add(tracks={first_tid: DUMMY_STATE.copy()}, new=[])  # second time 1 was not found -> remove
-        self.assertEqual(len(t.inactive), 0)
-        self.assertEqual(len(t), 1)
-        self.assertEqual(t.ids_active, {first_tid})
-        self.assertEqual(t.ids_inactive, set())
-        self.assertTrue(t[first_tid].id == first_tid)
+        tr.add(tracks={first_tid: DUMMY_STATE.copy()}, new=[])  # second time 1 was not found -> remove
+        self.assertEqual(len(tr.inactive), 0)
+        self.assertEqual(len(tr), 1)
+        self.assertEqual(tr.ids_active, {first_tid})
+        self.assertEqual(tr.ids_inactive, set())
+        self.assertTrue(tr[first_tid].id == first_tid)
 
-        t.add(tracks={}, new=[])  # add nothing
-        self.assertEqual(len(t.inactive), 1)
-        self.assertEqual(len(t), 1)
-        self.assertEqual(t.ids_active, set())
-        self.assertEqual(t.ids_inactive, {first_tid})
-        self.assertTrue(t[first_tid].id == first_tid)
+        tr.add(tracks={}, new=[])  # add nothing
+        self.assertEqual(len(tr.inactive), 1)
+        self.assertEqual(len(tr), 1)
+        self.assertEqual(tr.ids_active, set())
+        self.assertEqual(tr.ids_inactive, {first_tid})
+        self.assertTrue(tr[first_tid].id == first_tid)
 
     def test_add_empty_states(self):
-        t = Tracks(N=MAX_LENGTH, thresh=3)
+        tr = Tracks(N=MAX_LENGTH, thresh=3)
         e_s: State = EMPTY_STATE.copy()
 
-        tid = t.add(tracks={}, new=[e_s])[0]
-        self.assertEqual(t.nof_active, 0)
-        self.assertEqual(t.nof_inactive, 1)
-        _ = t.add(tracks={tid: e_s}, new=[])
-        self.assertEqual(t.nof_active, 0)
-        self.assertEqual(t.nof_inactive, 1)
-        _ = t.add(tracks={tid: e_s}, new=[])
-        self.assertEqual(t.nof_active, 0)
-        self.assertEqual(t.nof_inactive, 0)
+        tid = tr.add(tracks={}, new=[e_s])[0]
+        self.assertEqual(tr.nof_active, 0)
+        self.assertEqual(tr.nof_inactive, 1)
+        _ = tr.add(tracks={tid: e_s}, new=[])
+        self.assertEqual(tr.nof_active, 0)
+        self.assertEqual(tr.nof_inactive, 1)
+        _ = tr.add(tracks={tid: e_s}, new=[])
+        self.assertEqual(tr.nof_active, 0)
+        self.assertEqual(tr.nof_inactive, 0)
 
     def test_add_keep_inactive(self):
-        t = Tracks(N=MAX_LENGTH, thresh=5)
-        tid = t.add(tracks={}, new=[DUMMY_STATE.copy()])[0]
+        tr = Tracks(N=MAX_LENGTH, thresh=5)
+        tid = tr.add(tracks={}, new=[DUMMY_STATE.copy()])[0]
 
-        t.add(tracks={}, new=[])
-        self.assertEqual(t.ids_inactive, {tid})
+        tr.add(tracks={}, new=[])
+        self.assertEqual(tr.ids_inactive, {tid})
 
-        t.add(tracks={}, new=[])
-        self.assertEqual(t.ids_inactive, {tid})
+        tr.add(tracks={}, new=[])
+        self.assertEqual(tr.ids_inactive, {tid})
 
-        t.add(tracks={}, new=[])
-        self.assertEqual(t.ids_inactive, {tid})
+        tr.add(tracks={}, new=[])
+        self.assertEqual(tr.ids_inactive, {tid})
 
     def test_get_states(self):
         for t, r_tids, length in [
@@ -418,30 +418,30 @@ class TestTracks(unittest.TestCase):
 
     def test_age(self):
         age = 0
-        t = EMPTY_TRACKS.copy()
-        self.assertEqual(t.age, age)
+        tr = EMPTY_TRACKS.copy()
+        self.assertEqual(tr.age, age)
 
-        t.add({}, [])
+        tr.add({}, [])
         age += 1
-        self.assertEqual(t.age, age)
+        self.assertEqual(tr.age, age)
 
-        t.reset()
-        self.assertEqual(t.age, 0)
+        tr.reset()
+        self.assertEqual(tr.age, 0)
 
     def test_ages(self):
         self.assertEqual(MULTI_TRACKS.ages, {MT_ACT_ID: 4, **{tid: 2 for tid in MT_INA_IDS}})
 
     def test_is_active_inactive_removed(self):
-        t = MULTI_TRACKS.copy()
+        tr = MULTI_TRACKS.copy()
         for tid, act, ina, rem in [
             (MT_ACT_ID, True, False, False),
             (MT_DEL_ID, False, False, True),
             *[(sub_id, False, True, False) for sub_id in MT_INA_IDS],
         ]:
             with self.subTest(msg="act: {}, ina: {}, rem: {}".format(act, ina, rem)):
-                self.assertEqual(t.is_active(tid), act)
-                self.assertEqual(t.is_inactive(tid), ina)
-                self.assertEqual(t.is_removed(tid), rem)
+                self.assertEqual(tr.is_active(tid), act)
+                self.assertEqual(tr.is_inactive(tid), ina)
+                self.assertEqual(tr.is_removed(tid), rem)
 
     def setUp(self):
         self._test_constants()

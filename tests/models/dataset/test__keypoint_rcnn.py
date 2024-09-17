@@ -3,7 +3,7 @@ import unittest
 import warnings
 from unittest.mock import patch
 
-import torch
+import torch as t
 from torch.nn import Module as TorchModule
 from torchvision.io import VideoReader
 from torchvision.models.detection import KeypointRCNN_ResNet50_FPN_Weights
@@ -32,7 +32,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_init_model(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": "", "weights": self.weights},
             },
             get_test_config(),
@@ -47,7 +47,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_init_image_backbone(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": "", "weights": self.weights},
             },
             get_test_config(),
@@ -62,7 +62,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_init_video_backbone(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": "", "weights": self.weights},
             },
             get_test_config(),
@@ -122,7 +122,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_predict_empty(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "score_threshold": 0.9,
                     "data_path": [os.path.abspath(os.path.join(IMG_FOLDER_PATH, "866-256x256.jpg"))],
@@ -154,7 +154,7 @@ class TestKPRCNNModel(unittest.TestCase):
             with self.subTest(msg="iou_thresh: {}".format(iou_thresh)):
                 cfg = fill_in_defaults(
                     {
-                        "device": "cuda" if torch.cuda.is_available() else "cpu",
+                        "device": "cuda" if t.cuda.is_available() else "cpu",
                         "kprcnn": {
                             "score_threshold": 0.0,
                             "iou_threshold": iou_thresh,
@@ -186,14 +186,14 @@ class TestKPRCNNModel(unittest.TestCase):
                     self.assertEqual(len(out.keypoints_local), detections)
                     self.assertEqual(len(out.joint_weight), detections)
                     self.assertTrue(
-                        torch.any(out["scores"] > 0.9), f"at least one score should be high, got: {out['scores']}"
+                        t.any(out["scores"] > 0.9), f"at least one score should be high, got: {out['scores']}"
                     )
 
     def test_masked(self):
         # mask to crop the skateboarder from the torch_person image is in pt21_dummy_1.json
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "score_threshold": 0.2,
                     "iou_threshold": 1.0,
@@ -224,7 +224,7 @@ class TestKPRCNNModel(unittest.TestCase):
         # mask to crop the skateboarder from the torch_person image is in pt21_dummy_2.json
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "module_name": "KeypointRCNNImageBackbone",
                     "score_threshold": 0.2,
@@ -257,7 +257,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_dataset_image(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "score_threshold": 0.5,
                     "iou_threshold": 0.5,
@@ -301,14 +301,14 @@ class TestKPRCNNModel(unittest.TestCase):
             self.assertEqual(out.image[0].size(0), detections)
             self.assertEqual(out.image_crop.ndim, 4)
             self.assertEqual(out.image_crop.size(0), detections)
-            self.assertEqual(out.bbox.shape, torch.Size((detections, 4)))
-            self.assertEqual(out.keypoints.shape, torch.Size((detections, 17, 2)))
-            self.assertEqual(out.joint_weight.shape, torch.Size((detections, 17, 1)))
+            self.assertEqual(out.bbox.shape, t.Size((detections, 4)))
+            self.assertEqual(out.keypoints.shape, t.Size((detections, 17, 2)))
+            self.assertEqual(out.joint_weight.shape, t.Size((detections, 17, 1)))
 
     def test_dataloader_image(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda:0" if torch.cuda.is_available() else "cpu",
+                "device": "cuda:0" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "module_name": "KeypointRCNNImageBackbone",
                     "score_threshold": 0.5,
@@ -343,14 +343,14 @@ class TestKPRCNNModel(unittest.TestCase):
                 self.assertEqual(out.image[0].size(0), detections)
                 self.assertEqual(out.image_crop.ndim, 4)
                 self.assertEqual(out.image_crop.size(0), detections)
-                self.assertEqual(out.bbox.shape, torch.Size((detections, 4)))
-                self.assertEqual(out.keypoints.shape, torch.Size((detections, 17, 2)))
-                self.assertEqual(out.joint_weight.shape, torch.Size((detections, 17, 1)))
+                self.assertEqual(out.bbox.shape, t.Size((detections, 4)))
+                self.assertEqual(out.keypoints.shape, t.Size((detections, 17, 2)))
+                self.assertEqual(out.joint_weight.shape, t.Size((detections, 17, 1)))
 
     def test_dataset_video(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "score_threshold": 0.5,
                     "data_path": VIDEO_PATH,
@@ -375,8 +375,8 @@ class TestKPRCNNModel(unittest.TestCase):
 
                 out: State = out_list[0]
                 self.assertTrue(isinstance(out, State))
-                self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
-                self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL["images"]["crop_size"])))
+                self.assertEqual(out.image[0].shape, t.Size((1, 3, 240, 426)))
+                self.assertEqual(out.image_crop[0].shape, t.Size((3, *DEF_VAL["images"]["crop_size"])))
                 i += 1
                 if i >= 2:
                     break
@@ -384,7 +384,7 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_dataloader_video(self):
         cfg = fill_in_defaults(
             {
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
                     "module_name": "KeypointRCNNVideoBackbone",
                     "score_threshold": 0.5,
@@ -393,6 +393,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     "batch_size": 2,
                     "collate_fn": "lists",
                     "weights": self.weights,
+                    "num_threads": 1,
                 },
             },
             get_test_config(),
@@ -411,8 +412,8 @@ class TestKPRCNNModel(unittest.TestCase):
                 self.assertEqual(len(out_list), 2)
                 for out in out_list:
                     self.assertTrue(isinstance(out, State))
-                    self.assertEqual(out.image[0].shape, torch.Size((1, 3, 240, 426)))
-                    self.assertEqual(out.image_crop[0].shape, torch.Size((3, *DEF_VAL["images"]["crop_size"])))
+                    self.assertEqual(out.image[0].shape, t.Size((1, 3, 240, 426)))
+                    self.assertEqual(out.image_crop[0].shape, t.Size((3, *DEF_VAL["images"]["crop_size"])))
                 i += 1
                 if i >= 2:
                     break

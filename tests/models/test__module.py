@@ -3,7 +3,7 @@ import unittest
 from copy import deepcopy
 from unittest.mock import patch
 
-import torch
+import torch as t
 from torch import nn
 
 from dgs.models.module import BaseModule, module_validations as base_module_validation
@@ -125,7 +125,7 @@ class TestBaseModule(unittest.TestCase):
                     ),
                     path=[],
                 )
-                self.assertEqual(module.bias.device.type, torch.device("cpu").type)
+                self.assertEqual(module.bias.device.type, t.device("cpu").type)
                 m.configure_torch_module(module, train)
                 self.assertEqual(module.training, train)
                 self.assertEqual(module.bias.device.type, device.type)
@@ -153,7 +153,7 @@ class TestBaseModule(unittest.TestCase):
     def test_no_precision_in_cfg(self):
         cfg = get_test_config()
         m = BaseModule(config=cfg, path=[])
-        self.assertEqual(m.precision, torch.float32)
+        self.assertEqual(m.precision, t.float32)
 
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_precision_raises(self):
@@ -168,11 +168,11 @@ class TestBaseModule(unittest.TestCase):
     @patch.multiple(BaseModule, __abstractmethods__=set())
     def test_precision(self):
         for precision, dtype in [
-            (int, torch.int),
-            (float, torch.float),
-            (torch.float, torch.float),
-            (torch.float32, torch.float32),
-            (torch.float64, torch.float64),
+            (int, t.int),
+            (float, t.float),
+            (t.float, t.float),
+            (t.float32, t.float32),
+            (t.float64, t.float64),
         ]:
             with self.subTest(msg="precision: {}, dtype: {}".format(precision, dtype)):
                 cfg = fill_in_defaults(

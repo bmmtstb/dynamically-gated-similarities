@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-import torch
+import torch as t
 from torch import optim
 
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS, register_optimizer
@@ -21,7 +21,7 @@ class TestOptimizer(unittest.TestCase):
             for name, optimizer, exception in [
                 ("dummy", optim.Adam, False),
                 ("dummy", optim.Adam, KeyError),
-                ("new_dummy", optim.Adam([{"params": torch.zeros((8, 32))}]), TypeError),
+                ("new_dummy", optim.Adam([{"params": t.zeros((8, 32))}]), TypeError),
                 ("new_dummy", optim.Adam, False),
             ]:
                 with self.subTest(msg="name: {}, optimizer: {}, excpt: {}".format(name, optimizer, exception)):

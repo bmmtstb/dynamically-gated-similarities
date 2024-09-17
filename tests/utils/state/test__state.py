@@ -3,7 +3,6 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-import torch
 import torch as t
 from torchvision import tv_tensors as tvte
 
@@ -76,7 +75,7 @@ class TestState(unittest.TestCase):
 
     def test_getitems(self):
         ds = State(bbox=DUMMY_BBOX)
-        self.assertTrue(torch.allclose(ds["bbox"], DUMMY_BBOX))
+        self.assertTrue(t.allclose(ds["bbox"], DUMMY_BBOX))
         self.assertEqual(ds[0], ds[-1])
 
         states = State(bbox=DUMMY_BBOX_BATCH)

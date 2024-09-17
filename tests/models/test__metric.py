@@ -3,7 +3,7 @@ import unittest
 import warnings
 from unittest.mock import patch
 
-import torch
+import torch as t
 from torch import nn
 from torch.nn.functional import softmax as tf_softmax
 from torchvision import tv_tensors as tv_te
@@ -71,10 +71,10 @@ class TestMetrics(unittest.TestCase):
 
     def test_metrics_wrong_input_shape(self):
         for i1, i2, err in [
-            (torch.ones((1, 2)), torch.ones((1, 1)), ValueError),
-            (torch.ones((1, 1, 2)), torch.ones((1, 2)), ValueError),
-            (torch.ones((1, 2)), torch.ones((1, 1, 2)), ValueError),
-            (torch.ones(2), torch.ones(2), ValueError),
+            (t.ones((1, 2)), t.ones((1, 1)), ValueError),
+            (t.ones((1, 1, 2)), t.ones((1, 2)), ValueError),
+            (t.ones((1, 2)), t.ones((1, 1, 2)), ValueError),
+            (t.ones(2), t.ones(2), ValueError),
         ]:
             with self.subTest(msg="i1: {}, i2: {}, err: {}".format(i1, i2, err)):
                 with self.assertRaises(err):
@@ -88,11 +88,11 @@ class TestMetrics(unittest.TestCase):
         ]:
             with self.subTest(msg="a: {}, b: {}, E: {}".format(a, b, E)):
                 f = EuclideanSquareMetric()
-                dist = f(torch.ones((a, E)), torch.zeros(b, E))
-                dist_inv = f(torch.zeros((b, E)), torch.ones(a, E))
+                dist = f(t.ones((a, E)), t.zeros(b, E))
+                dist_inv = f(t.zeros((b, E)), t.ones(a, E))
                 self.assertEqual(dist.shape, (a, b))
-                self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * E))
-                self.assertTrue(torch.allclose(dist, dist_inv.T))
+                self.assertTrue(t.allclose(dist, t.ones((a, b)) * E))
+                self.assertTrue(t.allclose(dist, dist_inv.T))
 
     def test_euclid_sqr_dist_equals_torchreid(self):
         for a, b, E in [
@@ -104,13 +104,13 @@ class TestMetrics(unittest.TestCase):
                 own_func = EuclideanSquareMetric()
                 reid_func = TorchreidEuclideanSquaredDistance()
 
-                i1 = torch.rand((a, E))
-                i2 = torch.rand((b, E))
+                i1 = t.rand((a, E))
+                i2 = t.rand((b, E))
 
                 own_dist = own_func(i1, i2)
                 reid_dist = reid_func(i1, i2)
 
-                self.assertTrue(torch.allclose(own_dist, reid_dist))
+                self.assertTrue(t.allclose(own_dist, reid_dist))
 
     def test_euclid_dist(self):
         for a, b, E in [
@@ -120,25 +120,25 @@ class TestMetrics(unittest.TestCase):
         ]:
             with self.subTest(msg="a: {}, b: {}, E: {}".format(a, b, E)):
                 f = EuclideanDistanceMetric()
-                dist = f(torch.ones((a, E)), torch.zeros(b, E))
-                dist_inv = f(torch.zeros((b, E)), torch.ones(a, E))
+                dist = f(t.ones((a, E)), t.zeros(b, E))
+                dist_inv = f(t.zeros((b, E)), t.ones(a, E))
                 self.assertEqual(dist.shape, (a, b))
-                self.assertTrue(torch.allclose(dist, torch.ones((a, b)) * math.sqrt(E)))
-                self.assertTrue(torch.allclose(dist, dist_inv.T))
+                self.assertTrue(t.allclose(dist, t.ones((a, b)) * math.sqrt(E)))
+                self.assertTrue(t.allclose(dist, dist_inv.T))
 
     def test_cosine_distance(self):
         for t1, t2, res in [
-            (torch.ones((2, 4)), torch.ones((3, 4)), torch.zeros((2, 3))),
-            (torch.zeros((2, 4)), torch.ones((3, 4)), torch.ones((2, 3))),
-            (torch.ones((2, 4)), torch.zeros((3, 4)), torch.ones((2, 3))),
+            (t.ones((2, 4)), t.ones((3, 4)), t.zeros((2, 3))),
+            (t.zeros((2, 4)), t.ones((3, 4)), t.ones((2, 3))),
+            (t.ones((2, 4)), t.zeros((3, 4)), t.ones((2, 3))),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
                 f = CosineDistanceMetric()
                 dist = f(t1.clone(), t2.clone())
                 dist_inv = f(t2.clone(), t1.clone())
                 self.assertEqual(dist.shape, res.shape)
-                self.assertTrue(torch.allclose(dist, res))
-                self.assertTrue(torch.allclose(dist, dist_inv.T))
+                self.assertTrue(t.allclose(dist, res))
+                self.assertTrue(t.allclose(dist, dist_inv.T))
 
     def test_cosine_dist_equals_torchreid(self):
         for a, b, E in [
@@ -150,46 +150,46 @@ class TestMetrics(unittest.TestCase):
                 own_func = CosineDistanceMetric()
                 reid_func = TorchreidCosineDistance()
 
-                i1 = torch.rand((a, E))
-                i2 = torch.rand((b, E))
+                i1 = t.rand((a, E))
+                i2 = t.rand((b, E))
 
                 own_dist = own_func(i1, i2)
                 reid_dist = reid_func(i1, i2)
 
-                self.assertTrue(torch.allclose(own_dist, reid_dist))
+                self.assertTrue(t.allclose(own_dist, reid_dist))
 
     def test_cosine_similarity(self):
         for t1, t2, res in [
-            (torch.ones((2, 4)), torch.ones((3, 4)), torch.ones((2, 3))),
-            (torch.zeros((2, 4)), torch.ones((3, 4)), torch.zeros((2, 3))),
-            (torch.ones((2, 4)), torch.zeros((3, 4)), torch.zeros((2, 3))),
-            (torch.ones((2, 4)), -1 * torch.ones((3, 4)), -1 * torch.ones((2, 3))),
-            (-1 * torch.ones((2, 4)), torch.ones((3, 4)), -1 * torch.ones((2, 3))),
+            (t.ones((2, 4)), t.ones((3, 4)), t.ones((2, 3))),
+            (t.zeros((2, 4)), t.ones((3, 4)), t.zeros((2, 3))),
+            (t.ones((2, 4)), t.zeros((3, 4)), t.zeros((2, 3))),
+            (t.ones((2, 4)), -1 * t.ones((3, 4)), -1 * t.ones((2, 3))),
+            (-1 * t.ones((2, 4)), t.ones((3, 4)), -1 * t.ones((2, 3))),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
                 f = CosineSimilarityMetric()
                 dist = f(t1.clone(), t2.clone())
                 dist_inv = f(t2.clone(), t1.clone())
                 self.assertEqual(dist.shape, res.shape)
-                self.assertTrue(torch.allclose(dist, res))
-                self.assertTrue(torch.allclose(dist, dist_inv.T))
+                self.assertTrue(t.allclose(dist, res))
+                self.assertTrue(t.allclose(dist, dist_inv.T))
 
     def test_neg_softmax_euclidean(self):
         for t1, t2, res, res_inv in [
-            (torch.ones((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
-            (torch.zeros((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
-            (torch.ones((2, 4)), torch.zeros((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (t.ones((2, 4)), t.ones((3, 4)), 1 / 3 * t.ones((2, 3)), 0.5 * t.ones((3, 2))),
+            (t.zeros((2, 4)), t.ones((3, 4)), 1 / 3 * t.ones((2, 3)), 0.5 * t.ones((3, 2))),
+            (t.ones((2, 4)), t.zeros((3, 4)), 1 / 3 * t.ones((2, 3)), 0.5 * t.ones((3, 2))),
             (
-                torch.tensor([[1, 0], [1, 1], [0, 1]]),
-                torch.ones((1, 2)),
-                torch.ones((3, 1)),
-                tf_softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+                t.tensor([[1, 0], [1, 1], [0, 1]]),
+                t.ones((1, 2)),
+                t.ones((3, 1)),
+                tf_softmax(t.tensor([[0, 1, 0]]).float(), dim=-1),
             ),
             (
-                torch.tensor([[1, 0], [1, 1], [0, 1]]),
-                torch.ones((4, 2)),
-                tf_softmax(torch.ones((3, 4)), dim=-1),
-                tf_softmax(torch.tensor([[0, 1, 0]]).repeat(4, 1).float(), dim=-1),
+                t.tensor([[1, 0], [1, 1], [0, 1]]),
+                t.ones((4, 2)),
+                tf_softmax(t.ones((3, 4)), dim=-1),
+                tf_softmax(t.tensor([[0, 1, 0]]).repeat(4, 1).float(), dim=-1),
             ),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
@@ -197,25 +197,25 @@ class TestMetrics(unittest.TestCase):
                 dist = m(t1.float(), t2.float())
                 dist_inv = m(t2.float(), t1.float())
                 self.assertEqual(dist.shape, res.shape)
-                self.assertTrue(torch.allclose(dist.float(), res.float()), (dist, res))
-                self.assertTrue(torch.allclose(dist_inv.float(), res_inv.float()), (dist_inv, res_inv))
+                self.assertTrue(t.allclose(dist.float(), res.float()), (dist, res))
+                self.assertTrue(t.allclose(dist_inv.float(), res_inv.float()), (dist_inv, res_inv))
 
     def test_neg_softmax_squared_euclidean(self):
         for t1, t2, res, res_inv in [
-            (torch.ones((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
-            (torch.zeros((2, 4)), torch.ones((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
-            (torch.ones((2, 4)), torch.zeros((3, 4)), 1 / 3 * torch.ones((2, 3)), 0.5 * torch.ones((3, 2))),
+            (t.ones((2, 4)), t.ones((3, 4)), 1 / 3 * t.ones((2, 3)), 0.5 * t.ones((3, 2))),
+            (t.zeros((2, 4)), t.ones((3, 4)), 1 / 3 * t.ones((2, 3)), 0.5 * t.ones((3, 2))),
+            (t.ones((2, 4)), t.zeros((3, 4)), 1 / 3 * t.ones((2, 3)), 0.5 * t.ones((3, 2))),
             (
-                torch.tensor([[1, 0], [1, 1], [0, 1]]),
-                torch.ones((1, 2)),
-                torch.ones((3, 1)),
-                tf_softmax(torch.tensor([[0, 1, 0]]).float(), dim=-1),
+                t.tensor([[1, 0], [1, 1], [0, 1]]),
+                t.ones((1, 2)),
+                t.ones((3, 1)),
+                tf_softmax(t.tensor([[0, 1, 0]]).float(), dim=-1),
             ),
             (
-                torch.tensor([[1, 0], [1, 1], [0, 1]]),
-                torch.ones((4, 2)),
-                tf_softmax(torch.ones((3, 4)), dim=-1),
-                tf_softmax(torch.tensor([[0, 1, 0]]).repeat(4, 1).float(), dim=-1),
+                t.tensor([[1, 0], [1, 1], [0, 1]]),
+                t.ones((4, 2)),
+                tf_softmax(t.ones((3, 4)), dim=-1),
+                tf_softmax(t.tensor([[0, 1, 0]]).repeat(4, 1).float(), dim=-1),
             ),
         ]:
             with self.subTest(msg="t1: {}, t2: {}, res: {}".format(t1, t2, res)):
@@ -223,15 +223,15 @@ class TestMetrics(unittest.TestCase):
                 sim = m(t1.float(), t2.float())
                 sim_inv = m(t2.float(), t1.float())
                 self.assertEqual(sim.shape, res.shape)
-                self.assertTrue(torch.allclose(sim, res), (sim, res))
-                self.assertTrue(torch.allclose(sim_inv, res_inv), (sim_inv, res_inv))
+                self.assertTrue(t.allclose(sim, res), (sim, res))
+                self.assertTrue(t.allclose(sim_inv, res_inv), (sim_inv, res_inv))
 
     def test_pairwise_distance(self):
         m = PairwiseDistanceMetric(p=2, eps=1e-4, keepdim=True)
-        t1 = torch.ones((4, 10))
-        t2 = torch.ones((4, 10))
+        t1 = t.ones((4, 10))
+        t2 = t.ones((4, 10))
         r = m(t1, t2)
-        self.assertTrue(isinstance(r, torch.Tensor))
+        self.assertTrue(isinstance(r, t.Tensor))
         self.assertEqual(list(r.shape), [4, 1])
         self.assertEqual(m.dist.eps, 1e-4)
 
@@ -243,19 +243,19 @@ class TestMetrics(unittest.TestCase):
         r = m(b1, b2)
         r_inv = m(b2, b1)
 
-        self.assertTrue(isinstance(r, torch.Tensor))
-        self.assertTrue(isinstance(r_inv, torch.Tensor))
+        self.assertTrue(isinstance(r, t.Tensor))
+        self.assertTrue(isinstance(r_inv, t.Tensor))
         self.assertEqual(list(r.shape), [1, 1])
         self.assertEqual(list(r_inv.shape), [1, 1])
-        self.assertTrue(torch.allclose(r, torch.tensor(1 - (16 / 34))))
-        self.assertTrue(torch.allclose(r_inv, torch.tensor(1 - (16 / 34))))
+        self.assertTrue(t.allclose(r, t.tensor(1 - (16 / 34))))
+        self.assertTrue(t.allclose(r_inv, t.tensor(1 - (16 / 34))))
 
         with self.assertRaises(TypeError) as e:
-            _ = m(torch.ones((1, 4)), b2)
+            _ = m(t.ones((1, 4)), b2)
         self.assertTrue("input1 should be an instance of tv_tensors.BoundingBoxes" in str(e.exception), msg=e.exception)
 
         with self.assertRaises(TypeError) as e:
-            _ = m(b1, torch.ones((1, 4)))
+            _ = m(b1, t.ones((1, 4)))
         self.assertTrue("input2 should be an instance of tv_tensors.BoundingBoxes" in str(e.exception), msg=e.exception)
 
 
@@ -264,44 +264,44 @@ class TestMetricCMC(unittest.TestCase):
     def test_compute_cmc(self, device):
         for distmat, query, gallery, ranks, results in [
             (
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([1, 4]).int(),
-                torch.tensor([2, 3, 4, 0, 1]).long(),
+                t.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                t.tensor([1, 4]).int(),
+                t.tensor([2, 3, 4, 0, 1]).long(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
             ),
             (  # 2d label and no long
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([[1], [4]]).long(),
-                torch.tensor([[2, 3, 4, 0, 1]]).float(),
+                t.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                t.tensor([[1], [4]]).long(),
+                t.tensor([[2, 3, 4, 0, 1]]).float(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.5, 0.5, 0.5, 1.0, 1.0],
             ),
             (  # gallery contains an ID multiple times
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([2, 0]).long(),
-                torch.tensor([0, 1, 2, 2, 4]).long(),
+                t.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                t.tensor([2, 0]).long(),
+                t.tensor([0, 1, 2, 2, 4]).long(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.0, 0.5, 0.5, 1.0, 1.0],
             ),
             (  # query contains an ID multiple times
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([2, 2]).long(),
-                torch.tensor([0, 1, 3, 4, 2]).long(),
+                t.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                t.tensor([2, 2]).long(),
+                t.tensor([0, 1, 3, 4, 2]).long(),
                 [1, 2, 3, 4, 5, 6],
                 [0.0, 0.0, 0.5, 0.5, 1.0, 1.0],
             ),
             (  # query and gallery contain the same ID multiple times
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([2, 2]).long(),
-                torch.tensor([2, 1, 3, 4, 2]).long(),
+                t.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                t.tensor([2, 2]).long(),
+                t.tensor([2, 1, 3, 4, 2]).long(),
                 [1, 2, 3, 4, 5, 6],
                 [0.5, 0.5, 1.0, 1.0, 1.0, 1.0],
             ),
             (  # top rank only
-                torch.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
-                torch.tensor([1, 2]).long(),
-                torch.tensor([1, 2, 3, 4, 0]).long(),
+                t.tensor([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.1, 0.2, 0.4, 0.3]]),
+                t.tensor([1, 2]).long(),
+                t.tensor([1, 2, 3, 4, 0]).long(),
                 [1],
                 [1.0],
             ),
@@ -330,8 +330,8 @@ class TestMetricAccuracy(unittest.TestCase):
     @test_multiple_devices
     def test_accuracy(self, device):
         topk = [1, 2, 3]
-        prediction = torch.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)], dtype=torch.float32, device=device)
-        target = torch.tensor([0, 1, 2, 3], device=device).long()
+        prediction = t.tensor([[0.1, 0.2, 0.3, 0.4] for _ in range(4)], dtype=t.float32, device=device)
+        target = t.tensor([0, 1, 2, 3], device=device).long()
         topk_accuracy = {1: 100 / 4, 2: 200 / 4, 3: 300 / 4}
 
         self.assertEqual(compute_accuracy(prediction=prediction, target=target, topk=topk), topk_accuracy)
@@ -342,8 +342,8 @@ class TestMetricAccuracy(unittest.TestCase):
         nof_classes = 10
         results = {1: 100.0, 2: 100.0, 3: 100.0}
 
-        prediction = torch.rand(size=(N, nof_classes), dtype=torch.float32)
-        target = torch.argmax(prediction, dim=1).long()
+        prediction = t.rand(size=(N, nof_classes), dtype=t.float32)
+        target = t.argmax(prediction, dim=1).long()
 
         accs = compute_accuracy(prediction=prediction, target=target, topk=topk)
         self.assertEqual(accs, results)
@@ -352,8 +352,8 @@ class TestMetricAccuracy(unittest.TestCase):
         N = 512
         nof_classes = 10
         for _ in range(5):
-            prediction = torch.rand(size=(N, nof_classes), dtype=torch.float32)
-            target = torch.randint(low=1, high=nof_classes, size=(N,), dtype=torch.long)
+            prediction = t.rand(size=(N, nof_classes), dtype=t.float32)
+            target = t.randint(low=1, high=nof_classes, size=(N,), dtype=t.long)
             own_acc = compute_accuracy(prediction=prediction, target=target, topk=None)[1]
             tr_acc = torchreid_acc(output=prediction, target=target, topk=(1,))[0].item()
             self.assertEqual(own_acc, tr_acc)
@@ -364,28 +364,39 @@ class TestMetricNearKAccuracy(unittest.TestCase):
 
     @test_multiple_devices
     def test_near_k_accuracy(self, device):
-        pred = torch.tensor([[0.1], [0.2], [0.3], [0.4]], dtype=torch.float32, device=device)
-        target = torch.tensor([[0.4], [0.4], [0.4], [0.4]], dtype=torch.float32, device=device)
+        pred = t.tensor([[0.1], [0.2], [0.3], [0.4]], dtype=t.float32, device=device)
+        target = t.tensor([[0.4], [0.4], [0.4], [0.4]], dtype=t.float32, device=device)
         res = {0: 1 / 4, 1: 1 / 4, 10: 2 / 4, 20: 3 / 4, 30: 4 / 4}
         accs = compute_near_k_accuracy(a_pred=pred, a_targ=target, ks=self.ks)
         self.assertDictEqual(accs, res)
 
     @test_multiple_devices
     def test_near_k_accuracy_with_reshaping(self, device):
-        pred = torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32, device=device)
-        target = torch.tensor([0.4, 0.4, 0.4, 0.4], dtype=torch.float32, device=device)
+        pred = t.tensor([0.1, 0.2, 0.3, 0.4], dtype=t.float32, device=device)
+        target = t.tensor([0.4, 0.4, 0.4, 0.4], dtype=t.float32, device=device)
         res = {0: 1 / 4, 1: 1 / 4, 10: 2 / 4, 20: 3 / 4, 30: 4 / 4}
         accs = compute_near_k_accuracy(a_pred=pred, a_targ=target, ks=self.ks)
         self.assertDictEqual(accs, res)
 
     def test_near_k_accuracy_exceptions(self):
         with self.assertRaises(ValueError) as e:
-            _ = compute_near_k_accuracy(a_pred=torch.ones(1), a_targ=torch.ones(4), ks=self.ks)
+            _ = compute_near_k_accuracy(a_pred=t.ones(1), a_targ=t.ones(4), ks=self.ks)
         self.assertTrue("alpha_pred and alpha_targ must have the same length" in str(e.exception), msg=e.exception)
 
         with self.assertRaises(ValueError) as e:
-            _ = compute_near_k_accuracy(a_pred=torch.ones(4), a_targ=torch.ones(4), ks=[-1])
+            _ = compute_near_k_accuracy(a_pred=t.ones(4), a_targ=t.ones(4), ks=[-1])
         self.assertTrue("ks must be positive" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(ValueError) as e:
+            _ = compute_near_k_accuracy(a_pred=t.ones((4, 2)), a_targ=t.ones((4, 1)), ks=[1])
+        self.assertTrue("Alpha pred should be one dimensional" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(ValueError) as e:
+            _ = compute_near_k_accuracy(a_pred=t.ones((4, 1)), a_targ=t.ones((4, 2)), ks=[1])
+        self.assertTrue("Alpha target should be one dimensional" in str(e.exception), msg=e.exception)
+
+        with self.assertRaises(NotImplementedError) as e:
+            _ = compute_near_k_accuracy(a_pred=t.ones((4, 1, 1)), a_targ=t.ones(4), ks=[1])
 
 
 if __name__ == "__main__":

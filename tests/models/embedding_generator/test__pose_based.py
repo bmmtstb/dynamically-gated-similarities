@@ -1,6 +1,6 @@
 import unittest
 
-import torch
+import torch as t
 from torchvision import tv_tensors as tvte
 
 from dgs.models.embedding_generator.pose_based import KeyPointConvolutionPBEG, LinearPBEG
@@ -49,10 +49,8 @@ class TestPoseBased(unittest.TestCase):
                     self.default_cfg,
                 )
                 m = LinearPBEG(config=cfg, path=["pose_embedding_generator"])
-                kp = torch.rand((batch_size, *params["joint_shape"])).to(device=device)
-                bbox = tvte.BoundingBoxes(
-                    torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100), device=device
-                )
+                kp = t.rand((batch_size, *params["joint_shape"])).to(device=device)
+                bbox = tvte.BoundingBoxes(t.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100), device=device)
                 ds = State(filepath=tuple("" for _ in range(batch_size)), validate=False, bbox=bbox, keypoints=kp)
                 emb, ids = m.forward(ds)
                 self.assertEqual(emb.device.type, device.type)
@@ -120,10 +118,8 @@ class TestPoseBased(unittest.TestCase):
                     {"pose_embedding_generator": params, "batch_size": batch_size, "device": device}, self.default_cfg
                 )
                 m = KeyPointConvolutionPBEG(config=cfg, path=["pose_embedding_generator"])
-                kp = torch.rand((batch_size, *params["joint_shape"])).to(device=cfg["device"])
-                bbox = tvte.BoundingBoxes(
-                    torch.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100), device=device
-                )
+                kp = t.rand((batch_size, *params["joint_shape"])).to(device=cfg["device"])
+                bbox = tvte.BoundingBoxes(t.rand((batch_size, 4)), format="XYWH", canvas_size=(100, 100), device=device)
                 ds = State(filepath=tuple("" for _ in range(batch_size)), validate=False, bbox=bbox, keypoints=kp)
                 emb, ids = m.forward(ds)
                 self.assertEqual(emb.device.type, device.type)
