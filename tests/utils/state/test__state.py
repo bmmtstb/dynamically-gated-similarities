@@ -308,6 +308,45 @@ class TestStateAttributes(unittest.TestCase):
         self.assertTrue("There are no local key-points in this object" in str(e.exception), msg=e.exception)
 
     @test_multiple_devices
+    def test_get_keypoints_relative(self, device: Device):
+        ds_2d = State(
+            **{
+                "bbox": tvte.BoundingBoxes(
+                    t.ones(1, 4), format=tvte.BoundingBoxFormat.XYWH, canvas_size=(10, 10), device=device
+                ),
+                "keypoints": t.ones(1, 17, 2),
+                "validate": False,
+            }
+        )
+        ds_3d = State(
+            **{
+                "bbox": tvte.BoundingBoxes(
+                    t.ones(2, 4), format=tvte.BoundingBoxFormat.XYWH, canvas_size=(10, 10), device=device
+                ),
+                "keypoints": t.ones(2, 17, 3),
+                "validate": False,
+            }
+        )
+        ds_no_kp = State(
+            **{
+                "bbox": tvte.BoundingBoxes(
+                    t.ones(1, 4), format=tvte.BoundingBoxFormat.XYWH, canvas_size=(10, 10), device=device
+                ),
+                "validate": False,
+            }
+        )
+        r_2d = ds_2d.keypoints_relative
+        r_3d = ds_3d.keypoints_relative
+
+        self.assertTrue(t.allclose(r_2d, t.ones(1, 17, 2, device=device) * 0.1))
+        self.assertTrue(t.allclose(r_3d[..., :2], t.ones(2, 17, 2, device=device) * 0.1))
+        self.assertTrue(t.allclose(r_3d[..., -1:], t.ones(2, 17, 1, device=device)))
+
+        with self.assertRaises(ValueError) as e:
+            _ = ds_no_kp.keypoints_relative
+        self.assertTrue("No key points given" in str(e.exception), msg=e.exception)
+
+    @test_multiple_devices
     def test_setting_bbox(self, device: Device):
         orig_devices: list[Device] = [t.device("cpu")]
         if t.cuda.is_available():
