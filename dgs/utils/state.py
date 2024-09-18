@@ -397,6 +397,7 @@ class State(UserDict):
 
     @property
     def keypoints_relative(self) -> t.Tensor:
+        """Get the global key points in coordinates relative to the full image size."""
         H, W = self.bbox.canvas_size  # (H, W)
         if not "keypoints" in self.data:
             try:
@@ -405,7 +406,7 @@ class State(UserDict):
                 raise ValueError("No key points given") from e
         if self.joint_dim == 2:
             return self.keypoints / t.tensor([W, H], device=self.device, dtype=t.float32)
-        elif self.joint_dim == 3:
+        if self.joint_dim == 3:
             return self.keypoints / t.tensor([W, H, 1], device=self.device, dtype=t.float32)
         raise NotImplementedError(f"Unknown (joint) dimensions for key points: {self.keypoints}")
 
