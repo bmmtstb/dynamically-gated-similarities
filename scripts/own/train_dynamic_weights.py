@@ -32,6 +32,7 @@ DL_KEYS: list[tuple[str, str, str]] = [
 
 ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
     "fc_1_box": fc_linear(hidden_layers=[4, 1]),
+    "fc_2_box": fc_linear(hidden_layers=[4, 8, 1]),
     "fc_1_pose_coco": nn.Sequential(
         nn.Flatten(),
         fc_linear(hidden_layers=[2 * 17, 1]),
@@ -49,7 +50,10 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
 }
 
 NAMES: dict[str, list[str]] = {
-    # "box_sim": ["fc_1_box"],
+    "box_sim": [
+        "fc_1_box",
+        "fc_2_box",
+    ],
     "pose_sim_coco": [
         "fc_1_pose_coco",
         "conv1_o15k2_fc_1_pose_coco",
@@ -61,9 +65,21 @@ NAMES: dict[str, list[str]] = {
         # "fc_4_visual",
         "fc_5_visual",
     ],
-    # "OSNetAIN_sim": ["fc_1_visual", "fc_2_visual"],
-    # "Resnet50_sim": ["fc_1_visual", "fc_2_visual"],
-    # "Resnet152_sim": ["fc_1_visual", "fc_2_visual"],
+    "OSNetAIN_sim": [
+        # "fc_1_visual",
+        # "fc_2_visual",
+        # "fc_3_visual",
+    ],
+    "Resnet50_sim": [
+        "fc_1_visual",
+        # "fc_2_visual",
+        "fc_3_visual",
+    ],
+    "Resnet152_sim": [
+        # "fc_1_visual",
+        # "fc_2_visual",
+        "fc_3_visual",
+    ],
 }
 
 
