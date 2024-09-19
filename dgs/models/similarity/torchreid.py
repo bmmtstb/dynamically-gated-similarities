@@ -79,19 +79,19 @@ class TorchreidVisualSimilarity(SimilarityModule):
         """Given a :class:`State` get the current embedding or compute it using the image crop."""
         if self.model.embedding_key in ds:
             return ds[self.model.embedding_key]
-        ds[self.model.embedding_key] = self.model.predict_embeddings(
-            to_dtype(ds.image_crop, dtype=t.float32, scale=True)
-        )
-        return ds[self.model.embedding_key]
+        embedding = self.model.predict_embeddings(to_dtype(ds.image_crop, dtype=t.float32, scale=True))
+        if self.model.save_embeddings:
+            ds[self.model.embedding_key] = embedding
+        return embedding
 
     def get_target(self, ds: State) -> t.Tensor:
         """Given a :class:`State` get the target embedding or compute it using the image crop."""
         if self.model.embedding_key in ds:
             return ds[self.model.embedding_key]
-        ds[self.model.embedding_key] = self.model.predict_embeddings(
-            to_dtype(ds.image_crop, dtype=t.float32, scale=True)
-        )
-        return ds[self.model.embedding_key]
+        embedding = self.model.predict_embeddings(to_dtype(ds.image_crop, dtype=t.float32, scale=True))
+        if self.model.save_embeddings:
+            ds[self.model.embedding_key] = embedding
+        return embedding
 
     def forward(self, data: State, target: State) -> t.Tensor:
         """Forward call of the torchreid model used to compute the similarities between visual embeddings.

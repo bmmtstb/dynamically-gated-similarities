@@ -131,6 +131,7 @@ dgs:
 
 embed_gen:
     embedding_key: "embedding"
+    save_embeddings: true
     
     torchreid:
         weights: "pretrained"

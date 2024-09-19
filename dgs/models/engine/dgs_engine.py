@@ -329,7 +329,7 @@ class DGSEngine(EngineModule):
         detections: list[State]
 
         # batch get data from the data loader
-        for detections in tqdm(self.test_dl, desc="DataLoader"):
+        for detections in tqdm(self.test_dl, desc="Predict"):
             for detection in tqdm(detections, desc="Tracker", leave=False):
                 self._track_step(detections=detection, frame_idx=frame_idx, name="Predict", timers=timers)
 
@@ -401,7 +401,10 @@ class DGSEngine(EngineModule):
             nof_correct = t.stack([all_matches[t.arange(len(new_ids)), msi].count_nonzero() for msi in max_sim_indices])
             # the training target is the ratio of correct matches to the total number of detections
             # making sure to handle the cases where either no detections or no correct matches are present
-            accuracy = (nof_correct / len(data_new)).nan_to_num(nan=0.0, posinf=0.0)
+            accuracy = (nof_correct / len(data_new)).nan_to_num(nan=0.0, posinf=0.0)  # [S]
+            assert t.all(
+                t.bitwise_or(accuracy <= 1.0, accuracy >= 0.0)
+            ), f"expected accuracy to lie within [0,1], got: {accuracy}"
             return accuracy
 
     @enable_keyboard_interrupt
@@ -435,7 +438,7 @@ class DGSEngine(EngineModule):
 
         timers = DifferenceTimers()
 
-        for detections in tqdm(dl, desc=f"DataLoader-ep{self.curr_epoch}", leave=False):
+        for detections in tqdm(dl, desc=f"Track-{name}-ep{self.curr_epoch}", leave=False):
             for detection in detections:
 
                 N: int = len(detections)
@@ -538,7 +541,7 @@ class DGSEngine(EngineModule):
                 zip([f"{sim_mod.module_name}-{k}" for k in ks for sim_mod in self.model.sim_mods], [0] * len(ks) * S)
             ),
         }
-        for data in tqdm(self.val_dl, desc="DataLoader", leave=False):
+        for data in tqdm(self.val_dl, desc=f"Evaluate - epoch {self.curr_epoch}", leave=False):
 
             assert isinstance(data, list) and len(data) == 2, "Data must be a list of length 2."
             data_old, data_new = data
