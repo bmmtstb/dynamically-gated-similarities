@@ -216,16 +216,19 @@ box_sim:
 
 pose_sim_coco:
     module_name: "oks"
-    format: "coco"
     softmax: false
+    train_key: "keypoints_relative"
+
+    format: "coco"
 
 # Visual - v1 - OSNet_x1_0 pretrained on ImageNet
 
 OSNet_sim:
     module_name: "torchreid"
+    softmax: false
+
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["OSNet_embed_gen"]
-    softmax: false
 
 OSNet_embed_gen:
     module_name: "torchreid"
@@ -239,9 +242,10 @@ OSNet_embed_gen:
 
 OSNetAIN_sim:
     module_name: "torchreid"
+    softmax: false
+    
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["OSNetAIN_embed_gen" ]
-    softmax: false
 
 OSNetAIN_embed_gen:
     module_name: "torchreid"
@@ -254,9 +258,10 @@ OSNetAIN_embed_gen:
 
 Resnet50_sim:
     module_name: "torchreid"
+    softmax: false
+    
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["Resnet50_embed_gen"]
-    softmax: false
 
 Resnet50_embed_gen:
     module_name: "torchreid"
@@ -269,9 +274,10 @@ Resnet50_embed_gen:
 
 Resnet152_sim:
     module_name: "torchreid"
+    softmax: false
+    
     metric: "NegSoftmaxEuclideanDist"
     embedding_generator_path: ["Resnet152_embed_gen"]
-    softmax: false
 
 Resnet152_embed_gen:
     module_name: "torchreid"
