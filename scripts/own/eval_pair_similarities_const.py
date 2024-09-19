@@ -127,22 +127,20 @@ if __name__ == "__main__":
     run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY)
 
     print("Evaluating pairwise models on the PT21 validation-dataset using KeypointRCNN as prediction backbone")
-    score_str = f"{int(SCORE_THRESH * 100):03d}"
-    iou_str = f"{int(IOU_THRESH * 100):03d}"
-
-    rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_val"
+    score_s: str = f"{int(SCORE_THRESH * 100):03d}"
+    iou_s: str = f"{int(IOU_THRESH * 100):03d}"
 
     cfg = load_config(CONFIG_FILE)
     crop_h, crop_w = cfg[RCNN_DL_KEY]["crop_size"]
 
-    base_path = f"./data/PoseTrack21/posetrack_data/{crop_h}x{crop_w}_{rcnn_cfg_str}/"
+    base_path = f"./data/PoseTrack21/posetrack_data/{crop_h}x{crop_w}_rcnn_{score_s}_{iou_s}_val/"
     if not os.path.isdir(base_path):
         send_discord_notification("Double - base path not found")
         raise ValueError("Double - base path not found")
     cfg[RCNN_DL_KEY]["base_path"] = base_path
-    cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/{rcnn_cfg_str}/"
+    cfg[RCNN_DL_KEY]["crops_folder"] = f"./data/PoseTrack21/crops/{crop_h}x{crop_w}/rcnn_{score_s}_{iou_s}_val/"
     data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
     assert len(data_paths) > 0, f"No files found in the base_path: {base_path}"
-    run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_{rcnn_cfg_str}")
+    run(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=f"dgs_pt21_rcnn_{crop_h}x{crop_w}_val_{score_s}_{iou_s}")
 
     send_discord_notification("finished eval double")

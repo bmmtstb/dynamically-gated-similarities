@@ -18,7 +18,7 @@ from dgs.utils.config import load_config
 from dgs.utils.nn import fc_linear
 from dgs.utils.torchtools import init_model_params
 from dgs.utils.types import Config
-from dgs.utils.utils import notify_on_completion_or_error, send_discord_notification
+from dgs.utils.utils import notify_on_completion_or_error
 
 CONFIG_FILE = "./configs/DGS/train_dynamic_weights.yaml"
 
@@ -69,9 +69,9 @@ NAMES: dict[str, list[str]] = {
 
 # @torch_memory_analysis
 # @MemoryTracker(interval=7.5, top_n=20)
-@notify_on_completion_or_error(min_time=30, info="run initial weight")
+@notify_on_completion_or_error(min_time=30)
 @t.no_grad()
-def test_pt21(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
+def test_pt21_dynamic_alpha(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
     crop_h, crop_w = cfg[dl_key]["crop_size"]
     cfg[dl_key]["crops_folder"] = (
@@ -112,9 +112,9 @@ def test_pt21(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str)
 
 
 # @torch_memory_analysis
-@notify_on_completion_or_error(min_time=30, info="run initial weight")
+@notify_on_completion_or_error(min_time=30)
 @t.no_grad()
-def test_dance(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
+def test_dance_dynamic_alpha(cfg: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
 
     # get all the sub folders or files and analyze them one-by-one
@@ -179,7 +179,8 @@ def get_dgs_engine(
     return module_loader(config=cfg, module_type="engine", key=engine_key, **kwargs)
 
 
-def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod_name: str, sim_name: str) -> None:
+@notify_on_completion_or_error(min_time=10)
+def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod_name: str, sim_name: str) -> None:
     """Train and evaluate the DGS engine."""
     _crop_h, _crop_w = cfg[dl_train_key]["crop_size"]
     lr = cfg["train"]["optimizer_kwargs"]["lr"]
@@ -212,11 +213,9 @@ def train_dgs_engine(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_mod
     engine_train.model.combine.alpha_model.to(device=engine_train.device)
     init_model_params(engine_train.model.combine.alpha_model)
 
-    # fixme: open all layers? necessary?
-
+    # train the model(s)
     engine_train.train_model()
     engine_train.terminate()
-    send_discord_notification(f"finished training and evaluation of {sim_name} - {alpha_mod_name} - {dl_train_key}")
 
 
 if __name__ == "__main__":
@@ -240,7 +239,7 @@ if __name__ == "__main__":
                 # ##################### #
                 # TRAINING & EVALUATION #
                 # ##################### #
-                train_dgs_engine(
+                train_dynamic_alpha(
                     cfg=config,
                     dl_train_key=DL_TRAIN_KEY,
                     dl_eval_key=DL_EVAL_KEY,

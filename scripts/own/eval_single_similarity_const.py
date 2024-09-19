@@ -190,11 +190,11 @@ if __name__ == "__main__":
     for RCNN_DL_KEY in RCNN_DL_KEYS:
         print(f"Evaluating using KeypointRCNN with config: {RCNN_DL_KEY}")
         for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
-            score_str = f"{int(score_thresh * 100):03d}"
-            pbar_score_thresh.set_postfix_str(os.path.basename(score_str))
+            score_s = f"{int(score_thresh * 100):03d}"
+            pbar_score_thresh.set_postfix_str(os.path.basename(score_s))
             for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh", leave=False)):
-                iou_str = f"{int(iou_thresh * 100):03d}"
-                pbar_iou_thresh.set_postfix_str(os.path.basename(iou_str))
+                iou_s = f"{int(iou_thresh * 100):03d}"
+                pbar_iou_thresh.set_postfix_str(os.path.basename(iou_s))
                 # IoU, OKS, and visual similarity
                 for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities", leave=False)):
                     pbar_key.set_postfix_str(DGS_KEY)
@@ -203,36 +203,35 @@ if __name__ == "__main__":
                     cfg["name"] = f"Evaluate-Single-{DGS_KEY}"
                     _crop_h, _crop_w = cfg[RCNN_DL_KEY]["crop_size"]
                     if "pt21" in RCNN_DL_KEY:
-                        # fixme no hardcoded val
                         base_path = os.path.normpath(
-                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_str}_{iou_str}_val/"
+                            f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_s}_{iou_s}_val/"
                         )
                         cfg[RCNN_DL_KEY]["base_path"] = base_path
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
-                        assert len(data_paths)
+                        assert len(data_paths), f"There are no paths. base_path: {base_path}"
 
                         run_pt21(
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}_val",  # fixme no hardcoded val
+                            out_key=f"dgs_pt21_rcnn_{_crop_h}x{_crop_w}_val_{score_s}_{iou_s}",
                             dgs_key=DGS_KEY,
                         )
                     elif "Dance" in RCNN_DL_KEY:
-                        rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{_crop_h}x{_crop_w}"
+                        rcnn_cfg_str = f"rcnn_{score_s}_{iou_s}_{_crop_h}x{_crop_w}"
                         cfg[RCNN_DL_KEY]["crop_key"] = rcnn_cfg_str
 
                         data_paths = [
                             os.path.normpath(os.path.join(p, f"./{rcnn_cfg_str}.txt"))
                             for p in glob(cfg[RCNN_DL_KEY]["base_path"])
                         ]
-                        assert len(data_paths)
+                        assert len(data_paths), f"There are no paths. rcnn_cfg_str: {rcnn_cfg_str}"
 
                         run_dance(
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"{RCNN_DL_KEY}_{score_str}_{iou_str}",
+                            out_key=f"dgs_pt21_rcnn_{_crop_h}x{_crop_w}_val_{score_s}_{iou_s}",
                             dgs_key=DGS_KEY,
                         )
                     else:
