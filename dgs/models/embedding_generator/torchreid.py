@@ -192,4 +192,9 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         """
         if self.embedding_key_exists(ds):
             return ds[self.embedding_key]
-        return self.model(getattr(ds, self.image_key) if hasattr(ds, self.image_key) else ds[self.image_key])
+        embeddings = self.model(getattr(ds, self.image_key) if hasattr(ds, self.image_key) else ds[self.image_key])
+
+        if self.save_embeddings:
+            ds[self.embedding_key] = embeddings
+
+        return embeddings

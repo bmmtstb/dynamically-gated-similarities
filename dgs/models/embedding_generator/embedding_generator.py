@@ -18,6 +18,7 @@ embedding_validations: Validations = {
     "nof_classes": [int, ("gt", 0)],
     # optional
     "embedding_key": ["optional", str],
+    "save_embeddings": ["optional", bool],
 }
 
 
@@ -46,7 +47,10 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
 
     embedding_key (str, optional):
         The key to use to retrieve the embedding of the image.
-        Default ``DEF_VAL.embed_gen.torchreid.embedding_key``.
+        Default ``DEF_VAL.embed_gen.embedding_key``.
+    save_embeddings (bool, optional):
+        Whether to save the computed embeddings in the given :class:`State`.
+        Default ``DEF_VAL.embed_gen.save_embeddings``.
 
     """
 
@@ -65,6 +69,7 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
         self.embedding_size = self.params["embedding_size"]
         self.nof_classes = self.params["nof_classes"]
         self.embedding_key: str = self.params.get("embedding_key", DEF_VAL["embed_gen"]["embedding_key"])
+        self.save_embeddings: bool = self.params.get("save_embeddings", DEF_VAL["embed_gen"]["save_embeddings"])
 
     def __call__(self, *args, **kwargs) -> t.Tensor:  # pragma: no cover
         """see self.forward()"""
