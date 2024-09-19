@@ -857,12 +857,15 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
         self.cids: t.Tensor = t.tensor(cid_list, dtype=t.long, device=self.device)
 
         # store as np.ndarray to not store large python objects
-        self.data: np.ndarray[dict[str, any]] = np.asarray(self.json["images"])
+        # don't add images without labels
+        self.data: np.ndarray[dict[str, any]] = np.asarray(
+            [img for img in self.json["images"] if img["has_labeled_person"]]
+        )
         self.annos: np.ndarray[dict[str, any]] = np.asarray(self.json["annotations"])
         del self.json
 
     def __len__(self) -> int:
-        """Force usage of the ImageHistoryDataset.__getitem__ method."""
+        """Force usage of the ImageHistoryDataset.__len__ method."""
         return ImageHistoryDataset.__len__(self=self)
 
     def __getitem__(self, idx: int) -> list[State]:
@@ -884,6 +887,8 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
         states = []
         for img_id in img_ids:
             anno_ids: list[int] = self.map_img_id_to_anno_ids[img_id]
+            if len(anno_ids) == 0:
+                raise NotImplementedError(f"There are no annotations for image id: {img_id}")
 
             keypoints, visibilities, bboxes, crop_paths = self._get_anno_data(annos=self.annos, anno_ids=anno_ids)
 
