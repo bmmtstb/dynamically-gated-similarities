@@ -22,7 +22,7 @@ from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import collate_states, EMPTY_STATE, State
 from dgs.utils.timer import DifferenceTimers
 from dgs.utils.track import Tracks
-from dgs.utils.types import Config, Results, Validations
+from dgs.utils.types import Config, NodePath, Results, Validations
 from dgs.utils.utils import torch_to_numpy
 
 dgs_eng_test_validations: Validations = {
@@ -155,6 +155,7 @@ class DGSEngine(EngineModule):
     def __init__(
         self,
         config: Config,
+        path: NodePath,
         model: nn.Module,
         test_loader: TDataLoader = None,
         val_loader: TDataLoader = None,
@@ -164,7 +165,12 @@ class DGSEngine(EngineModule):
         if not isinstance(model, DGSModule):
             raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(
-            config=config, model=model, test_loader=test_loader, train_loader=train_loader, val_loader=val_loader
+            config=config,
+            path=path,
+            model=model,
+            test_loader=test_loader,
+            train_loader=train_loader,
+            val_loader=val_loader,
         )
 
         # TEST - get params from config

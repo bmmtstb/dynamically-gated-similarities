@@ -10,7 +10,7 @@ from .dgs_engine import DGSEngine
 from .engine import EngineModule
 from .visual_sim_engine import VisualSimilarityEngine
 
-__all__ = ["ENGINES", "register_engine", "register_instance"]
+__all__ = ["ENGINES", "get_engine", "register_engine"]
 
 ENGINES: dict[str, Type[EngineModule]] = {
     "VisualSimilarityEngine": VisualSimilarityEngine,

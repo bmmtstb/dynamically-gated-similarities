@@ -73,7 +73,6 @@ def module_loader(config: Config, module_type: str, key: Union[NodePath, str], *
         from dgs.models.engine import get_engine
 
         m = get_engine(module_name)
-        path = []
     elif module_type == "similarity":
         from dgs.models.similarity import get_similarity_module
 

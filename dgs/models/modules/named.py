@@ -3,6 +3,7 @@ Base Class for Modules that have a ``module_name`` and ``module_type``.
 """
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 
 from dgs.models.module import BaseModule
 from dgs.utils.loader import get_registered_class_names
@@ -28,7 +29,7 @@ class NamedModule(BaseModule, ABC):
     def __init__(self, config: Config, path: NodePath):
         super().__init__(config, path)
 
-        named_module_validations["module_name"].append(("in", get_registered_class_names(self.module_type)))
+        deepcopy(named_module_validations["module_name"]).append(("in", get_registered_class_names(self.module_type)))
 
         self.validate_params(named_module_validations)
 
