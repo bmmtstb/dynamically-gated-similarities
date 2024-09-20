@@ -19,7 +19,8 @@ from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
 from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
-from dgs.models.module import BaseModule, enable_keyboard_interrupt
+from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.modules.named import NamedModule
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
 from dgs.utils.config import DEF_VAL, get_sub_config, save_config
@@ -27,11 +28,14 @@ from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer, DifferenceTimers
 from dgs.utils.torchtools import resume_from_checkpoint, save_checkpoint
-from dgs.utils.types import Config, FilePath, Results, Validations
+from dgs.utils.types import Config, FilePath, NodePath, Results, Validations
 from dgs.utils.visualization import torch_show_image
 
 engine_validations: Validations = {
     "module_name": [str],
+    # optional
+    "writer_kwargs": ["optional", dict],
+    "writer_log_dir_suffix": ["optional", str],
 }
 
 train_validations: Validations = {
@@ -50,12 +54,10 @@ train_validations: Validations = {
 test_validations: Validations = {
     # optional
     "normalize": ["optional", bool],
-    "writer_kwargs": ["optional", dict],
-    "writer_log_dir_suffix": ["optional", str],
 }
 
 
-class EngineModule(BaseModule, nn.Module):
+class EngineModule(NamedModule, nn.Module):
     """Module for training, validating, and testing other Modules.
 
     Most of the settings are defined within the configuration file in the `training` section.
@@ -69,6 +71,17 @@ class EngineModule(BaseModule, nn.Module):
     module_name (str):
         Name of the Engine subclass.
         Has to be in :data:`~.ENGINES`.
+
+    Optional Params
+    ---------------
+
+    writer_kwargs (dict, optional):
+        Additional kwargs for the torch writer.
+        Default ``DEF_VAL.engine.test.writer_kwargs``.
+    writer_log_dir_suffix (str, optional):
+        Additional subdirectory or name suffix for the torch writer.
+        Default ``DEF_VAL.engine.test.writer_log_dir_suffix``.
+
 
     Test Params
     -----------
@@ -94,12 +107,6 @@ class EngineModule(BaseModule, nn.Module):
     normalize (bool, optional):
         Whether to normalize the prediction and target during testing.
         Default ``DEF_VAL.engine.test.normalize``.
-    writer_kwargs (dict, optional):
-        Additional kwargs for the torch writer.
-        Default ``DEF_VAL.engine.test.writer_kwargs``.
-    writer_log_dir_suffix (str, optional):
-        Additional subdirectory or name suffix for the torch writer.
-        Default ``DEF_VAL.engine.test.writer_log_dir_suffix``.
 
     Optional Train Params
     ---------------------
@@ -155,32 +162,31 @@ class EngineModule(BaseModule, nn.Module):
     def __init__(
         self,
         config: Config,
+        path: NodePath,
         model: nn.Module,
         test_loader: TorchDataLoader,
         val_loader: TorchDataLoader = None,
         train_loader: TorchDataLoader = None,
         **_kwargs,
     ):
-        BaseModule.__init__(self, config=config, path=[])
+        NamedModule.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
 
-        # Set up test attributes
-        self.params_test: Config = get_sub_config(config, ["test"])
-        self.validate_params(test_validations, attrib_name="params_test")
-        self.test_dl = test_loader
-
-        # Set up general attributes
-        self.register_module("model", self.configure_torch_module(model))
-
-        # Logging
+        # ###### #
+        # PARAMS #
+        # ###### #
+        self.validate_params(engine_validations)
+        # logging
         self.writer = SummaryWriter(
             log_dir=os.path.join(
                 self.log_dir,
-                self.params_test.get("writer_log_dir_suffix", DEF_VAL["engine"]["test"]["writer_log_dir_suffix"]),
+                self.params.get("writer_log_dir_suffix", DEF_VAL["engine"]["writer_log_dir_suffix"]),
             ),
             comment=self.config.get("description"),
-            **self.params_test.get("writer_kwargs", DEF_VAL["engine"]["test"]["writer_kwargs"]),
+            **self.params.get("writer_kwargs", DEF_VAL["engine"]["writer_kwargs"]),
         )
+        # Set up DGSModule
+        self.register_module("model", self.configure_torch_module(model))
         # save config in the out-folder to make sure values haven't changed when validating those files
         save_config(
             filepath=os.path.join(self.log_dir, f"config-{self.name_safe}-{datetime.now().strftime('%Y%m%d_%H_%M')}"),
@@ -192,7 +198,16 @@ class EngineModule(BaseModule, nn.Module):
             config=DEF_VAL,
         )
 
-        # Set up train attributes
+        # #### #
+        # TEST #
+        # #### #
+        self.params_test: Config = get_sub_config(config, ["test"])
+        self.validate_params(test_validations, attrib_name="params_test")
+        self.test_dl = test_loader
+
+        # ##### #
+        # TRAIN #
+        # ##### #
         self.params_train: Config = {}
         if self.is_training:
             if "train" not in config:
@@ -207,7 +222,6 @@ class EngineModule(BaseModule, nn.Module):
             # save train and validation data loader
             self.train_dl = train_loader
             self.val_dl = val_loader
-            # self.writer.add_scalar("Train/batch_size", self.train_dl.batch_size)
 
             # epochs
             self.epochs: int = self.params_train.get("epochs", DEF_VAL["engine"]["train"]["epochs"])
@@ -217,17 +231,19 @@ class EngineModule(BaseModule, nn.Module):
                 "save_interval", DEF_VAL["engine"]["train"]["save_interval"]
             )
 
-            # set up loss function
             self.loss = get_loss_function(self.params_train["loss"])(
                 **self.params_train.get(
                     "loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]
                 )  # optional loss kwargs
             )
 
-            # save values that are used during training
             self.train_load_image_crops = self.params_train.get(
                 "load_image_crops", DEF_VAL["engine"]["train"]["load_image_crops"]
             )
+
+    @property
+    def module_type(self) -> str:
+        return "engine"
 
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
