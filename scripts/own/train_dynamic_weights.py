@@ -29,10 +29,13 @@ TEST = False
 
 DL_KEYS_TRAIN: list[tuple[str, str]] = [
     # DanceTrack with evaluation using the accuracy of the weights
-    # ("train_dl_dance_256x192", "val_dl_dance_256x192_eval_acc"),
+    ("train_dl_dance_256x192", "val_dl_dance_256x192_eval_acc"),
     # DanceTrack with evaluation using the MOTA and HOTA metrics
     # ("train_dl_dance_256x192", "val_dl_dance_256x192"),
+    # PoseTrack21 with evaluation using the accuracy of the weights
     ("train_dl_pt21_256x192", "val_dl_pt21_256x192_eval_acc"),
+    # PoseTrack21 with evaluation using the MOTA and HOTA metrics
+    # ("train_dl_pt21_256x192", "val_dl_pt21_256x192"),
 ]
 
 DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
@@ -47,40 +50,52 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
     },
     # pt21 gt
     "val_dl_pt21_256x192": {
-        # fully trained
+        # pairwise - fully trained
         "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc1", 6)],
         "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc3", 6)],
         "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc5", 6)],
+        "iou_fc1_ep6__pose_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "pose_coco_fc1", 6)],
+        "iou_fc1_ep6__pose_fc2_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "pose_coco_fc2", 6)],
+        "iou_fc1_ep6__pose_conv1o15k2fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "conv1o15k2fc1", 6)],
+        "iou_fc1_ep6__pose_conv1o15k2fc2_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "conv1o15k2fc2", 6)],
+        # triplet - fully trained
         "iou_fc1_ep6__oks_fc1_ep6__vis_fc5_ep6__lr-4": [
             ("box_sim", "box_fc1", 6),
             ("pose_sim_coco", "pose_coco_fc1", 6),
             ("OSNet_sim", "visual_fc5", 6),
         ],
-        "iou_fc1_ep6__oks_o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
+        "iou_fc1_ep6__oks_conv1o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
             ("box_sim", "box_fc1", 6),
-            ("pose_sim_coco", "pose_coco_conv1_o15k2_fc1", 6),
+            ("pose_sim_coco", "pose_coco_conv1o15k2_fc1", 6),
             ("OSNet_sim", "visual_fc5", 6),
         ],
     },
 }
 
 ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
+    # bbox
     "box_fc1": fc_linear(hidden_layers=[4, 1]),
     "box_fc2": fc_linear(hidden_layers=[4, 8, 1]),
-    "pose_coco_fc1": nn.Sequential(
-        nn.Flatten(),
-        fc_linear(hidden_layers=[2 * 17, 1]),
-    ),
+    # pose - COCO
+    "pose_coco_fc1": nn.Sequential(nn.Flatten(), fc_linear(hidden_layers=[2 * 17, 1])),
+    "pose_coco_fc2": nn.Sequential(nn.Flatten(), fc_linear(hidden_layers=[2 * 17, 8, 1])),
     "pose_coco_conv1o15k2fc1": nn.Sequential(
         nn.Conv1d(17, 15, kernel_size=2, groups=1, bias=True),
         nn.Flatten(),
         fc_linear(hidden_layers=[15, 1]),
     ),
+    "pose_coco_conv1o15k2fc2": nn.Sequential(
+        nn.Conv1d(17, 15, kernel_size=2, groups=1, bias=True),
+        nn.Flatten(),
+        fc_linear(hidden_layers=[15, 8, 1]),
+    ),
+    # visual - OSNet
     "visual_osn_fc1": fc_linear([512, 1]),
     "visual_osn_fc2": fc_linear([512, 128, 1]),
     "visual_osn_fc3": fc_linear([512, 256, 128, 1]),
     "visual_osn_fc4": fc_linear([512, 256, 128, 64, 1]),
     "visual_osn_fc5": fc_linear([512, 256, 128, 64, 32, 1]),
+    # visual - Resnet
     "visual_res_fc1": fc_linear([2048, 1]),
     "visual_res_fc2": fc_linear([2048, 512, 1]),
     "visual_res_fc3": fc_linear([2048, 512, 64, 1]),
@@ -95,7 +110,9 @@ NAMES: dict[str, list[str]] = {
     ],
     "pose_sim_coco": [
         "pose_coco_fc1",
+        "pose_coco_fc2",
         "pose_coco_conv1o15k2fc1",
+        "pose_coco_conv1o15k2fc2",
     ],
     "OSNet_sim": [
         "visual_osn_fc1",
