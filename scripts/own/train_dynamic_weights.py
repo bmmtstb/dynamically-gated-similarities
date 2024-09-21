@@ -273,7 +273,6 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
 
     # fixme: add option to resume training in later epochs
     if len(glob(os.path.join(cfg["log_dir"], cfg["log_dir_suffix"], "./checkpoints/lr*_epoch001.pth"))) > 0:
-        print(f"return train early: {sim_name} - {alpha_mod_name}")
         return
 
     # modify config even more
@@ -286,10 +285,12 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
 
     cfg["train"]["load_image_crops"] = not any(val in sim_name for val in ["pose_", "box_"])
 
-    print(f"Training on the ground-truth train-dataset with config: {dl_train_key} - {alpha_mod_name}")
-
     # use the modified config and obtain the model used for training
     engine_train = get_dgs_engine(cfg=cfg, dl_keys=(dl_train_key, dl_eval_key, None))
+
+    engine_train.logger.debug(
+        f"Training on the ground-truth train-dataset with config: {dl_train_key} - {alpha_mod_name}"
+    )
 
     # set model and initialize the weights
     engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
@@ -312,7 +313,7 @@ if __name__ == "__main__":
 
     if TRAIN:
         # for every similarity or combination of similarities
-        for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities")):
+        for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities", leave=False)):
             pbar_key.set_postfix_str(SIM_NAME)
 
             for ALPHA_MOD_NAME in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
@@ -337,7 +338,7 @@ if __name__ == "__main__":
     # ########## #
 
     if EVAL:
-        for DL_KEY, similarities in (pbar_dl := tqdm(DL_KEYS_EVAL.items(), desc="datasets")):
+        for DL_KEY, similarities in (pbar_dl := tqdm(DL_KEYS_EVAL.items(), desc="datasets", leave=False)):
             pbar_dl.set_postfix_str(DL_KEY)
 
             for COMB_NAME, DGS_MODULE_DATA in (
