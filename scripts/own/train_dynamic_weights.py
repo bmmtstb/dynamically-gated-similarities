@@ -23,6 +23,10 @@ from dgs.utils.utils import notify_on_completion_or_error
 
 CONFIG_FILE = "./configs/DGS/train_dynamic_weights.yaml"
 
+TRAIN = True
+EVAL = False
+TEST = False
+
 DL_KEYS_TRAIN: list[tuple[str, str]] = [
     # DanceTrack with evaluation using the accuracy of the weights
     # ("train_dl_dance_256x192", "val_dl_dance_256x192_eval_acc"),
@@ -31,121 +35,140 @@ DL_KEYS_TRAIN: list[tuple[str, str]] = [
     ("train_dl_pt21_256x192", "val_dl_pt21_256x192_eval_acc"),
 ]
 
-DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, int]]]] = {
+DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
     # dance gt
     "val_dl_dance_256x192": {
-        "box_sim": [
-            ("fc_1_box", 4),
-            ("fc_1_box", 6),
-            # ("fc_2_box", 6),
-        ],
-        "OSNet_sim": [
-            # ("fc_1_visual", 6),
-            # ("fc_2_visual", 6),
-            # ("fc_3_visual", 6),
-            # ("fc_4_visual", 6),
-            # ("fc_5_visual", 6),
-        ],
+        # earlier model
+        "iou_fc1_ep4__vis_fc3_ep4__lr-4": [("box_sim", "box_fc1", 4), ("OSNet_sim", "visual_fc3", 4)],
+        # fully trained
+        "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc1", 6)],
+        "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc3", 6)],
+        "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc5", 6)],
     },
     # pt21 gt
     "val_dl_pt21_256x192": {
-        "box_sim": [
-            # ("fc_1_box", 4),
-            # ("fc_1_box", 6),
-            # ("fc_2_box", 6),
+        # fully trained
+        "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc1", 6)],
+        "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc3", 6)],
+        "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_fc5", 6)],
+        "iou_fc1_ep6__oks_fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_fc1", 6),
+            ("OSNet_sim", "visual_fc5", 6),
         ],
-        "pose_sim_coco": [
-            # ("fc_1_pose_coco", 6),
-            # ("conv1_o15k2_fc_1_pose_coco", 6),
-        ],
-        "OSNet_sim": [
-            # ("fc_1_visual", 6),
-            # ("fc_2_visual", 6),
-            # ("fc_3_visual", 6),
-            # ("fc_4_visual", 6),
-            # ("fc_5_visual", 6),
+        "iou_fc1_ep6__oks_o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_conv1_o15k2_fc1", 6),
+            ("OSNet_sim", "visual_fc5", 6),
         ],
     },
 }
 
 ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
-    "box_fc_1": fc_linear(hidden_layers=[4, 1]),
-    "box_fc_2": fc_linear(hidden_layers=[4, 8, 1]),
-    "pose_coco_fc_1": nn.Sequential(
+    "box_fc1": fc_linear(hidden_layers=[4, 1]),
+    "box_fc2": fc_linear(hidden_layers=[4, 8, 1]),
+    "pose_coco_fc1": nn.Sequential(
         nn.Flatten(),
         fc_linear(hidden_layers=[2 * 17, 1]),
     ),
-    "pose_cococonv1_o15k2_fc_1": nn.Sequential(
+    "pose_coco_conv1o15k2fc1": nn.Sequential(
         nn.Conv1d(17, 15, kernel_size=2, groups=1, bias=True),
         nn.Flatten(),
         fc_linear(hidden_layers=[15, 1]),
     ),
-    "visual_osn_fc_1": fc_linear([512, 1]),
-    "visual_osn_fc_2": fc_linear([512, 128, 1]),
-    "visual_osn_fc_3": fc_linear([512, 256, 128, 1]),
-    "visual_osn_fc_4": fc_linear([512, 256, 128, 64, 1]),
-    "visual_osn_fc_5": fc_linear([512, 256, 128, 64, 32, 1]),
-    "visual_res_fc_1": fc_linear([2048, 1]),
-    "visual_res_fc_2": fc_linear([2048, 512, 1]),
-    "visual_res_fc_3": fc_linear([2048, 512, 64, 1]),
-    "visual_res_fc_4": fc_linear([2048, 1024, 256, 64, 1]),
-    "visual_res_fc_5": fc_linear([2048, 1024, 256, 128, 64, 1]),
+    "visual_osn_fc1": fc_linear([512, 1]),
+    "visual_osn_fc2": fc_linear([512, 128, 1]),
+    "visual_osn_fc3": fc_linear([512, 256, 128, 1]),
+    "visual_osn_fc4": fc_linear([512, 256, 128, 64, 1]),
+    "visual_osn_fc5": fc_linear([512, 256, 128, 64, 32, 1]),
+    "visual_res_fc1": fc_linear([2048, 1]),
+    "visual_res_fc2": fc_linear([2048, 512, 1]),
+    "visual_res_fc3": fc_linear([2048, 512, 64, 1]),
+    "visual_res_fc4": fc_linear([2048, 1024, 256, 64, 1]),
+    "visual_res_fc5": fc_linear([2048, 1024, 256, 128, 64, 1]),
 }
 
 NAMES: dict[str, list[str]] = {
     "box_sim": [
-        "fc_1_box",
-        "fc_2_box",
+        "box_fc1",
+        "box_fc2",
     ],
     "pose_sim_coco": [
-        "fc_1_pose_coco",
-        "conv1_o15k2_fc_1_pose_coco",
+        "pose_coco_fc1",
+        "pose_coco_conv1o15k2fc1",
     ],
     "OSNet_sim": [
-        "visual_osn_fc_1",
-        # "visual_osn_fc_2",
-        "visual_osn_fc_3",
-        # "visual_osn_fc_4",
-        "visual_osn_fc_5",
+        "visual_osn_fc1",
+        # "visual_osn_fc2",
+        "visual_osn_fc3",
+        # "visual_osn_fc4",
+        "visual_osn_fc5",
     ],
     "OSNetAIN_sim": [
-        "visual_osn_fc_1",
-        # "visual_osn_fc_2",
-        "visual_osn_fc_3",
+        # "visual_osn_fc1",
+        # "visual_osn_fc2",
+        "visual_osn_fc3",
+        # "visual_osn_fc4",
+        # "visual_osn_fc5",
     ],
     "Resnet50_sim": [
-        "visual_res_fc_1",
-        # "visual_res_fc_2",
-        "visual_res_fc_3",
-        # "visual_res_fc_4",
-        "visual_res_fc_5",
+        # "visual_res_fc1",
+        # "visual_res_fc2",
+        "visual_res_fc3",
+        # "visual_res_fc4",
+        "visual_res_fc5",
     ],
     "Resnet152_sim": [
-        "visual_res_fc_1",
-        # "visual_res_fc_2",
-        "visual_res_fc_3",
+        # "visual_res_fc1",
+        # "visual_res_fc2",
+        "visual_res_fc3",
+        # "visual_res_fc4",
+        # "visual_res_fc5",
     ],
 }
+
+
+def set_up_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[str, str, int]]) -> DGSEngine:
+    """Given a configuration, modify it for the multi similarity case.
+     Then create a :class:`.DGSEngine` and set up those similarity functions and load the weights for the alpha module.
+
+    Where sim_mods is a list containing the params for ``S`` similarity modules.
+    Each of the params tuples consists of
+
+    - the name of the similarity module in the config file
+    - the name of the alpha weight generation module
+    - the epoch of the weights loaded in the alpha weight generation module
+    """
+    cfg["DGSModule"]["names"] = [[sm[0]] for sm in dgs_mod_data]
+    cfg["DGSModule"]["combine"] = "dac_test"
+    base_lr = cfg["train"]["optimizer_kwargs"]["lr"]
+
+    engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key))
+
+    for sim_name, alpha_name, epoch in dgs_mod_data:
+        folder_path = f"./{dl_key}/{sim_name}/{alpha_name}_{base_lr:.10f}/checkpoints/"
+        checkpoints = glob(os.path.join(cfg["log_dir"], folder_path, f"./lr*_epoch{epoch:0>3}.pth"))
+        assert len(checkpoints) == 1
+        checkpoint_file = os.path.abspath(os.path.normpath(checkpoints[0]))
+        engine.load_model(path=checkpoint_file)
+
+    close_all_layers(engine.model)
+
+    return engine
 
 
 @notify_on_completion_or_error(min_time=30)
 @t.no_grad()
 def test_pt21_dynamic_alpha(
-    cfg: Config, dl_key: str, paths: list, alpha_mod_name: str, sim_name: str, epoch: int
+    cfg: Config, dl_key: str, paths: list, comb_name: str, dgs_mod_data: list[tuple[str, str, int]]
 ) -> None:
     """Set the PT21 config."""
-    lr = cfg["train"]["optimizer_kwargs"]["lr"]
     subm_key = "submission_pt21"
-    folder_path = f"./{dl_key}/{sim_name}/{alpha_mod_name}_{lr:.10f}/"
+    folder_path = f"./{dl_key}/results/{comb_name}/"
 
     # change config that is the same for all sub-datasets (videos) of pt21
-    cfg["log_dir_suffix"] = os.path.join(folder_path, f"./test_log/")
+    cfg["log_dir_suffix"] = os.path.join(folder_path, "./test_log/")
     cfg["test"]["submission"] = [subm_key]
-
-    # checkpoint file
-    checkpoints = glob(os.path.join(cfg["log_dir"], folder_path, f"./checkpoints/*_epoch{epoch:0>3}.pth"))
-    assert len(checkpoints) == 1
-    checkpoint_file = os.path.abspath(os.path.normpath(checkpoints[0]))
 
     # get all the sub folders or files and analyze them one-by-one
     for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
@@ -158,16 +181,13 @@ def test_pt21_dynamic_alpha(
 
         # set the new path for the out file in the log_dir
         cfg[subm_key]["file"] = os.path.abspath(
-            os.path.normpath(os.path.join(cfg["log_dir"], folder_path, f"./results_ep{epoch:0>3}/{sub_ds_name}.json"))
+            os.path.normpath(os.path.join(cfg["log_dir"], folder_path, f"./{sub_ds_name}.json"))
         )
 
         if os.path.exists(cfg[subm_key]["file"]):
             continue
 
-        engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key))
-        # load weights and freeze layers
-        engine.load_model(path=checkpoint_file)
-        close_all_layers(engine.model)
+        engine = set_up_dgs_module(cfg=cfg, dl_key=dl_key, dgs_mod_data=dgs_mod_data)
 
         engine.test()
 
@@ -179,15 +199,13 @@ def test_pt21_dynamic_alpha(
 @notify_on_completion_or_error(min_time=30)
 @t.no_grad()
 def test_dance_dynamic_alpha(
-    cfg: Config, dl_key: str, paths: list, alpha_mod_name: str, sim_name: str, epoch: int
+    cfg: Config, dl_key: str, paths: list, comb_name: str, dgs_mod_data: list[tuple[str, str, int]]
 ) -> None:
     """Set the DanceTrack config."""
     orig_log_dir = cfg["log_dir"]
+
     subm_key = "submission_MOT"
-    lr = cfg["train"]["optimizer_kwargs"]["lr"]
-    log_dir = os.path.join(
-        cfg[dl_key]["dataset_path"], f"./results_train_{dl_key}_ep{epoch:0>3}/{sim_name}/{alpha_mod_name}_{lr:.10f}/"
-    )
+    log_dir = os.path.join(cfg[dl_key]["dataset_path"], f"./results_{dl_key}/{comb_name}/")
 
     cfg["log_dir"] = log_dir
     cfg["test"]["submission"] = [subm_key]
@@ -207,9 +225,11 @@ def test_dance_dynamic_alpha(
         if os.path.exists(cfg[subm_key]["file"]):
             continue
 
-        engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key))
+        engine = set_up_dgs_module(cfg=cfg, dl_key=dl_key, dgs_mod_data=dgs_mod_data)
+
         engine.test()
-        # end processes
+
+        # terminate and reset log dir
         engine.terminate()
     cfg["log_dir"] = orig_log_dir
 
@@ -290,68 +310,71 @@ if __name__ == "__main__":
     # TRAINING & Accuracy EVALUATION #
     # ############################## #
 
-    # for every similarity or combination of similarities
-    for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities")):
-        pbar_key.set_postfix_str(SIM_NAME)
+    if TRAIN:
+        # for every similarity or combination of similarities
+        for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities")):
+            pbar_key.set_postfix_str(SIM_NAME)
 
-        for ALPHA_MOD_NAME in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
-            pbar_alpha_mod.set_postfix_str(ALPHA_MOD_NAME)
+            for ALPHA_MOD_NAME in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
+                pbar_alpha_mod.set_postfix_str(ALPHA_MOD_NAME)
 
-            # set name
-            config["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{ALPHA_MOD_NAME}"
+                # set name
+                config["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{ALPHA_MOD_NAME}"
 
-            for DL_KEY in DL_KEYS_TRAIN:
-                DL_TRAIN_KEY, DL_EVAL_KEY = DL_KEY
+                for DL_KEY in DL_KEYS_TRAIN:
+                    DL_TRAIN_KEY, DL_EVAL_KEY = DL_KEY
 
-                train_dynamic_alpha(
-                    cfg=config,
-                    dl_train_key=DL_TRAIN_KEY,
-                    dl_eval_key=DL_EVAL_KEY,
-                    alpha_mod_name=ALPHA_MOD_NAME,
-                    sim_name=SIM_NAME,
-                )
+                    train_dynamic_alpha(
+                        cfg=config,
+                        dl_train_key=DL_TRAIN_KEY,
+                        dl_eval_key=DL_EVAL_KEY,
+                        alpha_mod_name=ALPHA_MOD_NAME,
+                        sim_name=SIM_NAME,
+                    )
 
     # ########## #
     # EVALUATION #
     # ########## #
 
-    for DL_KEY, similarities in (pbar_dl := tqdm(DL_KEYS_EVAL.items(), desc="datasets")):
-        pbar_dl.set_postfix_str(DL_KEY)
+    if EVAL:
+        for DL_KEY, similarities in (pbar_dl := tqdm(DL_KEYS_EVAL.items(), desc="datasets")):
+            pbar_dl.set_postfix_str(DL_KEY)
 
-        for SIM_NAME, (ALPHA_MOD_NAME, EPOCH) in (
-            pbar_key := tqdm(similarities.items(), desc="similarities", leave=False)
-        ):
-            pbar_key.set_postfix_str(SIM_NAME)
+            for COMB_NAME, DGS_MODULE_DATA in (
+                pbar_key := tqdm(similarities.items(), desc="similarities", leave=False)
+            ):
+                pbar_key.set_postfix_str(COMB_NAME)
 
-            # TODO load weights from the best model and test them or from a list of given names, ...
-            # TODO accept "List_" datasets and test them individually
+                # TODO load weights from the best model and test them or from a list of given names, ...
+                # TODO accept "List_" datasets and test them individually
 
-            if "pt21" in DL_KEY:
-                test_pt21_dynamic_alpha(
-                    cfg=config,
-                    dl_key=DL_KEY,
-                    paths=[os.path.normpath(f) for f in glob(config[DL_KEY]["paths"])],
-                    alpha_mod_name=ALPHA_MOD_NAME,
-                    sim_name=SIM_NAME,
-                    epoch=EPOCH,
-                )
-            elif "Dance" in DL_KEY:
-                test_dance_dynamic_alpha(
-                    cfg=config,
-                    dl_key=DL_KEY,
-                    paths=[os.path.normpath(f) for f in glob(config[DL_KEY]["paths"])],
-                    alpha_mod_name=ALPHA_MOD_NAME,
-                    sim_name=SIM_NAME,
-                    epoch=EPOCH,
-                )
-            else:
-                raise NotImplementedError
+                if "pt21" in DL_KEY:
+                    test_pt21_dynamic_alpha(
+                        cfg=config,
+                        dl_key=DL_KEY,
+                        paths=[os.path.normpath(f) for f in glob(config[DL_KEY]["paths"])],
+                        comb_name=COMB_NAME,
+                        dgs_mod_data=DGS_MODULE_DATA,
+                    )
+                elif "Dance" in DL_KEY:
+                    test_dance_dynamic_alpha(
+                        cfg=config,
+                        dl_key=DL_KEY,
+                        paths=[os.path.normpath(f) for f in glob(config[DL_KEY]["paths"])],
+                        comb_name=COMB_NAME,
+                        dgs_mod_data=DGS_MODULE_DATA,
+                    )
+                else:
+                    raise NotImplementedError
 
-    # run evaluation steps
-    subprocess.call("./scripts/helpers/run_eval_pt21.sh")
-    subprocess.call("./scripts/helpers/run_eval_dance.sh")
-    exec(open("./scripts/helpers/results_to_csv.py").read())
+        # run evaluation steps
+        subprocess.call("./scripts/helpers/run_eval_pt21.sh")
+        subprocess.call("./scripts/helpers/run_eval_dance.sh")
+        subprocess.Popen("python ./scripts/helpers/results_to_csv.py")  # pylint: disable=consider-using-with
 
     # ####### #
     # TESTING #
     # ####### #
+
+    if TEST:
+        pass

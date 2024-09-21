@@ -63,14 +63,18 @@ submission_MOT:
     module_name: "MOT"
     # file: # will be set in python script
 
-dac:
+dac_train:
     module_name: "dynamic_alpha"
     softmax: false
+
+dac_test:
+    module_name: "dynamic_alpha"
+    softmax: true
 
 DGSModule:
     module_name: "DGS"
     # names:  # will be set in python script
-    combine: "dac"
+    combine: "dac_train"
     new_track_weight: 0.0
 
 # #### #
