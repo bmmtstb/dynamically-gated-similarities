@@ -15,6 +15,9 @@ test:
     show_keypoints: off
     show_skeleton: off
 
+engine:
+    module_name: "DGSEngine"
+
 # #### #
 # DATA #
 # #### #

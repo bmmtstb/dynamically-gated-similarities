@@ -15,6 +15,9 @@ test:
     # submission:  # will be set in python script
     # writer_log_dir_suffix: will be set by python script
 
+engine:
+    module_name: "DGSEngine"
+
 # #### #
 # DATA #
 # #### #

@@ -16,6 +16,10 @@ test:
         bbox_font_size: 90
         bbox_width: 8
         kp_width: 6
+
+engine:
+    module_name: "DGSEngine"
+
 # #### #
 # DATA #
 # #### #

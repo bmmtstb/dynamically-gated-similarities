@@ -31,6 +31,6 @@ if __name__ == "__main__":
         model.eval()
     print(f"Total model loading time: {str(timedelta(seconds=round(time.time() - module_start_time)))}")
 
-    engine = DGSEngine(config=config, model=model, test_loader=test_dl)
+    engine = DGSEngine(config=config, path=["engine"], model=model, test_loader=test_dl)
 
     engine.test()
