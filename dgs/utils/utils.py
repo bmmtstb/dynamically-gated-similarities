@@ -297,7 +297,8 @@ def send_discord_notification(message: str) -> None:  # pragma: no cover
     message += f"\nSent by: {sender}"
     if len(message) > 2000:
         message = "(truncated) ... " + message[-1980:]
-    # escape discord markdown -  with kind regards to https://github.com/Rapptz/discord.py/blob/59f877fcf013c4ddeeb2b39fc21f03e76f995461/discord/utils.py#L909
+    # escape discord markdown -  with kind regards to:
+    # https://github.com/Rapptz/discord.py/blob/59f877fcf013c4ddeeb2b39fc21f03e76f995461/discord/utils.py#L909
     message = re.sub(r"/([_\\~|*`])", r"\\$1", string=message)
     data = {"content": message}
     try:

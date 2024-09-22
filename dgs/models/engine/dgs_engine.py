@@ -663,7 +663,7 @@ class DGSEngine(EngineModule):
         Args:
             fp: The path to the checkpoint file
             new_id: The ID at which index of the alpha weight modules to insert the loaded weights.
-            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_model``s in a single checkpoint.
+            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_model`` s in a single checkpoint.
                 E.g. when multiple alpha weight generators have been trained in unison.
         """
         checkpoint_data = load_checkpoint(fpath=fp)

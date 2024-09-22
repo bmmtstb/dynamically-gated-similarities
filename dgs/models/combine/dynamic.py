@@ -101,7 +101,6 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             raise ValueError(f"There should be as many alpha models {len(self.alpha_model)} as tensors {len(tensors)}.")
 
         tensors = t.stack(tensors, dim=-3)  # [S x D x T]
-        assert tensors.ndim == 3, tensors.shape
 
         if isinstance(tensors, t.Tensor) and tensors.ndim != 3:
             raise ValueError(f"Expected a 3D tensor, but got a tensor with shape {tensors.shape}")
@@ -124,7 +123,6 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         alpha = nn.functional.softmax(
             t.cat([self.alpha_model[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=1), dim=-1
         )
-        assert alpha.ndim == 2, alpha.shape
 
         # [S x D ( x 1)] hadamard [S x D x T] -> [S x D x T] -> sum over all S [D x T]
         s = t.mul(alpha.T.unsqueeze(-1), tensors).sum(dim=0)
