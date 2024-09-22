@@ -72,7 +72,7 @@ class TestCombineSimilaritiesModule(unittest.TestCase):
 
 
 class TestDynamicAlphaCombine(unittest.TestCase):
-    N = 2
+    S = 2
     D = 3
     T = 7
     sim_sizes = [4, 1]
@@ -88,22 +88,22 @@ class TestDynamicAlphaCombine(unittest.TestCase):
     def setUpClass(cls):
         # default models with alpha modules with different sizes
         cls.default_models = nn.ModuleList(
-            [fc_linear(hidden_layers=[cls.sim_sizes[i], 1], bias=False) for i in range(cls.N)]
+            [fc_linear(hidden_layers=[cls.sim_sizes[i], 1], bias=False) for i in range(cls.S)]
         )
-        for i in range(cls.N):
+        for i in range(cls.S):
             nn.init.constant_(cls.default_models[i][0].weight, 1.0 / cls.sim_sizes[i])
 
         # constant models - uses sim_sizes[0] for all hidden layers
         cls.constant_models = nn.ModuleList(
-            [fc_linear(hidden_layers=[cls.sim_sizes[0], 1], bias=False) for _ in range(cls.N)]
+            [fc_linear(hidden_layers=[cls.sim_sizes[0], 1], bias=False) for _ in range(cls.S)]
         )
-        for i in range(cls.N):
+        for i in range(cls.S):
             nn.init.constant_(cls.constant_models[i][0].weight, 1.0 / cls.sim_sizes[0])
 
     def setUp(self):
-        self.assertEqual(len(self.sim_sizes), self.N)
-        self.assertEqual(len(self.default_models), self.N)
-        self.assertEqual(len(self.constant_models), self.N)
+        self.assertEqual(len(self.sim_sizes), self.S)
+        self.assertEqual(len(self.default_models), self.S)
+        self.assertEqual(len(self.constant_models), self.S)
 
     def test_dynamic_alpha_cfg_init(self):
         m = DynamicAlphaCombine(config=self.default_cfg, path=["def_dynamic_alpha"])
@@ -112,7 +112,7 @@ class TestDynamicAlphaCombine(unittest.TestCase):
         self.assertFalse(hasattr(m, "alpha_model"))
         m.alpha_model = self.default_models
         self.assertTrue(hasattr(m, "alpha_model"))
-        self.assertEqual(len(m.alpha_model), self.N)
+        self.assertEqual(len(m.alpha_model), self.S)
 
     @test_multiple_devices
     def test_dynamic_alpha_forward(self, device: Device):
@@ -121,46 +121,46 @@ class TestDynamicAlphaCombine(unittest.TestCase):
             config=fill_in_defaults({"device": device}, self.default_cfg), path=["def_dynamic_alpha"]
         )
         dac_diff_sizes.alpha_model = self.default_models.to(device=device)
-        self.assertEqual(len(dac_diff_sizes.alpha_model), self.N)
+        self.assertEqual(len(dac_diff_sizes.alpha_model), self.S)
 
         # DAC module with alpha models of constant sizes
         dac_const_sizes = DynamicAlphaCombine(
             config=fill_in_defaults({"device": device}, self.default_cfg), path=["def_dynamic_alpha"]
         )
         dac_const_sizes.alpha_model = self.constant_models.to(device=device)
-        self.assertEqual(len(dac_diff_sizes.alpha_model), self.N)
-        self.assertEqual(len(dac_const_sizes.alpha_model), self.N)
+        self.assertEqual(len(dac_diff_sizes.alpha_model), self.S)
+        self.assertEqual(len(dac_const_sizes.alpha_model), self.S)
 
         for model, alpha_inputs, s_i, result in [
             (
                 "const",
-                t.ones((self.N, self.sim_sizes[0])),
-                t.ones((self.N, self.D, self.T)),
-                t.ones((self.D, self.T)) * self.N,
+                t.ones((self.S, self.D, self.sim_sizes[0])),
+                t.ones((self.S, self.D, self.T)),
+                t.ones((self.D, self.T)),
             ),
             (
                 "const",
-                [t.ones(self.sim_sizes[0]) for _ in range(self.N)],
-                t.ones((self.N, self.D, self.T)),
-                t.ones((self.D, self.T)) * self.N,
+                [t.ones(self.D, self.sim_sizes[0]) for _ in range(self.S)],
+                t.ones((self.S, self.D, self.T)),
+                t.ones((self.D, self.T)),
             ),
             (
                 "const",
-                t.ones((self.N, self.sim_sizes[0])),
-                [t.ones((self.D, self.T)) for _ in range(self.N)],
-                t.ones((self.D, self.T)) * self.N,
+                t.ones((self.S, self.D, self.sim_sizes[0])),
+                [t.ones((self.D, self.T)) for _ in range(self.S)],
+                t.ones((self.D, self.T)),
             ),
             (
                 "diff",
-                [t.ones((1, i)) for i in self.sim_sizes],
-                t.ones((self.N, self.D, self.T)),
-                t.ones((self.D, self.T)) * self.N,
+                [t.ones((self.D, i)) for i in self.sim_sizes],
+                t.ones((self.S, self.D, self.T)),
+                t.ones((self.D, self.T)),
             ),
             (
                 "diff",
-                [t.ones((1, i)) for i in self.sim_sizes],
-                [t.ones((self.D, self.T)) for _ in range(self.N)],
-                t.ones((self.D, self.T)) * self.N,
+                [t.ones((self.D, i)) for i in self.sim_sizes],
+                [t.ones((self.D, self.T)) for _ in range(self.S)],
+                t.ones((self.D, self.T)),
             ),
         ]:
             with self.subTest(

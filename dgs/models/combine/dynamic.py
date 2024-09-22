@@ -64,16 +64,16 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
 
         Args:
             tensors: A tuple of (Float-)Tensors.
-                All ``N`` similarity matrices of this iterable should have values in range ``[0,1]``,
+                All ``S`` similarity matrices of this iterable should have values in range ``[0,1]``,
                 be of the same shape ``[D x T]``, and be on the same device.
-                If ``tensors`` is a single tensor, it should have the shape ``[N x D x T]``.
-                ``N`` can be any number of similarity matrices greater than 0,
+                If ``tensors`` is a single tensor, it should have the shape ``[S x D x T]``.
+                ``S`` can be any number of similarity matrices greater than 0,
                 even though only values greater than 1 really make sense.
             alpha_inputs: An iterable of tensors or a single tensor that are all on the same device as ``tensors``.
-                If ``alpha_inputs`` is a single tensor, it should have the shape ``[N x sim_size x ...]``.
+                If ``alpha_inputs`` is a single tensor, it should have the shape ``[S x D x sim_size x ...]``.
                 But because the inputs for different similarity matrices can have different shapes,
-                the most common use case is to have a list of ``N`` tensors.
-                Where every tensor has values in range ``[0, 1]`` and is of shape ``[sim_size x ...]``.
+                the most common use case is to have a list of ``S`` tensors.
+                Where every tensor has values in range ``[0, 1]`` and is of shape ``[D x sim_size x ...]``.
 
         Returns:
             torch.Tensor: The weighted similarity matrix as tensor of shape ``[D x T]``.
@@ -100,7 +100,8 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         if len(self.alpha_model) != len(tensors):
             raise ValueError(f"There should be as many alpha models {len(self.alpha_model)} as tensors {len(tensors)}.")
 
-        tensors = t.stack(tensors)  # [N x D x T]
+        tensors = t.stack(tensors, dim=-3)  # [S x D x T]
+        assert tensors.ndim == 3, tensors.shape
 
         if isinstance(tensors, t.Tensor) and tensors.ndim != 3:
             raise ValueError(f"Expected a 3D tensor, but got a tensor with shape {tensors.shape}")
@@ -119,11 +120,16 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
                 f"There should be as many alpha models {len(self.alpha_model)} as alpha inputs {len(alpha_inputs)}."
             )
 
-        alpha = t.stack([self.alpha_model[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=0).flatten()  # [N]
+        # [D x S] with softmax over S dimension
+        alpha = nn.functional.softmax(
+            t.cat([self.alpha_model[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=1), dim=-1
+        )
+        assert alpha.ndim == 2, alpha.shape
 
-        s = t.tensordot(alpha, tensors, dims=([0], [0]))  # [N] dot [N x D x T] -> [D x T]
+        # [S x D ( x 1)] hadamard [S x D x T] -> [S x D x T] -> sum over all S [D x T]
+        s = t.mul(alpha.T.unsqueeze(-1), tensors).sum(dim=0)
 
-        return self.softmax(s)
+        return s
 
     def terminate(self) -> None:  # pragma: no cover
         if hasattr(self, "alpha_model"):
