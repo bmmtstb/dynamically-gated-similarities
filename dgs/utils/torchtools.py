@@ -217,7 +217,6 @@ def resume_from_checkpoint(
         model: The model that is currently trained.
         optimizer: An Optimizer.
         scheduler: A single LRScheduler.
-        module_name: The base name of a module to load only parts of a given checkpoint.
         verbose: Whether to print additional debug information.
 
     Returns:
