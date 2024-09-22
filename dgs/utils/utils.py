@@ -3,6 +3,7 @@ General utility functions.
 """
 
 import os.path
+import re
 import socket
 import sys
 import threading
@@ -295,7 +296,9 @@ def send_discord_notification(message: str) -> None:  # pragma: no cover
     sender = socket.gethostname()
     message += f"\nSent by: {sender}"
     if len(message) > 2000:
-        message = message[:1980] + " ... (truncated)"
+        message = "(truncated) ... " + message[-1980:]
+    # escape discord markdown -  with kind regards to https://github.com/Rapptz/discord.py/blob/59f877fcf013c4ddeeb2b39fc21f03e76f995461/discord/utils.py#L909
+    message = re.sub(r"/([_\\~|*`])", r"\\$1", string=message)
     data = {"content": message}
     try:
         response = requests.post(DISCORD_WEBHOOK_URL, json=data)
