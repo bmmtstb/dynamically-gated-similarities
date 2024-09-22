@@ -31,12 +31,8 @@ TEST = False
 DL_KEYS_TRAIN: list[tuple[str, str]] = [
     # DanceTrack with evaluation using the accuracy of the weights
     ("train_dl_dance_256x192", "val_dl_dance_256x192_eval_acc"),
-    # DanceTrack with evaluation using the MOTA and HOTA metrics
-    # ("train_dl_dance_256x192", "val_dl_dance_256x192"),
     # PoseTrack21 with evaluation using the accuracy of the weights
     ("train_dl_pt21_256x192", "val_dl_pt21_256x192_eval_acc"),
-    # PoseTrack21 with evaluation using the MOTA and HOTA metrics
-    # ("train_dl_pt21_256x192", "val_dl_pt21_256x192"),
 ]
 
 DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
