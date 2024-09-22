@@ -156,7 +156,7 @@ train_dl_dance_256x192:
     crop_mode: "zero-pad"
 
 test_dl_pt21_256x192:
-    module_name: "List_KeypointRCNNImageBackbone"
+    module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
     # data_path:  # will be set in python script
@@ -168,7 +168,7 @@ test_dl_pt21_256x192:
     crop_mode: "zero-pad"
 
 val_dl_pt21_256x192:
-    module_name: "List_PoseTrack21_Image"
+    module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     # data_path:  # will be set in python script
     paths: "./data/PoseTrack21/posetrack_data/val/**.json"
