@@ -2,6 +2,7 @@
 Use a model out of the torchreid package as an embedding generator.
 """
 
+import logging
 import warnings
 
 import torch as t
@@ -123,7 +124,7 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
         )
         if not pretrained:  # pragma: no cover
             # custom model params
-            load_pretrained_weights(m, to_abspath(self.model_weights))
+            load_pretrained_weights(m, to_abspath(self.model_weights), verbose=self.logger.isEnabledFor(logging.DEBUG))
         return m
 
     def predict_embeddings(self, data: t.Tensor) -> t.Tensor:

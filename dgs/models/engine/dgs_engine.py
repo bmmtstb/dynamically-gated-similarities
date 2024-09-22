@@ -21,8 +21,9 @@ from dgs.models.submission.submission import SubmissionFile
 from dgs.utils.config import DEF_VAL, get_sub_config
 from dgs.utils.state import collate_states, EMPTY_STATE, State
 from dgs.utils.timer import DifferenceTimers
+from dgs.utils.torchtools import load_checkpoint
 from dgs.utils.track import Tracks
-from dgs.utils.types import Config, NodePath, Results, Validations
+from dgs.utils.types import Config, FilePath, NodePath, Results, Validations
 from dgs.utils.utils import torch_to_numpy
 
 dgs_eng_test_validations: Validations = {
@@ -643,6 +644,39 @@ class DGSEngine(EngineModule):
             f"complete in {str(timedelta(seconds=round(time.time() - start_time)))} ####"
         )
         return results
+
+    def load_combine_alpha_weights(self, fp: FilePath, new_id: int = 0, old_id: int = 0) -> None:
+        """Given the path to a file containing at least the data of one module checkpoint, load the weights of
+        the ``combine.alpha_weights`` module.
+
+        Notes:
+            During training the DGSEngine was trained with a single alpha model.
+            For testing or (non accuracy) evaluation, multiple alpha values are required.
+            Therefore, the ``combine.alpha_model`` now contains more than one AlphaGenerator instance.
+            Thus, the indices of the state dict have to be modified accordingly.
+
+            Additionally, in case of the visual embedding generation modules, there are more parameters saved in the
+            checkpoint file, which should not be loaded by this function.
+
+        Args:
+            fp: The path to the checkpoint file
+            new_id: The ID at which index of the alpha weight modules to insert the loaded weights.
+            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_model``s in a single checkpoint.
+                E.g. when multiple alpha weight generators have been trained in unison.
+        """
+        checkpoint_data = load_checkpoint(fpath=fp)
+        state_dict = checkpoint_data["model"] if "model" in checkpoint_data else checkpoint_data
+
+        # Only load combine.alpha_model and ignore everything else. (e.g. visual embed gen models)
+        new_state_dict = {
+            str(k).replace(f"combine.alpha_model.{int(old_id)}.", f"combine.alpha_model.{int(new_id)}."): v
+            for k, v in state_dict.items()
+            if k.startswith("combine.alpha_model")
+        }
+
+        _, unexpected = self.model.load_state_dict(new_state_dict, strict=False)
+        if len(unexpected) != 0:
+            raise ValueError(f"got unexpected keys: {unexpected}")
 
     def terminate(self) -> None:
         if hasattr(self, "submission"):
