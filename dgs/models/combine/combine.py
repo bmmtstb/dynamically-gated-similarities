@@ -9,7 +9,7 @@ from abc import abstractmethod
 import torch as t
 from torch import nn
 
-from dgs.models.module import BaseModule
+from dgs.models.module import BaseModule, enable_keyboard_interrupt
 from dgs.utils.config import DEF_VAL
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -55,5 +55,6 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
         return self.forward(*args, **kwargs)
 
     @abstractmethod
+    @enable_keyboard_interrupt
     def forward(self, *args, **kwargs) -> t.Tensor:  # pragma: no cover
         raise NotImplementedError

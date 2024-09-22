@@ -5,6 +5,7 @@ from abc import abstractmethod
 import torch as t
 from torch import nn
 
+from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.modules.named import NamedModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
@@ -79,6 +80,7 @@ class SimilarityModule(NamedModule, nn.Module):
         return self.get_data(ds)
 
     @abstractmethod
+    @enable_keyboard_interrupt
     def forward(self, data: State, target: State) -> t.Tensor:
         """Compute the similarity between two input tensors. Make sure to compute the softmax if ``softmax`` is True."""
         raise NotImplementedError
