@@ -144,7 +144,7 @@ def load_checkpoint(fpath) -> dict:
     return checkpoint
 
 
-def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
+def load_pretrained_weights(model: TorchMod, weight_path: FilePath, verbose: bool = False) -> None:
     """Loads pretrianed weights to model.
 
     Features:
@@ -154,6 +154,7 @@ def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
     Args:
         model: A torch module.
         weight_path: path to pretrained weights.
+        verbose: Whether to print non-warning messages
 
     Examples:
         >>> from dgs.utils.torchtools import load_pretrained_weights
@@ -193,7 +194,8 @@ def load_pretrained_weights(model: TorchMod, weight_path: FilePath) -> None:
             f"(** ignored and continue **)"
         )
     else:
-        print(f"Successfully loaded pretrained weights from '{weight_path}'")
+        if verbose:
+            print(f"Successfully loaded pretrained weights from '{weight_path}'")
         if len(discarded_layers) > 0:
             print(f"** The following layers are discarded due to unmatched keys or layer size: {discarded_layers}")
 
@@ -215,6 +217,7 @@ def resume_from_checkpoint(
         model: The model that is currently trained.
         optimizer: An Optimizer.
         scheduler: A single LRScheduler.
+        module_name: The base name of a module to load only parts of a given checkpoint.
         verbose: Whether to print additional debug information.
 
     Returns:
@@ -232,7 +235,7 @@ def resume_from_checkpoint(
     if verbose:
         print(f"Loading checkpoint from '{fpath}'")
 
-    load_pretrained_weights(model=model, weight_path=fpath)
+    load_pretrained_weights(model=model, weight_path=fpath, verbose=verbose)
 
     if verbose:
         print("Loaded model weights")
