@@ -394,6 +394,9 @@ class TestValidateValue(unittest.TestCase):
             (["dummy"], {"dummy": 1}, "NodePath", True),
             (["dummy", "test"], {"dummy": {"test": 1}}, "NodePath", True),
             (["dummy", "dummy"], {"dummy": {"test": 1}}, "NodePath", False),
+            ([["dummy"], ["dummy", "test"]], {"dummy": {"test": 1}}, "NodePaths", True),
+            (["dummy", "dummy"], {"dummy": {"test": 1}}, "NodePaths", True),
+            ([["test"]], {"dummy": {"test": 1}}, "NodePaths", False),
             # logic
             (1, int, "all", True),
             (None, "None", "all", True),

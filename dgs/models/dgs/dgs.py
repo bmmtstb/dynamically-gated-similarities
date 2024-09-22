@@ -18,7 +18,7 @@ from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
 dgs_validations: Validations = {
-    "names": [list, ("forall", str)],
+    "names": ["NodePaths"],
     "combine": ["NodePath"],
     # optional
     "new_track_weight": ["optional", float, ("within", (0.0, 1.0))],

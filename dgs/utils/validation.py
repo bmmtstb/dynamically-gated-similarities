@@ -77,6 +77,7 @@ VALIDATIONS: dict[str, Validator] = {
         lambda x, d: (isinstance(x, str) and x in d)
         or (isinstance(x, list) and x[0] in d and ((len(x) == 1) or (VALIDATIONS["NodePath"](x[1:], d[x[0]]))))
     ),
+    "NodePaths": (lambda x, d: isinstance(x, list) and all(VALIDATIONS["NodePath"](x_i, d) for x_i in x)),
     # logical operators, including nested validations
     "eq": (lambda x, d: x == d),
     "neq": (lambda x, d: x != d),
