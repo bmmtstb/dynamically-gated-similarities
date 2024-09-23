@@ -740,7 +740,7 @@ class PoseTrack21Torchreid(TorchreidImageDataset, TorchreidPoseDataset):
 
     # pylint: disable=too-many-arguments
     def process_file(
-        self, filepath: FilePath, crops_dir: FilePath, relabel: bool = False, cam_id: int = 0, is_kp: bool = False
+        self, filepath: FilePath, crops_dir: FilePath, *, relabel: bool = False, cam_id: int = 0, is_kp: bool = False
     ) -> list[tuple[str, int, int, int]]:  # pragma: no cover
         """Process all the data in a single directory.
 

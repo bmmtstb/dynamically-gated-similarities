@@ -99,6 +99,7 @@ def write_seq_ini(fp: FilePath, data: dict[str, any], space_around_delimiters: b
 
 def load_MOT_file(
     fp: FilePath,
+    *,
     sep: str = r",\s?",
     device: Device = "cpu",
     seqinfo_fp: FilePath = None,

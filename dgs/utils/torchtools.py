@@ -56,6 +56,7 @@ def get_model_from_module(module: Union[TorchMod, BaseMod]) -> TorchMod:
 def save_checkpoint(
     state: dict[str, any],
     save_dir: FilePath,
+    *,
     is_best: bool = False,
     remove_module_from_keys: bool = False,
     prepend: str = "",

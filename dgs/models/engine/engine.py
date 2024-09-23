@@ -165,6 +165,7 @@ class EngineModule(NamedModule, nn.Module):
         path: NodePath,
         model: nn.Module,
         test_loader: TorchDataLoader,
+        *,
         val_loader: TorchDataLoader = None,
         train_loader: TorchDataLoader = None,
         **_kwargs,

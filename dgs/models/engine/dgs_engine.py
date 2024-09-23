@@ -158,6 +158,7 @@ class DGSEngine(EngineModule):
         config: Config,
         path: NodePath,
         model: nn.Module,
+        *,
         test_loader: TDataLoader = None,
         val_loader: TDataLoader = None,
         train_loader: TDataLoader = None,

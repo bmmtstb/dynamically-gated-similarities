@@ -110,6 +110,7 @@ class VisualSimilarityEngine(EngineModule):
         model: TorchreidVisualSimilarity,
         test_loader: TDataLoader,
         val_loader: TDataLoader,
+        *,
         train_loader: TDataLoader = None,
         **kwargs,
     ):
