@@ -29,7 +29,7 @@ jobs:
 
       - name: Analysing the code with pylint
         run: |
-          pylint .
+          pylint . --rcfile .pylintrc
 
       - name: Test using unittest and run coverage
         run: |
