@@ -159,14 +159,19 @@ def run_gt_extractor(dl_key: str) -> None:
         write_seq_ini(fp=gt_seqinfo_path, data=own_seqinfo, key="Crops")
 
         # modify the configuration
-        config[dl_key]["data_path"] = os.path.normpath(os.path.join(dataset_path, "./gt/gt.txt/"))
+        data_path = os.path.normpath(os.path.join(dataset_path, "./gt/gt.txt/"))
+        config[dl_key]["data_path"] = data_path
 
-        # skip if at least one crop exists for every image in the sequence
-        all_crop_ids = set(
-            int(os.path.basename(p).split("_")[0]) for p in glob(os.path.join(crops_folder, f"*{own_seqinfo['imExt']}"))
-        )
-        if all(i in all_crop_ids for i in range(1, int(gt_seqinfo["seqLength"]) + 1)):  # 1 indexed
-            continue
+        if os.path.exists(data_path):
+            # skip if submission file exists and there are as many detections in the crop folder as in the subm. file
+            with open(data_path, "r", encoding="utf-8") as subm_f:
+                if (
+                    len(subm_f.readlines())
+                    == len(glob(crops_folder + "./*.jpg"))
+                    == (0.5 * len(glob(crops_folder + "./*.pt")))
+                    == len(glob(crops_folder + "./*_glob.pt"))
+                ):
+                    continue
 
         # get data loader
         dataloader = module_loader(config=config, module_type="dataloader", key=dl_key)
