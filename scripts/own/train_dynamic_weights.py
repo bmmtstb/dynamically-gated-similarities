@@ -5,7 +5,6 @@ Train, evaluate, and test the dynamic weights with different individual weights 
 # pylint: disable=R0801
 
 import os
-import subprocess
 from copy import deepcopy
 from glob import glob
 from typing import Union
@@ -418,11 +417,6 @@ if __name__ == "__main__":
                     )
                 else:
                     raise NotImplementedError(f"unknown type of dataloader, got: {DL_KEY}")
-
-        # run evaluation steps
-        subprocess.call("./scripts/helpers/run_eval_pt21.sh")
-        subprocess.call("./scripts/helpers/run_eval_dance.sh")
-        subprocess.Popen("python ./scripts/helpers/results_to_csv.py")  # pylint: disable=consider-using-with
 
     # ####### #
     # TESTING #

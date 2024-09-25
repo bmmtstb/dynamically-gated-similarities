@@ -17,6 +17,10 @@
   echo "Run triplet"
   python ./scripts/own/eval_triplet_similarities_const.py
 
+  # run the training
+  echo "Run Training"
+  python ./scripts/own/train_dynamic_weights.py
+
   # Run evaluation
   echo "Run eval"
   ./scripts/helpers/run_eval_pt21.sh
