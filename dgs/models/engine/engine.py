@@ -133,6 +133,10 @@ class EngineModule(NamedModule, nn.Module):
     save_interval (int, optional):
         The interval for saving (and evaluating) the model during training.
         Default ``DEF_VAL.engine.train.save_interval``.
+    start_epoch (int, optional):
+        The epoch at which to start.
+        (In the end the epochs are 1-indexed, but it shouldn't matter as long as you stick with one format.
+        Default ``DEF_VAL.engine.train.start_epoch``.
     train_load_image_crops (bool, optional):
         Whether to load the image crops during training.
         Default ``DEF_VAL.engine.train.load_image_crops``.
@@ -232,12 +236,16 @@ class EngineModule(NamedModule, nn.Module):
                 "save_interval", DEF_VAL["engine"]["train"]["save_interval"]
             )
 
+            # modules
             self.loss = get_loss_function(self.params_train["loss"])(
                 **self.params_train.get(
                     "loss_kwargs", DEF_VAL["engine"]["train"]["loss_kwargs"]
                 )  # optional loss kwargs
             )
+            self.optimizer = None
+            self.lr_sched = None
 
+            # params
             self.train_load_image_crops = self.params_train.get(
                 "load_image_crops", DEF_VAL["engine"]["train"]["load_image_crops"]
             )
@@ -245,6 +253,20 @@ class EngineModule(NamedModule, nn.Module):
     @property
     def module_type(self) -> str:
         return "engine"
+
+    def initialize_optimizer(self) -> None:
+        """Because the module might be set after the initial step,
+        load the optimizer and scheduler at the start of the training.
+        """
+        self.optimizer = get_optimizer(self.params_train["optimizer"])(
+            self.model.parameters(),
+            **self.params_train.get("optimizer_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"]),
+        )
+        # the learning-rate schedulers need the optimizer for instantiation
+        self.lr_sched = get_scheduler(self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]))(
+            optimizer=self.optimizer,
+            **self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"]),
+        )
 
     @enable_keyboard_interrupt
     def __call__(self, *args, **kwargs) -> any:
@@ -322,19 +344,16 @@ class EngineModule(NamedModule, nn.Module):
             or (isinstance(self.model, nn.Sequential) and len(self.model) == 0)
         ):
             raise ValueError("No model was given. Can't continue.")
-
-        # modules
-        optimizer = get_optimizer(self.params_train["optimizer"])(
-            self.model.parameters(),
-            **self.params_train.get(
-                "optimizer_kwargs", DEF_VAL["engine"]["train"]["optim_kwargs"]
-            ),  # optional optimizer kwargs
-        )
-        # the learning-rate schedulers need the optimizer for instantiation
-        lr_sched = get_scheduler(self.params_train.get("scheduler", DEF_VAL["engine"]["train"]["scheduler"]))(
-            optimizer=optimizer,
-            **self.params_train.get("scheduler_kwargs", DEF_VAL["engine"]["train"]["scheduler_kwargs"]),
-        )
+        if (
+            not hasattr(self, "optimizer")
+            or self.optimizer is None
+            or not hasattr(self, "lr_sched")
+            or self.lr_sched is None
+        ):
+            try:
+                self.initialize_optimizer()
+            except Exception as e:
+                raise ValueError("No optimizer or lr scheduler given. Or Failed to initialize. Can't continue.") from e
 
         self.logger.info("#### Start Training ####")
 
@@ -343,27 +362,35 @@ class EngineModule(NamedModule, nn.Module):
         epoch_t: DifferenceTimer = DifferenceTimer()
         data: Union[State, list[State]]
 
-        for self.curr_epoch in tqdm(range(self.start_epoch, self.epochs + 1), desc="Train - Epoch", position=0):
+        for self.curr_epoch in (
+            pbar_epoch := tqdm(range(self.start_epoch, self.epochs + 1), desc="Train - Epoch", position=0)
+        ):
+            pbar_epoch.set_postfix_str(str(self.curr_epoch))
             self.logger.debug(f"#### Training - Epoch {self.curr_epoch} ####")
 
             # set model mode to train, and make sure to do it here, because the evaluation script will change it
             self.set_model_mode("train")
 
             self.model.zero_grad()  # fixme, is this required?
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
 
             epoch_loss = 0
             time_epoch_start = time.time()
             time_batch_start = time.time()  # reset timer for retrieving the data
 
             # loop over all the data
-            for batch_idx, data in tqdm(
-                enumerate(self.train_dl),
-                desc="Train - Batch",
-                position=1,
-                total=len(self.train_dl),
-                leave=False,
+            for batch_idx, data in (
+                pbar_batch := tqdm(
+                    enumerate(self.train_dl),
+                    desc="Train - Batch",
+                    position=1,
+                    total=len(self.train_dl),
+                    leave=False,
+                )
             ):
+                pbar_batch.set_postfix_str(str(batch_idx))
+
+                # load image crops if required
                 if self.train_load_image_crops:
                     if isinstance(data, list):
                         for d in data:
@@ -378,11 +405,11 @@ class EngineModule(NamedModule, nn.Module):
 
                 # OPTIMIZE MODEL
                 with t.enable_grad():
-                    optimizer.zero_grad()
+                    self.optimizer.zero_grad()
                     self.model.zero_grad()
                     loss = self._get_train_loss(data, curr_iter)
                     loss.backward()
-                    optimizer.step()
+                    self.optimizer.step()
                 # OPTIMIZE END
 
                 timers.add(name="forwbackw", prev_time=time_optim_start)
@@ -399,7 +426,7 @@ class EngineModule(NamedModule, nn.Module):
                     tag_scalar_dict={"indiv": batch_t / len(data), **timers.get_last()},
                     global_step=curr_iter,
                 )
-                self.writer.add_scalar("Train/lr", optimizer.param_groups[-1]["lr"], global_step=curr_iter)
+                self.writer.add_scalar("Train/lr", self.optimizer.param_groups[-1]["lr"], global_step=curr_iter)
 
                 # clean or remove all the image tensors to free up cuda memory
                 if isinstance(data, State):
@@ -421,7 +448,7 @@ class EngineModule(NamedModule, nn.Module):
             # write and log the loss
             self.writer.add_hparams(
                 run_name=self.name_safe,
-                hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
+                hparam_dict={"curr_lr": self.optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
                 metric_dict={
                     "epoch_loss": epoch_loss,
                     **{f"time_avg_{name}": val for name, val in timers.get_avgs().items()},
@@ -435,18 +462,20 @@ class EngineModule(NamedModule, nn.Module):
             if self.curr_epoch % self.save_interval == 0:
                 # evaluate current model every few epochs
                 metrics: dict[str, any] = self.evaluate()
-                self.save_model(epoch=self.curr_epoch, metrics=metrics, optimizer=optimizer, lr_sched=lr_sched)
+                self.save_model(
+                    epoch=self.curr_epoch, metrics=metrics, optimizer=self.optimizer, lr_sched=self.lr_sched
+                )
 
                 if len(metrics) > 0:
                     self.writer.add_hparams(
                         run_name=self.name_safe,
-                        hparam_dict={"curr_lr": optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
+                        hparam_dict={"curr_lr": self.optimizer.param_groups[-1]["lr"], **self.get_hparam_dict()},
                         metric_dict=metrics,
                         global_step=self.curr_epoch,
                     )
 
             # handle updating the learning rate scheduler
-            lr_sched.step()
+            self.lr_sched.step()
 
             # update and force write the writer
             self.writer.flush()
@@ -460,7 +489,7 @@ class EngineModule(NamedModule, nn.Module):
 
         self.writer.flush()
 
-        return optimizer
+        return self.optimizer
 
     def set_model_mode(self, mode: str) -> None:
         """Set model mode to train or test."""
@@ -500,22 +529,21 @@ class EngineModule(NamedModule, nn.Module):
             verbose=self.logger.isEnabledFor(logging.INFO),
         )
 
-    def load_model(
-        self, path: FilePath, optimizer: optim.Optimizer = None, lr_sched: optim.lr_scheduler.LRScheduler = None
-    ) -> None:  # pragma: no cover
+    def load_model(self, path: FilePath) -> None:  # pragma: no cover
         """Load the model from a file. Set the start epoch to the epoch specified in the loaded model.
 
-        Args:
-            path: The epoch this model is saved.
-            optimizer: The current optimizer. Only required, if training should be resumed.
-            lr_sched: The current learning rate scheduler. Only required, if training should be resumed.
+        Notes:
+            Loads the states of the ``optimizer`` and ``lr_scheduler`` if they are present in the engine
+            (e.g. during training) and the respective data is given in the checkpoint at the ``path``.
 
+        Args:
+            path: The path to the checkpoint where this model was saved.
         """
         self.start_epoch = resume_from_checkpoint(
             fpath=path,
             model=self.model,
-            optimizer=optimizer,
-            scheduler=lr_sched,
+            optimizer=self.optimizer if hasattr(self, "optimizer") else None,
+            scheduler=self.lr_sched if hasattr(self, "lr_sched") else None,
             verbose=self.logger.isEnabledFor(logging.DEBUG),
         )
         self.curr_epoch = self.start_epoch

@@ -81,7 +81,7 @@ DGSModule:
 # DATA #
 # #### #
 
-test_dl_dance_256x192:
+test_dl_dance_256x192_gt:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/test/"
     # data_path: # will be set in python script
@@ -140,7 +140,7 @@ val_dl_dance_256x192_eval_acc:
     crop_mode: "zero-pad"
 
 
-train_dl_dance_256x192:
+train_dl_dance_256x192_gt:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
     dataset_path: "./data/DanceTrack/train/"
@@ -149,13 +149,13 @@ train_dl_dance_256x192:
     
     L: 1
     
-    batch_size: 16
+    batch_size: 32
     collate_fn: "history"
     
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
 
-test_dl_pt21_256x192:
+test_dl_pt21_256x192_rcnn:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
@@ -167,7 +167,7 @@ test_dl_pt21_256x192:
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
 
-val_dl_pt21_256x192:
+val_dl_pt21_256x192_gt:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     # data_path:  # will be set in python script
@@ -199,7 +199,7 @@ val_dl_pt21_256x192_eval_acc:
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
 
-train_dl_pt21_256x192:
+train_dl_pt21_256x192_gt:
     module_name: "Concat_PT21_ImageHistory"
     shuffle: true
     dataset_path: "./data/PoseTrack21/"
@@ -209,7 +209,7 @@ train_dl_pt21_256x192:
     
     L: 1
     
-    batch_size: 16
+    batch_size: 32
     collate_fn: "history"
     
     load_img_crops: false
