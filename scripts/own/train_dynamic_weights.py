@@ -175,7 +175,7 @@ def set_up_test_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[st
         checkpoints = glob(
             os.path.normpath(
                 os.path.join(
-                    cfg["log_dir"],
+                    "./results/own/train_single/",
                     f"./{dl_key.replace('val', 'train')}/{sim_name}/{alpha_name}_{base_lr:.10f}/"
                     f"checkpoints/lr*_epoch{epoch:0>3}.pth",
                 )
