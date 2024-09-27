@@ -14,6 +14,11 @@ for base_dir in "${base_dirs[@]}"; do
     fi
     dataset=$(basename "$dataset_dir")
 
+    if [[ $dataset =~ ^OLD_ || $dataset =~ ^train_ || $dataset =~ _Dance_ ]]; then
+      # echo "Skipping dataset $dataset"
+      continue
+    fi
+
     # Iterate over every key / name within the current dataset
     for name_dir in "$dataset_dir"/*; do
       if [ ! -d "$name_dir" ]; then
@@ -23,7 +28,7 @@ for base_dir in "${base_dirs[@]}"; do
       name=$(basename "$name_dir")
 
       # skip old directories
-      if [[ $name == OLD_* || $name == train_* || $name == *_Dance_* ]]; then
+      if [[ $name =~ ^OLD_ ]]; then
           continue
       fi
 
