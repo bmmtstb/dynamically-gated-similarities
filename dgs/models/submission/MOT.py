@@ -82,32 +82,33 @@ class MOTSubmission(SubmissionFile):
         if s.bbox.format != tvte.BoundingBoxFormat.XYWH:
             s.bbox = convert_bounding_box_format(s.bbox, new_format=tvte.BoundingBoxFormat.XYWH)
         assert s.bbox.format == tvte.BoundingBoxFormat.XYWH, f"got format: {s.bbox.format}"
-        detections = s.split()
-        for det in detections:
-            tid = det["pred_tid"].item() + 1  # MOT is 1-indexed, but State is 0-indexed
-            if "score" in det:
-                score = round(float(det["score"].item()), self.score_decimals)
-                conf = f"{score:.{self.score_decimals}f}"
-            else:
-                conf = str(1)
-            x = det["x"] if "x" in det else -1
-            y = det["y"] if "y" in det else -1
-            z = det["z"] if "z" in det else -1
-            self.data.append(
-                (
-                    self.frame_id,  # <frame>
-                    tid,  # <track_id>
-                    _get_bbox_value(det, 0),  # X = <bb_left>
-                    _get_bbox_value(det, 1),  # Y = <bb_top>
-                    _get_bbox_value(det, 2),  # W = <bb_width>
-                    _get_bbox_value(det, 3),  # H = <bb_height>
-                    conf,  # <conf>
-                    x,  # <x>
-                    y,  # <y>
-                    z,  # <z>
+        if s.B != 0:
+            detections = s.split()
+            for det in detections:
+                tid = det["pred_tid"].item() + 1  # MOT is 1-indexed, but State is 0-indexed
+                if "score" in det:
+                    score = round(float(det["score"].item()), self.score_decimals)
+                    conf = f"{score:.{self.score_decimals}f}"
+                else:
+                    conf = str(1)
+                x = det["x"] if "x" in det else -1
+                y = det["y"] if "y" in det else -1
+                z = det["z"] if "z" in det else -1
+                self.data.append(
+                    (
+                        self.frame_id,  # <frame>
+                        tid,  # <track_id>
+                        _get_bbox_value(det, 0),  # X = <bb_left>
+                        _get_bbox_value(det, 1),  # Y = <bb_top>
+                        _get_bbox_value(det, 2),  # W = <bb_width>
+                        _get_bbox_value(det, 3),  # H = <bb_height>
+                        conf,  # <conf>
+                        x,  # <x>
+                        y,  # <y>
+                        z,  # <z>
+                    )
                 )
-            )
-            det.clean()
+                det.clean()
 
         self.frame_id += 1
 
