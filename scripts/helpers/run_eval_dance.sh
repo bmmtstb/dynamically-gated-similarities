@@ -56,7 +56,7 @@ done
 # Loop over each directory in $dirs
 for dir in "${dirs[@]}"; do
 
-  eval_data_folder="$dir/eval_data"
+  eval_data_folder="$dir./eval_data"
 
   # Check if the "eval_data" folder exists and contains the two required files
   if [[ ! -d "$eval_data_folder" || ! -f "$eval_data_folder/pedestrian_detailed.csv" || ! -f "$eval_data_folder/pedestrian_summary.txt" ]]; then
@@ -76,8 +76,8 @@ for dir in "${dirs[@]}"; do
                     --OUTPUT_SUB_FOLDER ./eval_data/ \
                     --USE_PARALLEL True \
                     --NUM_PARALLEL_CORES 8 \
-                    --OUTPUT_DETAILED False \
-                    --OUTPUT_SUMMARY False \
+                    --OUTPUT_DETAILED True \
+                    --OUTPUT_SUMMARY True \
                     --PRINT_CONFIG False \
                     --PRINT_RESULTS False"
 
