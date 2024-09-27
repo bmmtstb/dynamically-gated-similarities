@@ -38,18 +38,26 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
     # dance gt
     "val_dl_dance_256x192_gt": {
         # earlier model
-        # "iou_fc1_ep4__vis_fc3_ep4__lr-4": [("box_sim", "box_fc1", 4), ("OSNet_sim", "visual_osn_fc3", 4)],
+        "iou_fc1_ep4__vis_fc3_ep4__lr-4": [("box_sim", "box_fc1", 4), ("OSNet_sim", "visual_osn_fc3", 4)],
         # fully trained
-        # "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc1", 6)],
-        # "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc3", 6)],
-        # "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc1", 6)],
+        "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc3", 6)],
+        "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+    },
+    "val_dl_dance_256x192_rcnn": {
+        # earlier model
+        "iou_fc1_ep4__vis_fc3_ep4__lr-4": [("box_sim", "box_fc1", 4), ("OSNet_sim", "visual_osn_fc3", 4)],
+        # fully trained
+        "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc1", 6)],
+        "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc3", 6)],
+        "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
     },
     # pt21 gt
     "val_dl_pt21_256x192_gt": {
         # pairwise - box-visual
-        # "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc1", 6)],
-        # "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc3", 6)],
-        # "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc1", 6)],
+        "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc3", 6)],
+        "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
         # pairwise - box-pose
         "iou_fc1_ep6__pose_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "pose_coco_fc1", 6)],
         "iou_fc1_ep6__pose_fc2_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "pose_coco_fc2", 6)],
@@ -61,18 +69,68 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
             ("box_sim", "box_fc1", 6),
             ("pose_sim_coco", "pose_coco_conv1o15k2fc2", 6),
         ],
-        # TODO pairwise - pose-visual
+        # pairwise - pose-visual
+        "pose_fc1_ep6__vis_fc5_ep6__lr-4": [("pose_sim_coco", "pose_coco_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        "pose_fc2_ep6__vis_fc5_ep6__lr-4": [("pose_sim_coco", "pose_coco_fc2", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        "pose_conv1o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc1", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
+        "pose_conv1o15k2fc2_ep6__vis_fc5_ep6__lr-4": [
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc2", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
         # triplet - fully trained
-        # "iou_fc1_ep6__oks_fc1_ep6__vis_fc5_ep6__lr-4": [
-        #     ("box_sim", "box_fc1", 6),
-        #     ("pose_sim_coco", "pose_coco_fc1", 6),
-        #     ("OSNet_sim", "visual_osn_fc5", 6),
-        # ],
-        # "iou_fc1_ep6__oks_conv1o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
-        #     ("box_sim", "box_fc1", 6),
-        #     ("pose_sim_coco", "pose_coco_conv1o15k2_fc1", 6),
-        #     ("OSNet_sim", "visual_osn_fc5", 6),
-        # ],
+        "iou_fc1_ep6__oks_fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_fc1", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
+        "iou_fc1_ep6__oks_conv1o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc1", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
+    },
+    # pt21 rcnn
+    "val_dl_pt21_256x192_rcnn": {
+        # pairwise - box-visual
+        "iou_fc1_ep6__vis_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc1", 6)],
+        "iou_fc1_ep6__vis_fc3_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc3", 6)],
+        "iou_fc1_ep6__vis_fc5_ep6__lr-4": [("box_sim", "box_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        # pairwise - box-pose
+        "iou_fc1_ep6__pose_fc1_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "pose_coco_fc1", 6)],
+        "iou_fc1_ep6__pose_fc2_ep6__lr-4": [("box_sim", "box_fc1", 6), ("pose_sim_coco", "pose_coco_fc2", 6)],
+        "iou_fc1_ep6__pose_conv1o15k2fc1_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc1", 6),
+        ],
+        "iou_fc1_ep6__pose_conv1o15k2fc2_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc2", 6),
+        ],
+        # pairwise - pose-visual
+        "pose_fc1_ep6__vis_fc5_ep6__lr-4": [("pose_sim_coco", "pose_coco_fc1", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        "pose_fc2_ep6__vis_fc5_ep6__lr-4": [("pose_sim_coco", "pose_coco_fc2", 6), ("OSNet_sim", "visual_osn_fc5", 6)],
+        "pose_conv1o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc1", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
+        "pose_conv1o15k2fc2_ep6__vis_fc5_ep6__lr-4": [
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc2", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
+        # triplet - fully trained
+        "iou_fc1_ep6__oks_fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_fc1", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
+        "iou_fc1_ep6__oks_conv1o15k2fc1_ep6__vis_fc5_ep6__lr-4": [
+            ("box_sim", "box_fc1", 6),
+            ("pose_sim_coco", "pose_coco_conv1o15k2fc1", 6),
+            ("OSNet_sim", "visual_osn_fc5", 6),
+        ],
     },
 }
 
@@ -131,7 +189,7 @@ NAMES: dict[str, list[str]] = {
         # "visual_osn_fc2",
         "visual_osn_fc3",
         # "visual_osn_fc4",
-        # "visual_osn_fc5",
+        "visual_osn_fc5",
     ],
     "Resnet50_sim": [
         # "visual_res_fc1",
@@ -143,7 +201,7 @@ NAMES: dict[str, list[str]] = {
     "Resnet152_sim": [
         # "visual_res_fc1",
         # "visual_res_fc2",
-        "visual_res_fc3",
+        # "visual_res_fc3",
         # "visual_res_fc4",
         # "visual_res_fc5",
     ],
@@ -176,7 +234,7 @@ def set_up_test_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[st
             os.path.normpath(
                 os.path.join(
                     "./results/own/train_single/",
-                    f"./{dl_key.replace('val', 'train')}/{sim_name}/{alpha_name}_{base_lr:.10f}/"
+                    f"./{dl_key.replace('val', 'train').replace('rcnn', 'gt')}/{sim_name}/{alpha_name}_{base_lr:.10f}/"
                     f"checkpoints/lr*_epoch{epoch:0>3}.pth",
                 )
             )
