@@ -23,7 +23,7 @@ for base_dir in "${base_dirs[@]}"; do
       name=$(basename "$name_dir")
 
       # skip old directories
-      if [[ $name == OLD_* ]]; then
+      if [[ $name == OLD_* || $name == train_* || $name == *_Dance_* ]]; then
           continue
       fi
 
