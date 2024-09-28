@@ -76,7 +76,7 @@ dgs_pt21_gt_256x128_val:
 
 dgs_Dance_gt_256x192_val:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/val/"
     base_path: "./data/DanceTrack/val/**/gt/gt.txt"
     # data_path: # will be set in python script
 
@@ -90,7 +90,7 @@ dgs_Dance_gt_256x192_val:
 
 dgs_Dance_gt_256x192_train:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/train/"
     base_path: "./data/DanceTrack/train/**/gt/gt.txt"
     # data_path: # will be set in python script
 
@@ -104,7 +104,7 @@ dgs_Dance_gt_256x192_train:
 
 dgs_Dance_rcnn_256x192_val:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/val/"
     base_path: "./data/DanceTrack/val/**/det/"
     # data_path: # will be set in python script
 
@@ -118,7 +118,7 @@ dgs_Dance_rcnn_256x192_val:
 
 dgs_Dance_rcnn_256x192_test:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/test/"
     base_path: "./data/DanceTrack/test/**/det/"
     # data_path: # will be set in python script
 
