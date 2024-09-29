@@ -530,7 +530,7 @@ class EngineModule(NamedModule, nn.Module):
         )
 
     def load_model(self, path: FilePath) -> None:  # pragma: no cover
-        """Load the model from a file. Set the start epoch to the epoch specified in the loaded model.
+        """Load the model from a file. Set the start epoch to the epoch + 1 of the specified in the loaded model.
 
         Notes:
             Loads the states of the ``optimizer`` and ``lr_scheduler`` if they are present in the engine
@@ -539,13 +539,14 @@ class EngineModule(NamedModule, nn.Module):
         Args:
             path: The path to the checkpoint where this model was saved.
         """
-        self.start_epoch = resume_from_checkpoint(
+        last_epoch = resume_from_checkpoint(
             fpath=path,
             model=self.model,
             optimizer=self.optimizer if hasattr(self, "optimizer") else None,
             scheduler=self.lr_sched if hasattr(self, "lr_sched") else None,
             verbose=self.logger.isEnabledFor(logging.DEBUG),
         )
+        self.start_epoch = last_epoch + 1
         self.curr_epoch = self.start_epoch
 
     def terminate(self) -> None:  # pragma: no cover

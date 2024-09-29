@@ -27,11 +27,85 @@ TRAIN = True
 EVAL = True
 TEST = False
 
-DL_KEYS_TRAIN: list[tuple[str, str]] = [
+DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
     # DanceTrack with evaluation using the accuracy of the weights
-    ("train_dl_dance_256x192_gt", "val_dl_dance_256x192_eval_acc"),
+    (
+        "train_dl_dance_256x192_gt",
+        "val_dl_dance_256x192_eval_acc",
+        {
+            "box_sim": ["box_fc1", "box_fc2"],
+            "OSNet_sim": [
+                "visual_osn_fc1",
+                # "visual_osn_fc2",
+                "visual_osn_fc3",
+                # "visual_osn_fc4",
+                "visual_osn_fc5",
+            ],
+            "OSNetAIN_sim": [
+                # "visual_osn_fc1",
+                # "visual_osn_fc2",
+                "visual_osn_fc3",
+                # "visual_osn_fc4",
+                "visual_osn_fc5",
+            ],
+            "Resnet50_sim": [
+                # "visual_res_fc1",
+                # "visual_res_fc2",
+                "visual_res_fc3",
+                # "visual_res_fc4",
+                "visual_res_fc5",
+            ],
+            "Resnet152_sim": [
+                # "visual_res_fc1",
+                # "visual_res_fc2",
+                # "visual_res_fc3",
+                # "visual_res_fc4",
+                # "visual_res_fc5",
+            ],
+        },
+    ),
     # PoseTrack21 with evaluation using the accuracy of the weights
-    ("train_dl_pt21_256x192_gt", "val_dl_pt21_256x192_eval_acc"),
+    (
+        "train_dl_pt21_256x192_gt",
+        "val_dl_pt21_256x192_eval_acc",
+        {
+            "box_sim": ["box_fc1", "box_fc2"],
+            "pose_sim_coco": [
+                # "pose_coco_fc1",
+                # "pose_coco_fc2",
+                # "pose_coco_conv1o15k2fc1",
+                # "pose_coco_conv1o15k2fc2",
+            ],
+            "OSNet_sim": [
+                "visual_osn_fc1",
+                # "visual_osn_fc2",
+                "visual_osn_fc3",
+                # "visual_osn_fc4",
+                "visual_osn_fc5",
+            ],
+            "OSNetAIN_sim": [
+                # "visual_osn_fc1",
+                # "visual_osn_fc2",
+                "visual_osn_fc3",
+                # "visual_osn_fc4",
+                "visual_osn_fc5",
+            ],
+            "Resnet50_sim": [
+                # "visual_res_fc1",
+                # "visual_res_fc2",
+                "visual_res_fc3",
+                # "visual_res_fc4",
+                "visual_res_fc5",
+            ],
+            "Resnet152_sim": [
+                # "visual_res_fc1",
+                # "visual_res_fc2",
+                # "visual_res_fc3",
+                # "visual_res_fc4",
+                # "visual_res_fc5",
+            ],
+        },
+    ),
 ]
 
 DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
@@ -164,47 +238,6 @@ ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
     "visual_res_fc3": fc_linear([2048, 512, 64, 1]),
     "visual_res_fc4": fc_linear([2048, 1024, 256, 64, 1]),
     "visual_res_fc5": fc_linear([2048, 1024, 256, 128, 64, 1]),
-}
-
-NAMES: dict[str, list[str]] = {
-    "box_sim": [
-        "box_fc1",
-        "box_fc2",
-    ],
-    "pose_sim_coco": [
-        "pose_coco_fc1",
-        "pose_coco_fc2",
-        "pose_coco_conv1o15k2fc1",
-        "pose_coco_conv1o15k2fc2",
-    ],
-    "OSNet_sim": [
-        "visual_osn_fc1",
-        # "visual_osn_fc2",
-        "visual_osn_fc3",
-        # "visual_osn_fc4",
-        "visual_osn_fc5",
-    ],
-    "OSNetAIN_sim": [
-        # "visual_osn_fc1",
-        # "visual_osn_fc2",
-        "visual_osn_fc3",
-        # "visual_osn_fc4",
-        "visual_osn_fc5",
-    ],
-    "Resnet50_sim": [
-        # "visual_res_fc1",
-        # "visual_res_fc2",
-        "visual_res_fc3",
-        # "visual_res_fc4",
-        "visual_res_fc5",
-    ],
-    "Resnet152_sim": [
-        # "visual_res_fc1",
-        # "visual_res_fc2",
-        # "visual_res_fc3",
-        # "visual_res_fc4",
-        # "visual_res_fc5",
-    ],
 }
 
 
@@ -364,7 +397,9 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
 
     # add option to resume training in later epochs
     last_state_path = None
-    for epoch in range(1, int(cfg["train"]["epochs"]) + 1):
+    for epoch in range(
+        cfg["train"].get("save_interval", 1), int(cfg["train"]["epochs"]) + 1, cfg["train"].get("save_interval", 1)
+    ):
         weights = glob(os.path.join(cfg["log_dir"], cfg["log_dir_suffix"], f"./checkpoints/lr*_epoch{epoch:0>3}.pth"))
         if len(weights) > 0:
             # skip early, because every epoch was trained
@@ -420,18 +455,20 @@ if __name__ == "__main__":
 
     if TRAIN:
         print("#### START TRAINING ####")
-        # for every similarity or combination of similarities
-        for SIM_NAME, alpha_modules in (pbar_key := tqdm(NAMES.items(), desc="similarities", leave=False)):
-            pbar_key.set_postfix_str(SIM_NAME)
+        # for each of the dataloaders
+        for DL_KEY in (pbar_dl := tqdm(DL_KEYS_TRAIN, desc="Dataloaders", leave=False)):
+            DL_TRAIN_KEY, DL_EVAL_KEY, SIM_NAMES = DL_KEY
 
-            for ALPHA_MOD_NAME in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
-                pbar_alpha_mod.set_postfix_str(ALPHA_MOD_NAME)
+            # for every similarity or combination of similarities in this dataloader
+            for SIM_NAME, alpha_modules in (pbar_key := tqdm(SIM_NAMES.items(), desc="similarities", leave=False)):
+                pbar_key.set_postfix_str(SIM_NAME)
 
-                # set name
-                config["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{ALPHA_MOD_NAME}"
+                # for every type of alpha module
+                for ALPHA_MOD_NAME in (pbar_alpha_mod := tqdm(alpha_modules, desc="alpha_modules", leave=False)):
+                    pbar_alpha_mod.set_postfix_str(ALPHA_MOD_NAME)
 
-                for DL_KEY in DL_KEYS_TRAIN:
-                    DL_TRAIN_KEY, DL_EVAL_KEY = DL_KEY
+                    # set name
+                    config["name"] = f"Train-Dynamic-Weights-Individually-{SIM_NAME}-{ALPHA_MOD_NAME}"
 
                     train_dynamic_alpha(
                         cfg=deepcopy(config),
