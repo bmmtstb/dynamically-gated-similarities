@@ -71,9 +71,9 @@ def fc_linear(
 
     # validate activation functions
     if act_func is None:
-        act_func = [None] * L
-    if not isinstance(act_func, (list, tuple)) or len(act_func) != L:
-        raise ValueError(f"The activation functions should be a list of length L, but got: {act_func}")
+        act_func = [None] * (L - 1)
+    if not isinstance(act_func, (list, tuple)) or len(act_func) != (L - 1):
+        raise ValueError(f"The activation functions should be a list of length L - 1, but got: {act_func}")
     if not all(
         af is None or isinstance(af, str) or (isinstance(af, type) and issubclass(af, nn.Module)) for af in act_func
     ):
@@ -85,9 +85,8 @@ def fc_linear(
 
     layers = []
 
-    for i in range(L):
-        if i < L - 1:
-            layers.append(nn.Linear(in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias[i]))
+    for i in range(L - 1):
+        layers.append(nn.Linear(in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias[i]))
 
         a_i = act_func[i]
         if a_i is not None:

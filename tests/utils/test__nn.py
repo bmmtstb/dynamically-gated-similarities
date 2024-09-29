@@ -33,8 +33,8 @@ class TestFullyConnected(unittest.TestCase):
 
     def test_fc_linear_w_act(self):
         for hl, bias, act_func in [
-            ([2, 1], True, ["ReLU", nn.ReLU]),
-            ([2, 3, 1], [True, False], [None, None, nn.ReLU]),
+            ([2, 1], True, [nn.ReLU]),
+            ([4, 3, 2, 1], [True, False, False], [None, "ReLU", nn.ReLU]),
         ]:
             with self.subTest(msg="hl: {}, bias: {}, act_func: {}".format(hl, bias, act_func)):
                 out = fc_linear(hidden_layers=hl, bias=bias, act_func=act_func)
@@ -50,8 +50,8 @@ class TestFullyConnected(unittest.TestCase):
             ([2, 1], 1, None, NotImplementedError, "Bias should be a boolean or a list of booleans. Got: 1"),
             ([2, 3, 1], [True, False, True], None, ValueError, "Length of bias 3 should be the same as"),
             ([3, 2, 0], True, None, ValueError, "Input, hidden or output size is <= 0"),
-            ([2, 1], True, [None], ValueError, "The activation functions should be a list of length L, but got"),
-            ([2, 1], True, [1, "ReLU"], ValueError, "all activation functions to be None, strings, or a nn.Module"),
+            ([3, 2, 1], True, [None], ValueError, "The activation functions should be a list of length L - 1, but got"),
+            ([3, 2, 1], True, [1, "ReLU"], ValueError, "all activation functions to be None, strings, or a nn.Module"),
         ]:
             with self.subTest(
                 msg="hl: {}, bias: {}, act_func: {} err: {}, msg: {}".format(hl, bias, act_func, err, err_msg)
