@@ -56,7 +56,8 @@ PT21_METRICS: list[str] = [
 
 POSEVAL_FAULTY: list[str] = ["custom_total", "neck", "head_top", "head_bottom", "total"]
 
-BASE_DIR: str = "./results/own/eval/"
+OUT_DIR: str = "./results/own/"
+BASE_DIRS: list[str] = ["./results/own/eval/", "./results/own/train_single/"]
 
 
 def replace_dots_with_commas(fp: FilePath) -> None:
@@ -76,37 +77,39 @@ if __name__ == "__main__":
     # POSEVAL #
     # ####### #
 
-    poseval_out_file = os.path.join(BASE_DIR, "./results_poseval.csv")
+    poseval_out_file = os.path.join(OUT_DIR, "./results_poseval.csv")
     with open(poseval_out_file, "w+", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=";")
         csv_writer.writerow(["Combined", "Dataset", "Key", "Type", "custom_total"] + PT21_JOINTS)
 
-        MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
+        for BASE_DIR in BASE_DIRS:
 
-        for MOT_file in MOT_metrics:
-            data_folder = os.path.dirname(os.path.dirname(os.path.realpath(MOT_file)))
-            ds, conf_key = os.path.split(data_folder)[-2:]
-            ds_name = os.path.basename(ds)
+            MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
 
-            mot_data = read_json(MOT_file)
-            # mot
-            for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
-                comb = f"{ds_name}_{conf_key}_{new_k}"
-                custom_total = sum(float(val) for val in mot_data[k] if val not in POSEVAL_FAULTY) / float(
-                    sum(1 if val not in POSEVAL_FAULTY else 0 for val in mot_data[k])
-                )
-                csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + mot_data[k])
+            for MOT_file in MOT_metrics:
+                data_folder = os.path.dirname(os.path.dirname(os.path.realpath(MOT_file)))
+                ds, conf_key = os.path.split(data_folder)[-2:]
+                ds_name = os.path.basename(ds)
 
-            AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
-            if os.path.isfile(AP_file):
-                ap_data = read_json(AP_file)
-                # ap
-                for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
+                mot_data = read_json(MOT_file)
+                # mot
+                for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
                     comb = f"{ds_name}_{conf_key}_{new_k}"
-                    custom_total = sum(float(val) for val in ap_data[k] if val not in POSEVAL_FAULTY) / float(
-                        sum(1 if val not in POSEVAL_FAULTY else 0 for val in ap_data[k])
+                    custom_total = sum(float(val) for val in mot_data[k] if val not in POSEVAL_FAULTY) / float(
+                        sum(1 if val not in POSEVAL_FAULTY else 0 for val in mot_data[k])
                     )
-                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
+                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + mot_data[k])
+
+                AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
+                if os.path.isfile(AP_file):
+                    ap_data = read_json(AP_file)
+                    # ap
+                    for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
+                        comb = f"{ds_name}_{conf_key}_{new_k}"
+                        custom_total = sum(float(val) for val in ap_data[k] if val not in POSEVAL_FAULTY) / float(
+                            sum(1 if val not in POSEVAL_FAULTY else 0 for val in ap_data[k])
+                        )
+                        csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
     replace_dots_with_commas(poseval_out_file)
     print(f"Wrote poseval results to: {poseval_out_file}")
 
@@ -114,28 +117,30 @@ if __name__ == "__main__":
     # PT21 EVAL #
     # ######### #
 
-    pt21_out_file = os.path.join(BASE_DIR, "./results_pt21.csv")
+    pt21_out_file = os.path.join(OUT_DIR, "./results_pt21.csv")
     with open(pt21_out_file, "w+", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=";")
         csv_writer.writerow(["Combined", "Dataset", "Key"] + PT21_METRICS)
 
-        # Search for pose_hota_results.txt files recursively in the ./files/ directory
-        files = glob(f"{BASE_DIR}/**/results_json/pose_hota_results.txt", recursive=True)
+        for BASE_DIR in BASE_DIRS:
 
-        for file_path in files:
-            ds_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(file_path))))
-            meth_key = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
+            # Search for pose_hota_results.txt files recursively in the ./files/ directory
+            files = glob(f"{BASE_DIR}/**/results_json/pose_hota_results.txt", recursive=True)
 
-            # Read data from input file and format as CSV
-            with open(file_path, encoding="utf-8") as f:
-                _ = f.readline()
-                line = f.readline()
-                line = line.strip().replace(r"\_", "_")
-                values = line.split("&")
-                values = [v.strip() for v in values[1:]]  # summary is empty
-                assert len(values) == len(PT21_METRICS)
-                comb = f"{ds_name}_{meth_key}"
-                csv_writer.writerow([comb, ds_name, meth_key] + values)
+            for file_path in files:
+                ds_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(file_path))))
+                meth_key = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
+
+                # Read data from input file and format as CSV
+                with open(file_path, encoding="utf-8") as f:
+                    _ = f.readline()
+                    line = f.readline()
+                    line = line.strip().replace(r"\_", "_")
+                    values = line.split("&")
+                    values = [v.strip() for v in values[1:]]  # summary is empty
+                    assert len(values) == len(PT21_METRICS)
+                    comb = f"{ds_name}_{meth_key}"
+                    csv_writer.writerow([comb, ds_name, meth_key] + values)
     replace_dots_with_commas(pt21_out_file)
     print(f"Wrote PT21 results to: {pt21_out_file}")
 
@@ -143,13 +148,21 @@ if __name__ == "__main__":
     # DanceTrack #
     # ########## #
 
-    dance_out_file = os.path.join(BASE_DIR, "./results_dance.csv")
-    dance_files = glob("./data/DanceTrack/*/results_*/eval_data/pedestrian_detailed.csv")
-    if len(dance_files) > 0:
-        data: list[dict] = []
+    dance_out_file = os.path.join(OUT_DIR, "./results_dance.csv")
+    BASE_DIRS: list[str] = glob("./data/DanceTrack/*/")
+
+    data: list[dict] = []
+
+    for BASE_DIR in BASE_DIRS:
+        dance_files = list(
+            set(
+                glob(f"{BASE_DIR}./results_*/eval_data/pedestrian_detailed.csv")
+                + glob(f"{BASE_DIR}./results_*/*/eval_data/pedestrian_detailed.csv")
+            )
+        )
         for dance_file in dance_files:
-            res_dir_name = os.path.basename(os.path.dirname(os.path.dirname(dance_file)))
-            data_part_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(dance_file))))
+            res_dir_name = os.path.relpath(os.path.dirname(os.path.dirname(dance_file)), start=BASE_DIR)
+            data_part_name = os.path.basename(os.path.dirname(BASE_DIR))
 
             with open(dance_file, "r", encoding="utf-8") as in_file:
                 csv_reader = csv.DictReader(in_file, delimiter=",", lineterminator="\r\n")
@@ -159,12 +172,13 @@ if __name__ == "__main__":
                     comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
                     d = {**{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}, **line}
                     data.append(d)
-        with open(dance_out_file, "w+", encoding="utf-8") as out_file:
-            csv_writer = csv.DictWriter(out_file, fieldnames=list(data[0].keys()), delimiter=";", lineterminator="\n")
-            csv_writer.writeheader()
-            for d in data:
-                csv_writer.writerow(dict(d))
-        replace_dots_with_commas(dance_out_file)
-        print(f"Wrote DanceTrack results to: {dance_out_file}")
+
+    with open(dance_out_file, "w+", encoding="utf-8") as out_file:
+        csv_writer = csv.DictWriter(out_file, fieldnames=list(data[0].keys()), delimiter=";", lineterminator="\n")
+        csv_writer.writeheader()
+        for d in data:
+            csv_writer.writerow(dict(d))
+    replace_dots_with_commas(dance_out_file)
+    print(f"Wrote DanceTrack results to: {dance_out_file}")
 
     send_discord_notification("Finished writing results to csv")
