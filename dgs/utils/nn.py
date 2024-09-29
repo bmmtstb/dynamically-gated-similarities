@@ -31,36 +31,68 @@ def set_up_hidden_layer_sizes(
     return layers
 
 
-def fc_linear(hidden_layers: list[int], bias: Union[bool, list[bool]] = True) -> nn.Sequential:
+def fc_linear(
+    hidden_layers: list[int],
+    bias: Union[bool, list[bool]] = True,
+    act_func: Union[
+        list[Union[str, None, nn.Module]],
+        tuple[Union[str, None, nn.Module], ...],
+    ] = None,
+) -> nn.Sequential:
     """Create a Network consisting of one or more fully connected linear layers
     with input and output sizes given by the ``hidden_layers``.
 
     Args:
         hidden_layers: A list containing the sizes of the input, hidden- and output layers.
             It is possible to use the :func:`set_up_hidden_layer_sizes` function to create this list.
+            The length of the hidden layers is denoted ``L``.
         bias: Whether to use a bias in every layer.
-            Can be a single value for the whole network or a list containing a value per layer (length - 1).
+            Can be a single value for the whole network or a list of length ``L - 1`` containing one value per layer.
             Default is ``True``.
+        act_func: A list containing the activation function after each of the fully connected layers.
+            There can be a single activation function after every layer.
+            Therefore, ``act_func`` should have a length of ``L``.
+            Every value can either be the :class:`torch.nn.Module` or the string representing the activation function.
+            E.g. "ReLU" for :class:`~torch.nn.ReLU`
+            Defaults to adding no activation functions.
 
     Returns:
         A sequential model containing ``N-1`` fully-connected layers.
     """
+    L = len(hidden_layers)
+    # validate bias
     if isinstance(bias, bool):
-        bias = [bias] * (len(hidden_layers) - 1)
+        bias = [bias] * (L - 1)
     elif isinstance(bias, list):
-        if len(bias) != (len(hidden_layers) - 1):
-            raise ValueError(
-                f"Length of bias {len(bias)} should be the same as the len(hidden_layers - 1) {len(hidden_layers) - 1}"
-            )
+        if len(bias) != (L - 1):
+            raise ValueError(f"Length of bias {len(bias)} should be the same as L - 1 but got: {L - 1}")
     else:
         raise NotImplementedError(f"Bias should be a boolean or a list of booleans. Got: {bias}")
 
+    # validate activation functions
+    if act_func is None:
+        act_func = [None] * L
+    if not isinstance(act_func, (list, tuple)) or len(act_func) != L:
+        raise ValueError(f"The activation functions should be a list of length L, but got: {act_func}")
+    if not all(
+        af is None or isinstance(af, str) or (isinstance(af, type) and issubclass(af, nn.Module)) for af in act_func
+    ):
+        raise ValueError(f"Expected all activation functions to be None, strings, or a nn.Module, but got: {act_func}")
+
+    # validate hidden layers
     if any(l <= 0 for l in hidden_layers):
         raise ValueError(f"Input, hidden or output size is <= 0. Got: {hidden_layers}")
 
-    return nn.Sequential(
-        *[
-            nn.Linear(in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias[i])
-            for i in range(len(hidden_layers) - 1)
-        ],
-    )
+    layers = []
+
+    for i in range(L):
+        if i < L - 1:
+            layers.append(nn.Linear(in_features=hidden_layers[i], out_features=hidden_layers[i + 1], bias=bias[i]))
+
+        a_i = act_func[i]
+        if a_i is not None:
+            if isinstance(a_i, str):
+                a_i = getattr(nn, a_i)
+            layers.append(a_i())  # make sure to call / instantiate the function here
+
+    return nn.Sequential(*layers)

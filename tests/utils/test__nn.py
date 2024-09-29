@@ -15,7 +15,7 @@ class TestFullyConnected(unittest.TestCase):
             with self.subTest(msg="in_s: {}, out_s: {}, h_s: {}, res: {}".format(in_s, out_s, h_s, res)):
                 self.assertEqual(set_up_hidden_layer_sizes(input_size=in_s, output_size=out_s, hidden_sizes=h_s), res)
 
-    def test_fc_linear(self):
+    def test_fc_linear_wo_act(self):
         for hl, bias in [
             ([2, 1], True),
             ([2, 3, 1], [True, False]),
@@ -31,15 +31,33 @@ class TestFullyConnected(unittest.TestCase):
                     self.assertEqual(layer.in_features, hl[i])
                     self.assertEqual(layer.out_features, hl[i + 1])
 
-    def test_fc_linear_exceptions(self):
-        for hl, bias, err, err_msg in [
-            ([2, 1], 1, NotImplementedError, "Bias should be a boolean or a list of booleans. Got: 1"),
-            ([2, 3, 1], [True, False, True], ValueError, "Length of bias 3 should be the same as"),
-            ([3, 2, 0], True, ValueError, "Input, hidden or output size is <= 0"),
+    def test_fc_linear_w_act(self):
+        for hl, bias, act_func in [
+            ([2, 1], True, ["ReLU", nn.ReLU]),
+            ([2, 3, 1], [True, False], [None, None, nn.ReLU]),
         ]:
-            with self.subTest(msg="hl: {}, bias: {}, err: {}, msg: {}".format(hl, bias, err, err_msg)):
+            with self.subTest(msg="hl: {}, bias: {}, act_func: {}".format(hl, bias, act_func)):
+                out = fc_linear(hidden_layers=hl, bias=bias, act_func=act_func)
+                self.assertTrue(isinstance(out, nn.Sequential))
+                self.assertEqual(len(out), len(hl) - 1 + sum(1 if af is not None else 0 for af in act_func))
+                if act_func[-1] is not None:
+                    self.assertTrue(isinstance(out[-1], act_func[-1]))
+                else:
+                    self.assertTrue(isinstance(out[-1], nn.Linear))
+
+    def test_fc_linear_exceptions(self):
+        for hl, bias, act_func, err, err_msg in [
+            ([2, 1], 1, None, NotImplementedError, "Bias should be a boolean or a list of booleans. Got: 1"),
+            ([2, 3, 1], [True, False, True], None, ValueError, "Length of bias 3 should be the same as"),
+            ([3, 2, 0], True, None, ValueError, "Input, hidden or output size is <= 0"),
+            ([2, 1], True, [None], ValueError, "The activation functions should be a list of length L, but got"),
+            ([2, 1], True, [1, "ReLU"], ValueError, "all activation functions to be None, strings, or a nn.Module"),
+        ]:
+            with self.subTest(
+                msg="hl: {}, bias: {}, act_func: {} err: {}, msg: {}".format(hl, bias, act_func, err, err_msg)
+            ):
                 with self.assertRaises(err) as e:
-                    _ = fc_linear(hidden_layers=hl, bias=bias)
+                    _ = fc_linear(hidden_layers=hl, bias=bias, act_func=act_func)
                 self.assertTrue(err_msg in str(e.exception), msg=e.exception)
 
 
