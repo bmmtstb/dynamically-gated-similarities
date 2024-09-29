@@ -29,8 +29,10 @@ Validations: TypeAlias = dict[str, list[Union[str, type, tuple[str, any], Valida
 """A dictionary of validations, mapping a value of a given Config to some sort of validation."""
 
 # Data Handling
-DataGetter = Callable[["State"], tuple[Union[t.Tensor, any], ...]]
-"""Function to extract specific data from a :class:`State`."""
+DataGetter = Callable[["State"], any]
+"""Function to extract a single specific value from a :class:`State`."""
+DataGetters = Callable[["State"], tuple[any, ...]]
+"""Function to extract multiple attributes or properties from a :class:`State`."""
 
 # Modules
 Instance: TypeAlias = Union[str, type]

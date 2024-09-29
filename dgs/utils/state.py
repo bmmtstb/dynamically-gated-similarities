@@ -22,7 +22,7 @@ from torchvision.utils import save_image
 from dgs.utils.constants import COLORS, SKELETONS
 from dgs.utils.files import is_file, mkdir_if_missing
 from dgs.utils.image import load_image, load_image_list
-from dgs.utils.types import DataGetter, FilePath, FilePaths, Image, Images
+from dgs.utils.types import DataGetter, DataGetters, FilePath, FilePaths, Image, Images
 from dgs.utils.utils import extract_crops_from_images, replace_file_type
 from dgs.utils.validation import (
     validate_bboxes,
@@ -922,14 +922,26 @@ class State(UserDict):
 EMPTY_STATE = State(bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0), format="XYXY"), validate=False)
 
 
-def get_ds_data_getter(attributes: list[str]) -> DataGetter:
+def get_ds_data_getter(attribute: str) -> DataGetter:
+    """Given a single name of an attribute or property,
+    return a function, that gets the respective values from a given :class:`State`.
+    """
+
+    def getter(s: State) -> any:
+        """The getter function."""
+        return s[str(attribute)]
+
+    return getter
+
+
+def get_ds_data_getters(attributes: list[str]) -> DataGetters:
     """Given a list of attribute names,
     return a function, that gets those attributes from a given :class:`State`.
     """
 
-    def getter(ds: State) -> Union[t.Tensor, tuple[t.Tensor, ...]]:
+    def getter(s: State) -> tuple[any, ...]:
         """The getter function."""
-        return tuple(ds[str(attrib)] for attrib in attributes)
+        return tuple(s[str(attrib)] for attrib in attributes)
 
     return getter
 
