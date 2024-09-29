@@ -10,7 +10,7 @@ from torch import nn
 
 from dgs.models.combine import get_combine_module
 from dgs.models.combine.combine import CombineSimilaritiesModule
-from dgs.models.module import BaseModule
+from dgs.models.modules.named import NamedModule
 from dgs.models.similarity import get_similarity_module
 from dgs.models.similarity.similarity import SimilarityModule
 from dgs.utils.config import DEF_VAL, get_sub_config
@@ -25,7 +25,7 @@ dgs_validations: Validations = {
 }
 
 
-class DGSModule(BaseModule, nn.Module):
+class DGSModule(NamedModule, nn.Module):
     """Torch module containing the code for the model called 'dynamically gated similarities'.
 
     Params
@@ -52,7 +52,7 @@ class DGSModule(BaseModule, nn.Module):
     new_track_weight: t.Tensor
 
     def __init__(self, config: Config, path: NodePath):
-        BaseModule.__init__(self, config=config, path=path)
+        NamedModule.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
 
         self.validate_params(dgs_validations)
@@ -82,6 +82,10 @@ class DGSModule(BaseModule, nn.Module):
             dtype=self.precision,
             device=self.device,
         )
+
+    @property
+    def module_type(self) -> str:
+        return "dgs"
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)

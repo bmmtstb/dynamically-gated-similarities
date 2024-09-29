@@ -33,7 +33,12 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
-                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": "", "weights": self.weights},
+                "kprcnn": {
+                    "module_name": "KeypointRCNNBackbone",
+                    "data_path": IMAGE_PATH,
+                    "dataset_path": "",
+                    "weights": self.weights,
+                },
             },
             get_test_config(),
         )
@@ -48,7 +53,12 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
-                "kprcnn": {"data_path": IMAGE_PATH, "dataset_path": "", "weights": self.weights},
+                "kprcnn": {
+                    "module_name": "KeypointRCNNImageBackbone",
+                    "data_path": IMAGE_PATH,
+                    "dataset_path": "",
+                    "weights": self.weights,
+                },
             },
             get_test_config(),
         )
@@ -63,7 +73,12 @@ class TestKPRCNNModel(unittest.TestCase):
         cfg = fill_in_defaults(
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
-                "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": "", "weights": self.weights},
+                "kprcnn": {
+                    "module_name": "KeypointRCNNVideoBackbone",
+                    "data_path": VIDEO_PATH,
+                    "dataset_path": "",
+                    "weights": self.weights,
+                },
             },
             get_test_config(),
         )
@@ -82,7 +97,15 @@ class TestKPRCNNModel(unittest.TestCase):
         ]:
             with self.subTest(msg="path: {}, length: {}".format(path, length)):
                 cfg = fill_in_defaults(
-                    {"kprcnn": {"data_path": path, "dataset_path": "", "weights": self.weights}}, get_test_config()
+                    {
+                        "kprcnn": {
+                            "module_name": "KeypointRCNNImageBackbone",
+                            "data_path": path,
+                            "dataset_path": "",
+                            "weights": self.weights,
+                        }
+                    },
+                    get_test_config(),
                 )
                 m = KeypointRCNNImageBackbone(config=cfg, path=["kprcnn"])
                 self.assertTrue(isinstance(m.data, list))
@@ -91,7 +114,12 @@ class TestKPRCNNModel(unittest.TestCase):
     def test_init_video_data(self):
         cfg = fill_in_defaults(
             {
-                "kprcnn": {"data_path": VIDEO_PATH, "dataset_path": "", "weights": self.weights},
+                "kprcnn": {
+                    "module_name": "KeypointRCNNVideoBackbone",
+                    "data_path": VIDEO_PATH,
+                    "dataset_path": "",
+                    "weights": self.weights,
+                },
             },
             get_test_config(),
         )
@@ -108,6 +136,7 @@ class TestKPRCNNModel(unittest.TestCase):
                 cfg = fill_in_defaults(
                     {
                         "kprcnn": {
+                            "module_name": "KeypointRCNNImageBackbone",
                             "data_path": path,
                             "dataset_path": "",
                             "weights": self.weights,
@@ -124,6 +153,7 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
+                    "module_name": "KeypointRCNNImageBackbone",
                     "score_threshold": 0.9,
                     "data_path": [os.path.abspath(os.path.join(IMG_FOLDER_PATH, "866-256x256.jpg"))],
                     "dataset_path": "",
@@ -156,6 +186,7 @@ class TestKPRCNNModel(unittest.TestCase):
                     {
                         "device": "cuda" if t.cuda.is_available() else "cpu",
                         "kprcnn": {
+                            "module_name": "KeypointRCNNImageBackbone",
                             "score_threshold": 0.0,
                             "iou_threshold": iou_thresh,
                             "data_path": [IMAGE_PATH],
@@ -195,6 +226,7 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
+                    "module_name": "KeypointRCNNImageBackbone",
                     "score_threshold": 0.2,
                     "iou_threshold": 1.0,
                     "data_path": [IMAGE_PATH],
@@ -259,6 +291,7 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
+                    "module_name": "KeypointRCNNImageBackbone",
                     "score_threshold": 0.5,
                     "iou_threshold": 0.5,
                     "data_path": [IMAGE_PATH, IMAGE_PATH],
@@ -352,6 +385,7 @@ class TestKPRCNNModel(unittest.TestCase):
             {
                 "device": "cuda" if t.cuda.is_available() else "cpu",
                 "kprcnn": {
+                    "module_name": "KeypointRCNNVideoBackbone",
                     "score_threshold": 0.5,
                     "data_path": VIDEO_PATH,
                     "dataset_path": "",

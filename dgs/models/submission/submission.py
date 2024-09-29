@@ -1,29 +1,23 @@
 """Base module for generating submission files."""
 
-from dgs.models.module import BaseModule
+from dgs.models.modules.named import NamedModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.types import Config, FilePath, NodePath, Validations
 
 base_submission_validations: Validations = {
-    "module_name": [str],
     # optional
     "submission_file": ["optional", str],
 }
 
 
-class SubmissionFile(BaseModule):
+class SubmissionFile(NamedModule):
     """Base module for generating and handling submission files.
 
     The base module does not create a submission file and acts as the module with format "None".
 
     Params
     ------
-
-    module_name (str):
-        The "format" of the submission file.
-        The format / module has to be registered in the :data:``.SUBMISSION_FORMATS``.
-
 
     Optional Params
     ---------------
@@ -43,6 +37,10 @@ class SubmissionFile(BaseModule):
         self.validate_params(base_submission_validations)
 
         self.fp = self.params.get("file", DEF_VAL["submission"]["file"])
+
+    @property
+    def module_type(self) -> str:
+        return "submission"
 
     def __call__(self, *args, **kwargs) -> any:
         self.append(*args, **kwargs)

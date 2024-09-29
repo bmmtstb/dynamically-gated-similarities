@@ -15,7 +15,7 @@ from torchvision import tv_tensors as tvte
 from torchvision.io import VideoReader
 from torchvision.transforms.v2.functional import to_dtype
 
-from dgs.models.module import BaseModule
+from dgs.models.modules.named import NamedModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import VIDEO_FORMATS
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
@@ -55,7 +55,7 @@ image_hist_validations: Validations = {
 }
 
 
-class BaseDataset(BaseModule, TDataset):
+class BaseDataset(NamedModule, TDataset):
     """Base class for custom datasets.
 
     Every dataset is based around the :class:`.State` object,
@@ -195,6 +195,10 @@ class BaseDataset(BaseModule, TDataset):
         self.validate_params(base_dataset_validations)
 
         self.dataset_path = self.params["dataset_path"]
+
+    @property
+    def module_type(self) -> str:
+        return "dataset"
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         """Has to override call from BaseModule"""

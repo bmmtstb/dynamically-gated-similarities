@@ -214,6 +214,7 @@ PT21_CATEGORIES: list[dict] = [
 ]
 
 MODULE_TYPES: tuple[str, ...] = (
+    "alpha",
     "combine",
     "dataset",
     "dataloader",

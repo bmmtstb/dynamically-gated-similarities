@@ -16,7 +16,7 @@ from dgs.utils.loader import get_instance, register_instance
 from dgs.utils.types import Config, NodePath
 from .alphapose import AlphaPoseLoader
 from .dataset import BaseDataset
-from .keypoint_rcnn import KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
+from .keypoint_rcnn import KeypointRCNNBackbone, KeypointRCNNImageBackbone, KeypointRCNNVideoBackbone
 from .MOT import MOTImage, MOTImageHistory
 from .posetrack21 import PoseTrack21_BBox, PoseTrack21_Image, PoseTrack21_ImageHistory
 
@@ -30,6 +30,7 @@ DATASETS: dict[str, Type[BaseDataset]] = {
     "PoseTrack21_ImageHistory": PoseTrack21_ImageHistory,
     "PT21_ImageHistory": PoseTrack21_ImageHistory,  # alias
     "AlphaPoseLoader": AlphaPoseLoader,
+    "KeypointRCNNBackbone": KeypointRCNNBackbone,  # shouldn't be used directly, only as wrapper
     "KeypointRCNNImageBackbone": KeypointRCNNImageBackbone,
     "KeypointRCNNVideoBackbone": KeypointRCNNVideoBackbone,
     "MOTImage": MOTImage,

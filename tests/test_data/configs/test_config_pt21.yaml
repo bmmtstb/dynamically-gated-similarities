@@ -7,14 +7,31 @@ is_training: off
 log_dir: "./tests/test_data/TEST_ds/"
 
 
-test_single_dataset_1:
+test_single_bbox_dataset_1:
+    module_name: "PoseTrack21_BBox"
     dataset_path: "./tests/test_data/"
     data_path: "./pt21/pt21_dummy_1.json"
     paths: ["./pt21/pt21_dummy_1.json"]
     force_img_reshape: false
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
 
-test_single_dataset_2:
+test_single_bbox_dataset_2:
+    module_name: "PoseTrack21_BBox"
+    dataset_path: "./tests/test_data/"
+    data_path: "./pt21/pt21_dummy_2.json"
+    force_img_reshape: true
+    crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
+
+test_single_img_dataset_1:
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./tests/test_data/"
+    data_path: "./pt21/pt21_dummy_1.json"
+    paths: ["./pt21/pt21_dummy_1.json"]
+    force_img_reshape: false
+    crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
+
+test_single_img_dataset_2:
+    module_name: "PoseTrack21_Image"
     dataset_path: "./tests/test_data/"
     data_path: "./pt21/pt21_dummy_2.json"
     force_img_reshape: true

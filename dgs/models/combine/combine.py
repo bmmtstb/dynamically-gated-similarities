@@ -9,25 +9,22 @@ from abc import abstractmethod
 import torch as t
 from torch import nn
 
-from dgs.models.module import BaseModule, enable_keyboard_interrupt
+from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.modules.named import NamedModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.types import Config, NodePath, Validations
 
 combine_validations: Validations = {
-    "module_name": [str],
     # optional
     "softmax": ["optional", bool],
 }
 
 
-class CombineSimilaritiesModule(BaseModule, nn.Module):
+class CombineSimilaritiesModule(NamedModule, nn.Module):
     """Given two or more similarity matrices, combine them into a single similarity matrix.
 
     Params
     ------
-
-    module_name (str):
-        The name of the module that combines the similarities.
 
     Optional Params
     ---------------
@@ -41,7 +38,7 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
     softmax: nn.Sequential
 
     def __init__(self, config: Config, path: NodePath):
-        BaseModule.__init__(self, config=config, path=path)
+        NamedModule.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
 
         self.validate_params(combine_validations)
@@ -50,6 +47,10 @@ class CombineSimilaritiesModule(BaseModule, nn.Module):
         if self.params.get("softmax", DEF_VAL["combine"]["softmax"]):
             softmax.append(nn.Softmax(dim=-1))
         self.register_module(name="softmax", module=self.configure_torch_module(softmax))
+
+    @property
+    def module_type(self) -> str:
+        return "combine"
 
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)

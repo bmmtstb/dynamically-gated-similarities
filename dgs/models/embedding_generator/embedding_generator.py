@@ -7,13 +7,13 @@ from abc import abstractmethod
 import torch as t
 from torch import nn
 
-from dgs.models.module import BaseModule, enable_keyboard_interrupt
+from dgs.models.module import enable_keyboard_interrupt
+from dgs.models.modules.named import NamedModule
 from dgs.utils.config import DEF_VAL
 from dgs.utils.state import State
 from dgs.utils.types import Config, NodePath, Validations
 
 embedding_validations: Validations = {
-    "module_name": [str],
     "embedding_size": [int, ("gt", 0)],
     "nof_classes": [int, ("gt", 0)],
     # optional
@@ -22,7 +22,7 @@ embedding_validations: Validations = {
 }
 
 
-class EmbeddingGeneratorModule(BaseModule, nn.Module):
+class EmbeddingGeneratorModule(NamedModule, nn.Module):
     """Base class for handling modules of embedding generators.
 
     Description
@@ -61,7 +61,7 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
     """The number of classes in the dataset / embedding."""
 
     def __init__(self, config: Config, path: NodePath):
-        BaseModule.__init__(self, config=config, path=path)
+        NamedModule.__init__(self, config=config, path=path)
         nn.Module.__init__(self)
 
         self.validate_params(embedding_validations)
@@ -70,6 +70,10 @@ class EmbeddingGeneratorModule(BaseModule, nn.Module):
         self.nof_classes = self.params["nof_classes"]
         self.embedding_key: str = self.params.get("embedding_key", DEF_VAL["embed_gen"]["embedding_key"])
         self.save_embeddings: bool = self.params.get("save_embeddings", DEF_VAL["embed_gen"]["save_embeddings"])
+
+    @property
+    def module_type(self) -> str:
+        return "embedding_generator"
 
     def __call__(self, *args, **kwargs) -> t.Tensor:  # pragma: no cover
         """see self.forward()"""

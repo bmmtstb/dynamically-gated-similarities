@@ -103,13 +103,13 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
     def test_init_directly(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = PoseTrack21_BBox(config=cfg, path=["test_single_dataset_1"])
+            ds = PoseTrack21_BBox(config=cfg, path=["test_single_bbox_dataset_1"])
         self.assertEqual(len(ds), 1)
 
     def test_init_single(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = get_multi_dataset(config=cfg, path=["test_single_dataset_1"], ds_name="PT21_BBox")
+            ds = get_multi_dataset(config=cfg, path=["test_single_bbox_dataset_1"], ds_name="PT21_BBox")
         self.assertEqual(len(ds), 1)
 
     def test_init_multi(self):
@@ -127,7 +127,7 @@ class TestPoseTrack21BBoxDataset(unittest.TestCase):
     def test_get_item(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         with HidePrint():
-            ds = PoseTrack21_BBox(config=cfg, path=["test_single_dataset_1"])
+            ds = PoseTrack21_BBox(config=cfg, path=["test_single_bbox_dataset_1"])
         r = ds[0]
         self.assertTrue(isinstance(r, State))
         self.assertEqual(len(r), 1)
@@ -176,8 +176,8 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
     def test_init_single(self):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         for path, lengths in [
-            ("test_single_dataset_1", [1]),
-            ("test_single_dataset_2", [2, 0, 3]),
+            ("test_single_img_dataset_1", [1]),
+            ("test_single_img_dataset_2", [2, 0, 3]),
         ]:
             with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
                 with HidePrint():

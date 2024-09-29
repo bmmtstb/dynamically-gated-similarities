@@ -10,6 +10,7 @@ log_dir: "./tests/test_data/TEST_dgs/"
 # ####### #
 
 dgs:
+    module_name: "DGS"
     names: ["vis_sim", "pose_sim", "box_sim"]
     combine: "combine_sims"
 
