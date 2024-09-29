@@ -373,6 +373,7 @@ class TestValidateValue(unittest.TestCase):
 
     def test_validate_value(self):
         for value, data, validation, result in [
+            (None, ..., None, True),
             (None, ..., "None", True),
             (None, ..., "not None", False),
             (1, ..., "None", False),

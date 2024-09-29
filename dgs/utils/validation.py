@@ -456,6 +456,8 @@ def validate_value(value: any, data: any, validation: str) -> bool:
     """
     if isinstance(validation, type):
         return isinstance(value, validation)
+    if validation is None:
+        return value is None
     if validation not in VALIDATIONS:
         raise KeyError(f"Validation '{validation}' does not exist.")
     try:
