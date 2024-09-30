@@ -744,7 +744,7 @@ class State(UserDict):
                 kp, jw = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
             elif j_dim == kp_data.size(-1) or kp_data.size(-1) == 2:
                 kp = kp_data
-                jw = t.ones((1, kp_data.size(-2), 1))
+                jw = t.ones((1, kp_data.size(-2), 1), device=self.device, dtype=t.float32)
             else:
                 kp, jw = kp_data.split([2, 1], dim=-1)
             kps.append(kp)
