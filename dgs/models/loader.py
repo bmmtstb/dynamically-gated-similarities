@@ -42,7 +42,11 @@ def module_loader(config: Config, module_type: str, key: Union[NodePath, str], *
     module_name: str = sub_cfg["module_name"]
 
     # Module import and initialization
-    if module_type == "combine":
+    if module_type == "alpha":
+        from dgs.models.alpha import get_alpha_module
+
+        m = get_alpha_module(module_name)
+    elif module_type == "combine":
         from dgs.models.combine import get_combine_module
 
         m = get_combine_module(module_name)

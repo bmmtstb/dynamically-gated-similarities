@@ -81,6 +81,8 @@ base:
     log_dir_suffix: ""
     precision: "float32"
 
+alpha:
+    act_func: null
 
 engine:
     writer_log_dir_suffix: ""
