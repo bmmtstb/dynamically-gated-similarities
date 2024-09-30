@@ -8,6 +8,7 @@ import os
 from abc import ABC, abstractmethod
 from datetime import date
 from functools import wraps
+from types import NoneType
 
 import torch as t
 from torch.nn import Module
@@ -222,8 +223,9 @@ class BaseModule(ABC):
                     continue
 
                 # case name as string or in tuple with additional values
-                if isinstance(validation, (str, tuple, type)):
-                    if isinstance(validation, (str, type)):  # no additional data, therefore pass current params as data
+                if isinstance(validation, (str, tuple, type, NoneType)):
+                    if isinstance(validation, (str, type, NoneType)):
+                        # no additional data, therefore pass current params as data
                         validation_name, data = validation, self.config
                     else:
                         validation_name, data = validation
