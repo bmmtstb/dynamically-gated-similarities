@@ -365,7 +365,7 @@ class State(UserDict):
             if not isinstance(self["keypoints_path"], tuple):
                 raise NotImplementedError("Unknown format of keypoints_path.")
 
-            self.keypoints = self.keypoints_and_weights_from_paths(self["keypoints_path"])
+            self.keypoints = self.keypoints_and_weights_from_paths(self["keypoints_path"], save_weights=True)
             return self["keypoints"]
 
         if "crop_path" in self:
@@ -375,7 +375,7 @@ class State(UserDict):
                 raise NotImplementedError("Unknown crop_path format.")
 
             self.keypoints = self.keypoints_and_weights_from_paths(
-                tuple(replace_file_type(cp, new_type="_glob.pt") for cp in self["crop_path"])
+                tuple(replace_file_type(cp, new_type="_glob.pt") for cp in self["crop_path"]), save_weights=True
             )
             return self["keypoints"]
 
@@ -428,7 +428,9 @@ class State(UserDict):
             if not isinstance(self["keypoints_local_path"], tuple):
                 raise NotImplementedError("Unknown format of keypoints_local_path.")
 
-            self.keypoints_local = self.keypoints_and_weights_from_paths(self["keypoints_local_path"])
+            self.keypoints_local = self.keypoints_and_weights_from_paths(
+                self["keypoints_local_path"], save_weights=True
+            )
             return self.data["keypoints_local"]
 
         if "crop_path" in self:
@@ -438,7 +440,7 @@ class State(UserDict):
                 raise NotImplementedError("Unknown crop_path format.")
 
             self.keypoints_local = self.keypoints_and_weights_from_paths(
-                tuple(replace_file_type(cp, new_type=".pt") for cp in self["crop_path"])
+                tuple(replace_file_type(cp, new_type=".pt") for cp in self["crop_path"]), save_weights=True
             )
             return self.data["keypoints_local"]
 
@@ -499,7 +501,30 @@ class State(UserDict):
     @property
     def joint_weight(self) -> t.Tensor:
         """Get the weight of the joints. Either represents the visibility or an importance score of this joint."""
-        return self.data["joint_weight"]
+        if "joint_weight" in self.data:
+            return self.data["joint_weight"]
+
+        if "keypoints_local_path" in self:
+            if isinstance(self["keypoints_local_path"], str):
+                self["keypoints_local_path"] = tuple(self["keypoints_local_path"] for _ in range(self.B))
+            if not isinstance(self["keypoints_local_path"], tuple):
+                raise NotImplementedError("Unknown format of keypoints_local_path.")
+
+            _ = self.keypoints_and_weights_from_paths(self["keypoints_local_path"], save_weights=True)
+            return self.data["joint_weight"]
+
+        if "crop_path" in self:
+            if isinstance(self["crop_path"], str):
+                self["crop_path"] = tuple(self["crop_path"] for _ in range(self.B))
+            if not isinstance(self["crop_path"], tuple):
+                raise NotImplementedError("Unknown crop_path format.")
+
+            _ = self.keypoints_and_weights_from_paths(
+                tuple(replace_file_type(cp, new_type=".pt") for cp in self["crop_path"]), save_weights=True
+            )
+            return self.data["joint_weight"]
+
+        raise NotImplementedError("Joint weights are not given for current state, and can not be computed.")
 
     @joint_weight.setter
     def joint_weight(self, value: t.Tensor) -> None:
@@ -719,20 +744,18 @@ class State(UserDict):
                 kp, jw = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
             elif j_dim == kp_data.size(-1) or kp_data.size(-1) == 2:
                 kp = kp_data
-                jw = None
+                jw = t.ones((1, kp_data.size(-2), 1))
             else:
                 kp, jw = kp_data.split([2, 1], dim=-1)
             kps.append(kp)
             weights.append(jw)
 
         keypoints = t.cat(kps, dim=0).to(self.device)
-        # save weights of all are not None
-        if all(w is not None for w in weights):
-            weights = t.cat(weights, dim=0).to(self.device)
-            if "joint_weight" in self and not t.allclose(weights, self.joint_weight):
-                raise ValueError(f"Expected old and new weights to be close, got: {self.joint_weight} and {weights}")
-            if save_weights:
-                self.joint_weight = weights
+        weights = t.cat(weights, dim=0).to(self.device)
+        if "joint_weight" in self and not t.allclose(weights, self.joint_weight):
+            raise ValueError(f"Expected old and new weights to be close, got: {self.joint_weight} and {weights}")
+        if save_weights:
+            self.joint_weight = weights
 
         return keypoints
 
