@@ -52,6 +52,7 @@ class TestFullyConnected(unittest.TestCase):
             ([3, 2, 0], True, None, ValueError, "Input, hidden or output size is <= 0"),
             ([3, 2, 1], True, [None], ValueError, "The activation functions should be a list of length L - 1, but got"),
             ([3, 2, 1], True, [1, "ReLU"], ValueError, "all activation functions to be None, strings, or a nn.Module"),
+            ([3, 2, 1], True, ["faulty", "ReLU"], AttributeError, "Tried to load non-existent activation function"),
         ]:
             with self.subTest(
                 msg="hl: {}, bias: {}, act_func: {} err: {}, msg: {}".format(hl, bias, act_func, err, err_msg)

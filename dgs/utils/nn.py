@@ -91,7 +91,10 @@ def fc_linear(
         a_i = act_func[i]
         if a_i is not None:
             if isinstance(a_i, str):
-                a_i = getattr(nn, a_i)
+                try:
+                    a_i = getattr(nn, a_i)
+                except AttributeError as e:
+                    raise AttributeError(f"Tried to load non-existent activation function '{a_i}'.") from e
             layers.append(a_i())  # make sure to call / instantiate the function here
 
     return nn.Sequential(*layers)
