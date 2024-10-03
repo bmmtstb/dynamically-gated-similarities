@@ -22,31 +22,7 @@ engine:
 # DATA #
 # #### #
 
-dgs_pt21_rcnn_256x192:
-    module_name: "PoseTrack21_Image"
-    dataset_path: "./data/PoseTrack21/"
-    # crops_folder:  # will be set in python script
-    # data_path:  # will be set in python script
-    # base_path:  # will be set in python script
-
-    batch_size: 8
-    collate_fn: "lists"
-
-    crop_size: !!python/tuple [256, 192]
-    crop_mode: "zero-pad"
-
-dgs_pt21_rcnn_256x128:
-    module_name: "PoseTrack21_Image"
-    dataset_path: "./data/PoseTrack21/"
-    # crops_folder:  # will be set in python script
-    # data_path:  # will be set in python script
-    # base_path:  # will be set in python script
-
-    batch_size: 8
-    collate_fn: "lists"
-
-    crop_size: !!python/tuple [256, 128]
-    crop_mode: "zero-pad"
+# GT
 
 dgs_pt21_gt_256x192_val:
     module_name: "PoseTrack21_Image"
@@ -102,6 +78,34 @@ dgs_Dance_gt_256x192_train:
 
     crop_key: "Crops"
 
+# RCNN
+
+dgs_pt21_rcnn_256x192_val:
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    # crops_folder:  # will be set in python script
+    # data_path:  # will be set in python script
+    # base_path:  # will be set in python script
+
+    batch_size: 8
+    collate_fn: "lists"
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+dgs_pt21_rcnn_256x128_val:
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    # crops_folder:  # will be set in python script
+    # data_path:  # will be set in python script
+    # base_path:  # will be set in python script
+
+    batch_size: 8
+    collate_fn: "lists"
+
+    crop_size: !!python/tuple [256, 128]
+    crop_mode: "zero-pad"
+
 dgs_Dance_rcnn_256x192_val:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/val/"
@@ -129,6 +133,8 @@ dgs_Dance_rcnn_256x192_test:
     crop_mode: "zero-pad"
 
     # crop_key:  # will be set in python script
+
+# SUBMISSION
 
 submission_pt21:
     module_name: "PoseTrack21"

@@ -21,24 +21,13 @@ engine:
 # DATA #
 # #### #
 
-dgs_pt21_rcnn_256x192_val:
-    module_name: "PoseTrack21_Image"
-    dataset_path: "./data/PoseTrack21/"
-    # crops_folder:  # will be set in python script
-    # base_path:  # will be set in python script
-    # data_path:  # will be set in python script
-    
-    batch_size: 8
-    collate_fn: "lists"
-
-    crop_size: !!python/tuple [256, 192]
-    crop_mode: "zero-pad"
+# GT
 
 dgs_pt21_gt_256x192_val:
     module_name: "PoseTrack21_Image"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"
-    base_path: "./data/PoseTrack21/posetrack_data/val/"
+    paths: "./data/PoseTrack21/posetrack_data/val/"
     # data_path: # will be set in python script
 
     batch_size: 8
@@ -46,6 +35,50 @@ dgs_pt21_gt_256x192_val:
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
+
+dgs_Dance_gt_256x192_val:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/val/"
+    # data_path: # will be set in python script
+    paths: "./data/DanceTrack/val/**/gt/gt.txt"
+    
+    batch_size: 1
+    collate_fn: "lists"
+    
+    crop_key: "Crops"
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+
+# RCNN
+
+dgs_pt21_rcnn_256x192_val:
+    module_name: "PoseTrack21_Image"
+    dataset_path: "./data/PoseTrack21/"
+    # data_path:  # will be set in python script
+    # paths:  # will be set in python script
+    
+    batch_size: 8
+    collate_fn: "lists"
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    # crops_folder:  # will be set in python script
+
+
+dgs_Dance_rcnn_256x192_val:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/val/"
+    # data_path: # will be set in python script
+    # paths:  # will be set in python script
+    
+    batch_size: 1
+    collate_fn: "lists"
+    
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    # crop_key:  # will be set in python script
+
+# Submission
 
 submission:
     module_name: "PoseTrack21"
