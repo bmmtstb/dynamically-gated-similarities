@@ -169,6 +169,9 @@ if __name__ == "__main__":
                 line: dict
                 for line in csv_reader:
                     ds_name = line["seq"]
+                    # the file gets too big if we include all individual datasets
+                    if ds_name != "COMBINED":
+                        continue
                     comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
                     d = {**{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}, **line}
                     data.append(d)
