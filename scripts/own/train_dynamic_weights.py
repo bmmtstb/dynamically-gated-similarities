@@ -113,54 +113,54 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
     "val_dl_dance_256x192_gt": {
         # earlier model
         "iou_fc1_ep4__vis_osn_fc3_ep4__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 4),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 4),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
         ],
         # partially trained
         "iou_fc1_ep6__vis_osn_fc1_ep6__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 6),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 6),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
         ],
         "iou_fc1_ep6__vis_osn_fc3_ep6__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 6),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 6),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
         ],
         "iou_fc1_ep6__vis_osn_fc5_ep6__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 6),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 6),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
         ],
         # fully trained
         "iou_fc1_ep12__vis_osn_fc1_ep12__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
         ],
         "iou_fc1_ep12__vis_osn_fc3_ep12__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
         ],
         "iou_fc1_ep12__vis_osn_fc5_ep12__lr-4": [
-            ("val_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
-            ("val_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
         ],
     },
     "val_dl_dance_256x192_rcnn": {
         # earlier model
         "iou_fc1_ep4__vis_fc3_osn_ep4__lr-4": [
-            ("val_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 4),
-            ("val_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc3", 4),
+            ("train_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 4),
+            ("train_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc3", 4),
         ],
         # partially trained
         "iou_fc1_ep6__vis_fc1_osn_ep6__lr-4": [
-            ("val_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 6),
-            ("val_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc1", 6),
+            ("train_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 6),
+            ("train_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc1", 6),
         ],
         "iou_fc1_ep6__vis_fc3_osn_ep6__lr-4": [
-            ("val_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 6),
-            ("val_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc3", 6),
+            ("train_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 6),
+            ("train_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc3", 6),
         ],
         "iou_fc1_ep6__vis_fc5_osn_ep6__lr-4": [
-            ("val_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 6),
-            ("val_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc5", 6),
+            ("train_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 6),
+            ("train_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc5", 6),
         ],
         # fully trained
         "iou_fc1_ep12__vis_osn_osn_fc1_ep12__lr-4": [
@@ -195,6 +195,17 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
         "iou_fc1_ep12__pose_conv1o15k2fc2_ep12__lr-4": [
             ("train_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_rcnn", "pose_sim_coco", "pose_coco_conv1o15k2fc2", 12),
+        ],
+    },
+    "val_dl_dance_256x192_mixed": {
+        # fully trained
+        "iou_fc1_ep12_rcnn__vis_osn_fc3_ep12_gt__lr-4": [
+            ("train_dl_dance_256x192_rcnn", "box_sim", "box_fc1", 12),
+            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
+        ],
+        "iou_fc1_ep12_gt__vis_osn_fc3_ep12_rcnn__lr-4": [
+            ("train_dl_dance_256x192_gt", "box_sim", "box_fc1", 12),
+            ("train_dl_dance_256x192_rcnn", "OSNet_sim", "visual_osn_fc3", 12),
         ],
     },
     # pt21 gt
@@ -376,15 +387,17 @@ def set_up_test_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[st
     engine.model.combine.alpha_model.to(device=engine.device)
 
     for s_i, (dir_name, sim_name, alpha_name, epoch) in enumerate(dgs_mod_data):
-        checkpoints = glob(
-            os.path.normpath(
+        path = os.path.normpath(
+            os.path.abspath(
                 os.path.join(
                     "./results/own/train_single/",
                     f"./{dir_name}/{sim_name}/{alpha_name}_{base_lr:.10f}/checkpoints/lr*_epoch{epoch:0>3}.pth",
                 )
             )
         )
-        assert len(checkpoints) == 1
+        checkpoints = glob(path)
+        # fixme: handle multiple weights properly, not just taking the first one
+        assert len(checkpoints) >= 1, path
 
         engine.load_combine_alpha_weights(fp=os.path.abspath(checkpoints[0]), new_id=s_i)
 
@@ -518,7 +531,8 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
             if epoch == int(cfg["train"]["epochs"]):
                 return
             # set last state to
-            assert len(weights) == 1
+            # fixme: handle multiple weights properly, not just taking the first one
+            assert len(weights) >= 1
             last_state_path = weights[0]
         else:
             # results file does not exist yet - start engine mid-way
