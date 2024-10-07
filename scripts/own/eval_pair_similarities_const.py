@@ -190,6 +190,8 @@ def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, out_key: s
 def run(config: Config, dl_key: str, dgs_key: str) -> None:
     """Main function to run the code."""
 
+    config[dl_key]["load_image_crops"] = any(sub_key not in ["iou", "oks"] for sub_key in dgs_key.split("_"))
+
     with HidePrint():
         # validation dataset
         val_dl = module_loader(config=config, module_type="dataloader", key=dl_key)
