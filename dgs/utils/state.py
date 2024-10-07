@@ -321,7 +321,7 @@ class State(UserDict):
     @property
     def filepath(self) -> FilePaths:
         """If data filepath has a single entry, return the filepath as a string, otherwise return the list."""
-        assert "filepath" in self, "filepath not set"
+        assert "filepath" in self.data, "filepath not set"
         assert isinstance(self.data["filepath"], tuple), f"filepath must be a tuple but got {self.data['filepath']}"
         return self.data["filepath"]
 
@@ -356,10 +356,10 @@ class State(UserDict):
         Otherwise, tries to load the key-points from the 'crop_path' with '_glob.pt' ending if given.
         If one of the loading methods is used, the `joint_weight` will be set.
         """
-        if "keypoints" in self:
+        if "keypoints" in self.data:
             return self.data["keypoints"]
 
-        if "keypoints_path" in self:
+        if "keypoints_path" in self.data:
             if isinstance(self["keypoints_path"], str):
                 self["keypoints_path"] = tuple(self["keypoints_path"] for _ in range(self.B))
             if not isinstance(self["keypoints_path"], tuple):
@@ -368,7 +368,7 @@ class State(UserDict):
             self.keypoints = self.keypoints_and_weights_from_paths(self["keypoints_path"], save_weights=True)
             return self["keypoints"]
 
-        if "crop_path" in self:
+        if "crop_path" in self.data:
             if isinstance(self["crop_path"], str):
                 self["crop_path"] = tuple(self["crop_path"] for _ in range(self.B))
             if not isinstance(self["crop_path"], tuple):
@@ -419,10 +419,10 @@ class State(UserDict):
         Otherwise, tries to load the local key-points from the 'crop_path' with '.pt' ending if given.
         If one of the loading methods is used, the `joint_weight` will be set.
         """
-        if "keypoints_local" in self:
+        if "keypoints_local" in self.data:
             return self.data["keypoints_local"]
 
-        if "keypoints_local_path" in self:
+        if "keypoints_local_path" in self.data:
             if isinstance(self["keypoints_local_path"], str):
                 self["keypoints_local_path"] = tuple(self["keypoints_local_path"] for _ in range(self.B))
             if not isinstance(self["keypoints_local_path"], tuple):
@@ -433,7 +433,7 @@ class State(UserDict):
             )
             return self.data["keypoints_local"]
 
-        if "crop_path" in self:
+        if "crop_path" in self.data:
             if isinstance(self["crop_path"], str):
                 self["crop_path"] = tuple(self["crop_path"] for _ in range(self.B))
             if not isinstance(self["crop_path"], tuple):
@@ -504,7 +504,7 @@ class State(UserDict):
         if "joint_weight" in self.data:
             return self.data["joint_weight"]
 
-        if "keypoints_local_path" in self:
+        if "keypoints_local_path" in self.data:
             if isinstance(self["keypoints_local_path"], str):
                 self["keypoints_local_path"] = tuple(self["keypoints_local_path"] for _ in range(self.B))
             if not isinstance(self["keypoints_local_path"], tuple):
@@ -513,7 +513,7 @@ class State(UserDict):
             _ = self.keypoints_and_weights_from_paths(self["keypoints_local_path"], save_weights=True)
             return self.data["joint_weight"]
 
-        if "crop_path" in self:
+        if "crop_path" in self.data:
             if isinstance(self["crop_path"], str):
                 self["crop_path"] = tuple(self["crop_path"] for _ in range(self.B))
             if not isinstance(self["crop_path"], tuple):
@@ -634,42 +634,29 @@ class State(UserDict):
                 Default ``DEF_VAL.images.crop_size``.
         """
 
-        def save_values(crop_: Image, loc_kps_: Union[t.Tensor, None]) -> None:
+        def save_values(crop_: Image) -> None:
             if store:
                 self.data["image_crop"] = crop_
-                if loc_kps_ is not None:
-                    self.data["keypoints_local"] = loc_kps_
 
         # data already exists
-        if (
-            "image_crop" in self
-            and self.data["image_crop"] is not None
-            and len(self.data["image_crop"]) == self.B
-            and "keypoints_local" in self
-        ):
+        if "image_crop" in self.data and self.data["image_crop"] is not None and len(self.data["image_crop"]) == self.B:
             return self.image_crop
 
         # empty state
         if self.B == 0:
             crop = t.empty((0, 3, 0, 0), device=self.device, dtype=t.long)
-            save_values(crop_=crop, loc_kps_=None)
+            save_values(crop_=crop)
             return crop
 
         # load from crop path
-        if "crop_path" in self:
+        if "crop_path" in self.data:
             assert (
                 len(self.crop_path) > 0
             ), f"expected to have at least one entry in crop_path, got: {len(self.crop_path)}"
 
             # allow changing the crop_size and other params via kwargs
             crop = load_image(filepath=self.crop_path, device=self.device, **kwargs)
-            kps_paths = tuple(replace_file_type(sub_path, new_type=".pt") for sub_path in self.crop_path)
-
-            if all(is_file(path) for path in kps_paths):
-                loc_kps = self.keypoints_and_weights_from_paths(kps_paths, save_weights=store)
-            else:
-                loc_kps = None
-            save_values(crop_=crop, loc_kps_=loc_kps)
+            save_values(crop_=crop)
             return crop
 
         # try to extract using image and bbox
@@ -728,6 +715,9 @@ class State(UserDict):
         if len(paths) != self.B:
             raise ValueError(f"There must be a path for every bounding box. Got B: {self.B} and paths: {paths}")
 
+        if "joint_weight" in self.data and ("keypoints" in self.data or "keypoints_local" in self.data):
+            raise ValueError("The keypoints and weights are already stored in the state.")
+
         kps, weights = [], []
         try:
             J = self.J
@@ -742,7 +732,7 @@ class State(UserDict):
             kp_data = t.load(os.path.normpath(path)).to(device=self.device)
             if J is not None and j_dim is not None and kp_data.size(-1) != 2:
                 kp, jw = kp_data.reshape((1, J, j_dim + 1)).split([2, 1], dim=-1)
-            elif j_dim == kp_data.size(-1) or kp_data.size(-1) == 2:
+            elif kp_data.size(-1) in [j_dim, 2]:
                 kp = kp_data
                 jw = t.ones((1, kp_data.size(-2), 1), device=self.device, dtype=t.float32)
             else:
@@ -752,7 +742,7 @@ class State(UserDict):
 
         keypoints = t.cat(kps, dim=0).to(self.device)
         weights = t.cat(weights, dim=0).to(self.device)
-        if "joint_weight" in self and not t.allclose(weights, self.joint_weight):
+        if "joint_weight" in self.data and not t.allclose(weights, self.joint_weight):
             raise ValueError(f"Expected old and new weights to be close, got: {self.joint_weight} and {weights}")
         if save_weights:
             self.joint_weight = weights
