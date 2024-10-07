@@ -28,7 +28,7 @@ submission_MOT:
 RCNN_PT21_256x128_val:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
-    dataset_path: "./data/PoseTrack21/val/"
+    dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/images/val/**/"
 
     batch_size: 1
@@ -45,7 +45,7 @@ RCNN_PT21_256x128_val:
 PT21_256x128_val:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
-    dataset_path: "./data/PoseTrack21/val/"
+    dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/posetrack_data/val/**.json"
     crops_folder: "./data/PoseTrack21/crops/256x128/val/"
 
@@ -59,7 +59,7 @@ PT21_256x128_val:
 RCNN_PT21_256x192_val:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
-    dataset_path: "./data/PoseTrack21/val/"
+    dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/images/val/**/"
 
     batch_size: 1
@@ -76,7 +76,7 @@ RCNN_PT21_256x192_val:
 RCNN_PT21_256x192_train:
     module_name: "KeypointRCNNImageBackbone"
     # data_path:  # will be set in python script
-    dataset_path: "./data/PoseTrack21/train/"
+    dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/images/train/**/"
 
     batch_size: 1
@@ -93,7 +93,7 @@ RCNN_PT21_256x192_train:
 PT21_256x192_val:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
-    dataset_path: "./data/PoseTrack21/val/"
+    dataset_path: "./data/PoseTrack21/"
     dataset_paths: "./data/PoseTrack21/posetrack_data/val/**.json"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"
     
