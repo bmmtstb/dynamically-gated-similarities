@@ -82,7 +82,7 @@ def get_combinations() -> list[list[int]]:
 
 
 @notify_on_completion_or_error(min_time=30, info="triplet")
-def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, initial_weights: float) -> None:
+def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
     """Main function to run the code."""
     config["name"] = f"Evaluate-Triplet-Combinations-{dl_key}-{dgs_key}"
     # set initial weight
@@ -101,14 +101,14 @@ def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, initial_wei
             config["combine_sim"]["alpha"] = [c / 100.0 for c in combination]
 
             # change config data
-            log_dir_suffix = f"./{dl_key}_{'_'.join(str(c) for c in combination)}/{dgs_key}/"
+            log_dir_suffix = f"./{out_key}/{dgs_key}_{'_'.join(str(c) for c in combination)}/"
             config["log_dir_suffix"] = log_dir_suffix
             config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
             # set the new path for the out file in the log_dir
             config["submission"]["file"] = os.path.abspath(
                 os.path.normpath(
-                    os.path.join(config["log_dir"], log_dir_suffix, f"/results_json/{os.path.basename(sub_datapath)}")
+                    os.path.join(config["log_dir"], log_dir_suffix, f"./results_json/{os.path.basename(sub_datapath)}")
                 )
             )
 
@@ -119,7 +119,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, initial_wei
 
 
 @notify_on_completion_or_error(min_time=30, info="single")
-def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, initial_weights: float) -> None:
+def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
     """Set the DanceTrack config."""
     config["name"] = f"Evaluate-Pairwise-Combinations-{dl_key}-{dgs_key}"
     # set initial weight
@@ -141,13 +141,14 @@ def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, initial_we
             config["combine_sim"]["alpha"] = [c / 100.0 for c in combination]
 
             # change config data
-            log_dir_suffix = f"./results_{dl_key}_{'_'.join(str(c) for c in combination)}_{dgs_key}/"
+            log_dir_suffix = f"./results_{out_key}/{dgs_key}_{'_'.join(str(c) for c in combination)}/"
             config["log_dir_suffix"] = log_dir_suffix
             config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
             # set the new path for the out file in the log_dir
+            config["submission"]["module_name"] = "MOT"
             config["submission"]["file"] = os.path.abspath(
-                os.path.normpath(os.path.join(config[dgs_key]["dataset_path"], log_dir_suffix, f"./{dataset_name}.txt"))
+                os.path.normpath(os.path.join(config[dl_key]["dataset_path"], log_dir_suffix, f"./{dataset_name}.txt"))
             )
 
             if os.path.exists(config["submission"]["file"]):
@@ -186,7 +187,7 @@ if __name__ == "__main__":
     # ## #
 
     print("Evaluating triplet models on the GT evaluation-data")
-    for DL_KEY, DGS_KEYS in (pbar_dl := tqdm(GT_DL_KEYS.items(), desc="GT Dataloaders")):
+    for DL_KEY, DGS_KEYS in (pbar_dl := tqdm(GT_DL_KEYS.items(), desc="GT Dataloaders", leave=False)):
         pbar_dl.set_postfix_str(DL_KEY)
 
         for DGS_KEY in (pbar_key := tqdm(DGS_KEYS, desc="DGS Keys", leave=False)):
@@ -195,13 +196,17 @@ if __name__ == "__main__":
             if "pt21" in DL_KEY:
                 data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["paths"]) if f.is_file()]
                 assert len(data_paths)
-                run_pt21(config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=0.0)
+                run_pt21(
+                    config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, out_key=DL_KEY, initial_weights=0.0
+                )
             elif "Dance" in DL_KEY:
                 if DGS_KEY == "oks":
                     continue
                 data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["paths"])]
                 assert len(data_paths)
-                run_dance(config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=0.0)
+                run_dance(
+                    config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, out_key=DL_KEY, initial_weights=0.0
+                )
             else:
                 raise NotImplementedError
 
@@ -211,7 +216,7 @@ if __name__ == "__main__":
 
     print("Evaluating triplet models on the validation-data using KeypointRCNN as prediction backbone")
     for RCNN_DL_KEY, SCORE_THRESH, IOU_THRESH, INIT_WEIGHT, DGS_KEYS in (
-        pbar_dl := tqdm(RCNN_DL_KEYS, desc="RCNN Dataloaders")
+        pbar_dl := tqdm(RCNN_DL_KEYS, desc="RCNN Dataloaders", leave=False)
     ):
         pbar_dl.set_postfix_str(f"{RCNN_DL_KEY}_S{SCORE_THRESH}_I{IOU_THRESH}_W{INIT_WEIGHT}")
 
@@ -239,23 +244,31 @@ if __name__ == "__main__":
 
                 data_paths = [f.path for f in os.scandir(base_paths) if f.is_file()]
                 assert len(data_paths) > 0, f"No files found in the paths: {base_paths}"
-                run_pt21(config=cfg, dl_key=RCNN_DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=INIT_WEIGHT)
+                run_pt21(
+                    config=cfg,
+                    dl_key=RCNN_DL_KEY,
+                    paths=data_paths,
+                    dgs_key=DGS_KEY,
+                    out_key=f"{RCNN_DL_KEY}_{score_s}_{iou_s}",
+                    initial_weights=INIT_WEIGHT,
+                )
 
             elif "Dance" in RCNN_DL_KEY:
                 base_paths = os.path.join(
-                    cfg[RCNN_DL_KEY]["dataset_path"], f"./dancetrack*/rcnn_{score_s}_{iou_s}_{crop_h}x{crop_w}/"
+                    cfg[RCNN_DL_KEY]["dataset_path"], f"./dancetrack*/det/rcnn_{score_s}_{iou_s}_{crop_h}x{crop_w}.txt"
                 )
-                if not os.path.isdir(base_paths):
-                    send_discord_notification("Double - base path not found")
-                    raise ValueError("Double - base path not found")
-
                 cfg[RCNN_DL_KEY]["paths"] = base_paths
                 cfg[RCNN_DL_KEY]["crop_key"] = f"rcnn_{score_s}_{iou_s}_{crop_h}x{crop_w}"
 
                 data_paths = [os.path.normpath(p) for p in glob(base_paths)]
                 assert len(data_paths) > 0, f"No files found in the paths: {base_paths}"
                 run_dance(
-                    config=cfg, dl_key=RCNN_DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=INIT_WEIGHT
+                    config=cfg,
+                    dl_key=RCNN_DL_KEY,
+                    paths=data_paths,
+                    dgs_key=DGS_KEY,
+                    out_key=f"{RCNN_DL_KEY}_{score_s}_{iou_s}",
+                    initial_weights=INIT_WEIGHT,
                 )
 
             else:
