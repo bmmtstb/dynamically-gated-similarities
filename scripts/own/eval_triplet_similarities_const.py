@@ -34,9 +34,9 @@ CONFIG_FILE = "./configs/DGS/eval_const_triplet_similarities.yaml"
 GT_DL_KEYS: dict[str, list[str]] = {
     "dgs_pt21_gt_256x192_val": [
         "iou_oks_OSNet",
-        "iou_oks_OSNetAIN",
-        "iou_oks_Resnet50",
-        "iou_oks_Resnet152",
+        #        "iou_oks_OSNetAIN",
+        #        "iou_oks_Resnet50",
+        #        "iou_oks_Resnet152",
     ],
     # within DanceTrack there is no GT data for the OKS available, therefore it is skipped
 }
@@ -49,9 +49,9 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
         0.00,
         [
             "iou_oks_OSNet",
-            "iou_oks_OSNetAIN",
-            "iou_oks_Resnet50",
-            "iou_oks_Resnet152",
+            #            "iou_oks_OSNetAIN",
+            #            "iou_oks_Resnet50",
+            #            "iou_oks_Resnet152",
         ],
     ),
     (
@@ -61,9 +61,9 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
         0.00,
         [
             "iou_oks_OSNet",
-            "iou_oks_OSNetAIN",
-            "iou_oks_Resnet50",
-            "iou_oks_Resnet152",
+            #           "iou_oks_OSNetAIN",
+            #           "iou_oks_Resnet50",
+            #           "iou_oks_Resnet152",
         ],
     ),
 ]
