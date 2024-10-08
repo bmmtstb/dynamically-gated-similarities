@@ -233,7 +233,7 @@ train_dl_pt21_256x192_gt:
 
 # BOX - IoU
 
-box_sim:
+box_xywh_sim:
     module_name: "iou"
     softmax: false
     train_key: "bbox_relative"
