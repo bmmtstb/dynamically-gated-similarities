@@ -79,7 +79,7 @@ DGSModule:
 # DATA #
 # #### #
 
-test_dl_dance_256x192_gt:
+test_dl_Dance_256x192_gt:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/test/"
     # data_path: # will be set in python script
@@ -94,7 +94,7 @@ test_dl_dance_256x192_gt:
     crop_key: "rcnn_075_035_256x192"
 
 
-val_dl_dance_256x192_rcnn:
+val_dl_Dance_256x192_rcnn:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
@@ -108,7 +108,7 @@ val_dl_dance_256x192_rcnn:
     
     crop_key: "rcnn_075_035_256x192"
 
-val_dl_dance_256x192_gt:
+val_dl_Dance_256x192_gt:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
@@ -121,7 +121,7 @@ val_dl_dance_256x192_gt:
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
 
-val_dl_dance_256x192_eval_acc:
+val_dl_Dance_256x192_eval_acc:
     module_name: "Concat_MOTImageHistory"
     shuffle: false
     dataset_path: "./data/DanceTrack/val/"
@@ -138,7 +138,7 @@ val_dl_dance_256x192_eval_acc:
     crop_mode: "zero-pad"
 
 
-train_dl_dance_256x192_gt:
+train_dl_Dance_256x192_gt:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
     dataset_path: "./data/DanceTrack/train/"

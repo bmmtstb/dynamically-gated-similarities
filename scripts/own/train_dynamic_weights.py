@@ -532,7 +532,7 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
     # modify config even more
     if "pt21" in dl_train_key:
         cfg["train"]["submission"] = ["submission_pt21"]
-    elif "dance" in dl_train_key:
+    elif "Dance" in dl_train_key:
         cfg["train"]["submission"] = ["submission_MOT"]
     else:
         raise NotImplementedError(f"unknown type of dataloader, got: {dl_train_key}")
@@ -619,7 +619,7 @@ if __name__ == "__main__":
                         comb_name=COMB_NAME,
                         dgs_mod_data=DGS_MODULE_DATA,
                     )
-                elif "dance" in DL_KEY:
+                elif "Dance" in DL_KEY:
                     test_dance_dynamic_alpha(
                         cfg=deepcopy(config),
                         dl_key=DL_KEY,
