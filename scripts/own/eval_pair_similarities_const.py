@@ -16,6 +16,7 @@ and additionally over the PT21 evaluation set but using the RCNN-dataloader to o
 # pylint: disable=R0801
 
 import os
+import warnings
 from glob import glob
 
 import torch as t
@@ -57,8 +58,8 @@ GT_DL_KEYS: dict[str, list[str]] = {
 RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
     (
         "dgs_pt21_rcnn_256x192_val",
-        0.40,
         0.85,
+        0.40,
         0.00,
         [
             "iou_oks",
@@ -74,8 +75,8 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
     ),
     (
         "dgs_Dance_rcnn_256x192_val",
-        0.35,
         0.75,
+        0.35,
         0.00,
         [
             "iou_oks",
@@ -91,8 +92,8 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
     ),
     (
         "dgs_Dance_rcnn_256x192_val",
-        0.35,
         0.70,
+        0.35,
         0.00,
         [
             "iou_oks",
@@ -110,7 +111,7 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
 
 
 @notify_on_completion_or_error(min_time=30, info="single")
-def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, initial_weights: float) -> None:
+def run_pt21(*, config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
     """Set the PT21 config."""
     config["name"] = f"Evaluate-Pairwise-Combinations-{dl_key}-{dgs_key}"
     # set initial weight
@@ -129,14 +130,14 @@ def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, initial_wei
             config["combine_sim"]["alpha"] = [alpha_1 / 100.0, (100.0 - alpha_1) / 100.0]
 
             # change config data
-            log_dir_suffix = f"./{dl_key}_{alpha_1}_{100-alpha_1}/{dgs_key}/"
+            log_dir_suffix = f"./{out_key}/{dgs_key}_{alpha_1}_{100-alpha_1}/"
             config["log_dir_suffix"] = log_dir_suffix
             config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
             # set the new path for the out file in the log_dir
             config["submission"]["file"] = os.path.abspath(
                 os.path.normpath(
-                    os.path.join(config["log_dir"], log_dir_suffix, f"/results_json/{os.path.basename(sub_datapath)}")
+                    os.path.join(config["log_dir"], log_dir_suffix, f"./results_json/{os.path.basename(sub_datapath)}")
                 )
             )
 
@@ -147,7 +148,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, initial_wei
 
 
 @notify_on_completion_or_error(min_time=30, info="single")
-def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, initial_weights: float) -> None:
+def run_dance(*, config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
     """Set the DanceTrack config."""
     config["name"] = f"Evaluate-Pairwise-Combinations-{dl_key}-{dgs_key}"
     # set initial weight
@@ -169,13 +170,14 @@ def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, initial_we
             config["combine_sim"]["alpha"] = [alpha_1 / 100.0, (100.0 - alpha_1) / 100.0]
 
             # change config data
-            log_dir_suffix = f"./results_{dl_key}_{alpha_1}_{100-alpha_1}_{dgs_key}/"
+            log_dir_suffix = f"./results_{out_key}/{dgs_key}_{alpha_1}_{100-alpha_1}/"
             config["log_dir_suffix"] = log_dir_suffix
             config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
             # set the new path for the out file in the log_dir
+            config["submission"]["module_name"] = "MOT"
             config["submission"]["file"] = os.path.abspath(
-                os.path.normpath(os.path.join(config[dgs_key]["dataset_path"], log_dir_suffix, f"./{dataset_name}.txt"))
+                os.path.normpath(os.path.join(config[dl_key]["dataset_path"], log_dir_suffix, f"./{dataset_name}.txt"))
             )
 
             if os.path.exists(config["submission"]["file"]):
@@ -187,6 +189,8 @@ def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, initial_we
 
 def run(config: Config, dl_key: str, dgs_key: str) -> None:
     """Main function to run the code."""
+
+    config[dl_key]["load_image_crops"] = any(sub_key not in ["iou", "oks"] for sub_key in dgs_key.split("_"))
 
     with HidePrint():
         # validation dataset
@@ -214,7 +218,7 @@ if __name__ == "__main__":
     # ## #
 
     print("Evaluating pairwise models on the GT evaluation-data")
-    for DL_KEY, DGS_KEYS in (pbar_dl := tqdm(GT_DL_KEYS.items(), desc="GT Dataloaders")):
+    for DL_KEY, DGS_KEYS in (pbar_dl := tqdm(GT_DL_KEYS.items(), desc="GT Dataloaders", leave=False)):
         pbar_dl.set_postfix_str(DL_KEY)
 
         for DGS_KEY in (pbar_key := tqdm(DGS_KEYS, desc="DGS Keys", leave=False)):
@@ -223,13 +227,18 @@ if __name__ == "__main__":
             if "pt21" in DL_KEY:
                 data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["paths"]) if f.is_file()]
                 assert len(data_paths)
-                run_pt21(config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=0.0)
+                run_pt21(
+                    config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, out_key=DL_KEY, initial_weights=0.0
+                )
             elif "Dance" in DL_KEY:
                 if DGS_KEY == "oks":
+                    warnings.warn("oks was set as DGS_KEY for DanceTrack dataset, but there is no GT pose information.")
                     continue
                 data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["paths"])]
                 assert len(data_paths)
-                run_dance(config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=0.0)
+                run_dance(
+                    config=cfg, dl_key=DL_KEY, paths=data_paths, dgs_key=DGS_KEY, out_key=DL_KEY, initial_weights=0.0
+                )
             else:
                 raise NotImplementedError
 
@@ -258,7 +267,7 @@ if __name__ == "__main__":
                 )
                 if not os.path.isdir(base_paths):
                     send_discord_notification("Double - base path not found")
-                    raise ValueError("Double - base path not found")
+                    raise ValueError(f"Double - base path not found - {base_paths}")
 
                 cfg[RCNN_DL_KEY]["paths"] = base_paths
                 cfg[RCNN_DL_KEY]["crops_folder"] = os.path.join(
@@ -267,15 +276,19 @@ if __name__ == "__main__":
 
                 data_paths = [f.path for f in os.scandir(base_paths) if f.is_file()]
                 assert len(data_paths) > 0, f"No files found in the paths: {base_paths}"
-                run_pt21(config=cfg, dl_key=RCNN_DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=INIT_WEIGHT)
+                run_pt21(
+                    config=cfg,
+                    dl_key=RCNN_DL_KEY,
+                    paths=data_paths,
+                    dgs_key=DGS_KEY,
+                    out_key=f"{RCNN_DL_KEY}_{score_s}_{iou_s}",
+                    initial_weights=INIT_WEIGHT,
+                )
 
             elif "Dance" in RCNN_DL_KEY:
                 base_paths = os.path.join(
-                    cfg[RCNN_DL_KEY]["dataset_path"], f"./dancetrack*/rcnn_{score_s}_{iou_s}_{crop_h}x{crop_w}/"
+                    cfg[RCNN_DL_KEY]["dataset_path"], f"./dancetrack*/det/rcnn_{score_s}_{iou_s}_{crop_h}x{crop_w}.txt"
                 )
-                if not os.path.isdir(base_paths):
-                    send_discord_notification("Double - base path not found")
-                    raise ValueError("Double - base path not found")
 
                 cfg[RCNN_DL_KEY]["paths"] = base_paths
                 cfg[RCNN_DL_KEY]["crop_key"] = f"rcnn_{score_s}_{iou_s}_{crop_h}x{crop_w}"
@@ -283,7 +296,12 @@ if __name__ == "__main__":
                 data_paths = [os.path.normpath(p) for p in glob(base_paths)]
                 assert len(data_paths) > 0, f"No files found in the paths: {base_paths}"
                 run_dance(
-                    config=cfg, dl_key=RCNN_DL_KEY, paths=data_paths, dgs_key=DGS_KEY, initial_weights=INIT_WEIGHT
+                    config=cfg,
+                    dl_key=RCNN_DL_KEY,
+                    paths=data_paths,
+                    dgs_key=DGS_KEY,
+                    out_key=f"{RCNN_DL_KEY}_{score_s}_{iou_s}",
+                    initial_weights=INIT_WEIGHT,
                 )
 
             else:

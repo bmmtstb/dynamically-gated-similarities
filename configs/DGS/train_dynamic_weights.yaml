@@ -36,6 +36,7 @@ train:
     acc_k_train: [1, 5, 10, 20]
     acc_k_eval: [0.1, 0.5, 1, 5, 10, 25]
     # submission:  # will be set in python script
+    load_image_crops: false  # will be set in python script
     loss: "TorchMSELoss"
     loss_kwargs: {}
     optimizer: "Adam"

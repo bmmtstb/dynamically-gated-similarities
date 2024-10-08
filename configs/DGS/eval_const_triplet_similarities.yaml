@@ -35,6 +35,7 @@ dgs_pt21_gt_256x192_val:
 
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
+    load_img_crops: true
 
 dgs_Dance_gt_256x192_val:
     module_name: "MOTImage"
@@ -48,6 +49,7 @@ dgs_Dance_gt_256x192_val:
     crop_key: "Crops"
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
+    load_img_crops: true
 
 # RCNN
 
@@ -63,6 +65,7 @@ dgs_pt21_rcnn_256x192_val:
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
     # crops_folder:  # will be set in python script
+    load_img_crops: true
 
 
 dgs_Dance_rcnn_256x192_val:
@@ -77,6 +80,7 @@ dgs_Dance_rcnn_256x192_val:
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
     # crop_key:  # will be set in python script
+    load_img_crops: true
 
 # Submission
 
