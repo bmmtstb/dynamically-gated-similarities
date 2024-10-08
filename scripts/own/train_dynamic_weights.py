@@ -143,7 +143,7 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
         ],
     },
-    "val_dl_Dance_256x192_rcnn": {
+    "val_dl_Dance_256x192_rcnn_075_035": {
         # earlier model
         "iou_fc1_ep4__vis_osn_fc3_osn_ep4__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
@@ -261,7 +261,7 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
         ],
     },
     # pt21 rcnn
-    "val_dl_pt21_256x192_rcnn": {
+    "val_dl_pt21_256x192_rcnn_085_040": {
         # pairwise - box-visual
         "iou_fc1_ep6__vis_osn_fc1_ep6__lr-4": [
             ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 6),
