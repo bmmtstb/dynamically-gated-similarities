@@ -203,14 +203,14 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
-    print(f"Extracting the GT image crops")
+    print("Extracting the GT image crops")
     for DL_KEY in (pbar_dl := tqdm(DL_KEYS, desc="Dataloader", leave=False)):
         pbar_dl.set_postfix_str(DL_KEY)
 
         cfg: Config = load_config(CONFIG_FILE)
         extract_gt_boxes(config=cfg, dl_key=DL_KEY)
 
-    print(f"Extracting using KeypointRCNN as detector")
+    print("Extracting using KeypointRCNN as detector")
     for RCNN_DL_KEY, (SCORE_THRESHS, IOU_THRESHS) in (
         pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="Dataloader", leave=False)
     ):

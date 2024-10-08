@@ -82,7 +82,7 @@ def get_combinations() -> list[list[int]]:
 
 
 @notify_on_completion_or_error(min_time=30, info="triplet")
-def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
+def run_pt21(*, config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
     """Main function to run the code."""
     config["name"] = f"Evaluate-Triplet-Combinations-{dl_key}-{dgs_key}"
     # set initial weight
@@ -119,7 +119,7 @@ def run_pt21(config: Config, dl_key: str, paths: list, dgs_key: str, out_key: st
 
 
 @notify_on_completion_or_error(min_time=30, info="single")
-def run_dance(config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
+def run_dance(*, config: Config, dl_key: str, paths: list, dgs_key: str, out_key: str, initial_weights: float) -> None:
     """Set the DanceTrack config."""
     config["name"] = f"Evaluate-Pairwise-Combinations-{dl_key}-{dgs_key}"
     # set initial weight
