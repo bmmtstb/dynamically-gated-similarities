@@ -30,8 +30,8 @@ TEST = False
 DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
     # DanceTrack with evaluation using the accuracy of the weights
     (
-        "train_dl_dance_256x192_gt",
-        "val_dl_dance_256x192_eval_acc",
+        "train_dl_Dance_256x192_gt",
+        "val_dl_Dance_256x192_eval_acc",
         {
             "box_xywh_sim": ["box_fc1", "box_fc2"],
             "OSNet_sim": [
@@ -110,92 +110,92 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
 
 DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
     # dance gt
-    "val_dl_dance_256x192_gt": {
+    "val_dl_Dance_256x192_gt": {
         # earlier model
         "iou_fc1_ep4__vis_osn_fc3_ep4__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
         ],
         # partially trained
         "iou_fc1_ep6__vis_osn_fc1_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
         ],
         "iou_fc1_ep6__vis_osn_fc3_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
         ],
         "iou_fc1_ep6__vis_osn_fc5_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
         ],
         # fully trained
         "iou_fc1_ep12__vis_osn_fc1_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
         ],
         "iou_fc1_ep12__vis_osn_fc3_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
         ],
         "iou_fc1_ep12__vis_osn_fc5_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
         ],
     },
-    "val_dl_dance_256x192_rcnn": {
+    "val_dl_Dance_256x192_rcnn": {
         # earlier model
         "iou_fc1_ep4__vis_osn_fc3_osn_ep4__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
         ],
         # partially trained
         "iou_fc1_ep6__vis_osn_fc1_osn_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
         ],
         "iou_fc1_ep6__vis_osn_fc3_osn_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
         ],
         "iou_fc1_ep6__vis_osn_fc5_osn_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
         ],
         # fully trained
         "iou_fc1_ep12__vis_osn_osn_fc1_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
         ],
         "iou_fc1_ep12__vis_osn_osn_fc3_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 12),
         ],
         "iou_fc1_ep12__vis_osn_osn_fc5_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
         ],
     },
-    "val_dl_dance_256x192_mixed": {
+    "val_dl_Dance_256x192_mixed": {
         # box (trained on dance) and oks (trained on pt21)
         "iou_fc1_ep6__pose_coco_fc1_ep6__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc1", 6),
         ],
         "iou_fc1_ep12__pose_coco_fc1_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc1", 12),
         ],
         "iou_fc1_ep12__pose_coco_fc2_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 12),
         ],
         "iou_fc1_ep12__pose_coco_conv1o15k2fc1_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_conv1o15k2fc1", 12),
         ],
         "iou_fc1_ep12__pose_coco_conv1o15k2fc2_ep12__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_conv1o15k2fc2", 12),
         ],
     },
