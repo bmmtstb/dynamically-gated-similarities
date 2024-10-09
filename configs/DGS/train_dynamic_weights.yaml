@@ -43,8 +43,8 @@ train:
     optimizer_kwargs:
         lr: 0.0001  # 1e-4
         foreach: true
-    epochs: 12
-    save_interval: 2
+    epochs: 4
+    save_interval: 1
     scheduler: "StepLR"
     scheduler_kwargs:
         step_size: 4
