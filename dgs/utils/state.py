@@ -715,7 +715,7 @@ class State(UserDict):
         if len(paths) != self.B:
             raise ValueError(f"There must be a path for every bounding box. Got B: {self.B} and paths: {paths}")
 
-        if "joint_weight" in self.data and ("keypoints" in self.data or "keypoints_local" in self.data):
+        if "joint_weight" in self.data and "keypoints" in self.data and "keypoints_local" in self.data:
             raise ValueError("The keypoints and weights are already stored in the state.")
 
         kps, weights = [], []

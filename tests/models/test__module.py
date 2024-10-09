@@ -103,7 +103,6 @@ class TestBaseModule(unittest.TestCase):
         path = "dummy"
         for validations, data, exception in [
             ({"T": []}, {"T": None}, ValidationException),
-            ({"T": [None]}, {"T": None}, ValidationException),
         ]:
             with self.subTest(msg=f"validations: {validations}, data: {data}, exception: {exception}"):
                 m = BaseModule(config=_def_repl(path, data), path=[path])

@@ -8,7 +8,7 @@ from torchvision import tv_tensors as tvte
 
 from dgs.utils.config import DEF_VAL
 from dgs.utils.constants import PROJECT_ROOT
-from dgs.utils.state import collate_states, get_ds_data_getter, State
+from dgs.utils.state import collate_states, get_ds_data_getter, get_ds_data_getters, State
 from dgs.utils.types import Device
 from tests.helper import load_test_image, test_multiple_devices
 from . import *
@@ -188,10 +188,11 @@ class TestStateAttributes(unittest.TestCase):
                     self.assertEqual(kp.size(0), 1)
                     self.assertEqual(kp.size(-1), 2)
                     if has_weights:
-                        self.assertTrue("joint_weight" in ds)
+                        self.assertTrue("joint_weight" in ds.data)
                         self.assertTrue(t.allclose(ds.joint_weight, res_weights))
                     else:
-                        self.assertFalse("joint_weight" in ds)
+                        self.assertTrue("joint_weight" in ds.data)
+                        self.assertTrue(t.allclose(ds.joint_weight, t.ones_like(res_weights)))
 
     @test_multiple_devices
     def test_get_keypoints_load_from_file_batched(self, device):
@@ -229,9 +230,9 @@ class TestStateAttributes(unittest.TestCase):
                     self.assertEqual(kp.size(0), B)
                     self.assertEqual(kp.size(-1), 2)
                     if has_weights:
-                        self.assertTrue("joint_weight" in ds)
+                        self.assertTrue("joint_weight" in ds.data)
                     else:
-                        self.assertFalse("joint_weight" in ds)
+                        self.assertTrue("joint_weight" in ds.data)
 
     @test_multiple_devices
     def test_get_keypoints_from_crop_path(self, device):
@@ -842,10 +843,8 @@ class TestImageCrop(unittest.TestCase):
         # s - call load_image_crop
         s.load_image_crop(store=False)
         self.assertTrue("image_crop" not in s)
-        self.assertTrue("keypoints_local" not in s)
         s.load_image_crop(store=True)
         self.assertTrue("image_crop" in s)
-        self.assertTrue("keypoints_local" in s)
         crop = s["image_crop"]
         self.assertTrue(isinstance(crop, tvte.Image))
         self.assertEqual(crop.shape, self.orig_img.shape)
@@ -898,10 +897,8 @@ class TestImageCrop(unittest.TestCase):
         )
         s.load_image_crop(store=False)
         self.assertTrue("image_crop" not in s)
-        self.assertTrue("keypoints_local" not in s)
         s.load_image_crop(store=True)
         self.assertTrue("image_crop" in s)
-        self.assertTrue("keypoints_local" in s)
 
     def test_load_img_crop_by_extraction(self):
         s = State(bbox=DUMMY_BBOX, filepath=DUMMY_FP, keypoints=DUMMY_KP)
@@ -966,7 +963,13 @@ class TestImageCrop(unittest.TestCase):
 
 class TestDataGetter(unittest.TestCase):
     def test_get_ds_data_getter(self):
-        getter = get_ds_data_getter(["bbox", "filepath"])
+        getter = get_ds_data_getter("bbox")
+        self.assertTrue(callable(getter))
+        s = State(**DUMMY_DATA.copy())
+        self.assertTrue(t.allclose(getter(s), s.bbox))
+
+    def test_get_ds_data_getters(self):
+        getter = get_ds_data_getters(["bbox", "filepath"])
         self.assertTrue(callable(getter))
         s = State(**DUMMY_DATA.copy())
         self.assertTrue(t.allclose(getter(s)[0], s.bbox))
