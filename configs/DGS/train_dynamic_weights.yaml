@@ -95,7 +95,7 @@ test_dl_Dance_256x192_gt:
     crop_key: "rcnn_075_035_256x192"
 
 
-val_dl_Dance_256x192_rcnn:
+val_dl_Dance_256x192_rcnn_075_035:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
@@ -154,7 +154,7 @@ train_dl_Dance_256x192_gt:
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
 
-test_dl_pt21_256x192_rcnn:
+test_dl_pt21_256x192_rcnn_085_040:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
@@ -180,7 +180,7 @@ val_dl_pt21_256x192_gt:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-val_dl_pt21_256x192_rcnn:
+val_dl_pt21_256x192_rcnn_085_040:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
     dataset_path: "./data/PoseTrack21/"
