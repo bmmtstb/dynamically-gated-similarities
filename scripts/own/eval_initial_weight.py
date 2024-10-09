@@ -26,7 +26,7 @@ INITIAL_WEIGHTS: list[float] = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
 
 DL_KEYS: dict[str, tuple[float, float, list[str]]] = {
     "dgs_pt21_rcnn_256x192_val": (0.85, 0.40, ["iou", "oks", "OSNet"]),
-    "dgs_Dance_rcnn_256x192_val": (0.75, 0.40, ["iou", "OSNet"]),
+    "dgs_Dance_rcnn_256x192_val": (0.75, 0.35, ["iou", "OSNet"]),
 }
 
 
@@ -95,7 +95,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
         subm_key = "submission_MOT"
         config["test"]["submission"] = [subm_key]
         config[subm_key]["file"] = os.path.abspath(
-            os.path.normpath(f"{os.path.dirname(dataset_path)}./results_{out_key}_{dgs_key}/{dataset_name}.txt")
+            os.path.normpath(f"{os.path.dirname(dataset_path)}/results_{out_key}_{dgs_key}/{dataset_name}.txt")
         )
 
         if os.path.exists(config[subm_key]["file"]):
