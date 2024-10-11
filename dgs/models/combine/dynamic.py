@@ -13,7 +13,9 @@ from dgs.utils.types import Config, NodePath, Validations
 
 alpha_combine_validation: Validations = {}
 
-dynamic_alpha_validation: Validations = {}
+dynamic_alpha_validation: Validations = {
+    "alpha_modules": ["NodePaths", ("longer eq", 1)],
+}
 
 
 @configure_torch_module
@@ -35,6 +37,9 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
     Params
     ------
 
+    alpha_modules (list[NodePath]):
+        A list containing paths to multiple :class:`BaseAlphaModule` s.
+
     Optional Params
     ---------------
 
@@ -46,6 +51,12 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config, path)
         self.validate_params(dynamic_alpha_validation)
+
+        from dgs.models.loader import module_loader
+
+        self.alpha_models = nn.ModuleList(
+            [module_loader(config=config, module_type="alpha", key=path) for path in self.params["alpha_modules"]]
+        ).to(device=self.device)
 
     def forward(
         self,
@@ -85,9 +96,6 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         """
         # pylint: disable=too-many-branches
 
-        # validate model
-        if not hasattr(self, "alpha_model") or len(self.alpha_model) == 0:
-            raise NotImplementedError("The alpha model has not been set.")
         # validate tensors
         if not isinstance(tensors, tuple):  # pragma: no cover # redundancy
             raise TypeError("tensors should be a tuple containing (float) tensors.")

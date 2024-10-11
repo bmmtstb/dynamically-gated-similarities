@@ -37,7 +37,10 @@ class BaseAlphaModule(NamedModule, t.nn.Module):
         return "alpha"
 
     def __call__(self, *args, **kwargs) -> any:
-        return self.forward(*args, **kwargs)
+        """The call function uses :func:`sub_forward` and not :func:`forward`
+        This way, the sequential layers can just be called later on.
+        """
+        return self.sub_forward(*args, **kwargs)
 
     @abstractmethod
     def forward(self, s: State) -> t.Tensor:

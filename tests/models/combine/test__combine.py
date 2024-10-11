@@ -26,7 +26,14 @@ class TestCombineSimilaritiesModule(unittest.TestCase):
 
     default_cfg = fill_in_defaults(
         {
-            "default": {"module_name": "dynamic_alpha"},
+            "default": {"module_name": "dynamic_alpha", "alpha_modules": ["box_fc1"]},
+            "box_fc1": {
+                "module_name": "FullyConnectedAlpha",
+                "name": "bbox",
+                "hidden_layers": [4, 1],
+                "bias": True,
+                "act_func": None,
+            },
         },
         get_test_config(),
     )
@@ -34,8 +41,8 @@ class TestCombineSimilaritiesModule(unittest.TestCase):
     def test_dynamic_alpha_class(self):
         for name, mod_class, kwargs in [
             ("alpha_combine", AlphaCombine, {}),
-            ("dynamic_alpha", DynamicAlphaCombine, {}),
-            ("dynamic_alpha", DynamicAlphaCombine, {"softmax": False}),
+            ("dynamic_alpha", DynamicAlphaCombine, {"alpha_modules": ["box_fc1"]}),
+            ("dynamic_alpha", DynamicAlphaCombine, {"softmax": False, "alpha_modules": ["box_fc1"]}),
             ("static_alpha", StaticAlphaCombine, {"alpha": [0.4, 0.3, 0.3]}),
         ]:
             with self.subTest(msg="name: {}, module: {}, kwargs: {}".format(name, mod_class, kwargs)):
@@ -79,7 +86,14 @@ class TestDynamicAlphaCombine(unittest.TestCase):
 
     default_cfg = fill_in_defaults(
         {
-            "def_dynamic_alpha": {"module_name": "dynamic_alpha", "softmax": False},
+            "def_dynamic_alpha": {"module_name": "dynamic_alpha", "softmax": False, "alpha_modules": ["box_fc1"]},
+            "box_fc1": {
+                "module_name": "FullyConnectedAlpha",
+                "name": "bbox",
+                "hidden_layers": [4, 1],
+                "bias": True,
+                "act_func": None,
+            },
         },
         get_test_config(),
     )
@@ -194,7 +208,16 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
 
     def setUp(self):
         self.config = fill_in_defaults(
-            {"def_dynamic_alpha": {"module_name": "dynamic_alpha", "softmax": False}},
+            {
+                "def_dynamic_alpha": {"module_name": "dynamic_alpha", "softmax": False, "alpha_modules": ["box_fc1"]},
+                "box_fc1": {
+                    "module_name": "FullyConnectedAlpha",
+                    "name": "bbox",
+                    "hidden_layers": [4, 1],
+                    "bias": True,
+                    "act_func": None,
+                },
+            },
             get_test_config(),
         )
 
@@ -222,22 +245,6 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
             del self.model.alpha_model
         del self.model
         del self.config
-
-    def test_not_implemented_error(self):
-        cfg = fill_in_defaults(
-            {"dummy": {"module_name": "dynamic_alpha", "softmax": False}},
-            get_test_config(),
-        )
-        # not set
-        empty_model = DynamicAlphaCombine(config=cfg, path=["dummy"])
-        with self.assertRaises(NotImplementedError) as e:
-            empty_model.forward(*self.dummy_t, alpha_inputs=self.dummy_ai)
-        self.assertIn("The alpha model has not been set", str(e.exception))
-        # empty
-        empty_model.alpha_model = nn.ModuleList()
-        with self.assertRaises(NotImplementedError) as e:
-            empty_model.forward(*self.dummy_t, alpha_inputs=self.dummy_ai)
-        self.assertIn("The alpha model has not been set", str(e.exception))
 
     def test_type_error(self):
         # tensors

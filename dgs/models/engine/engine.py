@@ -355,7 +355,7 @@ class EngineModule(NamedModule, nn.Module):
             except Exception as e:
                 raise ValueError("No optimizer or lr scheduler given. Or Failed to initialize. Can't continue.") from e
 
-        self.logger.info("#### Start Training ####")
+        self.logger.debug("#### Start Training ####")
 
         # initialize variables
         timers: DifferenceTimers = DifferenceTimers()
@@ -484,7 +484,7 @@ class EngineModule(NamedModule, nn.Module):
         # END OF TRAINING #
         # ############### #
 
-        self.logger.debug(epoch_t.print(name=f"epoch {self.curr_epoch}", prepend="Training", hms=True))
+        self.logger.info(epoch_t.print(name=f"epoch {self.curr_epoch}", prepend="Training", hms=True))
         self.logger.info("#### Training complete ####")
 
         self.writer.flush()

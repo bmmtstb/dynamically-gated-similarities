@@ -7,16 +7,13 @@ Train, evaluate, and test the dynamic weights with different individual weights 
 import os
 from copy import deepcopy
 from glob import glob
-from typing import Union
 
 import torch as t
-from torch import nn
 from tqdm import tqdm
 
 from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
-from dgs.utils.nn import fc_linear
 from dgs.utils.torchtools import close_all_layers, init_model_params
 from dgs.utils.types import Config
 from dgs.utils.utils import notify_on_completion_or_error
@@ -208,38 +205,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, int]]]] = {
     },
 }
 
-# fixme: replace with general alpha modules and names and definitions in the configuration file
-ALPHA_MODULES: dict[str, Union[nn.Module, nn.Sequential]] = {
-    # bbox
-    "box_fc1": fc_linear(hidden_layers=[4, 1]),
-    "box_fc2": fc_linear(hidden_layers=[4, 8, 1]),
-    # pose - COCO
-    "pose_coco_fc1": nn.Sequential(nn.Flatten(), fc_linear(hidden_layers=[2 * 17, 1])),
-    "pose_coco_fc2": nn.Sequential(nn.Flatten(), fc_linear(hidden_layers=[2 * 17, 8, 1])),
-    "pose_coco_conv1o15k2fc1": nn.Sequential(
-        nn.Conv1d(17, 15, kernel_size=2, groups=1, bias=True),
-        nn.Flatten(),
-        fc_linear(hidden_layers=[15, 1]),
-    ),
-    "pose_coco_conv1o15k2fc2": nn.Sequential(
-        nn.Conv1d(17, 15, kernel_size=2, groups=1, bias=True),
-        nn.Flatten(),
-        fc_linear(hidden_layers=[15, 8, 1]),
-    ),
-    # visual - OSNet
-    "visual_osn_fc1": fc_linear([512, 1]),
-    "visual_osn_fc2": fc_linear([512, 128, 1]),
-    "visual_osn_fc3": fc_linear([512, 256, 128, 1]),
-    "visual_osn_fc4": fc_linear([512, 256, 128, 64, 1]),
-    "visual_osn_fc5": fc_linear([512, 256, 128, 64, 32, 1]),
-    # visual - Resnet
-    "visual_res_fc1": fc_linear([2048, 1]),
-    "visual_res_fc2": fc_linear([2048, 512, 1]),
-    "visual_res_fc3": fc_linear([2048, 512, 64, 1]),
-    "visual_res_fc4": fc_linear([2048, 1024, 256, 64, 1]),
-    "visual_res_fc5": fc_linear([2048, 1024, 256, 128, 64, 1]),
-}
-
 
 def set_up_test_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[str, str, int]]) -> DGSEngine:
     """Given a configuration, modify it for the multi similarity case.
@@ -256,11 +221,9 @@ def set_up_test_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[st
     cfg["DGSModule"]["names"] = [[sm[0]] for sm in dgs_mod_data]
     cfg["DGSModule"]["combine"] = "dac_test"
     base_lr = cfg["train"]["optimizer_kwargs"]["lr"]
+    cfg["dac_test"]["alpha_modules"] = [a_name for _, a_name, _ in dgs_mod_data]
 
     engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key))
-
-    engine.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[a_name] for _, a_name, _ in dgs_mod_data])
-    engine.model.combine.alpha_model.to(device=engine.device)
 
     for s_i, (sim_name, alpha_name, epoch) in enumerate(dgs_mod_data):
         checkpoints = glob(
@@ -393,6 +356,7 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
 
     # modify config
     cfg["DGSModule"]["names"] = [sim_name]
+    cfg["dac_train"]["alpha_modules"] = [alpha_mod_name]
     cfg["log_dir_suffix"] = f"./{dl_train_key}/{sim_name}/{alpha_mod_name}_{lr:.10f}/"
 
     # add option to resume training in later epochs
@@ -429,9 +393,7 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
         f"Training on the ground-truth train-dataset with config: {dl_train_key} - {alpha_mod_name}"
     )
 
-    # set model and initialize the weights
-    engine_train.model.combine.alpha_model = nn.ModuleList([ALPHA_MODULES[alpha_mod_name]])
-    engine_train.model.combine.alpha_model.to(device=engine_train.device)
+    # initialize the weights of the alpha module(s)
     init_model_params(engine_train.model.combine.alpha_model)
 
     # load pretrained checkpoint

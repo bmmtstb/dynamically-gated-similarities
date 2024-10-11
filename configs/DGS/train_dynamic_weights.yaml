@@ -12,7 +12,8 @@ For evaluation one of the following two approaches can be used:
 The tests are performed using the regular MOTA / HOTA pipeline. Every dataset contains one video."
 
 device: "cuda:0"
-print_prio: "INFO"
+print_prio: "WARNING"
+#print_prio: "INFO"
 #print_prio: "DEBUG"
 is_training: on
 log_dir: "./results/own/train_single/"
@@ -64,15 +65,17 @@ submission_MOT:
 dac_train:
     module_name: "dynamic_alpha"
     softmax: false
+    # alpha_modules:  # will be set in python script
 
 dac_test:
     module_name: "dynamic_alpha"
     softmax: true
+    # alpha_modules:  # will be set in python script
 
 DGSModule:
     module_name: "DGS"
     # names:  # will be set in python script
-    combine: "dac_train"
+    combine: "dac_train"  # will be changed in python script for validation and tests
     new_track_weight: 0.0
 
 # #### #
@@ -311,3 +314,142 @@ Resnet152_embed_gen:
     weights: "pretrained"
     nof_classes: 1000
     is_training: off
+
+# ############# #
+# ALPHA MODULES #
+# ############# #
+
+box_fc1:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: null
+
+box_fc2:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: null
+    
+# pose - COCO
+pose_coco_fc1:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc1", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 1 ]
+        bias: true
+        act_func: null
+
+pose_coco_fc2:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc2", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 8, 1 ]
+        bias: true
+        act_func: null
+
+
+pose_coco_conv1o15k2fc1:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc1", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 1 ]
+        bias: true
+        act_func: null
+
+pose_coco_conv1o15k2fc2:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc2", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 8, 1 ]
+        bias: true
+        act_func: null
+
+# visual - OSNet
+visual_osn_fc1:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 1]
+  bias: true
+  act_func: null
+  
+visual_osn_fc2:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 128, 1]
+  bias: true
+  act_func: null
+  
+visual_osn_fc3:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 256, 128, 1]
+  bias: true
+  act_func: null
+  
+visual_osn_fc4:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 256, 128, 64, 1]
+  bias: true
+  act_func: null
+  
+visual_osn_fc5:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 256, 128, 64, 32, 1]
+  bias: true
+  act_func: null
+  
+# visual - Resnet
+visual_res_fc1:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 1]
+  bias: true
+  act_func: null
+  
+visual_res_fc2:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 512, 1]
+  bias: true
+  act_func: null
+  
+visual_res_fc3:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 512, 64, 1]
+  bias: true
+  act_func: null
+  
+visual_res_fc4:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 1024, 256, 64, 1]
+  bias: true
+  act_func: null
+  
+visual_res_fc5:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 1024, 256, 128, 64, 1]
+  bias: true
+  act_func: null
+  
