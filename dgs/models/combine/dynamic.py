@@ -8,6 +8,7 @@ import torch as t
 from torch import nn
 
 from dgs.models.combine.combine import CombineSimilaritiesModule
+from dgs.models.loader import module_loader
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -51,8 +52,6 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
     def __init__(self, config: Config, path: NodePath) -> None:
         super().__init__(config, path)
         self.validate_params(dynamic_alpha_validation)
-
-        from dgs.models.loader import module_loader
 
         self.alpha_models = nn.ModuleList(
             [module_loader(config=config, module_type="alpha", key=path) for path in self.params["alpha_modules"]]
