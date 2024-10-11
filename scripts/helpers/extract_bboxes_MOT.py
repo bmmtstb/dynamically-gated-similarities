@@ -252,9 +252,9 @@ if __name__ == "__main__":
 
                 config[RCNN_DL_KEY]["iou_threshold"] = iou_threshold
 
-                _rcnn_cfg_str = f"rcnn_{score_str}_{iou_str}_{h}x{w}"
-
-                run_RCNN_extractor(dl_key=RCNN_DL_KEY, subm_key="submission_MOT", rcnn_cfg_str=_rcnn_cfg_str)
+                run_RCNN_extractor(
+                    dl_key=RCNN_DL_KEY, subm_key="submission_MOT", rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{h}x{w}"
+                )
 
         if (elapsed_time := time.time() - start_time) > 30:
             send_discord_notification(
