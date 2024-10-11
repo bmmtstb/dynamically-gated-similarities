@@ -36,7 +36,7 @@ dgs_pt21_rcnn_256x192_val:
 
 dgs_Dance_rcnn_256x192_val:
     module_name: "MOTImage"
-    dataset_path: "./data/DanceTrack/"
+    dataset_path: "./data/DanceTrack/val/"
     base_path: "./data/DanceTrack/val/**/det/"
     # data_path: # will be set in python script
 

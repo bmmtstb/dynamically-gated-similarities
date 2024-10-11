@@ -21,7 +21,7 @@ from dgs.utils.utils import notify_on_completion_or_error, replace_file_type, se
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
 # SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-SCORE_THRESHS: list[float] = [0.75]
+SCORE_THRESHS: list[float] = [0.70, 0.75]
 # IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 IOU_THRESHS: list[float] = [0.35]
 

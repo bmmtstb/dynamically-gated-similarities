@@ -37,14 +37,15 @@ train:
     acc_k_train: [1, 5, 10, 20]
     acc_k_eval: [0.1, 0.5, 1, 5, 10, 25]
     # submission:  # will be set in python script
+    load_image_crops: false  # will be set in python script
     loss: "TorchMSELoss"
     loss_kwargs: {}
     optimizer: "Adam"
     optimizer_kwargs:
         lr: 0.0001  # 1e-4
         foreach: true
-    epochs: 12
-    save_interval: 2
+    epochs: 4
+    save_interval: 1
     scheduler: "StepLR"
     scheduler_kwargs:
         step_size: 4
@@ -82,7 +83,7 @@ DGSModule:
 # DATA #
 # #### #
 
-test_dl_dance_256x192_gt:
+test_dl_Dance_256x192_gt:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/test/"
     # data_path: # will be set in python script
@@ -97,7 +98,7 @@ test_dl_dance_256x192_gt:
     crop_key: "rcnn_075_035_256x192"
 
 
-val_dl_dance_256x192_rcnn:
+val_dl_Dance_256x192_rcnn_075_035:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
@@ -111,7 +112,7 @@ val_dl_dance_256x192_rcnn:
     
     crop_key: "rcnn_075_035_256x192"
 
-val_dl_dance_256x192_gt:
+val_dl_Dance_256x192_gt:
     module_name: "MOTImage"
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
@@ -124,7 +125,7 @@ val_dl_dance_256x192_gt:
     crop_size: !!python/tuple [256, 192]
     crop_mode: "zero-pad"
 
-val_dl_dance_256x192_eval_acc:
+val_dl_Dance_256x192_eval_acc:
     module_name: "Concat_MOTImageHistory"
     shuffle: false
     dataset_path: "./data/DanceTrack/val/"
@@ -141,7 +142,7 @@ val_dl_dance_256x192_eval_acc:
     crop_mode: "zero-pad"
 
 
-train_dl_dance_256x192_gt:
+train_dl_Dance_256x192_gt:
     module_name: "Concat_MOTImageHistory"
     shuffle: true
     dataset_path: "./data/DanceTrack/train/"
@@ -156,7 +157,7 @@ train_dl_dance_256x192_gt:
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
 
-test_dl_pt21_256x192_rcnn:
+test_dl_pt21_256x192_rcnn_085_040:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
@@ -182,7 +183,7 @@ val_dl_pt21_256x192_gt:
     crop_size: !!python/tuple [256, 192]  # [H,W]
     crop_mode: "zero-pad"
 
-val_dl_pt21_256x192_rcnn:
+val_dl_pt21_256x192_rcnn_085_040:
     module_name: "PoseTrack21_Image"
     # data_path:  # will be set in python script
     dataset_path: "./data/PoseTrack21/"
@@ -236,7 +237,7 @@ train_dl_pt21_256x192_gt:
 
 # BOX - IoU
 
-box_sim:
+box_xywh_sim:
     module_name: "iou"
     softmax: false
     train_key: "bbox_relative"

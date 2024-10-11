@@ -25,45 +25,112 @@ from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_disco
 
 CONFIG_FILE = "./configs/DGS/eval_const_single_similarities.yaml"
 
-DL_KEYS: list[str] = [
-    "dgs_pt21_gt_256x192_val",
-    "dgs_pt21_gt_256x128_val",
-    "dgs_Dance_gt_256x192_train",
-    "dgs_Dance_gt_256x192_val",
-]
-RCNN_DL_KEYS: list[str] = [
-    "dgs_pt21_rcnn_256x192",
-    "dgs_pt21_rcnn_256x128",
-    "dgs_Dance_rcnn_256x192_val",
-    "dgs_Dance_rcnn_256x192_test",
-]
+# DL_KEY -> list of DGS_KEYS
+DL_KEYS: dict[str, list[str]] = {
+    "dgs_pt21_gt_256x192_val": [
+        "iou",
+        "oks",
+        "OSNet",
+        # "OSNetAIN",
+        "Resnet50",
+        # "Resnet152",
+        # "OSNetAIN_CrossDomainDuke",
+        # "OSNetIBN_CrossDomainDuke",
+        # "OSNetAIN_CrossDomainMSMT17",
+    ],
+    "dgs_pt21_gt_256x128_val": [
+        "iou",
+        "oks",
+        "OSNet",
+        # "OSNetAIN",
+        # "Resnet50",
+        # "Resnet152",
+        # "OSNetAIN_CrossDomainDuke",
+        # "OSNetIBN_CrossDomainDuke",
+        # "OSNetAIN_CrossDomainMSMT17",
+    ],
+    "dgs_Dance_gt_256x192_val": [
+        "iou",
+        "OSNet",
+        # "OSNetAIN",
+        # "Resnet50",
+        # "Resnet152",
+        # "OSNetAIN_CrossDomainDuke",
+        # "OSNetIBN_CrossDomainDuke",
+        # "OSNetAIN_CrossDomainMSMT17",
+    ],
+    "dgs_Dance_gt_256x192_train": [
+        "iou",
+        "OSNet",
+        # "OSNetAIN",
+        # "Resnet50",
+        # "Resnet152",
+        # "OSNetAIN_CrossDomainDuke",
+        # "OSNetIBN_CrossDomainDuke",
+        # "OSNetAIN_CrossDomainMSMT17",
+    ],
+}
 
-KEYS: list[str] = [
-    "iou",
-    "oks",
-    "OSNet",
-    "OSNetAIN",
-    "Resnet50",
-    "Resnet152",
-    "OSNetAIN_CrossDomainDuke",
-    "OSNetIBN_CrossDomainDuke",
-    "OSNetAIN_CrossDomainMSMT17",
-]
+# DL_KEY -> (list of SCORE_THRESHS, list of IOU_THRESHS, list of DGS_KEYS)
+RCNN_DL_KEYS: dict[str, tuple[list[float], list[float], list[str]]] = {
+    "dgs_pt21_rcnn_256x192_val": (
+        [0.85, 0.90, 0.95, 0.99],  # [0.85]
+        [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],  # [0.4]
+        [
+            "iou",
+            "OSNet",
+            # "OSNetAIN",
+            # "Resnet50",
+            # "Resnet152",
+            # "OSNetAIN_CrossDomainDuke",
+            # "OSNetIBN_CrossDomainDuke",
+            # "OSNetAIN_CrossDomainMSMT17",
+        ],
+    ),
+    "dgs_pt21_rcnn_256x128_val": (
+        [0.85],
+        [0.4],
+        [
+            "iou",
+            "OSNet",
+            # "OSNetAIN",
+            # "Resnet50",
+            # "Resnet152",
+            # "OSNetAIN_CrossDomainDuke",
+            # "OSNetIBN_CrossDomainDuke",
+            # "OSNetAIN_CrossDomainMSMT17",
+        ],
+    ),
+    "dgs_Dance_rcnn_256x192_val": (
+        [0.70, 0.75],
+        [0.35],
+        [
+            "iou",
+            "OSNet",
+            # "OSNetAIN",
+            # "Resnet50",
+            # "Resnet152",
+            # "OSNetAIN_CrossDomainDuke",
+            # "OSNetIBN_CrossDomainDuke",
+            # "OSNetAIN_CrossDomainMSMT17",
+        ],
+    ),
+    # "dgs_Dance_rcnn_256x192_test": (
+    #     [0.70, 0.75],
+    #     [0.35],
+    #     [
+    #         "iou",
+    #         "OSNet",
+    #         # "OSNetAIN",
+    #         # "Resnet50",
+    #         # "Resnet152",
+    #     ],
+    # ),
+}
 
-# ALL
-# IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-# SCORE_THRESHS: list[float] = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99]
-# PT21
-IOU_THRESHS: list[float] = [0.4]
-SCORE_THRESHS: list[float] = [0.85]
-# Dance
 
-
-# @torch_memory_analysis
-# @MemoryTracker(interval=7.5, top_n=20)
 @notify_on_completion_or_error(min_time=30, info="single")
-@t.no_grad()
-def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
+def single_run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the PT21 config."""
     crop_h, crop_w = config[dl_key]["crop_size"]
     config[dl_key]["crops_folder"] = (
@@ -75,38 +142,30 @@ def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: st
     # get all the sub folders or files and analyze them one-by-one
     for sub_datapath in (pbar_data := tqdm(paths, desc="ds_sub_dir", leave=False)):
         pbar_data.set_postfix_str(os.path.basename(sub_datapath))
-        # make sure to have a unique log dir every time
-        orig_log_dir = config["log_dir"]
 
         # change config data
         config[dl_key]["data_path"] = sub_datapath
-        config["log_dir"] += f"./{out_key}/{dgs_key}/"
-        config["test"]["submission"] = ["submission_pt21"]
+        log_dir_suffix = f"./{out_key}/{dgs_key}/"
+        config["log_dir_suffix"] = log_dir_suffix
         config["test"]["writer_log_dir_suffix"] = f"./{os.path.basename(sub_datapath)}/"
 
         # set the new path for the out file in the log_dir
         subm_key = "submission_pt21"
+        config["test"]["submission"] = [subm_key]
         config[subm_key]["file"] = os.path.abspath(
             os.path.normpath(
-                f"{config['log_dir']}/results_json/{sub_datapath.split('/')[-1].removesuffix('.json')}.json"
+                os.path.join(config["log_dir"], log_dir_suffix, f"./results_json/{os.path.basename(sub_datapath)}")
             )
         )
 
         if os.path.exists(config[subm_key]["file"]):
-            # reset the original log dir
-            config["log_dir"] = orig_log_dir
             continue
 
         run(config=config, dl_key=dl_key, dgs_key=dgs_key)
 
-        # reset the original log dir
-        config["log_dir"] = orig_log_dir
 
-
-# @torch_memory_analysis
 @notify_on_completion_or_error(min_time=30, info="single")
-@t.no_grad()
-def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
+def single_run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
     """Set the DanceTrack config."""
 
     # get all the sub folders or files and analyze them one-by-one
@@ -116,34 +175,27 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
         pbar_data.set_postfix_str(dataset_name)
         config[dl_key]["data_path"] = sub_datapath
 
-        # make sure to have a unique log dir every time
-        orig_log_dir = config["log_dir"]
-
         # change config data
-        config["log_dir"] += f"./{out_key}/{dgs_key}/"
+        config["log_dir_suffix"] = f"./{out_key}/{dgs_key}/"
         config["test"]["writer_log_dir_suffix"] = f"./{dataset_name}/"
 
         # set the new path for the submission file
         subm_key = "submission_MOT"
         config["test"]["submission"] = [subm_key]
         config[subm_key]["file"] = os.path.abspath(
-            os.path.normpath(f"{os.path.dirname(dataset_path)}./results_{out_key}_{dgs_key}/{dataset_name}.txt")
+            os.path.normpath(f"{os.path.dirname(dataset_path)}/results_{out_key}_{dgs_key}/{dataset_name}.txt")
         )
 
         if os.path.exists(config[subm_key]["file"]):
-            # reset the original log dir
-            config["log_dir"] = orig_log_dir
             continue
 
         run(config=config, dl_key=dl_key, dgs_key=dgs_key)
 
-        # reset the original log dir
-        config["log_dir"] = orig_log_dir
 
-
-@t.no_grad()
 def run(config: Config, dl_key: str, dgs_key: str) -> None:
     """Main function to run the code after all the parameters are set."""
+    config[dl_key]["load_image_crops"] = dgs_key not in ["iou", "oks"]
+
     with HidePrint():
         # validation dataset
         val_dl = module_loader(config=config, module_type="dataloader", key=dl_key)
@@ -162,12 +214,18 @@ def run(config: Config, dl_key: str, dgs_key: str) -> None:
 
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
-
     cfg = load_config(CONFIG_FILE)
-    for DL_KEY in DL_KEYS:
-        print(f"Evaluating on the ground-truth evaluation dataset with config: {DL_KEY}")
+
+    # ## #
+    # GT #
+    # ## #
+
+    print("Evaluating single models on the GT evaluation datasets")
+    for DL_KEY, DGS_KEYS in (pbar_dl := tqdm(DL_KEYS.items(), desc="Dataloader", leave=False)):
+        pbar_dl.set_postfix_str(DL_KEY)
+
         # IoU, OKS, and visual similarity
-        for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities")):
+        for DGS_KEY in (pbar_key := tqdm(DGS_KEYS, desc="similarities", leave=False)):
             pbar_key.set_postfix_str(DGS_KEY)
 
             if DGS_KEY == "oks":
@@ -177,26 +235,36 @@ if __name__ == "__main__":
             if "pt21" in DL_KEY:
                 data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["base_path"]) if f.is_file()]
                 assert len(data_paths)
-                run_pt21(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY, dgs_key=DGS_KEY)
+                single_run_pt21(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY, dgs_key=DGS_KEY)
             elif "Dance" in DL_KEY:
                 if DGS_KEY == "oks":
                     continue
                 data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["base_path"])]
                 assert len(data_paths)
-                run_dance(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY, dgs_key=DGS_KEY)
+                single_run_dance(config=cfg, dl_key=DL_KEY, paths=data_paths, out_key=DL_KEY, dgs_key=DGS_KEY)
             else:
                 raise NotImplementedError
 
-    for RCNN_DL_KEY in RCNN_DL_KEYS:
-        print(f"Evaluating using KeypointRCNN with config: {RCNN_DL_KEY}")
-        for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh")):
+    # #### #
+    # RCNN #
+    # #### #
+
+    print("Evaluating single models on the validation-data using KeypointRCNN as prediction backbone")
+    for RCNN_DL_KEY, (SCORE_THRESHS, IOU_THRESHS, DGS_KEYS) in (
+        pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="RCNN Dataloaders", leave=False)
+    ):
+        pbar_dl.set_postfix_str(f"{RCNN_DL_KEY}")
+
+        for score_thresh in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score Thresh", leave=False)):
             score_s = f"{int(score_thresh * 100):03d}"
             pbar_score_thresh.set_postfix_str(os.path.basename(score_s))
+
             for iou_thresh in (pbar_iou_thresh := tqdm(IOU_THRESHS, desc="IoU Thresh", leave=False)):
                 iou_s = f"{int(iou_thresh * 100):03d}"
                 pbar_iou_thresh.set_postfix_str(os.path.basename(iou_s))
+
                 # IoU, OKS, and visual similarity
-                for DGS_KEY in (pbar_key := tqdm(KEYS, desc="similarities", leave=False)):
+                for DGS_KEY in (pbar_key := tqdm(DGS_KEYS, desc="similarities", leave=False)):
                     pbar_key.set_postfix_str(DGS_KEY)
 
                     cfg = load_config(CONFIG_FILE)
@@ -210,11 +278,11 @@ if __name__ == "__main__":
                         data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
                         assert len(data_paths), f"There are no paths. base_path: {base_path}"
 
-                        run_pt21(
+                        single_run_pt21(
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"dgs_pt21_rcnn_{_crop_h}x{_crop_w}_val_{score_s}_{iou_s}",
+                            out_key=f"{RCNN_DL_KEY}_{score_s}_{iou_s}",
                             dgs_key=DGS_KEY,
                         )
                     elif "Dance" in RCNN_DL_KEY:
@@ -227,11 +295,11 @@ if __name__ == "__main__":
                         ]
                         assert len(data_paths), f"There are no paths. rcnn_cfg_str: {rcnn_cfg_str}"
 
-                        run_dance(
+                        single_run_dance(
                             config=cfg,
                             dl_key=RCNN_DL_KEY,
                             paths=data_paths,
-                            out_key=f"dgs_pt21_rcnn_{_crop_h}x{_crop_w}_val_{score_s}_{iou_s}",
+                            out_key=f"{RCNN_DL_KEY}_{score_s}_{iou_s}",
                             dgs_key=DGS_KEY,
                         )
                     else:

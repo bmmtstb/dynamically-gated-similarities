@@ -22,7 +22,6 @@ from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.state import collate_states, State
 from dgs.utils.types import Config, FilePath, Image, NodePath, Validations  # pylint: disable=unused-import
-from dgs.utils.utils import replace_file_type
 
 base_dataset_validations: Validations = {
     "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
@@ -271,10 +270,6 @@ class BaseDataset(NamedModule, TDataset):
                     for i in range(len(ds))
                 )
             ds.load_image_crop(store=True)
-
-            ds.data["keypoints_local"] = ds.keypoints_and_weights_from_paths(
-                tuple(replace_file_type(fp, new_type=".pt") for fp in ds.crop_path), save_weights=True
-            )
             return
 
         # no crop folder path given, compute the crops

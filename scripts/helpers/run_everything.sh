@@ -7,10 +7,11 @@
 #  python ./scripts/helpers/extract_bboxes_MOT.py
 
   # Run all the evaluation functions
-  echo "Run single"
-  python ./scripts/own/eval_single_similarity_const.py
   echo "Run evaluation of initial track weight"
   python ./scripts/own/eval_initial_weight.py
+# fixme can this be deleted? Should all be computed in init run
+#  echo "Run single"
+#  python ./scripts/own/eval_single_similarity_const.py
 
   echo "Run pairwise"
   python ./scripts/own/eval_pair_similarities_const.py

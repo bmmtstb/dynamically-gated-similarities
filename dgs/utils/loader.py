@@ -98,9 +98,7 @@ def get_registered_classes(module_type: str) -> dict[str, type]:
     if module_type not in MODULE_TYPES:
         raise ValueError(f"The instance class name '{module_type}' could not be found.")
 
-    if module_type == "alpha":
-        from dgs.models.alpha import ALPHA_MODULES as modules
-    elif module_type == "combine":
+    if module_type == "combine":
         from dgs.models.combine import COMBINE_MODULES as modules
     elif module_type == "dataset":
         from dgs.models.dataset import DATASETS as modules

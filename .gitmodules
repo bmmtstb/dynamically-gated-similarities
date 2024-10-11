@@ -4,11 +4,11 @@
 	branch = master
 [submodule "dependencies/PoseTrack21"]
 	path = dependencies/PoseTrack21
-	url = https://github.com/bmmtstb/PoseTrack21.git
+	url = git@github.com:bmmtstb/PoseTrack21
 	branch = main
 [submodule "dependencies/DanceTrack"]
 	path = dependencies/DanceTrack
-	url = https://github.com/bmmtstb/DanceTrack.git
+	url = git@github.com:bmmtstb/DanceTrack
 [submodule "dependencies/poseval"]
 	path = dependencies/poseval
-	url = https://github.com/bmmtstb/poseval.git
+	url = git@github.com:bmmtstb/poseval

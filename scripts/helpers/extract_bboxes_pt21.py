@@ -25,15 +25,11 @@ DL_KEYS: list[str] = [
     "PT21_256x128_val",
     "PT21_256x192_val",
 ]
-RCNN_DL_KEYS: list[str] = [
-    "RCNN_PT21_256x128_val",
-    "RCNN_PT21_256x192_val",
-]
 
-# IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-IOU_THRESHS: list[float] = [0.4]
-# SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-SCORE_THRESHS: list[float] = [0.85]
+RCNN_DL_KEYS: dict[str, tuple[list[float], list[float]]] = {
+    "RCNN_PT21_256x128_val": ([0.85], [0.4]),
+    "RCNN_PT21_256x192_val": ([0.85, 0.90, 0.95, 0.99], [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+}
 
 # IN images: "./data/PoseTrack21/images/{val|train}/DATASET/*.jpg"
 # OUT predictions: "./data/PoseTrack21/posetrack_data/rcnn_XXX_YYY_{val|train}/DATASET.json"
@@ -176,7 +172,7 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
     """Given the gt annotations, extract the image crops and local coordinates."""
     dataset_paths: list[str] = glob(config[dl_key]["dataset_paths"])
 
-    for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets")):
+    for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
         ds_name = os.path.basename(os.path.realpath(dataset_path))
         pbar_dataset.set_postfix_str(ds_name)
 
@@ -207,17 +203,23 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
-    for DL_KEY in DL_KEYS:
-        print(f"Extracting ground-truth: {DL_KEY}")
+    print("Extracting the GT image crops")
+    for DL_KEY in (pbar_dl := tqdm(DL_KEYS, desc="Dataloader", leave=False)):
+        pbar_dl.set_postfix_str(DL_KEY)
+
         cfg: Config = load_config(CONFIG_FILE)
         extract_gt_boxes(config=cfg, dl_key=DL_KEY)
 
-    for RCNN_DL_KEY in RCNN_DL_KEYS:
-        print(f"Extracting rcnn: {RCNN_DL_KEY}")
+    print("Extracting using KeypointRCNN as detector")
+    for RCNN_DL_KEY, (SCORE_THRESHS, IOU_THRESHS) in (
+        pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="Dataloader", leave=False)
+    ):
+        pbar_dl.set_postfix_str(RCNN_DL_KEY)
+
         start_time = time.time()
 
         rcnn_cfg: Config = load_config(CONFIG_FILE)
-        for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold")):
+        for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold", leave=False)):
             pbar_score_thresh.set_postfix_str(str(score_threshold))
 
             score_str = f"{int(score_threshold * 100):03d}"
