@@ -43,6 +43,12 @@ class BaseAlphaModule(NamedModule, t.nn.Module):
     def forward(self, s: State) -> t.Tensor:
         raise NotImplementedError
 
+    def sub_forward(self, data: t.Tensor) -> t.Tensor:
+        """Function to call when module is called from within a combined alpha module."""
+        if not hasattr(self, "model") or self.model is None:
+            return data
+        return self.model(data)
+
     @abstractmethod
     def get_data(self, s: State) -> any:
         """Given a state, return the data which is input into the model."""
