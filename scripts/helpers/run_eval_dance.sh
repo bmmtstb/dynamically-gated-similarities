@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# With lots of love from Chat-GPT
+# With lots of love from Chat-GPT and Copilot
 
 # Check the operating system and activate the virtual environment accordingly
 if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
@@ -15,48 +15,19 @@ else
 fi
 
 
-# Function to recursively search directories and add matching ones to the dirs array
-search_dirs() {
-    local current_dir="$1"
-    local dirs=("${!2}")  # Retrieve the current state of dirs array
-
-    # Check if the current directory contains at least one file matching "dancetrack*.txt"
-    if ls "$current_dir"/dancetrack*.txt 1> /dev/null 2>&1; then
-        # Add directory to the dirs array
-        dirs+=("$current_dir")
-    fi
-
-    # Iterate over subdirectories in the current directory
-    for subdir in "$current_dir"/*/; do
-        if [ -d "$subdir" ] && [[ $(basename "$subdir") != "eval_data" ]]; then
-            # Recursively search inside this subdirectory and update dirs array
-            dirs=($(search_dirs "$subdir" dirs[@]))
-        fi
-    done
-
-    # Return the updated dirs array
-    echo "${dirs[@]}"
-}
-
 # Define the base directory
 base_dir="./data/DanceTrack/val/"
 
-# Initialize an empty array to store matching directories
-dirs=()
+# Find all directories that contain at least one file matching "dancetrack*.txt"
+dirs=$(find "$base_dir"/results_* -type f -regex '.*dancetrack[0-9]*\.txt' -exec dirname {} \; | sort -u)
 
-# Find all directories in the base directory that start with "results_*"
-for results_dir in "$base_dir"/results_*/; do
-  if [ -d "$results_dir" ]; then
-    # Call the search_dirs function on each "results_*" directory and update dirs
-    dirs=($(search_dirs "$results_dir" dirs[@]))
-  fi
-done
-
+# Echo the number of directories found
+echo "Number of directories found: $(echo "$dirs" | wc -l)"
 
 # Loop over each directory in $dirs
-for dir in "${dirs[@]}"; do
+for dir in $dirs; do
 
-  eval_data_folder="$dir./eval_data"
+  eval_data_folder="$dir/eval_data"
 
   # Check if the "eval_data" folder exists and contains the two required files
   if [[ ! -d "$eval_data_folder" || ! -f "$eval_data_folder/pedestrian_detailed.csv" || ! -f "$eval_data_folder/pedestrian_summary.txt" ]]; then
