@@ -7,6 +7,8 @@ import csv
 import os
 from glob import glob
 
+from tqdm import tqdm
+
 from dgs.utils.files import read_json
 from dgs.utils.types import FilePath
 from dgs.utils.utils import send_discord_notification
@@ -82,10 +84,10 @@ if __name__ == "__main__":
         csv_writer = csv.writer(csvfile, delimiter=";")
         csv_writer.writerow(["Combined", "Dataset", "Key", "Type", "custom_total"] + PT21_JOINTS)
 
-        for BASE_DIR in BASE_DIRS:
+        for BASE_DIR in tqdm(BASE_DIRS, desc="poseval base", leave=False):
             MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
 
-            for MOT_file in MOT_metrics:
+            for MOT_file in tqdm(MOT_metrics, desc="file", leave=False):
                 data_folder = os.path.dirname(os.path.dirname(os.path.realpath(MOT_file)))
                 ds, conf_key = os.path.split(data_folder)[-2:]
                 ds_name = os.path.basename(ds)
@@ -114,13 +116,11 @@ if __name__ == "__main__":
                 for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
                     comb = f"{ds_name}_{conf_key}_{new_k}"
                     custom_total = sum(
-                        float(val)
-                        for i, val in enumerate(mot_data[k])
-                        if mot_data["names"][str(i)] not in POSEVAL_FAULTY
+                        float(val) for i, val in enumerate(ap_data[k]) if ap_data["names"][str(i)] not in POSEVAL_FAULTY
                     ) / float(
                         sum(
-                            1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0
-                            for i, val in enumerate(mot_data[k])
+                            1 if ap_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                            for i, val in enumerate(ap_data[k])
                         )
                     )
                     csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
