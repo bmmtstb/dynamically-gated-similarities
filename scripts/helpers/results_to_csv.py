@@ -77,46 +77,53 @@ if __name__ == "__main__":
     # POSEVAL #
     # ####### #
 
-    poseval_out_file = os.path.join(BASE_DIR, "./results_poseval.csv")
+    poseval_out_file = os.path.join(OUT_DIR, "./results_poseval.csv")
     with open(poseval_out_file, "w+", encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile, delimiter=";")
         csv_writer.writerow(["Combined", "Dataset", "Key", "Type", "custom_total"] + PT21_JOINTS)
 
-        MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
+        for BASE_DIR in BASE_DIRS:
+            MOT_metrics = glob(f"{BASE_DIR}/**/eval_data/total_MOT_metrics.json", recursive=True)
 
-        for MOT_file in MOT_metrics:
-            data_folder = os.path.dirname(os.path.dirname(os.path.realpath(MOT_file)))
-            ds, conf_key = os.path.split(data_folder)[-2:]
-            ds_name = os.path.basename(ds)
+            for MOT_file in MOT_metrics:
+                data_folder = os.path.dirname(os.path.dirname(os.path.realpath(MOT_file)))
+                ds, conf_key = os.path.split(data_folder)[-2:]
+                ds_name = os.path.basename(ds)
 
-            mot_data = read_json(MOT_file)
-            # mot
-            for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
-                comb = f"{ds_name}_{conf_key}_{new_k}"
-                custom_total = sum(
-                    float(val) for i, val in enumerate(mot_data[k]) if mot_data["names"][str(i)] not in POSEVAL_FAULTY
-                ) / float(
-                    sum(
-                        1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0 for i, val in enumerate(mot_data[k])
+                mot_data = read_json(MOT_file)
+                # mot
+                for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
+                    comb = f"{ds_name}_{conf_key}_{new_k}"
+                    custom_total = sum(
+                        float(val)
+                        for i, val in enumerate(mot_data[k])
+                        if mot_data["names"][str(i)] not in POSEVAL_FAULTY
+                    ) / float(
+                        sum(
+                            1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                            for i, val in enumerate(mot_data[k])
+                        )
                     )
-                )
-                csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + mot_data[k])
+                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + mot_data[k])
 
-            AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
-            if not os.path.isfile(AP_file):
-                continue
-            ap_data = read_json(AP_file)
-            # ap
-            for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
-                comb = f"{ds_name}_{conf_key}_{new_k}"
-                custom_total = sum(
-                    float(val) for i, val in enumerate(mot_data[k]) if mot_data["names"][str(i)] not in POSEVAL_FAULTY
-                ) / float(
-                    sum(
-                        1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0 for i, val in enumerate(mot_data[k])
+                AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
+                if not os.path.isfile(AP_file):
+                    continue
+                ap_data = read_json(AP_file)
+                # ap
+                for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
+                    comb = f"{ds_name}_{conf_key}_{new_k}"
+                    custom_total = sum(
+                        float(val)
+                        for i, val in enumerate(mot_data[k])
+                        if mot_data["names"][str(i)] not in POSEVAL_FAULTY
+                    ) / float(
+                        sum(
+                            1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                            for i, val in enumerate(mot_data[k])
+                        )
                     )
-                )
-                csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
+                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
     replace_dots_with_commas(poseval_out_file)
     print(f"Wrote poseval results to: {poseval_out_file}")
 
@@ -156,7 +163,7 @@ if __name__ == "__main__":
     # ########## #
 
     dance_out_file = os.path.join(OUT_DIR, "./results_dance.csv")
-    BASE_DIRS: list[str] = glob("./data/DanceTrack/*/")
+    BASE_DIRS: list[str] = ["./data/DanceTrack/val/", "./data/DanceTrack/train/", "./data/DanceTrack/test/"]
 
     data: list[dict] = []
 

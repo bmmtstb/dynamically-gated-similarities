@@ -46,7 +46,7 @@ for dir in $dirs; do
                     --TRACKER_SUB_FOLDER . \
                     --OUTPUT_SUB_FOLDER ./eval_data/ \
                     --USE_PARALLEL True \
-                    --NUM_PARALLEL_CORES 8 \
+                    --NUM_PARALLEL_CORES 4 \
                     --OUTPUT_DETAILED True \
                     --OUTPUT_SUMMARY True \
                     --PRINT_CONFIG False \
