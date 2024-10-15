@@ -395,30 +395,35 @@ pose_coco_conv1o15k2fc2:
 # visual - OSNet
 visual_osn_fc1:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [512, 1]
   bias: true
   act_func: null
   
 visual_osn_fc2:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [512, 128, 1]
   bias: true
   act_func: null
   
 visual_osn_fc3:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [512, 256, 128, 1]
   bias: true
   act_func: null
   
 visual_osn_fc4:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [512, 256, 128, 64, 1]
   bias: true
   act_func: null
   
 visual_osn_fc5:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [512, 256, 128, 64, 32, 1]
   bias: true
   act_func: null
@@ -426,30 +431,35 @@ visual_osn_fc5:
 # visual - Resnet
 visual_res_fc1:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [2048, 1]
   bias: true
   act_func: null
   
 visual_res_fc2:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [2048, 512, 1]
   bias: true
   act_func: null
   
 visual_res_fc3:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [2048, 512, 64, 1]
   bias: true
   act_func: null
   
 visual_res_fc4:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [2048, 1024, 256, 64, 1]
   bias: true
   act_func: null
   
 visual_res_fc5:
   module_name: "FullyConnectedAlpha"
+  name: "image_crop"
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
   bias: true
   act_func: null
