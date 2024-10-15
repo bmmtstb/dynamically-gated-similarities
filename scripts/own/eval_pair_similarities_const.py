@@ -50,7 +50,7 @@ GT_DL_KEYS: dict[str, list[str]] = {
         "iou_OSNet",
         # "iou_OSNetAIN",
         "iou_Resnet50",
-        # "iou_Resnet152",
+        "iou_Resnet152",
     ],
 }
 
@@ -84,10 +84,10 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
             "oks_OSNet",
             # "iou_OSNetAIN",
             # "oks_OSNetAIN",
-            # "iou_Resnet50",
-            # "oks_Resnet50",
-            # "iou_Resnet152",
-            # "oks_Resnet152",
+            "iou_Resnet50",
+            "oks_Resnet50",
+            "iou_Resnet152",
+            "oks_Resnet152",
         ],
     ),
     (
@@ -101,10 +101,10 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
             "oks_OSNet",
             # "iou_OSNetAIN",
             # "oks_OSNetAIN",
-            # "iou_Resnet50",
-            # "oks_Resnet50",
-            # "iou_Resnet152",
-            # "oks_Resnet152",
+            "iou_Resnet50",
+            "oks_Resnet50",
+            "iou_Resnet152",
+            "oks_Resnet152",
         ],
     ),
 ]
