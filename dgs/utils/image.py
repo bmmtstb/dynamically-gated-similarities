@@ -131,8 +131,7 @@ def load_image(
     if not all(img.shape[-3:] == images[0].shape[-3:] for img in images):
         raise ValueError(f"All images should have the same shape, but shapes are: {[img.shape for img in images]}")
 
-    images = t.stack(images)
-    images.to(device=device)
+    images = t.stack(images).to(device=device)
 
     return tvte.Image(tvt_to_dtype(images, dtype=dtype, scale=True))
 
@@ -161,10 +160,11 @@ def load_image_list(
     if len(filepath) == 0:
         return []
     paths: FilePaths = validate_filepath(filepath)
-    transform_dtype = tvt.ToDtype(dtype, scale=True)
 
     return [
-        tvte.Image(transform_dtype(read_image(path, mode=read_mode).unsqueeze(0)), dtype=dtype).to(device=device)
+        tvte.Image(tvt_to_dtype(read_image(path, mode=read_mode).unsqueeze(0), dtype=dtype, scale=True)).to(
+            device=device
+        )
         for path in paths
     ]
 

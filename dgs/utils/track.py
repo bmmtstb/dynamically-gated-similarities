@@ -274,11 +274,15 @@ class Track:
     def set_inactive(self) -> None:
         self._status = TrackStatus.Inactive
         self._nof_active = 0
+        for s in self._states:
+            s.clean()
 
     def set_removed(self) -> None:
         self._status = TrackStatus.Removed
         self._nof_active = 0
         self._id = -1  # unset tID
+        for s in self._states:
+            s.clean("all")
 
     def set_reactivated(self, tid: TrackID) -> None:
         self._status = TrackStatus.Reactivated
@@ -602,6 +606,9 @@ class Tracks(UserDict):
         self.data[tid][-1]["pred_tid"] = t.tensor(
             [tid] * self.data[tid][-1].B, dtype=t.long, device=add_state.device
         ).flatten()
+        # clean old track data
+        if len(self.data[tid]) > 1:
+            self.data[tid][-2].clean()
 
     def _handle_inactive(self, tids: set[TrackID]) -> None:
         """Given the Track-IDs of the Tracks that haven't been seen this step, update the inactivity tracker.

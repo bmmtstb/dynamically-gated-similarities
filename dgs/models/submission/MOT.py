@@ -109,6 +109,7 @@ class MOTSubmission(SubmissionFile):
                     )
                 )
                 det.clean()
+        s.clean("all")
 
         self.frame_id += 1
 

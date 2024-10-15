@@ -229,9 +229,10 @@ class DGSEngine(EngineModule):
         # Get the current state from the Tracks and use it to compute the similarity to the current detections.
         track_states, tids = self.tracks.get_states()
 
-        for ts in track_states:
-            ts.load_image_crop(store=True)
-            ts.clean(keys=["image"])
+        if self.train_load_image_crops:
+            for ts in track_states:
+                _ = ts.load_image_crop(store=True)
+                ts.clean(keys=["image"])
 
         timers.add(name="data", prev_time=time_batch_start)
 
@@ -438,6 +439,7 @@ class DGSEngine(EngineModule):
             loss = self.loss(alpha, target.expand(1, len(data_new)))
         return loss
 
+    @enable_keyboard_interrupt
     def _track(self, dl: TDataLoader, name: str) -> None:
         """Track the data in the DataLoader."""
         frame_idx: int = int(self.curr_epoch * len(dl) * dl.batch_size)
@@ -469,7 +471,7 @@ class DGSEngine(EngineModule):
                     active.data["pred_tid"] = t.empty(0, dtype=t.long, device=detection.device)
                 else:
                     active = collate_states(active_list)
-
+                del active_list
                 # store current submission data
                 self.submission.append(active)
 
