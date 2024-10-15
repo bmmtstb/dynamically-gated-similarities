@@ -679,7 +679,7 @@ class DGSEngine(EngineModule):
 
         _, unexpected = self.model.load_state_dict(new_state_dict, strict=False)
         if len(unexpected) != 0:
-            raise ValueError(f"got unexpected keys: {unexpected}")
+            raise ValueError(f"got unexpected keys: {unexpected}\nexpected keys: {self.model.state_dict().keys()}")
 
     def terminate(self) -> None:
         if hasattr(self, "submission"):
