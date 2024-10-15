@@ -53,9 +53,10 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         super().__init__(config, path)
         self.validate_params(dynamic_alpha_validation)
 
-        self.alpha_models = nn.ModuleList(
+        alpha_model = nn.ModuleList(
             [module_loader(config=config, module_type="alpha", key=path) for path in self.params["alpha_modules"]]
         ).to(device=self.device)
+        self.register_module(name="alpha_model", module=self.configure_torch_module(alpha_model))
 
     def forward(
         self,
