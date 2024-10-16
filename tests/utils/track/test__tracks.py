@@ -180,7 +180,10 @@ class TestTracks(unittest.TestCase):
         self.assertEqual(len(t1), 0)
         self.assertTrue(t1 == EMPTY_TRACKS)
         self.assertTrue(isinstance(t1.removed[OT_O_ID], Track))
-        self.assertEqual(t1.removed[OT_O_ID], _track_w_params(track1, tid=-1, status=TrackStatus.Removed))
+        t1_removed = _track_w_params(track1, tid=-1, status=TrackStatus.Removed)
+        for i in range(len(t1_removed)):
+            t1_removed[i].clean("all")
+        self.assertEqual(t1.removed[OT_O_ID], t1_removed)
 
         t2 = MULTI_TRACKS.copy()
         self.assertEqual(len(t2), 1 + MAX_LENGTH)

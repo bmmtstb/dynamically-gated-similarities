@@ -272,12 +272,14 @@ class Track:
         self._status = TrackStatus.Active
 
     def set_inactive(self) -> None:
+        """Set this Track inactive and clean all the states to free up GPU space."""
         self._status = TrackStatus.Inactive
         self._nof_active = 0
         for s in self._states:
             s.clean()
 
     def set_removed(self) -> None:
+        """Set this Track as removed. Cleans all the states, and removes all torch data."""
         self._status = TrackStatus.Removed
         self._nof_active = 0
         self._id = -1  # unset tID

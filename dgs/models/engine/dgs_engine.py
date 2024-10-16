@@ -240,7 +240,7 @@ class DGSEngine(EngineModule):
             # No Tracks yet - every detection will be a new track!
             # Make sure to compute the embeddings for every detection, to ensure correct behavior of collate later on
             time_sim_start = time.time()
-            _ = self.model.forward(ds=detections, target=detections, alpha_inputs=self.get_data(detections))
+            _ = self.model.forward(ds=detections, target=detections, s=detections)
             timers.add(name="similarity", prev_time=time_sim_start)
             # There are no tracks yet, therefore every detection is a new state!
             time_match_start = time.time()
@@ -248,9 +248,7 @@ class DGSEngine(EngineModule):
             timers.add(name="match", prev_time=time_match_start)
         elif N > 0:
             time_sim_start = time.time()
-            similarity = self.model.forward(
-                ds=detections, target=collate_states(track_states), alpha_inputs=self.get_data(detections)
-            )
+            similarity = self.model.forward(ds=detections, target=collate_states(track_states), s=detections)
             timers.add(name="similarity", prev_time=time_sim_start)
 
             # Solve Linear sum Assignment Problem (LAP/LSA).
@@ -429,12 +427,9 @@ class DGSEngine(EngineModule):
         target = self._get_accuracy(data_old=data_old, data_new=data_new)  # [S]
 
         with t.enable_grad():
-            # get the input data of the similarity modules for the current step
-            curr_sim_data = self.get_data(data_new)  # [D]
-
             # For each of the similarity modules, compute the alpha value of each of the respective inputs.
             # [S x D]
-            alpha = t.stack([a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)])
+            alpha = t.stack([a_m.forward(data_new).flatten() for a_m in self.model.combine.alpha_model])
             # make sure the target and input have the same shape, by repeating the target for each input
             loss = self.loss(alpha, target.expand(1, len(data_new)))
         return loss
@@ -563,11 +558,9 @@ class DGSEngine(EngineModule):
             if D > 0:
                 accuracy = self._get_accuracy(data_old=data_old, data_new=data_new)  # [S]
 
-                # get the input data of the similarity modules for the current step
-                # and use those to compute all the alpha scores [S]
-                curr_sim_data = self.get_data(data_new)  # [D]
+                # compute all the alpha scores [S]
                 alpha: t.Tensor = t.stack(
-                    [a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)]
+                    [a_m.forward(data_new).flatten() for a_m in self.model.combine.alpha_model]
                 )  # [S x D]
 
                 # compare alpha against the correct similarities
