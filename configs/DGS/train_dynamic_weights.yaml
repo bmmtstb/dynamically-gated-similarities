@@ -37,7 +37,7 @@ train:
     acc_k_train: [1, 5, 10, 20]
     acc_k_eval: [0.1, 0.5, 1, 5, 10, 25]
     # submission:  # will be set in python script
-    load_image_crops: false  # will be set in python script
+    load_image_crops: false  # will be changed in python script
     loss: "TorchMSELoss"
     loss_kwargs: {}
     optimizer: "Adam"
@@ -48,7 +48,7 @@ train:
     save_interval: 1
     scheduler: "StepLR"
     scheduler_kwargs:
-        step_size: 4
+        step_size: 2
         gamma: 0.1
 
 # ####### #
@@ -333,6 +333,56 @@ box_fc2:
     hidden_layers: [4, 8, 1]
     bias: true
     act_func: null
+
+box_fc1_Sigmoid:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: "Sigmoid"
+
+box_fc1_Tanh:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: "Tanh"
+
+box_fc1_ReLU:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: "ReLU"
+
+box_fc2_LeakyReLU:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: "LeakyReLU"
+
+box_fc2_ReLUSigmoid:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: ["ReLU", "Sigmoid"]
+
+box_fc2_ReLU:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: "ReLU"
+
+box_fc2_Sigmoid:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: "Sigmoid"
+
     
 # pose - COCO
 pose_coco_fc1:
@@ -345,6 +395,16 @@ pose_coco_fc1:
         bias: true
         act_func: null
 
+pose_coco_fc1_Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc1", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
 pose_coco_fc2:
     module_name: "SequentialCombinedAlpha"
     name: "keypoints"
@@ -354,6 +414,26 @@ pose_coco_fc2:
         hidden_layers: [ 34, 8, 1 ]
         bias: true
         act_func: null
+
+pose_coco_fc2_ReLUSigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc2", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 8, 1 ]
+        bias: true
+        act_func: ["ReLU", "Sigmoid"]
+
+pose_coco_fc2_Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc2", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 8, 1 ]
+        bias: true
+        act_func: "Sigmoid"
 
 
 pose_coco_conv1o15k2fc1:
@@ -392,6 +472,60 @@ pose_coco_conv1o15k2fc2:
         bias: true
         act_func: null
 
+pose_coco_conv1o15k2fc1_Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc1", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
+pose_coco_conv1o15k2fc2_ReLUSigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc2", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 8, 1 ]
+        bias: true
+        act_func: ["ReLU", "Sigmoid"]
+
+pose_coco_conv1o15k2fc2_Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc2", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 8, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
 # visual - OSNet
 visual_osn_fc1:
   module_name: "FullyConnectedAlpha"
@@ -410,7 +544,19 @@ visual_osn_fc3:
   hidden_layers: [512, 256, 128, 1]
   bias: true
   act_func: null
-  
+
+visual_osn_fc3_2ReluSigmoid:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 256, 128, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "Sigmoid"]
+
+visual_osn_fc3_Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 256, 128, 1]
+  bias: true
+  act_func: "Sigmoid"
+
 visual_osn_fc4:
   module_name: "FullyConnectedAlpha"
   hidden_layers: [512, 256, 128, 64, 1]
@@ -422,6 +568,12 @@ visual_osn_fc5:
   hidden_layers: [512, 256, 128, 64, 32, 1]
   bias: true
   act_func: null
+
+visual_osn_fc5_4ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [512, 256, 128, 64, 32, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
   
 # visual - Resnet
 visual_res_fc1:
@@ -441,6 +593,12 @@ visual_res_fc3:
   hidden_layers: [2048, 512, 64, 1]
   bias: true
   act_func: null
+
+visual_res_fc3_2ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 512, 64, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "Sigmoid"]
   
 visual_res_fc4:
   module_name: "FullyConnectedAlpha"
@@ -453,4 +611,11 @@ visual_res_fc5:
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
   bias: true
   act_func: null
+
+visual_res_fc5_4ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  hidden_layers: [2048, 1024, 256, 128, 64, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
   
+# combined models
