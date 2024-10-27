@@ -52,11 +52,11 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
                 "visual_osn_fc5_4ReLUSigmoid",
             ],
             "OSNetAIN_sim": [
-                # "visual_osn_fc1",
+                "visual_osn_fc1",
                 # "visual_osn_fc2",
                 "visual_osn_fc3",
                 # "visual_osn_fc4",
-                # "visual_osn_fc5",
+                "visual_osn_fc5",
             ],
             "Resnet50_sim": [
                 # "visual_res_fc1",
@@ -145,7 +145,7 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
 ]
 
 DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
-    # dance gt
+    # Dance gt
     "val_dl_Dance_256x192_gt": {
         # earlier model
         "iou_fc1_ep1__vis_osn_fc3_ep1__lr-4": [
@@ -305,24 +305,24 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 12),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 12),
         ],
-        # box (trained on dance) and oks (trained on pt21)
-        "iou_fc1_ep6_dance__pose_coco_fc1_ep6_pt21__lr-4": [
+        # box (trained on Dance) and oks (trained on pt21)
+        "iou_fc1_ep6_Dance__pose_coco_fc1_ep6_pt21__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc1", 6),
         ],
-        "iou_fc1_ep12_dance__pose_coco_fc1_ep12_pt21__lr-4": [
+        "iou_fc1_ep12_Dance__pose_coco_fc1_ep12_pt21__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc1", 12),
         ],
-        "iou_fc1_ep12_dance__pose_coco_fc2_ep12_pt21__lr-4": [
+        "iou_fc1_ep12_Dance__pose_coco_fc2_ep12_pt21__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 12),
         ],
-        "iou_fc1_ep12_dance__pose_coco_conv1o15k2fc1_ep12_pt21__lr-4": [
+        "iou_fc1_ep12_Dance__pose_coco_conv1o15k2fc1_ep12_pt21__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_conv1o15k2fc1", 12),
         ],
-        "iou_fc1_ep12_dance__pose_coco_conv1o15k2fc2_ep12_pt21__lr-4": [
+        "iou_fc1_ep12_Dance__pose_coco_conv1o15k2fc2_ep12_pt21__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_conv1o15k2fc2", 12),
         ],
@@ -582,17 +582,17 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_pt21_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
         ],
         # cross dataset
-        "iou_fc1_ep6_dance__vis_osn_fc1_ep6_dance__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
+        "iou_fc1_ep6_Dance__vis_osn_fc1_ep6_Dance__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
         ],
-        "iou_fc1_ep6_dance__vis_osn_fc3_ep6_dance__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
+        "iou_fc1_ep6_Dance__vis_osn_fc3_ep6_Dance__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 6),
         ],
-        "iou_fc1_ep6_dance__vis_osn_fc5_ep6_dance__lr-4": [
-            ("train_dl_dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
-            ("train_dl_dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
+        "iou_fc1_ep6_Dance__vis_osn_fc5_ep6_Dance__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
         ],
     },
 }
@@ -613,7 +613,7 @@ def set_up_test_dgs_module(cfg: Config, dl_key: str, dgs_mod_data: list[tuple[st
     cfg["DGSModule"]["names"] = [[sm[1]] for sm in dgs_mod_data]
     cfg["DGSModule"]["combine"] = "dac_test"
     base_lr = cfg["train"]["optimizer_kwargs"]["lr"]
-    cfg["dac_test"]["alpha_modules"] = [a_name for _, a_name, _ in dgs_mod_data]
+    cfg["dac_test"]["alpha_modules"] = [a_name for _, _, a_name, _ in dgs_mod_data]
 
     engine = get_dgs_engine(cfg=cfg, dl_keys=(None, None, dl_key))
 
@@ -788,7 +788,7 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
     )
 
     # initialize the weights of the alpha module(s)
-    init_model_params(engine_train.model.combine.alpha_model)
+    init_model_params(engine_train.model.combine.alpha_models)
 
     # load pretrained checkpoint
     if last_state_path is not None:
