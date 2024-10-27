@@ -6,6 +6,7 @@ compute a csv containing all the combined data.
 import csv
 import os
 from glob import glob
+from typing import Union
 
 from tqdm import tqdm
 
@@ -73,6 +74,18 @@ def replace_dots_with_commas(fp: FilePath) -> None:
         file.write(modified_content)
 
 
+def force_precision(num: Union[str, float, int], prec: int = 4) -> str:
+    """Given a number, force a certain number of decimal points or precision. Does not round.
+
+    Handles integer values separately.
+    """
+    if isinstance(num, int) or (isinstance(num, str) and not any(div in num for div in [",", "."])):
+        return str(num)
+    if isinstance(num, str):
+        num = float(num)
+    return f"{num:.{prec}f}"
+
+
 if __name__ == "__main__":
 
     # ####### #
@@ -96,17 +109,22 @@ if __name__ == "__main__":
                 # mot
                 for k, new_k in {"mota": "MOTA", "motp": "MOTP", "pre": "MOT precision", "rec": "MOT recall"}.items():
                     comb = f"{ds_name}_{conf_key}_{new_k}"
-                    custom_total = sum(
-                        float(val)
-                        for i, val in enumerate(mot_data[k])
-                        if mot_data["names"][str(i)] not in POSEVAL_FAULTY
-                    ) / float(
+                    custom_total = force_precision(
                         sum(
-                            1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                            float(val)
                             for i, val in enumerate(mot_data[k])
+                            if mot_data["names"][str(i)] not in POSEVAL_FAULTY
+                        )
+                        / float(
+                            sum(
+                                1 if mot_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                                for i, val in enumerate(mot_data[k])
+                            )
                         )
                     )
-                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + mot_data[k])
+                    csv_writer.writerow(
+                        [comb, ds_name, conf_key, new_k, custom_total] + [force_precision(mdk) for mdk in mot_data[k]]
+                    )
 
                 AP_file = MOT_file.replace("total_MOT_metrics", "total_AP_metrics")
                 if not os.path.isfile(AP_file):
@@ -115,15 +133,22 @@ if __name__ == "__main__":
                 # ap
                 for k, new_k in {"ap": "AP", "pre": "AP precision", "rec": "AP recall"}.items():
                     comb = f"{ds_name}_{conf_key}_{new_k}"
-                    custom_total = sum(
-                        float(val) for i, val in enumerate(ap_data[k]) if ap_data["names"][str(i)] not in POSEVAL_FAULTY
-                    ) / float(
+                    custom_total = force_precision(
                         sum(
-                            1 if ap_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                            float(val)
                             for i, val in enumerate(ap_data[k])
+                            if ap_data["names"][str(i)] not in POSEVAL_FAULTY
+                        )
+                        / float(
+                            sum(
+                                1 if ap_data["names"][str(i)] not in POSEVAL_FAULTY else 0
+                                for i, val in enumerate(ap_data[k])
+                            )
                         )
                     )
-                    csv_writer.writerow([comb, ds_name, conf_key, new_k, custom_total] + ap_data[k])
+                    csv_writer.writerow(
+                        [comb, ds_name, conf_key, new_k, custom_total] + [force_precision(adk) for adk in ap_data[k]]
+                    )
     replace_dots_with_commas(poseval_out_file)
     print(f"Wrote poseval results to: {poseval_out_file}")
 
@@ -151,7 +176,7 @@ if __name__ == "__main__":
                     line = f.readline()
                     line = line.strip().replace(r"\_", "_")
                     values = line.split("&")
-                    values = [v.strip() for v in values[1:]]  # summary is empty
+                    values = [force_precision(v.strip()) for v in values[1:]]  # summary is empty
                     assert len(values) == len(PT21_METRICS)
                     comb = f"{ds_name}_{meth_key}"
                     csv_writer.writerow([comb, ds_name, meth_key] + values)
@@ -187,6 +212,7 @@ if __name__ == "__main__":
                     if ds_name != "COMBINED":
                         continue
                     comb = f"{data_part_name}_{res_dir_name}_{ds_name}"
+                    line = {k: force_precision(v, 5) for k, v in line.items()}
                     d = {**{"Combined": comb, "Dataset": data_part_name, "Key": res_dir_name}, **line}
                     data.append(d)
 
