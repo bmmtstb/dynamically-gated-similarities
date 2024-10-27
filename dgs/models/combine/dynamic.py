@@ -65,11 +65,11 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         r"""The forward call of this module combines an arbitrary number of similarity matrices
         using an importance weight :math:`\alpha`.
 
-        :math:`\alpha_i` describes how important :math:`s_i` is.
+        :math:`\alpha_i` describes how important the similarity :math:`s_i` is.
         The sum of all :math:`\alpha_i` should be 1 by definition given the last layer is a softmax layer.
-        :math:`\alpha` is computed using this class' neural network and the given ``alpha_input`` tensor.
+        :math:`\alpha` is computed using the respective :class:`BaseAlphaModule` and the given :class:`State`.
 
-        All tensors should be on the same device and all :math:`s_i` should have the same shape.
+        All tensors should be on the same device and should have the same shape.
 
         Args:
             tensors: A tuple of tensors describing similarities between the detections and tracks.
