@@ -46,7 +46,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
 
     """
 
-    alpha_model: nn.ModuleList
+    alpha_models: nn.ModuleList
     """The model that computes the alpha values from given inputs."""
 
     def __init__(self, config: Config, path: NodePath) -> None:
@@ -104,8 +104,8 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             raise ValueError("All similarity matrices should have the same shape.")
         if any(tensor.device != tensors[0].device for tensor in tensors):
             raise RuntimeError("All tensors should be on the same device.")
-        if len(self.alpha_model) != len(tensors):
-            raise ValueError(f"There should be as many alpha models {len(self.alpha_model)} as tensors {len(tensors)}.")
+        if len(self.alpha_models) != len(tensors):
+            raise ValueError(f"There should be as many alpha models {len(self.alpha_models)} as tensors {len(tensors)}.")
 
         tensors = t.stack(tensors, dim=-3)  # [S x D x T]
 
@@ -121,14 +121,14 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             raise TypeError("All alpha inputs should be tensors.")
         if alpha_inputs[0].device != tensors.device or any(ai.device != alpha_inputs[0].device for ai in alpha_inputs):
             raise RuntimeError("All alpha inputs should be on the same device.")
-        if len(self.alpha_model) != len(alpha_inputs):
+        if len(self.alpha_models) != len(alpha_inputs):
             raise ValueError(
-                f"There should be as many alpha models {len(self.alpha_model)} as alpha inputs {len(alpha_inputs)}."
+                f"There should be as many alpha models {len(self.alpha_models)} as alpha inputs {len(alpha_inputs)}."
             )
 
         # [D x S] with softmax over S dimension
         alpha = nn.functional.softmax(
-            t.cat([self.alpha_model[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=1), dim=-1
+            t.cat([self.alpha_models[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=1), dim=-1
         )
 
         # [S x D ( x 1)] hadamard [S x D x T] -> [S x D x T] -> sum over all S [D x T]
@@ -137,8 +137,8 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         return s
 
     def terminate(self) -> None:  # pragma: no cover
-        if hasattr(self, "alpha_model"):
-            del self.alpha_model
+        if hasattr(self, "alpha_models"):
+            del self.alpha_models
 
 
 @configure_torch_module

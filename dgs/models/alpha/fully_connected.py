@@ -15,7 +15,7 @@ fc_validations: Validations = {
     "hidden_layers": [list, ("forall", int)],
     "bias": [("any", [bool, ("all", [list, ("forall", bool)])])],
     # optional
-    "act_func": ["optional", ("any", [("isinstance", str), "None", ("isinstance", t.nn.Module)])],
+    "act_func": ["optional", ("any", [("isinstance", str), "None", ("isinstance", t.nn.Module), ("all", [list, ("forall", str)])])],
 }
 
 

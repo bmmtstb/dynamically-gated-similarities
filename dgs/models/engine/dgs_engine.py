@@ -433,7 +433,7 @@ class DGSEngine(EngineModule):
 
             # For each of the similarity modules, compute the alpha value of each of the respective inputs.
             # [S x D]
-            alpha = t.stack([a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)])
+            alpha = t.stack([a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_models)])
             # make sure the target and input have the same shape, by repeating the target for each input
             loss = self.loss(alpha, target.expand(1, len(data_new)))
         return loss
@@ -565,7 +565,7 @@ class DGSEngine(EngineModule):
                 # and use those to compute all the alpha scores [S]
                 curr_sim_data = self.get_data(data_new)  # [D]
                 alpha: t.Tensor = t.stack(
-                    [a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_model)]
+                    [a_m(curr_sim_data[i]).flatten() for i, a_m in enumerate(self.model.combine.alpha_models)]
                 )  # [S x D]
 
                 # compare alpha against the correct similarities
@@ -655,7 +655,7 @@ class DGSEngine(EngineModule):
         Notes:
             During training the DGSEngine was trained with a single alpha model.
             For testing or (non accuracy) evaluation, multiple alpha values are required.
-            Therefore, the ``combine.alpha_model`` now contains more than one AlphaGenerator instance.
+            Therefore, the ``combine.alpha_models`` now contains more than one AlphaGenerator instance.
             Thus, the indices of the state dict have to be modified accordingly.
 
             Additionally, in case of the visual embedding generation modules, there are more parameters saved in the
@@ -664,17 +664,17 @@ class DGSEngine(EngineModule):
         Args:
             fp: The path to the checkpoint file
             new_id: The ID at which index of the alpha weight modules to insert the loaded weights.
-            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_model`` s in a single checkpoint.
+            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_models`` s in a single checkpoint.
                 E.g. when multiple alpha weight generators have been trained in unison.
         """
         checkpoint_data = load_checkpoint(fpath=fp)
         state_dict = checkpoint_data["model"] if "model" in checkpoint_data else checkpoint_data
 
-        # Only load combine.alpha_model and ignore everything else. (e.g. visual embed gen models)
+        # Only load combine.alpha_models and ignore everything else. (e.g. visual embed gen models)
         new_state_dict = {
-            str(k).replace(f"combine.alpha_model.{int(old_id)}.", f"combine.alpha_model.{int(new_id)}."): v
+            str(k).replace(f"combine.alpha_models.{int(old_id)}.", f"combine.alpha_models.{int(new_id)}."): v
             for k, v in state_dict.items()
-            if k.startswith("combine.alpha_model")
+            if k.startswith("combine.alpha_models")
         }
 
         _, unexpected = self.model.load_state_dict(new_state_dict, strict=False)

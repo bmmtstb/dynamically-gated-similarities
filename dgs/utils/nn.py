@@ -72,6 +72,9 @@ def fc_linear(
     # validate activation functions
     if act_func is None:
         act_func = [None] * (L - 1)
+    elif isinstance(act_func, str):
+        act_func = [act_func] * (L - 1)
+    
     if not isinstance(act_func, (list, tuple)) or len(act_func) != (L - 1):
         raise ValueError(f"The activation functions should be a list of length L - 1, but got: {act_func}")
     if not all(

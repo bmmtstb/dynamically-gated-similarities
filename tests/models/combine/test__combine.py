@@ -6,14 +6,13 @@ import torch as t
 from torch import nn
 
 from dgs.models.combine import (
-    AlphaCombine,
     COMBINE_MODULES,
-    DynamicAlphaCombine,
     get_combine_module,
     register_combine_module,
-    StaticAlphaCombine,
 )
 from dgs.models.combine.combine import CombineSimilaritiesModule
+from dgs.models.combine.dynamic import AlphaCombine, DynamicAlphaCombine
+from dgs.models.combine.static import StaticAlphaCombine
 from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException

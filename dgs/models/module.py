@@ -211,7 +211,8 @@ class BaseModule(ABC):
                 if "optional" in list_of_validations:
                     continue  # value is optional and does not exist, skip validation
                 raise InvalidParameterException(
-                    f"'{param_name}' is expected to be in module '{self.__class__.__name__}'"
+                    f"'{param_name}' is expected to be in module '{self.__class__.__name__}'. "
+                    f"Got: \n{getattr(self, attrib_name)}"
                 )
 
             # it is now safe to get the value
