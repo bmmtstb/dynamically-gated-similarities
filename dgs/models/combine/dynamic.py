@@ -2,13 +2,12 @@
 Implementation of modules that use dynamic weights to combine multiple similarities.
 """
 
-from typing import Union
-
 import torch as t
 from torch import nn
 
 from dgs.models.combine.combine import CombineSimilaritiesModule
 from dgs.models.loader import module_loader
+from dgs.utils.state import State
 from dgs.utils.torchtools import configure_torch_module
 from dgs.utils.types import Config, NodePath, Validations
 
@@ -60,7 +59,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
     def forward(
         self,
         *tensors: t.Tensor,
-        alpha_inputs: Union[t.Tensor, list[t.Tensor], tuple[t.Tensor, ...]] = None,
+        s: State = None,
         **_kwargs,
     ) -> t.Tensor:
         r"""The forward call of this module combines an arbitrary number of similarity matrices
@@ -73,17 +72,14 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         All tensors should be on the same device and all :math:`s_i` should have the same shape.
 
         Args:
-            tensors: A tuple of (Float-)Tensors.
+            tensors: A tuple of tensors describing similarities between the detections and tracks.
                 All ``S`` similarity matrices of this iterable should have values in range ``[0,1]``,
                 be of the same shape ``[D x T]``, and be on the same device.
                 If ``tensors`` is a single tensor, it should have the shape ``[S x D x T]``.
                 ``S`` can be any number of similarity matrices greater than 0,
                 even though only values greater than 1 really make sense.
-            alpha_inputs: An iterable of tensors or a single tensor that are all on the same device as ``tensors``.
-                If ``alpha_inputs`` is a single tensor, it should have the shape ``[S x D x sim_size x ...]``.
-                But because the inputs for different similarity matrices can have different shapes,
-                the most common use case is to have a list of ``S`` tensors.
-                Where every tensor has values in range ``[0, 1]`` and is of shape ``[D x sim_size x ...]``.
+            s: A :class:`State` containing the batched input data for the alpha models.
+                The state should be on the same device as ``tensors``.
 
         Returns:
             torch.Tensor: The weighted similarity matrix as tensor of shape ``[D x T]``.
@@ -108,32 +104,31 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             raise ValueError(
                 f"There should be as many alpha models {len(self.alpha_models)} as tensors {len(tensors)}."
             )
+        # force tensors to be shape [S x D x T]
+        if len(tensors) == 1:
+            tensors = tensors[0]
+        else:
+            tensors = t.stack(tensors, dim=-3)
 
-        tensors = t.stack(tensors, dim=-3)  # [S x D x T]
-
-        if isinstance(tensors, t.Tensor) and tensors.ndim != 3:
-            raise ValueError(f"Expected a 3D tensor, but got a tensor with shape {tensors.shape}")
+        if tensors.ndim != 3:
+            raise ValueError(f"Expected a 3D tensor [S x D x T], but got a tensor with shape {tensors.shape}")
 
         # validate alpha inputs
-        if alpha_inputs is None:
-            raise ValueError("Alpha inputs should be given.")
-        if not isinstance(alpha_inputs, t.Tensor) and not isinstance(alpha_inputs, (tuple, list)):
-            raise TypeError("alpha_inputs should be a tensor or an iterable of (float) tensors.")
-        if any(not isinstance(ai, t.Tensor) for ai in alpha_inputs):
-            raise TypeError("All alpha inputs should be tensors.")
-        if alpha_inputs[0].device != tensors.device or any(ai.device != alpha_inputs[0].device for ai in alpha_inputs):
-            raise RuntimeError("All alpha inputs should be on the same device.")
-        if len(self.alpha_models) != len(alpha_inputs):
-            raise ValueError(
-                f"There should be as many alpha models {len(self.alpha_models)} as alpha inputs {len(alpha_inputs)}."
-            )
+        if s is None:
+            raise ValueError("The state should be given.")
+        if not isinstance(s, State):
+            raise TypeError(f"s should be a State. Got: {s}")
+        if s.device != tensors.device:
+            raise RuntimeError("s should be on the same device as tensors.")
+        if tensors.size(-2) != s.B:
+            raise ValueError(f"The states batch size ({s.B}) should equal D of tensors ({tensors.size(-2)}).")
 
         # [D x S] with softmax over S dimension
         alpha = nn.functional.softmax(
-            t.cat([self.alpha_models[i](a_i) for i, a_i in enumerate(alpha_inputs)], dim=1), dim=-1
+            t.cat([self.alpha_models[i].forward(s) for i in range(len(tensors))], dim=1), dim=-1
         )
 
-        # [S x D ( x 1)] hadamard [S x D x T] -> [S x D x T] -> sum over all S [D x T]
+        # [S x D x 1] hadamard [S x D x T] -> [S x D x T] -> sum over all S => [D x T]
         s = t.mul(alpha.T.unsqueeze(-1), tensors).sum(dim=0)
 
         return s

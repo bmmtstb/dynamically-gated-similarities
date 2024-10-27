@@ -59,6 +59,8 @@ def fc_linear(
     Returns:
         A sequential model containing ``N-1`` fully-connected layers.
     """
+    # pylint: disable=too-many-branches
+
     L = len(hidden_layers)
     # validate bias
     if isinstance(bias, bool):

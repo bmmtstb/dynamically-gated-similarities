@@ -17,8 +17,10 @@ from dgs.models.module import BaseModule
 from dgs.utils.config import fill_in_defaults
 from dgs.utils.exceptions import InvalidParameterException
 from dgs.utils.nn import fc_linear
+from dgs.utils.state import State
 from dgs.utils.types import Device
 from helper import get_test_config, test_multiple_devices
+from tests.utils.state import B, DUMMY_DATA, DUMMY_DATA_BATCH
 
 
 class TestCombineSimilaritiesModule(unittest.TestCase):
@@ -85,13 +87,31 @@ class TestDynamicAlphaCombine(unittest.TestCase):
 
     default_cfg = fill_in_defaults(
         {
-            "def_dynamic_alpha": {"module_name": "dynamic_alpha", "softmax": False, "alpha_modules": ["box_fc1"]},
+            "def_dynamic_alpha": {
+                "module_name": "dynamic_alpha",
+                "softmax": False,
+                "alpha_modules": ["box_fc1", "pose_coco_multi"],
+            },
             "box_fc1": {
                 "module_name": "FullyConnectedAlpha",
                 "name": "bbox",
                 "hidden_layers": [4, 1],
                 "bias": True,
                 "act_func": None,
+            },
+            "pose_coco_multi": {
+                "module_name": "SequentialCombinedAlpha",
+                "name": "keypoints",
+                "paths": [
+                    {"Conv1d": {"in_channels": 17, "out_channels": 15, "kernel_size": 2, "groups": 1, "bias": True}},
+                    "Flatten",
+                    ["pose_coco_multi", "fc"],
+                ],
+                "fc": {
+                    "module_name": "FullyConnectedAlpha",
+                    "hidden_layers": [15, 1],
+                    "bias": False,
+                },
             },
         },
         get_test_config(),
@@ -130,77 +150,35 @@ class TestDynamicAlphaCombine(unittest.TestCase):
     @test_multiple_devices
     def test_dynamic_alpha_forward(self, device: Device):
         # DAC module with alpha models of different sizes
-        dac_diff_sizes = DynamicAlphaCombine(
+        module = DynamicAlphaCombine(
             config=fill_in_defaults({"device": device}, self.default_cfg), path=["def_dynamic_alpha"]
         )
-        dac_diff_sizes.alpha_model = self.default_models.to(device=device)
-        self.assertEqual(len(dac_diff_sizes.alpha_model), self.S)
+        module.alpha_model = self.constant_models.to(device=device)
+        self.assertEqual(len(module.alpha_model), self.S)
 
-        # DAC module with alpha models of constant sizes
-        dac_const_sizes = DynamicAlphaCombine(
-            config=fill_in_defaults({"device": device}, self.default_cfg), path=["def_dynamic_alpha"]
-        )
-        dac_const_sizes.alpha_model = self.constant_models.to(device=device)
-        self.assertEqual(len(dac_diff_sizes.alpha_model), self.S)
-        self.assertEqual(len(dac_const_sizes.alpha_model), self.S)
-
-        for model, alpha_inputs, s_i, result in [
-            (
-                "const",
-                t.ones((self.S, self.D, self.sim_sizes[0])),
-                t.ones((self.S, self.D, self.T)),
-                t.ones((self.D, self.T)),
-            ),
-            (
-                "const",
-                [t.ones(self.D, self.sim_sizes[0]) for _ in range(self.S)],
-                t.ones((self.S, self.D, self.T)),
-                t.ones((self.D, self.T)),
-            ),
-            (
-                "const",
-                t.ones((self.S, self.D, self.sim_sizes[0])),
-                [t.ones((self.D, self.T)) for _ in range(self.S)],
-                t.ones((self.D, self.T)),
-            ),
-            (
-                "diff",
-                [t.ones((self.D, i)) for i in self.sim_sizes],
-                t.ones((self.S, self.D, self.T)),
-                t.ones((self.D, self.T)),
-            ),
-            (
-                "diff",
-                [t.ones((self.D, i)) for i in self.sim_sizes],
-                [t.ones((self.D, self.T)) for _ in range(self.S)],
-                t.ones((self.D, self.T)),
-            ),
+        for tensors, state, result_shape in [
+            # B=1 with batch size not given
+            (t.ones((self.S, 1, self.T)), State(**DUMMY_DATA), t.Size((1, self.T))),
+            (tuple(t.ones((1, self.T)) for _ in range(self.S)), State(**DUMMY_DATA), t.Size((1, self.T))),
+            (t.ones((self.S, B, self.T)), State(**DUMMY_DATA_BATCH), t.Size((B, self.T))),
+            (tuple(t.ones((B, self.T)) for _ in range(self.S)), State(**DUMMY_DATA_BATCH), t.Size((B, self.T))),
         ]:
             with self.subTest(
-                msg="device: {}, model: {}, type_ai: {}, type_si: {}, result: {}".format(
-                    device, model, type(alpha_inputs), type(s_i), result.shape
-                )
+                msg="device: {}, B: {}, tens_t: {}, res_shape: {}".format(device, state.B, type(tensors), result_shape)
             ):
-                # send matrices to the respective device
-                if isinstance(alpha_inputs, (list, tuple)):
-                    alpha_inputs = [a.to(device=device) for a in alpha_inputs]
+                # send state and tensors to the respective device
+                state.to(device=device)
+                if isinstance(tensors, (list, tuple)):
+                    tensors = [tensor.to(device=device) for tensor in tensors]
                 else:
-                    alpha_inputs = alpha_inputs.to(device=device)
-                if isinstance(s_i, (list, tuple)):
-                    s_i = [s.to(device=device) for s in s_i]
-                else:
-                    s_i = s_i.to(device=device)
-                result = result.to(device=device)
+                    tensors = tensors.to(device=device)
 
-                self.assertEqual(t.Size([self.D, self.T]), result.shape)
-                if model == "const":
-                    self.assertTrue(t.allclose(dac_const_sizes.forward(*s_i, alpha_inputs=alpha_inputs), result))
-                else:
-                    self.assertTrue(t.allclose(dac_diff_sizes.forward(*s_i, alpha_inputs=alpha_inputs), result))
+                r = module.forward(*tensors, s=state)
+                self.assertEqual(r.shape, result_shape)
 
 
 class TestDynamicAlphaCombineExceptions(unittest.TestCase):
-    N = 2
+    S = 2
     D = 3
     T = 5
     hl_input_size = 1
@@ -208,7 +186,11 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
     def setUp(self):
         self.config = fill_in_defaults(
             {
-                "def_dynamic_alpha": {"module_name": "dynamic_alpha", "softmax": False, "alpha_modules": ["box_fc1"]},
+                "def_dynamic_alpha": {
+                    "module_name": "dynamic_alpha",
+                    "softmax": False,
+                    "alpha_modules": ["box_fc1", "pose_coco_multi"],
+                },
                 "box_fc1": {
                     "module_name": "FullyConnectedAlpha",
                     "name": "bbox",
@@ -216,12 +198,34 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
                     "bias": True,
                     "act_func": None,
                 },
+                "pose_coco_multi": {
+                    "module_name": "SequentialCombinedAlpha",
+                    "name": "keypoints",
+                    "paths": [
+                        {
+                            "Conv1d": {
+                                "in_channels": 17,
+                                "out_channels": 15,
+                                "kernel_size": 2,
+                                "groups": 1,
+                                "bias": True,
+                            }
+                        },
+                        "Flatten",
+                        ["pose_coco_multi", "fc"],
+                    ],
+                    "fc": {
+                        "module_name": "FullyConnectedAlpha",
+                        "hidden_layers": [15, 1],
+                        "bias": False,
+                    },
+                },
             },
             get_test_config(),
         )
 
         alpha_module = nn.ModuleList(
-            [fc_linear(hidden_layers=[self.hl_input_size, 1], bias=False) for _ in range(self.N)]
+            [fc_linear(hidden_layers=[self.hl_input_size, 1], bias=False) for _ in range(self.S)]
         )
 
         self.model = DynamicAlphaCombine(config=self.config, path=["def_dynamic_alpha"])
@@ -230,14 +234,14 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
             self.model.alpha_model = alpha_module
         if len(self.model.alpha_model) == 0:
             self.model.alpha_model.extend(alpha_module)
-        self.assertEqual(len(self.model.alpha_model), self.N)
-        for i in range(self.N):
+        self.assertEqual(len(self.model.alpha_model), self.S)
+        for i in range(self.S):
             nn.init.constant_(self.model.alpha_model[i][0].weight, 1.0)
 
-        self.dummy_t = tuple(t.ones((self.D, self.T)) for _ in range(self.N))
-        self.dummy_t_single = t.ones((self.N, self.D, self.T))
-        self.dummy_ai = t.ones((self.N, self.hl_input_size))
-        self.dummy_ai_list = [t.ones((1, self.hl_input_size)) for _ in range(self.N)]
+        self.dummy_t = tuple(t.ones((self.D, self.T)) for _ in range(self.S))
+        self.dummy_t_single = t.ones((self.S, self.D, self.T))
+        self.dummy_state = State(**DUMMY_DATA)
+        self.dummy_state_batched = State(**DUMMY_DATA_BATCH)
 
     def tearDown(self):
         if hasattr(self.model, "alpha_model"):
@@ -249,28 +253,22 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
         # tensors
         with self.assertRaises(TypeError) as e:
             # noinspection PyTypeChecker
-            self.model.forward(*(1.0,), alpha_inputs=self.dummy_ai)  # tensors should be tuple of t.Tensor
+            self.model.forward(*(1.0,), s=self.dummy_state)  # tensors should be tuple of t.Tensor
         self.assertIn("All similarity matrices should be (float) tensors", str(e.exception))
         with self.assertRaises(TypeError) as e:
             # noinspection PyTypeChecker
-            self.model.forward(1.0, alpha_inputs=self.dummy_ai)  # tensors should be tuple of t.Tensor
+            self.model.forward(1.0, s=self.dummy_state)  # tensors should be tuple of t.Tensor
         self.assertIn("All similarity matrices should be (float) tensors", str(e.exception))
 
-        # alpha
+        # state
         with self.assertRaises(TypeError) as e:
             # noinspection PyTypeChecker
-            self.model.forward(*self.dummy_t, alpha_inputs=1.0)  # alpha_inputs should be tensors
-        self.assertIn("alpha_inputs should be a tensor or an iterable of (float) tensors", str(e.exception))
-        with self.assertRaises(TypeError) as e:
-            # noinspection PyTypeChecker
-            self.model.forward(*self.dummy_t, alpha_inputs=[1.0] * self.N)  # alpha_inputs should be tensors
-        self.assertIn("All alpha inputs should be tensors", str(e.exception))
+            self.model.forward(*self.dummy_t, s="dummy")
+        self.assertTrue("s should be a State. Got:" in str(e.exception), msg=e.exception)
 
     def test_value_error_tensor_shapes(self):
         with self.assertRaises(ValueError) as e:
-            self.model.forward(
-                t.tensor([[1.0]]), t.tensor([[1.0, 2.0]]), alpha_inputs=[t.tensor([1.0]), t.tensor([1.0])]
-            )  # Different shapes
+            self.model.forward(t.tensor([[1.0]]), t.tensor([[1.0, 2.0]]), s=self.dummy_state)  # Different shapes
         self.assertIn("All similarity matrices should have the same shape", str(e.exception))
 
     def test_runtime_error_tensor_device(self):
@@ -279,48 +277,39 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
             tensors[0] = tensors[0].to(device="cpu")
             tensors[1] = tensors[1].to(device="cuda")
             with self.assertRaises(RuntimeError) as e:
-                self.model.forward(*tensors, alpha_inputs=self.dummy_ai)  # Different devices
+                self.model.forward(*tensors, s=self.dummy_state)  # Different devices
             self.assertIn("All tensors should be on the same device", str(e.exception))
 
     def test_value_error_on_nof_tensors(self):
         # Mismatch in number of tensors against number of alpha models
         with self.assertRaises(ValueError) as e:
-            self.model.forward(*(t.ones((self.D, self.T)) for _ in range(self.N + 1)), alpha_inputs=self.dummy_ai)
-        self.assertIn(f"There should be as many alpha models {self.N} as tensors {self.N + 1}.", str(e.exception))
+            self.model.forward(*(t.ones((self.D, self.T)) for _ in range(self.S + 1)), s=self.dummy_state)
+        self.assertIn(f"There should be as many alpha models {self.S} as tensors {self.S + 1}.", str(e.exception))
 
     def test_value_error_on_4d_tensors(self):
         with self.assertRaises(ValueError) as e:
-            self.model.forward(*(t.ones((self.N, self.D, self.T)) for _ in range(self.N)), alpha_inputs=self.dummy_ai)
-        self.assertIn(f"Expected a 3D tensor, but got a tensor with shape", str(e.exception))
+            self.model.forward(*(t.ones((self.S, self.D, self.T)) for _ in range(self.S)), s=self.dummy_state)
+        self.assertIn(f"Expected a 3D tensor [S x D x T], but got a tensor with shape", str(e.exception))
 
-    def test_alpha_not_set(self):
+    def test_state_not_set(self):
         with self.assertRaises(ValueError) as e:
             self.model.forward(*self.dummy_t)
-        self.assertTrue("Alpha inputs should be given" in str(e.exception), msg=e.exception)
+        self.assertTrue("The state should be given" in str(e.exception), msg=e.exception)
 
     def test_runtime_error_alpha_input_device(self):
         if t.cuda.is_available():
             # tensor based
             with self.assertRaises(RuntimeError) as e:
-                self.model.forward(*self.dummy_t_single.cpu(), alpha_inputs=self.dummy_ai.cuda())  # Different devices
-            self.assertIn("All alpha inputs should be on the same device", str(e.exception))
-
-            # list based
-            alpha_inputs = [t.ones((1, self.hl_input_size)).to(device="cpu") for _ in range(self.N)]
-            alpha_inputs[1] = alpha_inputs[1].to(device="cuda")
-            with self.assertRaises(RuntimeError) as e:
-                self.model.forward(*self.dummy_t_single.cpu(), alpha_inputs=alpha_inputs)  # Different devices
-            self.assertIn("All alpha inputs should be on the same device", str(e.exception))
+                self.model.forward(
+                    *self.dummy_t_single.cpu(), s=self.dummy_state.to(device="cuda")
+                )  # Different devices
+            self.assertIn("s should be on the same device as tensors", str(e.exception))
 
     def test_value_error_on_nof_alpha_inputs(self):
         # Mismatch in number of alpha inputs against number of alpha models
         with self.assertRaises(ValueError) as e:
-            self.model.forward(*self.dummy_t, alpha_inputs=t.ones((self.N + 1, self.hl_input_size)))
-        self.assertIn(f"There should be as many alpha models {self.N} as alpha inputs {self.N + 1}.", str(e.exception))
-
-        with self.assertRaises(ValueError) as e:
-            self.model.forward(*self.dummy_t, alpha_inputs=[t.ones((1, self.hl_input_size)) for _ in range(self.N + 1)])
-        self.assertIn(f"There should be as many alpha models {self.N} as alpha inputs {self.N + 1}.", str(e.exception))
+            self.model.forward(*self.dummy_t, s=self.dummy_state_batched)
+        self.assertIn(f"The states batch size ({B}) should equal D of tensors ({self.D}).", str(e.exception))
 
 
 class TestConstantAlpha(unittest.TestCase):
