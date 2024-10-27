@@ -105,7 +105,9 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         if any(tensor.device != tensors[0].device for tensor in tensors):
             raise RuntimeError("All tensors should be on the same device.")
         if len(self.alpha_models) != len(tensors):
-            raise ValueError(f"There should be as many alpha models {len(self.alpha_models)} as tensors {len(tensors)}.")
+            raise ValueError(
+                f"There should be as many alpha models {len(self.alpha_models)} as tensors {len(tensors)}."
+            )
 
         tensors = t.stack(tensors, dim=-3)  # [S x D x T]
 
