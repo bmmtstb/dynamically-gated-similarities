@@ -296,7 +296,7 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
             self.model.forward(*self.dummy_t)
         self.assertTrue("The state should be given" in str(e.exception), msg=e.exception)
 
-    def test_runtime_error_alpha_input_device(self):
+    def test_runtime_error_state_device(self):
         if t.cuda.is_available():
             # tensor based
             with self.assertRaises(RuntimeError) as e:
@@ -305,7 +305,7 @@ class TestDynamicAlphaCombineExceptions(unittest.TestCase):
                 )  # Different devices
             self.assertIn("s should be on the same device as tensors", str(e.exception))
 
-    def test_value_error_on_nof_alpha_inputs(self):
+    def test_value_error_on_batch_mismatch(self):
         # Mismatch in number of alpha inputs against number of alpha models
         with self.assertRaises(ValueError) as e:
             self.model.forward(*self.dummy_t, s=self.dummy_state_batched)
