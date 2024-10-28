@@ -10,7 +10,6 @@ from glob import glob
 import torch as t
 from tqdm import tqdm
 
-from dgs.models.dgs.dgs import DGSModule
 from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
@@ -123,11 +122,10 @@ def run(config: Config, dl_key: str, dgs_key: str) -> None:
         # validation dataset
         val_dl = module_loader(config=config, module_type="dataloader", key=dl_key)
 
-        # will load all the similarity modules
-        model: DGSModule = module_loader(config=config, module_type="dgs", key=dgs_key)
-        close_all_layers(model)
-
-        engine = DGSEngine(config=config, path=["engine"], model=model, test_loader=val_dl)
+        # will load all the similarity modules in the engine initialization
+        config["engine"]["model_path"] = dgs_key
+        engine = DGSEngine(config=config, path=["engine"], test_loader=val_dl)
+        close_all_layers(engine.model)
 
     engine.test()
 

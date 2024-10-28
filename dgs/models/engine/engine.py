@@ -18,12 +18,14 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import tv_tensors as tvte
 from tqdm import tqdm
 
+from dgs.models.loader import module_loader
 from dgs.models.loss import get_loss_function, LOSS_FUNCTIONS
 from dgs.models.module import enable_keyboard_interrupt
 from dgs.models.modules.named import NamedModule
 from dgs.models.optimizer import get_optimizer, OPTIMIZERS
 from dgs.models.scheduler import get_scheduler, SCHEDULERS
 from dgs.utils.config import DEF_VAL, get_sub_config, save_config
+from dgs.utils.constants import MODULE_TYPES
 from dgs.utils.exceptions import InvalidConfigException
 from dgs.utils.state import State
 from dgs.utils.timer import DifferenceTimer, DifferenceTimers
@@ -32,7 +34,8 @@ from dgs.utils.types import Config, FilePath, NodePath, Results, Validations
 from dgs.utils.visualization import torch_show_image
 
 engine_validations: Validations = {
-    "module_name": [str],
+    "model_path": ["NodePath"],
+    "model_type": [str, ("in", MODULE_TYPES)],
     # optional
     "writer_kwargs": ["optional", dict],
     "writer_log_dir_suffix": ["optional", str],
@@ -62,15 +65,15 @@ class EngineModule(NamedModule, nn.Module):
 
     Most of the settings are defined within the configuration file in the `training` section.
 
-    Notes:
-        The trained module is saved every epoch.
-
     Params
     ------
 
-    module_name (str):
-        Name of the Engine subclass.
-        Has to be in :data:`~.ENGINES`.
+    model_path (NodePath):
+        Path to the configuration setting up the model to be trained or tested.
+
+    model_type (str):
+        The type of :class:`BaseModule` to be loaded as the model for training and testing.
+        The value will be passed as ``module_type`` in the :func:`module_loader` call.
 
     Optional Params
     ---------------
@@ -167,7 +170,6 @@ class EngineModule(NamedModule, nn.Module):
         self,
         config: Config,
         path: NodePath,
-        model: nn.Module,
         test_loader: TorchDataLoader,
         *,
         val_loader: TorchDataLoader = None,
@@ -191,6 +193,7 @@ class EngineModule(NamedModule, nn.Module):
             **self.params.get("writer_kwargs", DEF_VAL["engine"]["writer_kwargs"]),
         )
         # Set up DGSModule
+        model = module_loader(config=config, module_type=self.params["model_type"], key=self.params["model_path"])
         self.register_module("model", self.configure_torch_module(model))
         # save config in the out-folder to make sure values haven't changed when validating those files
         save_config(

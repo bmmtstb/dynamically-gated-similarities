@@ -727,9 +727,8 @@ def get_dgs_engine(
     key_train, key_eval, key_test = dl_keys
 
     # the DGSModule will load all the similarity modules internally
-    kwargs = {
-        "model": module_loader(config=cfg, module_type="dgs", key=dgs_key),
-    }
+    kwargs = {}
+    cfg["engine"]["model_path"] = dgs_key
     # validation dataset
     if key_train is not None:
         kwargs["train_loader"] = module_loader(config=cfg, module_type="dataloader", key=key_train)

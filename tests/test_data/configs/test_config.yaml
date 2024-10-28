@@ -58,3 +58,5 @@ dataloader:
 
 engine:
     module_name: "VisualSimilarityEngine"
+    model_path: ["dgs"]
+    model_type: "dgs"

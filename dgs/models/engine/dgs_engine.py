@@ -8,7 +8,6 @@ from datetime import timedelta
 
 import torch as t
 from scipy.optimize import linear_sum_assignment
-from torch import nn
 from torch.utils.data import DataLoader as TDataLoader
 from tqdm import tqdm
 
@@ -157,23 +156,21 @@ class DGSEngine(EngineModule):
         self,
         config: Config,
         path: NodePath,
-        model: nn.Module,
         *,
         test_loader: TDataLoader = None,
         val_loader: TDataLoader = None,
         train_loader: TDataLoader = None,
         **_kwargs,
     ):
-        if not isinstance(model, DGSModule):
-            raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(model)}'.")
         super().__init__(
             config=config,
             path=path,
-            model=model,
             test_loader=test_loader,
             train_loader=train_loader,
             val_loader=val_loader,
         )
+        if not isinstance(self.model, DGSModule):
+            raise ValueError(f"The 'model' is expected to be an instance of a DGSModule, but got '{type(self.model)}'.")
 
         # TEST - get params from config
         self.validate_params(dgs_eng_test_validations, "params_test")

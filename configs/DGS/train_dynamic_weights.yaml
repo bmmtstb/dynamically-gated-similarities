@@ -26,6 +26,8 @@ log_dir_add_date: false
 
 engine:
     module_name: "DGSEngine"
+    # model_path: ""  # will be set in python script
+    model_type: "dgs"
 
 test:
     inactivity_threshold: 15

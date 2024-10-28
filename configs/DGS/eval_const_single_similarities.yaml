@@ -17,6 +17,8 @@ test:
 
 engine:
     module_name: "DGSEngine"
+    # model_path: ""  # will be set in python script
+    model_type: "dgs"
 
 # #### #
 # DATA #
