@@ -210,10 +210,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
     "val_dl_Dance_256x192_rcnn_075_035": {
         # earlier models
         # ep 1 - box and visual
-        "iou_fc1_ep1__vis_osn_fc1_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 1),
-        ],
         "iou_fc1_ep1__vis_osn_fc3_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
@@ -250,6 +246,14 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_Sigmoid", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
         ],
+        "iou_fc2_ep1__vis_osn_fc3_2ReluSigmoid_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReluSigmoid", 1),
+        ],
+        "iou_fc2_ep1__vis_osn_fc3_Sigmoid_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_Sigmoid", 1),
+        ],
         # ep 2
         "iou_fc1_ep2__vis_osn_fc1_ep2__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 2),
@@ -263,11 +267,84 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 2),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 2),
         ],
+        "iou_fc1_Sigmoid_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_Sigmoid", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc1_Tanh_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_Tanh", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc1_ReLU_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_LeakyReLU_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_LeakyReLU", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_ReLUSigmoid_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_ReLU_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLU", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_Sigmoid_ep2__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_Sigmoid", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_ep1__vis_osn_fc3_2ReluSigmoid_ep2__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReluSigmoid", 2),
+        ],
+        "iou_fc2_ep1__vis_osn_fc3_Sigmoid_ep2__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_Sigmoid", 2),
+        ],
+        # ep 4
         "iou_fc1_ep4__vis_osn_fc3_ep4__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 4),
         ],
-        # partially trained
+        "iou_fc1_Sigmoid_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_Sigmoid", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc1_Tanh_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_Tanh", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc1_ReLU_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_LeakyReLU_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_LeakyReLU", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_ReLUSigmoid_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_ReLU_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLU", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_Sigmoid_ep4__vis_osn_fc3_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_Sigmoid", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3", 1),
+        ],
+        "iou_fc2_ep1__vis_osn_fc3_2ReluSigmoid_ep4__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReluSigmoid", 4),
+        ],
+        "iou_fc2_ep1__vis_osn_fc3_Sigmoid_ep4__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_Sigmoid", 4),
+        ],
+        # ep 6
         "iou_fc1_ep6__vis_osn_fc1_ep6__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 6),
@@ -346,6 +423,43 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
         "iou_fc1_ep12_pt21__pose_coco_conv1o15k2fc2_ep12_pt21__lr-4": [
             ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 12),
             ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_conv1o15k2fc2", 12),
+        ],
+        # HOW MANY EPOCHS
+        "iou_fc1_ep1__vis_osn_fc1_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 1),
+        ],
+        "iou_fc1_ep1__vis_osn_fc1_ep2__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 2),
+        ],
+        "iou_fc1_ep2__vis_osn_fc1_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 1),
+        ],
+        "iou_fc1_ep1__vis_osn_fc1_ep4__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 4),
+        ],
+        "iou_fc1_ep4__vis_osn_fc1_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 1),
+        ],
+        "iou_fc1_ep1__vis_osn_fc1_ep8__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 8),
+        ],
+        "iou_fc1_ep8__vis_osn_fc1_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 8),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 1),
+        ],
+        "iou_fc1_ep1__vis_osn_fc1_ep12__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 12),
+        ],
+        "iou_fc1_ep12__vis_osn_fc1_ep1__lr-4": [
+            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc1", 1),
         ],
     },
     # pt21 gt
@@ -594,6 +708,43 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1", 6),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc5", 6),
         ],
+        # HOW MANY EPOCHS
+        "iou_fc1_ep1__pose_coco_fc2_ep1__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 1),
+        ],
+        "iou_fc1_ep2__pose_coco_fc2_ep1__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 2),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 1),
+        ],
+        "iou_fc1_ep1__pose_coco_fc2_ep2__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 2),
+        ],
+        "iou_fc1_ep4__pose_coco_fc2_ep1__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 4),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 1),
+        ],
+        "iou_fc1_ep1__pose_coco_fc2_ep4__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 4),
+        ],
+        "iou_fc1_ep8__pose_coco_fc2_ep1__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 8),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 1),
+        ],
+        "iou_fc1_ep1__pose_coco_fc2_ep8__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 8),
+        ],
+        "iou_fc1_ep12__pose_coco_fc2_ep1__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 12),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 1),
+        ],
+        "iou_fc1_ep1__pose_coco_fc2_ep12__lr-4": [
+            ("train_dl_pt21_256x192_gt", "box_xywh_sim", "box_fc1", 1),
+            ("train_dl_pt21_256x192_gt", "pose_sim_coco", "pose_coco_fc2", 12),
+        ],
     },
 }
 
@@ -777,7 +928,7 @@ def train_dynamic_alpha(cfg: Config, dl_train_key: str, dl_eval_key: str, alpha_
     else:
         raise NotImplementedError(f"unknown type of dataloader, got: {dl_train_key}")
 
-    cfg["train"]["load_image_crops"] = not any(val in sim_name for val in ["pose_", "box_"])
+    cfg["train"]["load_image_crops"] = "visual_" in sim_name
 
     # use the modified config and obtain the model used for training
     engine_train = get_dgs_engine(cfg=cfg, dl_keys=(dl_train_key, dl_eval_key, None))
