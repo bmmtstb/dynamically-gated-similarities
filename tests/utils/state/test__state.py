@@ -731,7 +731,7 @@ class TestStateFunctions(unittest.TestCase):
         for obj in [s, multi_s, no_fps]:
             with self.subTest(msg="obj: {}".format(obj)):
                 with self.assertRaises(KeyError) as e:
-                    _ = obj.copy()["image"]
+                    _ = obj.copy().data["image"]
                 self.assertTrue("'image'" in str(e.exception), msg=e.exception)
         # -> succeed if present
         img_0 = img_ds["image"][0]
@@ -837,7 +837,7 @@ class TestImageCrop(unittest.TestCase):
 
         # get using data -> fails if not present yet
         with self.assertRaises(KeyError) as e:
-            _ = s.copy()["image_crop"]
+            _ = s.copy().data["image_crop"]
         self.assertTrue("'image_crop'" in str(e.exception), msg=e.exception)
 
         # s - call load_image_crop
