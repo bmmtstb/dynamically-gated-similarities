@@ -90,7 +90,7 @@ class DGSModule(NamedModule, nn.Module):
     def __call__(self, *args, **kwargs) -> any:  # pragma: no cover
         return self.forward(*args, **kwargs)
 
-    def forward(self, ds: State, target: State, **_kwargs) -> t.Tensor:
+    def forward(self, ds: State, target: State, **kwargs) -> t.Tensor:
         """Given a State containing the current detections and a target, compute the similarity between every pair.
 
         Returns:
@@ -101,8 +101,12 @@ class DGSModule(NamedModule, nn.Module):
         # compute similarity for every module and possibly compute the softmax
         results = [m(ds, target) for m in self.sim_mods]
 
+        # add updated ds (potentially including embeddings) as s to kwargs
+        if "s" not in kwargs:
+            kwargs["s"] = ds
+
         # combine and possibly compute softmax
-        combined: t.Tensor = self.combine(*results, **_kwargs)
+        combined: t.Tensor = self.combine(*results, **kwargs)
 
         # add a number of columns for the empty / new tracks equal to the length of the input
         # every input should be allowed to get assigned to a new track

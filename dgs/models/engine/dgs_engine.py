@@ -237,7 +237,7 @@ class DGSEngine(EngineModule):
             # Make sure to compute the embeddings for every detection,
             # this is done to ensure correct behavior of the collate function later on.
             time_sim_start = time.time()
-            _ = self.model.forward(ds=detections, target=detections, s=detections)
+            _ = self.model.forward(ds=detections, target=detections)
             timers.add(name="similarity", prev_time=time_sim_start)
             # There are no tracks yet, therefore, every detection is a new state!
             time_match_start = time.time()
@@ -245,7 +245,7 @@ class DGSEngine(EngineModule):
             timers.add(name="match", prev_time=time_match_start)
         elif N > 0:
             time_sim_start = time.time()
-            similarity = self.model.forward(ds=detections, target=collate_states(track_states), s=detections)
+            similarity = self.model.forward(ds=detections, target=collate_states(track_states))
             timers.add(name="similarity", prev_time=time_sim_start)
 
             # Solve Linear sum Assignment Problem (LAP/LSA).

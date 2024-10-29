@@ -113,6 +113,8 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
         if tensors.ndim != 3:
             raise ValueError(f"Expected a 3D tensor [S x D x T], but got a tensor with shape {tensors.shape}")
 
+        S = tensors.size(-3)
+
         # validate alpha inputs
         if s is None:
             raise ValueError("The state should be given.")
@@ -124,14 +126,10 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
             raise ValueError(f"The states batch size ({s.B}) should equal D of tensors ({tensors.size(-2)}).")
 
         # [D x S] with softmax over S dimension
-        alpha = nn.functional.softmax(
-            t.cat([self.alpha_models[i].forward(s) for i in range(len(tensors))], dim=1), dim=-1
-        )
+        alpha = nn.functional.softmax(t.cat([self.alpha_models[i].forward(s) for i in range(S)], dim=1), dim=-1)
 
         # [S x D x 1] hadamard [S x D x T] -> [S x D x T] -> sum over all S => [D x T]
-        s = t.mul(alpha.T.unsqueeze(-1), tensors).sum(dim=0)
-
-        return s
+        return t.mul(alpha.T.unsqueeze(-1), tensors).sum(dim=0)
 
     def terminate(self) -> None:  # pragma: no cover
         if hasattr(self, "alpha_models"):

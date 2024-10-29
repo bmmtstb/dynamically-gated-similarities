@@ -201,6 +201,8 @@ class State(UserDict):
         Returns:
             A :class:`State` if item is int or slice, and any if item is a string.
         """
+        if isinstance(item, str) and hasattr(self, item):
+            return getattr(self, item)
         if isinstance(item, str):
             return self.data[item]
         if isinstance(item, int):
@@ -938,6 +940,9 @@ EMPTY_STATE = State(bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0),
 def get_ds_data_getter(attribute: str) -> DataGetter:
     """Given a single name of an attribute or property,
     return a function, that gets the respective values from a given :class:`State`.
+
+    Notes:
+        Note that the :func:`__getitem__` call of the :class:`State` will return attributes from strings if applicable.
     """
 
     def getter(s: State) -> any:
@@ -950,6 +955,9 @@ def get_ds_data_getter(attribute: str) -> DataGetter:
 def get_ds_data_getters(attributes: list[str]) -> DataGetters:
     """Given a list of attribute names,
     return a function, that gets those attributes from a given :class:`State`.
+
+    Notes:
+        Note that the :func:`__getitem__` call of the :class:`State` will return attributes from strings if applicable.
     """
 
     def getter(s: State) -> tuple[any, ...]:
