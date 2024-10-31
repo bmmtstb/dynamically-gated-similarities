@@ -73,61 +73,52 @@ DL_KEYS: dict[str, list[str]] = {
 # DL_KEY -> (list of SCORE_THRESHS, list of IOU_THRESHS, list of DGS_KEYS)
 RCNN_DL_KEYS: dict[str, tuple[list[float], list[float], list[str]]] = {
     "dgs_pt21_rcnn_256x192_val": (
-        [0.85, 0.90, 0.95, 0.99],  # [0.85]
-        [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],  # [0.4]
+        [0.75, 0.80, 0.85, 0.90, 0.95, 0.99],
+        # [0.85]
+        [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        # [0.4]
         [
             "iou",
             "oks",
             "OSNet",
-            # "OSNetAIN",
             # "Resnet50",
             # "Resnet152",
-            # "OSNetAIN_CrossDomainDuke",
-            # "OSNetIBN_CrossDomainDuke",
-            # "OSNetAIN_CrossDomainMSMT17",
         ],
     ),
     "dgs_pt21_rcnn_256x128_val": (
-        [0.85],
-        [0.4],
+        [0.80, 0.85, 0.90, 0.95],
+        [0.3, 0.4, 0.5, 0.6],
         [
             "iou",
             "oks",
             "OSNet",
-            # "OSNetAIN",
-            "Resnet50",
-            "Resnet152",
-            # "OSNetAIN_CrossDomainDuke",
-            # "OSNetIBN_CrossDomainDuke",
-            # "OSNetAIN_CrossDomainMSMT17",
+            # "Resnet50",
+            # "Resnet152",
         ],
     ),
     "dgs_Dance_rcnn_256x192_val": (
-        [0.70, 0.75],
-        [0.35],
+        [0.75, 0.80, 0.85, 0.90, 0.95, 0.99],
+        # [0.70]
+        [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8],
+        # [0.35]
         [
             "iou",
             "oks",
             "OSNet",
-            # "OSNetAIN",
-            "Resnet50",
-            "Resnet152",
-            # "OSNetAIN_CrossDomainDuke",
-            # "OSNetIBN_CrossDomainDuke",
-            # "OSNetAIN_CrossDomainMSMT17",
+            # "Resnet50",
+            # "Resnet152",
         ],
     ),
-    # "dgs_Dance_rcnn_256x192_test": (
-    #     [0.70, 0.75],
-    #     [0.35],
-    #     [
-    #         "iou",
-    #         "OSNet",
-    #         # "OSNetAIN",
-    #         # "Resnet50",
-    #         # "Resnet152",
-    #     ],
-    # ),
+    "dgs_Dance_rcnn_256x192_test": (
+        [0.70],
+        [0.35],
+        [
+            "iou",
+            "OSNet",
+            "Resnet50",
+            "Resnet152",
+        ],
+    ),
 }
 
 
