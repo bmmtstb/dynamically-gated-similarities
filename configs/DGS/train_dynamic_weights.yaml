@@ -204,7 +204,6 @@ val_dl_pt21_256x192_eval_acc:
     shuffle: false
     dataset_path: "./data/PoseTrack21/"
     paths: "./data/PoseTrack21/posetrack_data/val/*.json"
-#    paths: "./data/PoseTrack21/posetrack_data/val_part/*.json"
     crops_folder: "./data/PoseTrack21/crops/256x192/val/"  # dataset name will be added during init
     
     L: 1
@@ -221,7 +220,6 @@ train_dl_pt21_256x192_gt:
     shuffle: true
     dataset_path: "./data/PoseTrack21/"
     paths: "./data/PoseTrack21/posetrack_data/train/*.json"
-#    paths: "./data/PoseTrack21/posetrack_data/train_part/*.json"
     crops_folder: "./data/PoseTrack21/crops/256x192/train/"  # dataset name will be added during init
     
     L: 1
