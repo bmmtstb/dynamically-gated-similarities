@@ -1,5 +1,5 @@
 """
-Use the DGS module to evaluate the performance of a combination of two similarities.
+Use the class:`DGSModule` to evaluate the performance of a combination of two similarities.
 
 Every pair of similarities is evaluated using the DGS module on its own with constant alpha values.
 Every combination of alpha values in 10% increments is used.
@@ -38,8 +38,6 @@ GT_DL_KEYS: dict[str, list[str]] = {
         "iou_oks",
         "iou_OSNet",
         "oks_OSNet",
-        # "iou_OSNetAIN",
-        # "oks_OSNetAIN",
         # "iou_Resnet50",
         # "oks_Resnet50",
         # "iou_Resnet152",
@@ -47,7 +45,6 @@ GT_DL_KEYS: dict[str, list[str]] = {
     ],
     "dgs_Dance_gt_256x192_val": [
         "iou_OSNet",
-        # "iou_OSNetAIN",
         "iou_Resnet50",
         "iou_Resnet152",
     ],
@@ -64,12 +61,10 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
             "iou_oks",
             "iou_OSNet",
             "oks_OSNet",
-            # "iou_OSNetAIN",
-            # "oks_OSNetAIN",
-            # "iou_Resnet50",
-            # "oks_Resnet50",
-            # "iou_Resnet152",
-            # "oks_Resnet152",
+            "iou_Resnet50",
+            "oks_Resnet50",
+            "iou_Resnet152",
+            "oks_Resnet152",
         ],
     ),
     (
@@ -81,8 +76,6 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
             "iou_oks",
             "iou_OSNet",
             "oks_OSNet",
-            # "iou_OSNetAIN",
-            # "oks_OSNetAIN",
             "iou_Resnet50",
             "oks_Resnet50",
             "iou_Resnet152",
@@ -98,8 +91,6 @@ RCNN_DL_KEYS: list[tuple[str, float, float, float, list[str]]] = [
             "iou_oks",
             "iou_OSNet",
             "oks_OSNet",
-            # "iou_OSNetAIN",
-            # "oks_OSNetAIN",
             "iou_Resnet50",
             "oks_Resnet50",
             "iou_Resnet152",
