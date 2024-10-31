@@ -578,6 +578,13 @@ visual_osn_fc5:
   bias: true
   act_func: null
 
+visual_osn_fc5_5Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [512, 256, 128, 64, 32, 1]
+  bias: true
+  act_func: "Sigmoid"
+
 visual_osn_fc5_4ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
@@ -627,6 +634,13 @@ visual_res_fc5:
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
   bias: true
   act_func: null
+
+visual_res_fc5_5Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [2048, 1024, 256, 128, 64, 1]
+  bias: true
+  act_func: "Sigmoid"
 
 visual_res_fc5_4ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
