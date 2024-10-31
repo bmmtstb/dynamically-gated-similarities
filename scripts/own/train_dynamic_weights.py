@@ -35,7 +35,6 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
                 "box_fc1_Tanh",
                 "box_fc1_ReLU",
                 "box_fc2_ReLUSigmoid",
-                "box_fc2_2LeakyReLU",
                 "box_fc2_2ReLU",
                 "box_fc2_2Sigmoid",
             ],
@@ -78,7 +77,6 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
                 "box_fc1_Sigmoid",
                 "box_fc1_Tanh",
                 "box_fc1_ReLU",
-                "box_fc2_2LeakyReLU",
                 "box_fc2_ReLUSigmoid",
                 "box_fc2_2ReLU",
                 "box_fc2_2Sigmoid",
@@ -139,10 +137,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_2LeakyReLU_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2LeakyReLU", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
@@ -197,10 +191,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_2LeakyReLU_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2LeakyReLU", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
@@ -246,10 +236,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 2),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_2LeakyReLU_ep2__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2LeakyReLU", 2),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
         "iou_fc2_ReLUSigmoid_ep2__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 2),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
@@ -285,10 +271,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
         ],
         "iou_fc1_ReLU_ep4__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 4),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
-        "iou_fc2_2LeakyReLU_ep4__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2LeakyReLU", 4),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
         "iou_fc2_ReLUSigmoid_ep4__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
@@ -456,10 +438,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_2LeakyReLU_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2LeakyReLU", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
@@ -567,10 +545,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
         ],
         "iou_fc1_ReLU_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
-        "iou_fc2_2LeakyReLU_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2LeakyReLU", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
