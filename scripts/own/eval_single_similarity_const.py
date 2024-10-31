@@ -220,10 +220,6 @@ if __name__ == "__main__":
         for DGS_KEY in (pbar_key := tqdm(DGS_KEYS, desc="similarities", leave=False)):
             pbar_key.set_postfix_str(DGS_KEY)
 
-            if DGS_KEY == "oks":
-                # not possible for gt data
-                continue
-
             if "pt21" in DL_KEY:
                 data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["base_path"]) if f.is_file()]
                 assert len(data_paths)
