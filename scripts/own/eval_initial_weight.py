@@ -5,6 +5,7 @@ Script to run an evaluation of the initial weights of the tracks
 # pylint: disable=R0801
 
 import os
+import time
 from glob import glob
 
 import torch as t
@@ -138,6 +139,8 @@ def run(config: Config, dl_key: str, dgs_key: str) -> None:
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
+    start_time = time.time()
+
     cfg = load_config(CONFIG_FILE)
 
     for DL_KEY, KEYS in (pbar_dl := tqdm(DL_KEYS.items(), desc="Dataloader", leave=False)):
@@ -241,4 +244,5 @@ if __name__ == "__main__":
                     else:
                         raise NotImplementedError
 
-            send_discord_notification("finished eval initial track weight")
+    if (elapsed_time := time.time() - start_time) > 60:
+        send_discord_notification("finished eval initial track weight")
