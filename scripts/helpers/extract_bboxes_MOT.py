@@ -20,24 +20,21 @@ from dgs.utils.utils import notify_on_completion_or_error, replace_file_type, se
 
 CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
-# SCORE_THRESHS: list[float] = [0.85, 0.90, 0.95, 0.99]
-SCORE_THRESHS: list[float] = [0.70, 0.75]
-# IOU_THRESHS: list[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-IOU_THRESHS: list[float] = [0.35]
-
-RCNN_DL_KEYS: list[str] = [
-    # "RCNN_MOT_256x192_train",
-    # "RCNN_MOT_256x192_test",
-    "RCNN_Dance_256x192_test",
-    "RCNN_Dance_256x192_train",
-    "RCNN_Dance_256x192_val",
-]
-
 DL_KEYS: list[str] = [
     # "MOT_256x192_train",
-    "Dance_256x192_train",
+    # "Dance_256x192_train",
     "Dance_256x192_val",
+    # "Dance_256x192_test", # there is no GT test data available in DanceTrack
 ]
+
+RCNN_DL_KEYS: dict[str, tuple[list[float], list[float]]] = {
+    # "RCNN_MOT_256x192_train": (),
+    # "RCNN_MOT_256x192_test": (),
+    "RCNN_Dance_256x192_val": ([0.75, 0.80, 0.85, 0.90, 0.95, 0.99], [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7]),
+    "RCNN_Dance_256x192_test": ([0.70], [0.35]),
+    "RCNN_Dance_256x192_train": ([0.70], [0.35]),
+}
+
 
 # IN images: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/img1/*.jpg"
 # IN boxes: "./data/{MOT20|DanceTrack}/{train|test|val}/DATASET/gt/gt.txt"
@@ -229,15 +226,29 @@ def save_crops(_s: State, img_dir: FilePath, _gt_img_id: str | int, save_kps: bo
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
+    start_time = time.time()
+
     config: Config = load_config(CONFIG_FILE)
 
-    for DL_KEY in DL_KEYS:
-        print(f"Extracting GT image crops using dataloader: {DL_KEY}")
+    # ############ #
+    # GROUND-TRUTH #
+    # ############ #
+
+    print("Extracting GT image crops")
+    for DL_KEY in (pbar_gt_dl := tqdm(DL_KEYS, desc="GT-DL", leave=False)):
+        pbar_gt_dl.set_postfix_str(DL_KEY)
+
         run_gt_extractor(dl_key=DL_KEY)
 
-    for RCNN_DL_KEY in RCNN_DL_KEYS:
-        print(f"Using Keypoint-RCNN to predict and extract crops for dataloader: {RCNN_DL_KEY}")
-        start_time = time.time()
+    # #### #
+    # RCNN #
+    # #### #
+
+    print("Using Keypoint-RCNN to predict and extract crops")
+    for RCNN_DL_KEY, (SCORE_THRESHS, IOU_THRESHS) in (
+        pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="RCNN-DL", leave=False)
+    ):
+        pbar_dl.set_postfix_str(RCNN_DL_KEY)
 
         h, w = config[RCNN_DL_KEY]["crop_size"]
 
@@ -256,8 +267,5 @@ if __name__ == "__main__":
                     dl_key=RCNN_DL_KEY, subm_key="submission_MOT", rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{h}x{w}"
                 )
 
-        if (elapsed_time := time.time() - start_time) > 30:
-            send_discord_notification(
-                f"extracted MOT bboxes for {RCNN_DL_KEY} in {time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}"
-            )
-    send_discord_notification("finished extracting bboxes for MOT")
+    if (elapsed_time := time.time() - start_time) > 300:  # 5 minutes
+        send_discord_notification("finished extracting bboxes for MOT")

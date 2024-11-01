@@ -104,6 +104,20 @@ PT21_256x192_val:
     crop_mode: "zero-pad"
     load_img_crops: false
 
+PT21_256x192_train:
+    module_name: "PoseTrack21_Image"
+    # data_path:  # will be set in python script
+    dataset_path: "./data/PoseTrack21/"
+    dataset_paths: "./data/PoseTrack21/posetrack_data/train/**.json"
+    crops_folder: "./data/PoseTrack21/crops/256x192/train/"
+    
+    batch_size: 1
+    collate_fn: "lists"
+
+    crop_size: !!python/tuple [256, 192]  # [H,W]
+    crop_mode: "zero-pad"
+    load_img_crops: false
+
 # ##### #
 # MOT20 #
 # ##### #

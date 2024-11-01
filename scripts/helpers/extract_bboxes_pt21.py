@@ -24,11 +24,14 @@ SUBM_KEY: str = "submission_pt21"
 DL_KEYS: list[str] = [
     "PT21_256x128_val",
     "PT21_256x192_val",
+    "PT21_256x192_train",
 ]
 
 RCNN_DL_KEYS: dict[str, tuple[list[float], list[float]]] = {
-    "RCNN_PT21_256x128_val": ([0.85], [0.4]),
-    "RCNN_PT21_256x192_val": ([0.85, 0.90, 0.95, 0.99], [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+    "RCNN_PT21_256x128_val": ([0.80, 0.85, 0.90, 0.95], [0.3, 0.4, 0.5, 0.6]),
+    "RCNN_PT21_256x192_val": ([0.75, 0.80, 0.85, 0.90, 0.95, 0.99], [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8]),
+    "RCNN_PT21_256x192_train": ([0.85], [0.4]),
+    "RCNN_PT21_256x192_test": ([0.85], [0.4]),
 }
 
 # IN images: "./data/PoseTrack21/images/{val|train}/DATASET/*.jpg"
@@ -203,6 +206,8 @@ def extract_gt_boxes(config: Config, dl_key: str) -> None:
 if __name__ == "__main__":
     print(f"Cuda available: {t.cuda.is_available()}")
 
+    start_time = time.time()
+
     print("Extracting the GT image crops")
     for DL_KEY in (pbar_dl := tqdm(DL_KEYS, desc="Dataloader", leave=False)):
         pbar_dl.set_postfix_str(DL_KEY)
@@ -215,8 +220,6 @@ if __name__ == "__main__":
         pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="Dataloader", leave=False)
     ):
         pbar_dl.set_postfix_str(RCNN_DL_KEY)
-
-        start_time = time.time()
 
         rcnn_cfg: Config = load_config(CONFIG_FILE)
         for score_threshold in (pbar_score_thresh := tqdm(SCORE_THRESHS, desc="Score-Threshold", leave=False)):
@@ -239,8 +242,5 @@ if __name__ == "__main__":
                     rcnn_cfg_str=f"rcnn_{score_str}_{iou_str}_{RCNN_DL_KEY.rsplit('_', maxsplit=1)[-1]}",
                 )
 
-        if (elapsed_time := time.time() - start_time) > 30:
-            send_discord_notification(
-                f"extracted PT21 bboxes for {RCNN_DL_KEY} in {time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}"
-            )
-    send_discord_notification("finished extracting bboxes for PT21")
+    if (elapsed_time := time.time() - start_time) > 300:  # 5 minutes
+        send_discord_notification("finished extracting bboxes for PT21")

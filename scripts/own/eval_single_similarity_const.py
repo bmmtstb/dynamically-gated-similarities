@@ -74,9 +74,9 @@ DL_KEYS: dict[str, list[str]] = {
 RCNN_DL_KEYS: dict[str, tuple[list[float], list[float], list[str]]] = {
     "dgs_pt21_rcnn_256x192_val": (
         [0.75, 0.80, 0.85, 0.90, 0.95, 0.99],
-        # [0.85]
-        [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        # [0.4]
+        # [0.85],
+        [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7],
+        # [0.4],
         [
             "iou",
             "oks",
@@ -99,7 +99,7 @@ RCNN_DL_KEYS: dict[str, tuple[list[float], list[float], list[str]]] = {
     "dgs_Dance_rcnn_256x192_val": (
         [0.75, 0.80, 0.85, 0.90, 0.95, 0.99],
         # [0.70]
-        [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8],
+        [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7],
         # [0.35]
         [
             "iou",
@@ -109,11 +109,24 @@ RCNN_DL_KEYS: dict[str, tuple[list[float], list[float], list[str]]] = {
             # "Resnet152",
         ],
     ),
-    "dgs_Dance_rcnn_256x192_test": (
-        [0.70],
-        [0.35],
+}
+
+TEST_DL_KEYS: dict[str, tuple[list[tuple[float, float]], list[str]]] = {
+    "dgs_pt21_rcnn_256x192_test": (
+        [(0.85, 0.4)],
         [
             "iou",
+            "oks",
+            "OSNet",
+            "Resnet50",
+            "Resnet152",
+        ],
+    ),
+    "dgs_Dance_rcnn_256x192_test": (
+        [(0.70, 0.35)],
+        [
+            "iou",
+            "oks",
             "OSNet",
             "Resnet50",
             "Resnet152",
@@ -233,13 +246,13 @@ if __name__ == "__main__":
             else:
                 raise NotImplementedError
 
-    # #### #
-    # RCNN #
-    # #### #
+    # #################### #
+    # EVALUATE RCNN SINGLE #
+    # #################### #
 
     print("Evaluating single models on the validation-data using KeypointRCNN as prediction backbone")
     for RCNN_DL_KEY, (SCORE_THRESHS, IOU_THRESHS, DGS_KEYS) in (
-        pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="RCNN Dataloaders", leave=False)
+        pbar_dl := tqdm(RCNN_DL_KEYS.items(), desc="VAL RCNN Dataloaders", leave=False)
     ):
         pbar_dl.set_postfix_str(f"{RCNN_DL_KEY}")
 
@@ -292,5 +305,62 @@ if __name__ == "__main__":
                         )
                     else:
                         raise NotImplementedError
+
+    # ################ #
+    # TEST RCNN SINGLE #
+    # ################ #
+
+    print("Predicting test data for single models using KeypointRCNN")
+    for TEST_DL_KEY, (threshs, DGS_KEYS) in (
+        pbar_dl := tqdm(TEST_DL_KEYS.items(), desc="Test RCNN Dataloaders", leave=False)
+    ):
+        pbar_dl.set_postfix_str(f"{TEST_DL_KEY}")
+
+        for score_thresh, iou_thresh in (pbar_threshs := tqdm(threshs, desc="Thresholds", leave=False)):
+            score_s = f"{int(score_thresh * 100):03d}"
+            iou_s = f"{int(iou_thresh * 100):03d}"
+            pbar_threshs.set_postfix_str(f"({score_s},{iou_s})")
+
+            # IoU, OKS, and visual similarity
+            for DGS_KEY in (pbar_key := tqdm(DGS_KEYS, desc="similarities", leave=False)):
+                pbar_key.set_postfix_str(DGS_KEY)
+
+                cfg = load_config(CONFIG_FILE)
+                cfg["name"] = f"Test-Single-{DGS_KEY}"
+                _crop_h, _crop_w = cfg[TEST_DL_KEY]["crop_size"]
+                if "pt21" in TEST_DL_KEY:
+                    base_path = os.path.normpath(
+                        f"./data/PoseTrack21/posetrack_data/{_crop_h}x{_crop_w}_rcnn_{score_s}_{iou_s}_test/"
+                    )
+                    cfg[TEST_DL_KEY]["base_path"] = base_path
+                    data_paths = [f.path for f in os.scandir(base_path) if f.is_file()]
+                    assert len(data_paths), f"There are no paths. base_path: {base_path}"
+
+                    single_run_pt21(
+                        config=cfg,
+                        dl_key=TEST_DL_KEY,
+                        paths=data_paths,
+                        out_key=f"{TEST_DL_KEY}_{score_s}_{iou_s}",
+                        dgs_key=DGS_KEY,
+                    )
+                elif "Dance" in TEST_DL_KEY:
+                    rcnn_cfg_str = f"rcnn_{score_s}_{iou_s}_{_crop_h}x{_crop_w}"
+                    cfg[TEST_DL_KEY]["crop_key"] = rcnn_cfg_str
+
+                    data_paths = [
+                        os.path.normpath(os.path.join(p, f"./{rcnn_cfg_str}.txt"))
+                        for p in glob(cfg[TEST_DL_KEY]["base_path"])
+                    ]
+                    assert len(data_paths), f"There are no paths. rcnn_cfg_str: {rcnn_cfg_str}"
+
+                    single_run_dance(
+                        config=cfg,
+                        dl_key=TEST_DL_KEY,
+                        paths=data_paths,
+                        out_key=f"{TEST_DL_KEY}_{score_s}_{iou_s}",
+                        dgs_key=DGS_KEY,
+                    )
+                else:
+                    raise NotImplementedError
 
     send_discord_notification("finished eval single")
