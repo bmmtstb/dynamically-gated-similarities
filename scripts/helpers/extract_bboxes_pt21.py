@@ -2,7 +2,6 @@
 
 import os.path
 import time
-import warnings
 from glob import glob
 
 import torch as t
@@ -11,7 +10,7 @@ from torchvision.transforms.v2.functional import convert_image_dtype
 from tqdm import tqdm
 
 from dgs.models.loader import module_loader
-from dgs.models.submission import PoseTrack21Submission
+from dgs.models.submission.posetrack21 import PoseTrack21Submission
 from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing, read_json
 from dgs.utils.state import State
@@ -70,16 +69,9 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
     dataset_paths: list = glob(config[dl_key]["dataset_paths"])
 
     for dataset_path in (pbar_dataset := tqdm(dataset_paths, desc="datasets", leave=False)):
-        # dataset_path: "./data/PoseTrack21/images/{val|train}/DATASET/"
+        # dataset_path: "./data/PoseTrack21/images/{val|train|test}/DATASET/"
         ds_name = os.path.basename(os.path.realpath(dataset_path))
         pbar_dataset.set_postfix_str(ds_name)
-
-        gt_data_path = f"{dataset_path.replace('images', 'posetrack_data').rstrip('/')}.json"
-        if not os.path.exists(gt_data_path):
-            warnings.warn(f"Could not find the ground-truth data at: {gt_data_path}")
-            continue
-        gt_imgs = read_json(gt_data_path)["images"]
-        gt_img_id_map = [img["image_id"] for img in gt_imgs]  # zero-indexed!
 
         # create img output folder
         crop_h, crop_w = config[dl_key]["crop_size"]
@@ -88,11 +80,32 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
 
         # modify the configuration
         config[dl_key]["data_path"] = dataset_path
-        config[dl_key]["mask_path"] = gt_data_path
         config[subm_key]["file"] = f"./data/PoseTrack21/posetrack_data/{crop_h}x{crop_w}_{rcnn_cfg_str}/{ds_name}.json"
 
         if os.path.exists(config[subm_key]["file"]):
             continue
+
+        # if gt data available, reuse image IDs
+
+        gt_data_path = f"{dataset_path.replace('images', 'posetrack_data').rstrip('/')}.json"
+        if not os.path.exists(gt_data_path):
+            imgs: list[FilePath] = glob(f"{dataset_path}*.jpg")
+            N = len(imgs)
+            vid_id = ds_name.split("_")[0]
+            gt_imgs = [
+                {
+                    "nframes": N,
+                    "vid_id": vid_id,
+                    "ignore_regions_x": [],
+                    "ignore_regions_y": [],
+                }
+                for _ in range(N)
+            ]
+            gt_img_id_map = [i for i in range(N)]  # zero-indexed!
+        else:
+            gt_imgs = read_json(gt_data_path)["images"]
+            gt_img_id_map = [img["image_id"] for img in gt_imgs]  # zero-indexed!
+            config[dl_key]["mask_path"] = gt_data_path
 
         dl_module = module_loader(config=config, module_type="dataloader", key=dl_key)
         subm_module: PoseTrack21Submission = module_loader(config=config, module_type="submission", key=subm_key)
@@ -125,7 +138,7 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
                 # create dict with all the image data and append it to the submission module
                 subm_module.data["images"].append(
                     {
-                        "is_labeled": True,
+                        "is_labeled": s.B >= 0,
                         "nframes": gt_imgs[0]["nframes"],
                         "image_id": gt_img_id,
                         "id": gt_img_id,
