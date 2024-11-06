@@ -5,6 +5,7 @@ base_dirs=( "./results/own/eval/" "./results/own/train_single/" )
 
 # Iterate over every base directory
 for base_dir in "${base_dirs[@]}"; do
+
   # Iterate over every dataset
   for dataset_dir in "$base_dir"/*; do
 
@@ -14,10 +15,18 @@ for base_dir in "${base_dirs[@]}"; do
     fi
     dataset=$(basename "$dataset_dir")
 
-    if [[ $dataset =~ ^OLD_ || $dataset =~ ^train_ || $dataset =~ _Dance_ ]]; then
+    if [[ $dataset =~ ^OLD_ || $dataset =~ ^train_ || $dataset =~ _Dance_ || $dataset =~ _test_ ]]; then
       # echo "Skipping dataset $dataset"
       continue
     fi
+
+    if [[ $dataset =~ _train_ ]];
+      then ds_split="train"
+    else
+      ds_split="val"
+    fi
+
+
 
     # Iterate over every key / name within the current dataset
     for name_dir in "$dataset_dir"/*; do
@@ -47,12 +56,12 @@ for base_dir in "${base_dirs[@]}"; do
           # echo "Skipping $name for dataset $dataset because results already exist."
           continue
       fi
-      echo "Running evaluation $name for dataset $dataset :"
+      echo "Running evaluation $name for dataset $dataset"
 
       if [ ! -f "$mot_metrics_file" ]; then
         # Run pose evaluation from poseval (originally used by AP)
         python -m poseval.evaluate \
-            --groundTruth ./data/PoseTrack21/posetrack_data/val/ \
+            --groundTruth ./data/PoseTrack21/posetrack_data/"$ds_split"/ \
             --predictions ./"$base_dir"/"$dataset"/"$name"/results_json/ \
             --outputDir ./"$base_dir"/"$dataset"/"$name"/eval_data/ \
             --evalPoseTracking --saveEvalPerSequence
@@ -62,7 +71,7 @@ for base_dir in "${base_dirs[@]}"; do
       if [ ! -f "$pose_hota_results_file" ]; then
         # Run PoseTrack21 challenge evaluation
         python ./dependencies/PoseTrack21/eval/posetrack21/scripts/run_posetrack_challenge.py \
-            --GT_FOLDER ./data/PoseTrack21/posetrack_data/val/ \
+            --GT_FOLDER ./data/PoseTrack21/posetrack_data/"$ds_split"/ \
             --TRACKERS_FOLDER ./"$base_dir"/"$dataset"/"$name"/results_json/ \
             --USE_PARALLEL True --NUM_PARALLEL_CORES 4 \
             --PRINT_RESULTS False --OUTPUT_DETAILED True
