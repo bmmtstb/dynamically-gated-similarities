@@ -281,6 +281,10 @@ class DGSEngine(EngineModule):
         self.tracks.add(tracks=updated_tracks, new=new_states)
         timers.add(name="track", prev_time=time_track_update_start)
 
+        # clean-up
+        for ts in track_states:
+            ts.clean(keys=["image_crop", "joint_weight"])
+
         # get the overall timing of the batch
         batch_time = timers.add(name="batch", prev_time=time_batch_start)
         timers.add(name="indiv", prev_time=0.0, now=batch_time / N if N > 0 else batch_time)

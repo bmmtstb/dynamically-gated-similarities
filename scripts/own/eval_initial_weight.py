@@ -30,13 +30,12 @@ DL_KEYS: dict[str, list[str]] = {
 }
 
 RCNN_KEYS: dict[str, tuple[list[tuple[float, float]], list[str]]] = {
-    # "dgs_pt21_rcnn_256x192_val": ([(0.00, 1.00), (0.85, 0.40)], ["iou", "oks", "OSNet"]),
-    "dgs_pt21_rcnn_256x192_val": ([(0.85, 0.40)], ["iou", "oks", "OSNet"]),
-    # "dgs_Dance_rcnn_256x192_val": ([(0.00, 1.00), (0.70, 0.35), (0.75, 0.35)], ["iou", "oks", "OSNet"]),
-    "dgs_Dance_rcnn_256x192_val": ([(0.70, 0.35), (0.75, 0.35)], ["iou", "oks", "OSNet"]),
+    "dgs_pt21_rcnn_256x192_val": ([(0.00, 1.00), (0.85, 0.40)], ["iou", "oks", "OSNet"]),
+    "dgs_Dance_rcnn_256x192_val": ([(0.00, 1.00), (0.70, 0.35)], ["iou", "oks", "OSNet"]),
 }
 
 
+# @torch_memory_analysis
 @notify_on_completion_or_error(min_time=30, info="run initial weight")
 @t.no_grad()
 def run_pt21(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: str) -> None:
@@ -116,6 +115,7 @@ def run_dance(config: Config, dl_key: str, paths: list, out_key: str, dgs_key: s
         config["log_dir"] = orig_log_dir
 
 
+# @torch_memory_analysis
 @t.no_grad()
 def run(config: Config, dl_key: str, dgs_key: str) -> None:
     """Main function to run the code after all the parameters are set."""
