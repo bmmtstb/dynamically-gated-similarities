@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from dgs.models.dataset.MOT import load_seq_ini, write_seq_ini
 from dgs.models.loader import module_loader
-from dgs.models.submission import MOTSubmission
+from dgs.models.submission.MOT import MOTSubmission
 from dgs.utils.config import DEF_VAL, load_config
 from dgs.utils.files import mkdir_if_missing
 from dgs.utils.state import State
@@ -30,9 +30,9 @@ DL_KEYS: list[str] = [
 RCNN_DL_KEYS: dict[str, tuple[list[float], list[float]]] = {
     # "RCNN_MOT_256x192_train": (),
     # "RCNN_MOT_256x192_test": (),
-    "RCNN_Dance_256x192_val": ([0.75, 0.80, 0.85, 0.90, 0.95, 0.99], [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7]),
-    "RCNN_Dance_256x192_test": ([0.70], [0.35]),
-    "RCNN_Dance_256x192_train": ([0.70], [0.35]),
+    "RCNN_Dance_256x192_val": ([0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99], [0.20, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7]),
+    "RCNN_Dance_256x192_test": ([0.70, 0.75], [0.35]),
+    "RCNN_Dance_256x192_train": ([0.70, 0.75], [0.35]),
 }
 
 
