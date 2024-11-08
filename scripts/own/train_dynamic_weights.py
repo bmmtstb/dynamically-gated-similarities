@@ -40,28 +40,28 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
             ],
             "OSNet_sim": [
                 "visual_osn_fc1_Sigmoid",
-                "visual_osn_fc3_2ReluSigmoid",
+                "visual_osn_fc3_2ReLUSigmoid",
                 "visual_osn_fc3_3Sigmoid",
                 "visual_osn_fc5_4ReLUSigmoid",
                 "visual_osn_fc5_5Sigmoid",
             ],
             "OSNetAIN_sim": [
                 # "visual_osn_fc1_Sigmoid",
-                # "visual_osn_fc3_2ReluSigmoid",
+                # "visual_osn_fc3_2ReLUSigmoid",
                 "visual_osn_fc3_3Sigmoid",
                 # "visual_osn_fc5_4ReLUSigmoid",
                 # "visual_osn_fc5_5Sigmoid",
             ],
             "Resnet50_sim": [
                 "visual_res_fc1_Sigmoid",
-                "visual_res_fc3_2ReluSigmoid",
+                "visual_res_fc3_2ReLUSigmoid",
                 "visual_res_fc3_3Sigmoid",
                 "visual_res_fc5_4ReLUSigmoid",
                 "visual_res_fc5_5Sigmoid",
             ],
             "Resnet152_sim": [
                 "visual_res_fc1_Sigmoid",
-                "visual_res_fc3_2ReluSigmoid",
+                "visual_res_fc3_2ReLUSigmoid",
                 "visual_res_fc3_3Sigmoid",
                 "visual_res_fc5_4ReLUSigmoid",
                 "visual_res_fc5_5Sigmoid",
@@ -91,28 +91,28 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
             ],
             "OSNet_sim": [
                 "visual_osn_fc1_Sigmoid",
-                "visual_osn_fc3_2ReluSigmoid",
+                "visual_osn_fc3_2ReLUSigmoid",
                 "visual_osn_fc3_3Sigmoid",
                 "visual_osn_fc5_4ReLUSigmoid",
                 "visual_osn_fc5_5Sigmoid",
             ],
             "OSNetAIN_sim": [
                 # "visual_osn_fc1_Sigmoid",
-                # "visual_osn_fc3_2ReluSigmoid",
+                # "visual_osn_fc3_2ReLUSigmoid",
                 "visual_osn_fc3_3Sigmoid",
                 # "visual_osn_fc5_4ReLUSigmoid",
                 # "visual_osn_fc5_5Sigmoid",
             ],
             "Resnet50_sim": [
                 "visual_res_fc1_Sigmoid",
-                "visual_res_fc3_2ReluSigmoid",
+                "visual_res_fc3_2ReLUSigmoid",
                 "visual_res_fc3_3Sigmoid",
                 "visual_res_fc5_4ReLUSigmoid",
                 "visual_res_fc5_5Sigmoid",
             ],
             "Resnet152_sim": [
                 "visual_res_fc1_Sigmoid",
-                "visual_res_fc3_2ReluSigmoid",
+                "visual_res_fc3_2ReLUSigmoid",
                 "visual_res_fc3_3Sigmoid",
                 "visual_res_fc5_4ReLUSigmoid",
                 "visual_res_fc5_5Sigmoid",
@@ -203,9 +203,9 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2Sigmoid", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReluSigmoid_ep1__lr-4": [
+        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReluSigmoid", 1),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_3Sigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
@@ -248,9 +248,9 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2Sigmoid", 2),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReluSigmoid_ep2__lr-4": [
+        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep2__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReluSigmoid", 2),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 2),
         ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_3Sigmoid_ep2__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
@@ -285,9 +285,9 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2Sigmoid", 4),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReluSigmoid_ep4__lr-4": [
+        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep4__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReluSigmoid", 4),
+            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 4),
         ],
         "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_3Sigmoid_ep4__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
