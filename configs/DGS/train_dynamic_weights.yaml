@@ -457,7 +457,7 @@ visual_osn_fc1_Sigmoid:
   bias: true
   act_func: "Sigmoid"
   
-visual_osn_fc3_2ReluSigmoid:
+visual_osn_fc3_2ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [512, 256, 128, 1]
