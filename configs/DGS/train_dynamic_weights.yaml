@@ -367,7 +367,7 @@ box_fc2_2Sigmoid:
 pose_coco_fc1_Sigmoid:
     module_name: "SequentialCombinedAlpha"
     name: "keypoints"
-    paths: ["Flatten", ["pose_coco_fc1", "fc"]]
+    paths: ["Flatten", ["pose_coco_fc1_Sigmoid", "fc"]]
     fc:
         module_name: "FullyConnectedAlpha"
         hidden_layers: [ 34, 1 ]
@@ -377,7 +377,7 @@ pose_coco_fc1_Sigmoid:
 pose_coco_fc2_ReLUSigmoid:
     module_name: "SequentialCombinedAlpha"
     name: "keypoints"
-    paths: ["Flatten", ["pose_coco_fc2", "fc"]]
+    paths: ["Flatten", ["pose_coco_fc2_ReLUSigmoid", "fc"]]
     fc:
         module_name: "FullyConnectedAlpha"
         hidden_layers: [ 34, 8, 1 ]
@@ -387,7 +387,7 @@ pose_coco_fc2_ReLUSigmoid:
 pose_coco_fc2_2Sigmoid:
     module_name: "SequentialCombinedAlpha"
     name: "keypoints"
-    paths: ["Flatten", ["pose_coco_fc2", "fc"]]
+    paths: ["Flatten", ["pose_coco_fc2_2Sigmoid", "fc"]]
     fc:
         module_name: "FullyConnectedAlpha"
         hidden_layers: [ 34, 8, 1 ]
@@ -406,7 +406,7 @@ pose_coco_conv1o15k2fc1_Sigmoid:
             groups: 1
             bias: True
         - "Flatten"
-        - [ "pose_coco_conv1o15k2fc1", "fc" ]
+        - [ "pose_coco_conv1o15k2fc1_Sigmoid", "fc" ]
     fc:
         module_name: "FullyConnectedAlpha"
         hidden_layers: [ 15, 1 ]
@@ -424,7 +424,7 @@ pose_coco_conv1o15k2fc2_ReLUSigmoid:
             groups: 1
             bias: True
         - "Flatten"
-        - [ "pose_coco_conv1o15k2fc2", "fc" ]
+        - [ "pose_coco_conv1o15k2fc2_ReLUSigmoid", "fc" ]
     fc:
         module_name: "FullyConnectedAlpha"
         hidden_layers: [ 15, 8, 1 ]
@@ -442,7 +442,7 @@ pose_coco_conv1o15k2fc2_2Sigmoid:
             groups: 1
             bias: True
         - "Flatten"
-        - [ "pose_coco_conv1o15k2fc2", "fc" ]
+        - [ "pose_coco_conv1o15k2fc2_2Sigmoid", "fc" ]
     fc:
         module_name: "FullyConnectedAlpha"
         hidden_layers: [ 15, 8, 1 ]
