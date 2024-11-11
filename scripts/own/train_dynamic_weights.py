@@ -191,10 +191,6 @@ DL_KEYS_EVAL: dict[str, dict[str, list[tuple[str, str, str, int]]]] = {
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc1_ReLU", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
         ],
-        "iou_fc2_ReLUSigmoid_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
-            ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_ReLUSigmoid", 1),
-            ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),
-        ],
         "iou_fc2_2ReLU_ep1__vis_osn_fc3_2ReLUSigmoid_ep1__lr-4": [
             ("train_dl_Dance_256x192_gt", "box_xywh_sim", "box_fc2_2ReLU", 1),
             ("train_dl_Dance_256x192_gt", "OSNet_sim", "visual_osn_fc3_2ReLUSigmoid", 1),

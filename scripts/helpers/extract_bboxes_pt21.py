@@ -101,7 +101,7 @@ def predict_and_save_rcnn(config: Config, dl_key: str, subm_key: str, rcnn_cfg_s
                 }
                 for _ in range(N)
             ]
-            gt_img_id_map = [i for i in range(N)]  # zero-indexed!
+            gt_img_id_map = list(range(N))  # zero-indexed!
         else:
             gt_imgs = read_json(gt_data_path)["images"]
             gt_img_id_map = [img["image_id"] for img in gt_imgs]  # zero-indexed!
