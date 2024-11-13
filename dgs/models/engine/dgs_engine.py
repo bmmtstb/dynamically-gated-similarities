@@ -383,9 +383,12 @@ class DGSEngine(EngineModule):
         with t.no_grad():
             old_ids = self.get_target(data_old).flatten()  # [T]
             new_ids = self.get_target(data_new).flatten()  # [D]
+            D: int = len(new_ids)
 
             # concat all IDs from new_ids, which are not present in old_ids, to the old_ids
             # only add new_ids that are not in old_ids
+            # the broadcasting comparison is faster on the GPU than the isin version and returns the same results
+            # new_ids[~t.isin(new_ids, old_ids)]
             if len(old_ids) > 0 and len(new_ids) > 0:
                 combined_ids = t.cat(
                     [old_ids, new_ids[~(new_ids.reshape((-1, 1)) == old_ids.reshape((1, -1))).max(dim=1)[0]]]
@@ -402,16 +405,16 @@ class DGSEngine(EngineModule):
 
             # get the similarity matrix as [S x D x (T + D)]
             similarities = t.stack([m(data_new, data_old) for m in self.model.sim_mods])
-            # get the positions of the maximum similarity for each detection
-            max_sim_indices = t.argmax(similarities, dim=-1)  # [S x D]
-            # The number of correct matches can be obtained by counting the indices where the similarity is highest
-            # and the target-ID of the prediction is the same as the target-ID of the ground truth.
-            # [S]
-            # fixme: is it possible to do this without leaving pytorch or adding python loops?
-            nof_correct = t.stack([all_matches[t.arange(len(new_ids)), msi].count_nonzero() for msi in max_sim_indices])
+
+            similarities_np = torch_to_numpy(similarities)
+            # get and cids which are ndarray of shape [N]
+            nof_correct = t.stack(
+                [all_matches[linear_sum_assignment(s, maximize=True)].count_nonzero() for s in similarities_np]
+            )
+
             # the training target is the ratio of correct matches to the total number of detections
             # making sure to handle the cases where either no detections or no correct matches are present
-            accuracy = (nof_correct / len(data_new)).nan_to_num(nan=0.0, posinf=0.0)  # [S]
+            accuracy = (nof_correct == D).float()  # [S]
             assert t.all(
                 t.bitwise_or(accuracy <= 1.0, accuracy >= 0.0)
             ), f"expected accuracy to lie within [0,1], got: {accuracy}"

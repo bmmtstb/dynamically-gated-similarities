@@ -105,6 +105,7 @@ val_dl_Dance_256x192_rcnn_075_035:
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
     paths: "./data/DanceTrack/val/**/det/rcnn_075_035_256x192.txt"
+#    paths: "./data/DanceTrack/val_part/**/det/rcnn_075_035_256x192.txt"
     
     batch_size: 1
     collate_fn: "lists"
@@ -119,6 +120,7 @@ val_dl_Dance_256x192_gt:
     dataset_path: "./data/DanceTrack/val/"
     # data_path: # will be set in python script
     paths: "./data/DanceTrack/val/**/gt/gt.txt"
+#    paths: "./data/DanceTrack/val_part/**/gt/gt.txt"
     
     batch_size: 1
     collate_fn: "lists"
@@ -153,7 +155,8 @@ train_dl_Dance_256x192_gt:
     
     L: 1
     
-    batch_size: 32
+#    batch_size: 32
+    batch_size: 1
     collate_fn: "history"
     
     crop_size: !!python/tuple [ 256, 192 ]
