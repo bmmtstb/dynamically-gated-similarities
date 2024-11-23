@@ -74,6 +74,7 @@ class SequentialCombinedAlpha(BaseAlphaModule):
                 raise NotImplementedError(f"Expected list or str, got: {sub_path}")
 
         self.register_module(name="model", module=self.configure_torch_module(t.nn.Sequential(*modules)))
+        self.load_weights()
 
     def forward(self, s: State) -> t.Tensor:
         """Forward call for sequential model calls the next layer with the output of the previous layer.

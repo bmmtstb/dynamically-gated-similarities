@@ -50,8 +50,12 @@ VALIDATIONS: dict[str, Validator] = {
     "endswith": (lambda x, d: isinstance(x, str) and (isinstance(d, str) or bool(str(d))) and x.endswith(d)),
     # file and folder
     "file exists": (
-        lambda x, _: isinstance(x, str)
-        and (VALIDATIONS["file exists absolute"](x, _) or VALIDATIONS["file exists in project"](x, _))
+        lambda x, f: isinstance(x, str)
+        and (
+            VALIDATIONS["file exists absolute"](x, None)
+            or VALIDATIONS["file exists in project"](x, None)
+            or VALIDATIONS["file exists in folder"](x, f)
+        )
     ),
     "file exists absolute": (lambda x, _: isinstance(x, str) and os.path.isfile(x)),
     "file exists in project": (lambda x, _: isinstance(x, str) and os.path.isfile(os.path.join(PROJECT_ROOT, x))),

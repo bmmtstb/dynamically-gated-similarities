@@ -61,6 +61,7 @@ class FullyConnectedAlpha(BaseAlphaModule):
             act_func=self.params.get("act_func", DEF_VAL["alpha"]["act_func"]),
         )
         self.register_module(name="model", module=self.configure_torch_module(model))
+        self.load_weights()
 
     def forward(self, s: State) -> t.Tensor:
         return self.model(self.get_data(s))

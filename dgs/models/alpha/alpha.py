@@ -8,9 +8,13 @@ import torch as t
 
 from dgs.models.modules.named import NamedModule
 from dgs.utils.state import State
+from dgs.utils.torchtools import init_model_params, load_pretrained_weights
 from dgs.utils.types import Config, NodePath, Validations
 
-alpha_validations: Validations = {}
+alpha_validations: Validations = {
+    # optional
+    "weight": ["optional", ("file exists", "./weights/")],
+}
 
 
 class BaseAlphaModule(NamedModule, t.nn.Module):
@@ -21,6 +25,10 @@ class BaseAlphaModule(NamedModule, t.nn.Module):
 
     Optional Params
     ---------------
+
+    weight (FilePath):
+        Local or absolute path to the pretrained weights of the model.
+        Can be left empty.
 
     """
 
@@ -56,3 +64,11 @@ class BaseAlphaModule(NamedModule, t.nn.Module):
     def get_data(self, s: State) -> any:
         """Given a state, return the data which is input into the model."""
         raise NotImplementedError
+
+    def load_weights(self) -> None:
+        """Load the weights of the model from the given file path. If no weights are given, initialize the model."""
+        if "weight" in self.params:
+            fp = self.params.get("weight")
+            load_pretrained_weights(model=self.model, weight_path=fp)
+        else:
+            init_model_params(self.model)
