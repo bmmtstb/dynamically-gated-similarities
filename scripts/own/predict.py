@@ -11,8 +11,8 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.utils import HidePrint
 
-# CONFIG_FILE = "./configs/predict_video.yaml"
-CONFIG_FILE = "./configs/predict_images.yaml"
+# CONFIG_FILE = "./configs/DGS/predict_video.yaml"
+CONFIG_FILE = "./configs/DGS/predict_images.yaml"
 
 
 if __name__ == "__main__":

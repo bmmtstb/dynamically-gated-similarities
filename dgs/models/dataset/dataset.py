@@ -21,7 +21,7 @@ from dgs.utils.constants import VIDEO_FORMATS
 from dgs.utils.files import is_project_dir, is_project_file, to_abspath
 from dgs.utils.image import CustomCropResize, CustomResize, CustomToAspect, load_image
 from dgs.utils.state import collate_states, State
-from dgs.utils.types import Config, FilePath, Image, NodePath, Validations  # pylint: disable=unused-import
+from dgs.utils.types import Config, FilePath, Image, NodePath, Validations
 
 base_dataset_validations: Validations = {
     "dataset_path": [str, ("any", [("folder exists", False), ("folder exists in project", True)])],
