@@ -21,7 +21,7 @@ from glob import glob
 import torch as t
 from tqdm import tqdm
 
-from dgs.models.engine import DGSEngine
+from dgs.models.engine.dgs_engine import DGSEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers
@@ -151,7 +151,6 @@ def run_dance(*, config: Config, dl_key: str, paths: list, dgs_key: str, out_key
             )
 
             if os.path.exists(config["submission"]["file"]):
-                # reset the original log dir
                 continue
 
             run(config=config, dl_key=dl_key, dgs_key=dgs_key)

@@ -1,0 +1,377 @@
+name: "Test DGS"
+description: "Predict submission for test data on static and dynamic DGS modules."
+
+device: "cuda:0"
+print_prio: "WARNING"
+is_training: off
+log_dir: "./results/own/predict_test/"
+log_dir_add_date: false
+# log_dir_suffix:  # will be set by python script
+
+# ###### #
+# ENGINE #
+# ###### #
+
+engine:
+    module_name: "DGSEngine"
+    model_type: "dgs"
+    model_path: ["DGSModule"]
+
+test:
+    inactivity_threshold: 15
+    max_track_length: 1
+    save_images: off
+    # submission:  # will be changed in python script
+    # writer_log_dir_suffix:  # will be set by python script
+
+# ####### #
+# MODULES #
+# ####### #
+
+submission_pt21:
+    module_name: "PoseTrack21"
+    # file: # will be set in python script
+
+submission_MOT:
+    module_name: "MOT"
+    # file: # will be set in python script
+
+dynamic_combine:
+    module_name: "dynamic_alpha"
+    softmax: true
+    # alpha_modules:  # will be set in python script
+
+static_combine:
+    module_name: "constant_alpha"
+    # alpha: # will be set by python script
+
+DGSModule:
+    module_name: "DGS"
+    # names:  # will be set in python script
+    # combine:  # will be changed in python script for validation and tests
+    new_track_weight: 0.0
+
+# #### #
+# DATA #
+# #### #
+
+test_dl_Dance_256x192_rcnn_075_035:
+    module_name: "MOTImage"
+    dataset_path: "./data/DanceTrack/test/"
+    # data_path: # will be set in python script
+    paths: "./data/DanceTrack/test/**/det/rcnn_075_035_256x192.txt"
+    
+    batch_size: 1
+    collate_fn: "lists"
+    
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    # load_img_crops:  # will be set in python script
+    
+    crop_key: "rcnn_075_035_256x192"
+
+test_dl_pt21_256x192_rcnn_085_040:
+    module_name: "KeypointRCNNImageBackbone"
+    dataset_path: "./data/PoseTrack21/"
+    crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
+    paths: "./data/PoseTrack21/posetrack_data/256x192_rcnn_085_040_test/*.json"
+    # data_path:  # will be set in python script
+
+    batch_size: 1
+    collate_fn: "lists"
+
+    crop_size: !!python/tuple [256, 192]
+    crop_mode: "zero-pad"
+    # load_img_crops:  # will be set in python script
+    
+# ################## #
+# SIMILARITY MODULES #
+# ################## #
+
+# BOX - IoU
+
+box_xywh_sim:
+    module_name: "iou"
+    softmax: false
+    train_key: "bbox_relative"
+
+# Pose - OKS - COCO
+
+pose_sim_coco:
+    module_name: "oks"
+    softmax: false
+    train_key: "keypoints_relative"
+
+    format: "coco"
+
+# Visual - v1 - OSNet_x1_0 pretrained on ImageNet
+
+OSNet_sim:
+    module_name: "torchreid"
+    softmax: false
+
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["OSNet_embed_gen"]
+
+OSNet_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_x1_0"
+    weights: "./weights/osnet_x1_0_imagenet.pth"
+    nof_classes: 1000
+    is_training: off
+
+
+# Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
+
+OSNetAIN_sim:
+    module_name: "torchreid"
+    softmax: false
+    
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["OSNetAIN_embed_gen" ]
+
+OSNetAIN_embed_gen:
+    module_name: "torchreid"
+    model_name: "osnet_ain_x1_0"
+    weights: "./weights/osnet_ain_x1_0_imagenet.pth"
+    nof_classes: 1000
+    is_training: off
+
+# Visual - v3 - resnet50 from same-domain Re-ID
+
+Resnet50_sim:
+    module_name: "torchreid"
+    softmax: false
+    
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["Resnet50_embed_gen"]
+
+Resnet50_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet50"
+    weights: "pretrained"
+    nof_classes: 1000
+    is_training: off
+
+# Visual - v4 - resnet152 from same-domain Re-ID
+
+Resnet152_sim:
+    module_name: "torchreid"
+    softmax: false
+    
+    metric: "NegSoftmaxEuclideanDist"
+    embedding_generator_path: ["Resnet152_embed_gen"]
+
+Resnet152_embed_gen:
+    module_name: "torchreid"
+    model_name: "resnet152"
+    weights: "pretrained"
+    nof_classes: 1000
+    is_training: off
+
+# ############# #
+# ALPHA MODULES #
+# ############# #
+
+box_fc1_Sigmoid:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: "Sigmoid"
+
+box_fc1_Tanh:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: "Tanh"
+
+box_fc1_ReLU:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 1]
+    bias: true
+    act_func: "ReLU"
+
+box_fc2_ReLUSigmoid:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: ["ReLU", "Sigmoid"]
+
+box_fc2_2ReLU:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: "ReLU"
+
+box_fc2_2Sigmoid:
+    module_name: "FullyConnectedAlpha"
+    name: "bbox"
+    hidden_layers: [4, 8, 1]
+    bias: true
+    act_func: "Sigmoid"
+
+    
+# pose - COCO
+pose_coco_fc1_Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc1_Sigmoid", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
+pose_coco_fc2_ReLUSigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc2_ReLUSigmoid", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 8, 1 ]
+        bias: true
+        act_func: ["ReLU", "Sigmoid"]
+
+pose_coco_fc2_2Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths: ["Flatten", ["pose_coco_fc2_2Sigmoid", "fc"]]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 34, 8, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
+
+pose_coco_conv1o15k2fc1_Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc1_Sigmoid", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
+pose_coco_conv1o15k2fc2_ReLUSigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc2_ReLUSigmoid", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 8, 1 ]
+        bias: true
+        act_func: ["ReLU", "Sigmoid"]
+
+pose_coco_conv1o15k2fc2_2Sigmoid:
+    module_name: "SequentialCombinedAlpha"
+    name: "keypoints"
+    paths:
+        - Conv1d:
+            in_channels: 17
+            out_channels: 15
+            kernel_size: 2
+            groups: 1
+            bias: True
+        - "Flatten"
+        - [ "pose_coco_conv1o15k2fc2_2Sigmoid", "fc" ]
+    fc:
+        module_name: "FullyConnectedAlpha"
+        hidden_layers: [ 15, 8, 1 ]
+        bias: true
+        act_func: "Sigmoid"
+
+# visual - OSNet
+visual_osn_fc1_Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [512, 1]
+  bias: true
+  act_func: "Sigmoid"
+  
+visual_osn_fc3_2ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [512, 256, 128, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "Sigmoid"]
+
+visual_osn_fc3_3Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [512, 256, 128, 1]
+  bias: true
+  act_func: "Sigmoid"
+
+visual_osn_fc5_5Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [512, 256, 128, 64, 32, 1]
+  bias: true
+  act_func: "Sigmoid"
+
+visual_osn_fc5_4ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [512, 256, 128, 64, 32, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
+  
+# visual - Resnet
+visual_res_fc1_Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [2048, 1]
+  bias: true
+  act_func: "Sigmoid"
+  
+visual_res_fc3_3Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [2048, 512, 64, 1]
+  bias: true
+  act_func: "Sigmoid"
+
+visual_res_fc3_2ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [2048, 512, 64, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "Sigmoid"]
+
+visual_res_fc5_5Sigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [2048, 1024, 256, 128, 64, 1]
+  bias: true
+  act_func: "Sigmoid"
+
+visual_res_fc5_4ReLUSigmoid:
+  module_name: "FullyConnectedAlpha"
+  name: "embedding"
+  hidden_layers: [2048, 1024, 256, 128, 64, 1]
+  bias: true
+  act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
+  
+# combined models
