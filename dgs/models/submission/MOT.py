@@ -75,7 +75,7 @@ class MOTSubmission(SubmissionFile):
                 return str(int(val))
             return f"{val:.{self.bbox_decimals}f}"
 
-        if "pred_tid" not in s:
+        if "pred_tid" not in s and s.B != 0:
             raise ValueError("The predicted track-ID should be set.")
 
         # convert bbox format to receive the height and width more easily later on

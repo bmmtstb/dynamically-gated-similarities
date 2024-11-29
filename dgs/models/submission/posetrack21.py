@@ -85,9 +85,6 @@ class PoseTrack21Submission(SubmissionFile):
                     raise ValueError(f"State has different {key}s, expected all {key}s to match. got: '{s[key]}'.")
             elif (l := len(s[key])) != 1:
                 raise ValueError(f"Expected '{key}' ({l}) to have a length of exactly 1.")
-        # add frame id if missing as duplicate of image id
-        if "frame_id" not in s:
-            s["frame_id"] = s["image_id"]
 
         # get the file_name in the PT21 directory
         file_name = f".{s.filepath[0].split('PoseTrack21')[-1]}"

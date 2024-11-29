@@ -274,6 +274,9 @@ class Track:
     def set_inactive(self) -> None:
         self._status = TrackStatus.Inactive
         self._nof_active = 0
+        # clean everything except last state
+        for i in range(len(self) - 1):
+            self._states[i].clean("all")
 
     def set_removed(self) -> None:
         self._status = TrackStatus.Removed
@@ -548,6 +551,10 @@ class Tracks(UserDict):
         states: list[State] = []
 
         for tid, track in self.data.items():
+            # make sure that track ID is set in returned states
+            if "track_id" not in track[-1]:
+                track[-1]["track_id"] = t.tensor([tid] * track[-1].B, dtype=t.long, device=track[-1].device).flatten()
+            # don't add empty states
             if tid in self.inactive:
                 continue
             states.append(track[-1])
@@ -617,8 +624,6 @@ class Tracks(UserDict):
             else:
                 self.inactive[tid] = 1
                 self.data[tid].set_inactive()
-                for s in self.data[tid]:
-                    s.clean()
 
     def _get_next_id(self) -> TrackID:
         """Get the next free track-ID."""
