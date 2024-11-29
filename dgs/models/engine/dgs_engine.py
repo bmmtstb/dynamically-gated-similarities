@@ -209,7 +209,7 @@ class DGSEngine(EngineModule):
 
     @enable_keyboard_interrupt
     def _track_step(
-        self, detections: State, frame_idx: int, name: str, timers: DifferenceTimers, clean: bool = True
+        self, *, detections: State, frame_idx: int, name: str, timers: DifferenceTimers, clean: bool = True
     ) -> None:
         """Run one step of tracking.
 

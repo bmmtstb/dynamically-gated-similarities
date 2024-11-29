@@ -18,7 +18,7 @@ from torch.nn import Module as TorchModule
 
 from dgs.models.module import BaseModule
 from dgs.utils.files import mkdir_if_missing
-from dgs.utils.types import FilePath
+from dgs.utils.types import Device, FilePath
 
 BaseMod = TypeVar("BaseMod", bound=BaseModule)
 TorchMod = TypeVar("TorchMod", bound=TorchModule)
@@ -110,7 +110,7 @@ def save_checkpoint(
             print("Saved best model as model-best.pth.tar")
 
 
-def load_checkpoint(fpath) -> dict:
+def load_checkpoint(fpath, device: Device = None) -> dict:
     """Load a given checkpoint.
 
     ``UnicodeDecodeError`` can be well handled, which means
@@ -118,6 +118,7 @@ def load_checkpoint(fpath) -> dict:
 
     Args:
         fpath (str): path to checkpoint.
+        device (torch.device, optional): If not None, load all tensors to this device. If None tries to load to CUDA.
 
     Returns:
         dict
@@ -132,7 +133,7 @@ def load_checkpoint(fpath) -> dict:
     fpath = os.path.abspath(os.path.expanduser(fpath))
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"File is not found at '{fpath}'")
-    map_location = None if t.cuda.is_available() else "cpu"
+    map_location = device if device is not None else "cuda" if t.cuda.is_available() else "cpu"
     try:
         checkpoint = t.load(fpath, map_location=map_location)
     except UnicodeDecodeError:
@@ -145,7 +146,9 @@ def load_checkpoint(fpath) -> dict:
     return checkpoint
 
 
-def load_pretrained_weights(model: TorchMod, weight_path: FilePath, verbose: bool = False) -> None:
+def load_pretrained_weights(
+    model: TorchMod, weight_path: FilePath, device: Device = None, verbose: bool = False
+) -> None:
     """Loads pretrianed weights to model.
 
     Features:
@@ -155,6 +158,7 @@ def load_pretrained_weights(model: TorchMod, weight_path: FilePath, verbose: boo
     Args:
         model: A torch module.
         weight_path: path to pretrained weights.
+        device: Device to load weights to.
         verbose: Whether to print non-warning messages
 
     Examples:
@@ -162,7 +166,7 @@ def load_pretrained_weights(model: TorchMod, weight_path: FilePath, verbose: boo
         >>> weight_path = 'log/my_model/model-best.pth.tar'
         >>> load_pretrained_weights(model, weight_path)
     """
-    checkpoint = load_checkpoint(weight_path)
+    checkpoint = load_checkpoint(weight_path, device=device)
     if "model" in checkpoint:
         state_dict = checkpoint["model"]
     else:

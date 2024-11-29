@@ -272,6 +272,7 @@ class Track:
         self._status = TrackStatus.Active
 
     def set_inactive(self) -> None:
+        """Set the status of this Track to inactive and clean up older states."""
         self._status = TrackStatus.Inactive
         self._nof_active = 0
         # clean everything except last state

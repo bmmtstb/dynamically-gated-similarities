@@ -14,7 +14,13 @@ class TestBaseAlphaModule(unittest.TestCase):
     default_path = ["alpha"]
     default_cfg = insert_into_config(
         path=default_path,
-        value={"module_name": "FullyConnectedAlpha", "name": "bbox", "hidden_layers": [4, 1], "bias": False},
+        value={
+            "module_name": "FullyConnectedAlpha",
+            "name": "bbox",
+            "hidden_layers": [4, 1],
+            "bias": True,
+            "act_func": "Sigmoid",
+        },
         original=get_test_config(),
     )
 
@@ -49,7 +55,7 @@ class TestBaseAlphaModule(unittest.TestCase):
         )
         m = FullyConnectedAlpha(config=cfg, path=self.default_path)
 
-        w = t.load("./tests/test_data/weights/fully_connected_alpha.pth")
+        w = t.load("./tests/test_data/weights/fully_connected_alpha.pth", map_location="cpu")
 
         self.assertEqual(len(m.model.state_dict()), len(w))
         self.assertEqual(m.model.state_dict().keys(), w.keys())
