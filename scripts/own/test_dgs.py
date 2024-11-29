@@ -54,7 +54,7 @@ SETTINGS: dict[str, tuple[str, str, str, list, list[str]]] = {
         [
             ("Dance", "box_fc2_2Sigmoid", 2),
             ("pt21", "pose_coco_fc2_2Sigmoid", 4),
-            ("Dance", "visual_osn_fc5_4ReLUSigmoid", 4),
+            ("Dance", "vis_osn_fc5_4ReLUSigmoid", 4),
         ],
         ["box_xywh_sim", "pose_sim_coco", "OSNet_sim"],
     ),
@@ -83,18 +83,14 @@ SETTINGS: dict[str, tuple[str, str, str, list, list[str]]] = {
         "test_dl_pt21_256x192_rcnn_085_040",
         "submission_pt21",
         "dynamic",
-        [("Dance", "box_fc1_Sigmoid", 4), ("Dance", "visual_osn_fc3_2ReLUSigmoid", 4)],
+        [("Dance", "box_fc1_Sigmoid", 4), ("Dance", "vis_osn_fc3_2ReLUSigmoid", 4)],
         ["box_xywh_sim", "OSNet_sim"],
     ),
     "pt21_dynamic_iou_oks_OSNet": (
         "test_dl_pt21_256x192_rcnn_085_040",
         "submission_pt21",
         "dynamic",
-        [
-            ("pt21", "box_fc1_Sigmoid", 4),
-            ("pt21", "pose_coco_fc1_Sigmoid", 4),
-            ("pt21", "visual_osn_fc5_4ReLUSigmoid", 4),
-        ],
+        [("pt21", "box_fc1_Sigmoid", 4), ("pt21", "pose_coco_fc1_Sigmoid", 4), ("pt21", "vis_osn_fc5_4ReLUSigmoid", 4)],
         ["box_xywh_sim", "pose_sim_coco", "OSNet_sim"],
     ),
 }
