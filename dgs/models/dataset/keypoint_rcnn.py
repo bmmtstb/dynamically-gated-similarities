@@ -231,7 +231,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
 
     def terminate(self) -> None:  # pragma: no cover
         if hasattr(self, "model"):
-            self.model = None
+            del self.model
 
 
 # pylint: disable=too-many-ancestors
