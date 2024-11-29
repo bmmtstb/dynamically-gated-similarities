@@ -228,7 +228,8 @@ train_dl_pt21_256x192_gt:
     
     L: 1
     
-    batch_size: 32
+#    batch_size: 32
+    batch_size: 1
     collate_fn: "history"
     
     load_img_crops: false
