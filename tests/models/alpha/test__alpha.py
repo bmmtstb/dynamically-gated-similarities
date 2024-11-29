@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import torch as t
 
-from dgs.models.alpha import FullyConnectedAlpha
 from dgs.models.alpha.alpha import BaseAlphaModule
+from dgs.models.alpha.fully_connected import FullyConnectedAlpha
 from dgs.utils.config import insert_into_config
 from helper import get_test_config
 
