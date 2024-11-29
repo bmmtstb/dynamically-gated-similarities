@@ -4,7 +4,7 @@ description: "Use the trained DGS tracker to track and predict given a directory
 device: "cuda"
 print_prio: "DEBUG"
 is_training: off
-log_dir: "./results/own/predict_trained/images/"
+log_dir: "./results/own/predict_trained/"
 
 test:
     # submission:  # will be set in python script
@@ -29,11 +29,11 @@ engine:
 
 submission_pt21:
     module_name: "PoseTrack21"
-    file: "./results/own/predict_trained/results/"
+    file: "./results/own/predict_trained/results/pt21.json"
 
 submission_MOT:
     module_name: "MOT"
-    file: "./results/own/predict_trained/results/"
+    file: "./results/own/predict_trained/results/dance.txt"
 
 # #### #
 # DATA #
@@ -43,7 +43,7 @@ dataloader_dance:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/DanceTrack/"
     data_path: "./test/dancetrack0017/img1/"
-    batch_size: 1
+    batch_size: 8
     
     score_threshold: 0.75
     iou_threshold: 0.35
@@ -51,13 +51,13 @@ dataloader_dance:
     collate_fn: "lists"
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
-    load_img_crops: true  # will be set to true for visual similarity
+    load_img_crops: true
 
 dataloader_pt21:
     module_name: "KeypointRCNNImageBackbone"
     dataset_path: "./data/PoseTrack21/"
     data_path: "./data/PoseTrack21/images/val/012968_mpii_test/"
-    batch_size: 1
+    batch_size: 8
     
     score_threshold: 0.85
     iou_threshold: 0.40
@@ -65,8 +65,7 @@ dataloader_pt21:
     collate_fn: "lists"
     crop_size: !!python/tuple [ 256, 192 ]
     crop_mode: "zero-pad"
-    load_img_crops: true  # will be set to true for visual similarity
-
+    load_img_crops: true
 
 # ####### #
 # MODULES #
@@ -81,7 +80,6 @@ dynamic_alpha_combine:
     module_name: "dynamic_alpha"
     softmax: true
     # alpha_modules:  # will be set in python script
-
 
 # ################## #
 # SIMILARITY MODULES #
@@ -118,7 +116,6 @@ OSNet_embed_gen:
     weights: "./weights/osnet_x1_0_imagenet.pth"
     nof_classes: 1000
     is_training: off
-
 
 # Visual - v2 - OSNet_ain_x1_0 pretrained on ImageNet
 
@@ -178,7 +175,7 @@ box_fc1_Sigmoid:
     hidden_layers: [4, 1]
     bias: true
     act_func: "Sigmoid"
-    weight: "./weights/trained_alpha/Dance/box_xywh_sim/box_fc1_Sigmoid/ep004_lr0_0000100000.pth"
+    weight: "./weights/trained_alpha/XXX/box_xywh_sim/box_fc1_Sigmoid/ep004_lr0_0000100000.pth"
 
 box_fc1_Tanh:
     module_name: "FullyConnectedAlpha"
@@ -186,8 +183,7 @@ box_fc1_Tanh:
     hidden_layers: [4, 1]
     bias: true
     act_func: "Tanh"
-    weight: "./weights/trained_alpha/Dance/box_xywh_sim/box_fc1_Tanh/ep004_lr0_0000100000.pth"
-
+    weight: "./weights/trained_alpha/XXX/box_xywh_sim/box_fc1_Tanh/ep004_lr0_0000100000.pth"
 
 box_fc1_ReLU:
     module_name: "FullyConnectedAlpha"
@@ -195,8 +191,7 @@ box_fc1_ReLU:
     hidden_layers: [4, 1]
     bias: true
     act_func: "ReLU"
-    weight: "./weights/trained_alpha/Dance/box_xywh_sim/box_fc1_ReLU/ep004_lr0_0000100000.pth"
-
+    weight: "./weights/trained_alpha/XXX/box_xywh_sim/box_fc1_ReLU/ep004_lr0_0000100000.pth"
 
 box_fc2_ReLUSigmoid:
     module_name: "FullyConnectedAlpha"
@@ -204,7 +199,7 @@ box_fc2_ReLUSigmoid:
     hidden_layers: [4, 8, 1]
     bias: true
     act_func: ["ReLU", "Sigmoid"]
-    weight: "./weights/trained_alpha/Dance/box_xywh_sim/box_fc2_ReLUSigmoid/ep004_lr0_0000100000.pth"
+    weight: "./weights/trained_alpha/XXX/box_xywh_sim/box_fc2_ReLUSigmoid/ep004_lr0_0000100000.pth"
 
 box_fc2_2ReLU:
     module_name: "FullyConnectedAlpha"
@@ -212,8 +207,7 @@ box_fc2_2ReLU:
     hidden_layers: [4, 8, 1]
     bias: true
     act_func: "ReLU"
-    weight: "./weights/trained_alpha/Dance/box_xywh_sim/box_fc2_2ReLU/ep004_lr0_0000100000.pth"
-
+    weight: "./weights/trained_alpha/XXX/box_xywh_sim/box_fc2_2ReLU/ep004_lr0_0000100000.pth"
 
 box_fc2_2Sigmoid:
     module_name: "FullyConnectedAlpha"
@@ -221,8 +215,7 @@ box_fc2_2Sigmoid:
     hidden_layers: [4, 8, 1]
     bias: true
     act_func: "Sigmoid"
-    weight: "./weights/trained_alpha/Dance/box_xywh_sim/box_fc2_2Sigmoid/ep004_lr0_0000100000.pth"
-
+    weight: "./weights/trained_alpha/XXX/box_xywh_sim/box_fc2_2Sigmoid/ep004_lr0_0000100000.pth"
     
 # pose - COCO
 pose_coco_fc1_Sigmoid:
@@ -257,7 +250,6 @@ pose_coco_fc2_2Sigmoid:
         bias: true
         act_func: "Sigmoid"
     weight: "./weights/trained_alpha/pt21/pose_sim_coco/pose_coco_fc2_2Sigmoid/ep004_lr0_0000100000.pth"
-
 
 pose_coco_conv1o15k2fc1_Sigmoid:
     module_name: "SequentialCombinedAlpha"
@@ -323,7 +315,7 @@ visual_osn_fc1_Sigmoid:
   hidden_layers: [512, 1]
   bias: true
   act_func: "Sigmoid"
-  weight: "./weights/trained_alpha/Dance/OSNet_sim/visual_osn_fc1_Sigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/OSNet_sim/visual_osn_fc1_Sigmoid/ep004_lr0_0000100000.pth"
 
 visual_osn_fc3_2ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
@@ -331,7 +323,7 @@ visual_osn_fc3_2ReLUSigmoid:
   hidden_layers: [512, 256, 128, 1]
   bias: true
   act_func: ["ReLU", "ReLU", "Sigmoid"]
-  weight: "./weights/trained_alpha/Dance/OSNet_sim/visual_osn_fc3_2ReLUSigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/OSNet_sim/visual_osn_fc3_2ReLUSigmoid/ep004_lr0_0000100000.pth"
 
 visual_osn_fc3_3Sigmoid:
   module_name: "FullyConnectedAlpha"
@@ -339,7 +331,7 @@ visual_osn_fc3_3Sigmoid:
   hidden_layers: [512, 256, 128, 1]
   bias: true
   act_func: "Sigmoid"
-  weight: "./weights/trained_alpha/Dance/OSNet_sim/visual_osn_fc3_3Sigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/OSNet_sim/visual_osn_fc3_3Sigmoid/ep004_lr0_0000100000.pth"
 
 visual_osn_fc5_5Sigmoid:
   module_name: "FullyConnectedAlpha"
@@ -347,7 +339,7 @@ visual_osn_fc5_5Sigmoid:
   hidden_layers: [512, 256, 128, 64, 32, 1]
   bias: true
   act_func: "Sigmoid"
-  weight: "./weights/trained_alpha/Dance/OSNet_sim/visual_osn_fc5_5Sigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/OSNet_sim/visual_osn_fc5_5Sigmoid/ep004_lr0_0000100000.pth"
 
 visual_osn_fc5_4ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
@@ -355,7 +347,7 @@ visual_osn_fc5_4ReLUSigmoid:
   hidden_layers: [512, 256, 128, 64, 32, 1]
   bias: true
   act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
-  weight: "./weights/trained_alpha/Dance/OSNet_sim/visual_osn_fc5_4ReLUSigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/OSNet_sim/visual_osn_fc5_4ReLUSigmoid/ep004_lr0_0000100000.pth"
 
 # visual - Resnet
 visual_res_fc1_Sigmoid:
@@ -364,7 +356,7 @@ visual_res_fc1_Sigmoid:
   hidden_layers: [2048, 1]
   bias: true
   act_func: "Sigmoid"
-  weight: "./weights/trained_alpha/Dance/Resnet50_sim/visual_res_fc1_Sigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/Resnet50_sim/visual_res_fc1_Sigmoid/ep004_lr0_0000100000.pth"
 
 visual_res_fc3_3Sigmoid:
   module_name: "FullyConnectedAlpha"
@@ -372,7 +364,7 @@ visual_res_fc3_3Sigmoid:
   hidden_layers: [2048, 512, 64, 1]
   bias: true
   act_func: "Sigmoid"
-  weight: "./weights/trained_alpha/Dance/Resnet50_sim/visual_res_fc3_3Sigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/Resnet50_sim/visual_res_fc3_3Sigmoid/ep004_lr0_0000100000.pth"
 
 visual_res_fc3_2ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
@@ -380,7 +372,7 @@ visual_res_fc3_2ReLUSigmoid:
   hidden_layers: [2048, 512, 64, 1]
   bias: true
   act_func: ["ReLU", "ReLU", "Sigmoid"]
-  weight: "./weights/trained_alpha/Dance/Resnet50_sim/visual_res_fc3_2ReLUSigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/Resnet50_sim/visual_res_fc3_2ReLUSigmoid/ep004_lr0_0000100000.pth"
 
 visual_res_fc5_5Sigmoid:
   module_name: "FullyConnectedAlpha"
@@ -388,7 +380,7 @@ visual_res_fc5_5Sigmoid:
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
   bias: true
   act_func: "Sigmoid"
-  weight: "./weights/trained_alpha/Dance/Resnet50_sim/visual_res_fc5_5Sigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/Resnet50_sim/visual_res_fc5_5Sigmoid/ep004_lr0_0000100000.pth"
 
 visual_res_fc5_4ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
@@ -396,4 +388,4 @@ visual_res_fc5_4ReLUSigmoid:
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
   bias: true
   act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
-  weight: "./weights/trained_alpha/Dance/Resnet50_sim/visual_res_fc5_4ReLUSigmoid/ep004_lr0_0000100000.pth"
+  weight: "./weights/trained_alpha/XXX/Resnet50_sim/visual_res_fc5_4ReLUSigmoid/ep004_lr0_0000100000.pth"

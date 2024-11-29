@@ -10,9 +10,18 @@ from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 
 CONFIG_FILE = "./configs/DGS/predict_images_trained.yaml"
+
+# DANCE
 DL = "dataloader_dance"
-SUBMISSION = ["submission_MOT"]  # or "submission_pt21"
+SUBMISSION = ["submission_MOT"]
 ALPHA_MODULES = ["box_fc2_2Sigmoid", "pose_coco_fc2_2Sigmoid", "visual_osn_fc3_3Sigmoid"]
+WEIGHT_DATASET = "Dance"
+
+# PT21
+# DL = "dataloader_pt21"
+# SUBMISSION = ["submission_pt21"]
+# ALPHA_MODULES = ["box_fc2_2Sigmoid", "pose_coco_fc2_2Sigmoid", "visual_osn_fc3_3Sigmoid"]
+# WEIGHT_DATASET = "pt21"
 
 if __name__ == "__main__":
     print(f"Loading configuration: {CONFIG_FILE}")
@@ -22,6 +31,8 @@ if __name__ == "__main__":
     # modify config
     config["test"]["submission"] = SUBMISSION
     config["dynamic_alpha_combine"]["alpha_modules"] = ALPHA_MODULES
+    for am in ALPHA_MODULES:
+        config[am]["weight"] = str(config[am]["weight"]).replace("XXX", WEIGHT_DATASET)
 
     # validation dataset
     print("Loading data")
@@ -40,8 +51,3 @@ if __name__ == "__main__":
     print("Use ffmpeg, because it is faster and more stable. Run:")
     print(f"cd {engine.log_dir}")
     print("ffmpeg -framerate 30 -pattern_type glob -i './images/*.png' prediction.mp4")
-    print("----")
-    print(
-        "Or use function 'combine_images_to_video' as commented out in 'scripts/predict.py', "
-        "but this function is way slower."
-    )
