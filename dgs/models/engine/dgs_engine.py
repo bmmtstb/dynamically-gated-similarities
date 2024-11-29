@@ -208,7 +208,9 @@ class DGSEngine(EngineModule):
             raise KeyError(f"State: {ds.data}") from e
 
     @enable_keyboard_interrupt
-    def _track_step(self, detections: State, frame_idx: int, name: str, timers: DifferenceTimers) -> None:
+    def _track_step(
+        self, detections: State, frame_idx: int, name: str, timers: DifferenceTimers, clean: bool = True
+    ) -> None:
         """Run one step of tracking.
 
         Args:
@@ -282,8 +284,9 @@ class DGSEngine(EngineModule):
         timers.add(name="track", prev_time=time_track_update_start)
 
         # clean-up
-        for ts in track_states:
-            ts.clean(keys=["image_crop", "joint_weight"])
+        if clean:
+            for ts in track_states:
+                ts.clean(keys=["image_crop", "joint_weight"])
 
         # get the overall timing of the batch
         batch_time = timers.add(name="batch", prev_time=time_batch_start)
@@ -339,33 +342,34 @@ class DGSEngine(EngineModule):
         detections: list[State]
 
         # batch get data from the data loader
-        for detections in tqdm(self.test_dl, desc="Predict"):
+        for detections in tqdm(self.test_dl, desc="Predict", leave=False):
             for detection in tqdm(detections, desc="Tracker", leave=False):
-                self._track_step(detections=detection, frame_idx=frame_idx, name="Predict", timers=timers)
+                self._track_step(detections=detection, frame_idx=frame_idx, name="Predict", timers=timers, clean=False)
 
                 active = collate_states(self.tracks.get_active_states())
 
                 # store current submission data
                 self.submission.append(active)
 
-                out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
-                if detection.B > 0:
-                    active.draw(
-                        save_path=out_fp,
-                        show_kp=self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"]),
-                        show_skeleton=self.params_test.get("show_skeleton", DEF_VAL["engine"]["dgs"]["show_skeleton"]),
-                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
-                    )
-                else:
-                    detection.draw(
-                        save_path=out_fp,
-                        show_kp=False,
-                        show_skeleton=False,
-                        **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
-                    )
+                if self.save_images:
+                    out_fp = os.path.join(self.log_dir, f"./images/{frame_idx:05d}.png")
+                    if detection.B > 0:
+                        active.draw(
+                            save_path=out_fp,
+                            show_kp=self.params_test.get("show_keypoints", DEF_VAL["engine"]["dgs"]["show_keypoints"]),
+                            show_skeleton=self.params_test.get(
+                                "show_skeleton", DEF_VAL["engine"]["dgs"]["show_skeleton"]
+                            ),
+                            **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
+                        )
+                    else:
+                        detection.draw(
+                            save_path=out_fp,
+                            show_kp=False,
+                            show_skeleton=False,
+                            **self.params_test.get("draw_kwargs", DEF_VAL["engine"]["dgs"]["draw_kwargs"]),
+                        )
 
-                for track in self.tracks.values():
-                    track[-1].clean()
                 # move to the next frame
                 frame_idx += 1
 
@@ -465,13 +469,15 @@ class DGSEngine(EngineModule):
                 if len(active_list) == 0 or all(a.B == 0 for a in active_list):
                     active = EMPTY_STATE.copy()
                     active.filepath = detection.filepath
-                    if "image_id" in detection:
-                        active.data["image_id"] = detection["image_id"]
-                    if "frame_id" in detection:
-                        active.data["frame_id"] = detection["frame_id"]
                     active.data["pred_tid"] = t.empty(0, dtype=t.long, device=detection.device)
                 else:
                     active = collate_states(active_list)
+
+                # set image and frame ID
+                if "image_id" in detection.data:
+                    active.data["image_id"] = detection["image_id"]
+                if "frame_id" in detection.data:
+                    active.data["frame_id"] = detection["frame_id"]
 
                 # store current submission data
                 self.submission.append(active)
