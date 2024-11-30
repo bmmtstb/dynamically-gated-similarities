@@ -54,7 +54,7 @@ SETTINGS: dict[str, tuple[str, str, str, list, list[str]]] = {
         [
             ("Dance", "box_fc2_2Sigmoid", 2),
             ("pt21", "pose_coco_fc2_2Sigmoid", 4),
-            ("Dance", "vis_osn_fc5_4ReLUSigmoid", 4),
+            ("Dance", "visual_osn_fc5_4ReLUSigmoid", 4),
         ],
         ["box_xywh_sim", "pose_sim_coco", "OSNet_sim"],
     ),
@@ -83,14 +83,18 @@ SETTINGS: dict[str, tuple[str, str, str, list, list[str]]] = {
         "test_dl_pt21_256x192_rcnn_085_040",
         "submission_pt21",
         "dynamic",
-        [("Dance", "box_fc1_Sigmoid", 4), ("Dance", "vis_osn_fc3_2ReLUSigmoid", 4)],
+        [("Dance", "box_fc1_Sigmoid", 4), ("Dance", "visual_osn_fc3_2ReLUSigmoid", 4)],
         ["box_xywh_sim", "OSNet_sim"],
     ),
     "pt21_dynamic_iou_oks_OSNet": (
         "test_dl_pt21_256x192_rcnn_085_040",
         "submission_pt21",
         "dynamic",
-        [("pt21", "box_fc1_Sigmoid", 4), ("pt21", "pose_coco_fc1_Sigmoid", 4), ("pt21", "vis_osn_fc5_4ReLUSigmoid", 4)],
+        [
+            ("pt21", "box_fc1_Sigmoid", 4),
+            ("pt21", "pose_coco_fc1_Sigmoid", 4),
+            ("pt21", "visual_osn_fc5_4ReLUSigmoid", 4),
+        ],
         ["box_xywh_sim", "pose_sim_coco", "OSNet_sim"],
     ),
 }
@@ -131,10 +135,12 @@ if __name__ == "__main__":
 
         if COMBINE_FLAG == "dynamic":
             cfg["DGSModule"]["combine"] = "dynamic_combine"
-            for i, a in enumerate(ALPHA):
-                cfg[a[1]][
-                    "weight"
-                ] = f"./weights/trained_alpha/{a[0]}/{SIM_MODS[i]}/{a[1]}/ep{a[2]:03d}_lr0_0000100000.pth"
+            for i, a_i in enumerate(ALPHA):
+                weight_files = glob(f"./weights/trained_alpha/{a_i[0]}/{SIM_MODS[i]}/{a_i[1]}/ep{a_i[2]:03d}_lr*.pth")
+                if len(weight_files) < 1:
+                    raise FileNotFoundError(f"No weight file found for {a_i}")
+                cfg[a_i[1]]["weight"] = weight_files[0]
+
             cfg["dynamic_combine"]["alpha_modules"] = [a[1] for a in ALPHA]
         elif COMBINE_FLAG == "static":
             cfg["DGSModule"]["combine"] = "static_combine"

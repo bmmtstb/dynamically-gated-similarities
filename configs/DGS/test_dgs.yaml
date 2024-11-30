@@ -303,35 +303,35 @@ pose_coco_conv1o15k2fc2_2Sigmoid:
         act_func: "Sigmoid"
 
 # visual - OSNet
-vis_osn_fc1_Sigmoid:
+visual_osn_fc1_Sigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [512, 1]
   bias: true
   act_func: "Sigmoid"
   
-vis_osn_fc3_2ReLUSigmoid:
+visual_osn_fc3_2ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [512, 256, 128, 1]
   bias: true
   act_func: ["ReLU", "ReLU", "Sigmoid"]
 
-vis_osn_fc3_3Sigmoid:
+visual_osn_fc3_3Sigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [512, 256, 128, 1]
   bias: true
   act_func: "Sigmoid"
 
-vis_osn_fc5_5Sigmoid:
+visual_osn_fc5_5Sigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [512, 256, 128, 64, 32, 1]
   bias: true
   act_func: "Sigmoid"
 
-vis_osn_fc5_4ReLUSigmoid:
+visual_osn_fc5_4ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [512, 256, 128, 64, 32, 1]
@@ -339,35 +339,35 @@ vis_osn_fc5_4ReLUSigmoid:
   act_func: ["ReLU", "ReLU", "ReLU", "ReLU", "Sigmoid"]
   
 # visual - Resnet
-vis_res_fc1_Sigmoid:
+visual_res_fc1_Sigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [2048, 1]
   bias: true
   act_func: "Sigmoid"
   
-vis_res_fc3_3Sigmoid:
+visual_res_fc3_3Sigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [2048, 512, 64, 1]
   bias: true
   act_func: "Sigmoid"
 
-vis_res_fc3_2ReLUSigmoid:
+visual_res_fc3_2ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [2048, 512, 64, 1]
   bias: true
   act_func: ["ReLU", "ReLU", "Sigmoid"]
 
-vis_res_fc5_5Sigmoid:
+visual_res_fc5_5Sigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
   bias: true
   act_func: "Sigmoid"
 
-vis_res_fc5_4ReLUSigmoid:
+visual_res_fc5_4ReLUSigmoid:
   module_name: "FullyConnectedAlpha"
   name: "embedding"
   hidden_layers: [2048, 1024, 256, 128, 64, 1]
