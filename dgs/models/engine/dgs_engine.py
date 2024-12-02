@@ -348,6 +348,11 @@ class DGSEngine(EngineModule):
 
                 active = collate_states(self.tracks.get_active_states())
 
+                if active.B == 0:
+                    active["filepath"] = detection["filepath"]
+                    active["image_id"] = detection["image_id"]
+                    active["frame_id"] = detection["frame_id"]
+
                 # store current submission data
                 self.submission.append(active)
 

@@ -149,7 +149,7 @@ if __name__ == "__main__":
             raise NotImplementedError
 
         if "pt21" in DL_KEY:
-            data_paths = [f.path for f in os.scandir(cfg[DL_KEY]["paths"]) if f.is_file()]
+            data_paths = glob(cfg[DL_KEY]["paths"])
         elif "Dance" in DL_KEY:
             data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["paths"])]
         else:
