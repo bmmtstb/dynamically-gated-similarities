@@ -71,7 +71,7 @@ test_dl_Dance_256x192_rcnn_075_035:
     crop_key: "rcnn_075_035_256x192"
 
 test_dl_pt21_256x192_rcnn_085_040:
-    module_name: "KeypointRCNNImageBackbone"
+    module_name: "PT21_Image"
     dataset_path: "./data/PoseTrack21/"
     crops_folder: "./data/PoseTrack21/crops/256x192/rcnn_085_040_test/"  # dataset name will be added during init
     paths: "./data/PoseTrack21/posetrack_data/256x192_rcnn_085_040_test/*.json"
