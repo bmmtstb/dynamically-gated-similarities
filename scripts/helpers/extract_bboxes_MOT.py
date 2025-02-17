@@ -1,4 +1,4 @@
-"""Run the RCNN backbone over the whole dataset and save the results, so they don't have to be recomputed every time."""
+"""Run the RCNN backbone over the whole dataset and save the results, so they don't have to be recomputed during runtime."""
 
 import os
 import time
@@ -22,7 +22,7 @@ CONFIG_FILE: str = "./configs/helpers/predict_rcnn.yaml"
 
 DL_KEYS: list[str] = [
     # "MOT_256x192_train",
-    # "Dance_256x192_train",
+    "Dance_256x192_train",
     "Dance_256x192_val",
     # "Dance_256x192_test", # there is no GT test data available in DanceTrack
 ]
