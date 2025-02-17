@@ -154,7 +154,7 @@ if __name__ == "__main__":
             data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["paths"])]
         else:
             raise NotImplementedError
-        assert len(data_paths)
+        assert len(data_paths) > 0
 
         # iterate over all sub datasets
         for sub_datapath in (pbar_data := tqdm(data_paths, desc="ds_sub_dir", leave=False)):
