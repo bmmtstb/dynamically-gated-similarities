@@ -1,4 +1,7 @@
-"""Run the RCNN backbone over the whole dataset and save the results, so they don't have to be recomputed during runtime."""
+"""
+Run the RCNN backbone over the whole dataset and save the results.
+This reduces compute time during runtime.
+"""
 
 import os
 import time
