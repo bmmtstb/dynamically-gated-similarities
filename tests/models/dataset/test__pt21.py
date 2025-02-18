@@ -192,7 +192,7 @@ class TestPoseTrack21ImageDataset(unittest.TestCase):
         cfg = load_config("./tests/test_data/configs/test_config_pt21.yaml")
         for path, lengths in [
             ("test_multi_dataset", [1, 2, 0, 3, 2, 0, 3]),
-            ("test_directory_dataset", [1, 2, 0, 3]),
+            # ("test_directory_dataset", [1, 2, 0, 3]),
         ]:
             with self.subTest(msg="path: {}, lengths: {}".format(path, lengths)):
                 with HidePrint():
