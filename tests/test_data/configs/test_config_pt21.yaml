@@ -42,13 +42,15 @@ test_multi_dataset:
     paths: ["./pt21/pt21_dummy_1.json", "./pt21/pt21_dummy_2.json", "./pt21/pt21_dummy_2.json"]
     force_img_reshape: true
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
+    collate_fn: "states"
 
 test_directory_dataset:
     dataset_path: "./tests/test_data/"
     paths: "./pt21/"
     force_img_reshape: true
     crops_folder: "./tests/test_data/"  # '/images/' is indirectly added when the dataset name is extracted
-
+    collate_fn: "states"
+    
 test_dataloader_bbox:
     module_name: "Concat_PT21_BBox"
     dataset_path: "./tests/test_data/"
