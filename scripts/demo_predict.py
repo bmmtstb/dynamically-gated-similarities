@@ -23,6 +23,7 @@ if __name__ == "__main__":
     test_dl = module_loader(config=config, module_type="dataloader", key="dataloader_test")
 
     module_start_time = time.time()
+
     # some submodules (especially the torchreid ones) print lots of debug info during model loading.
     # You can hide those outputs using the HidePrint context manager
     # with HidePrint():

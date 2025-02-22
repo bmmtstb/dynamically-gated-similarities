@@ -1,5 +1,6 @@
 """
 Given the configuration, run the DGS module on test data to predict the results.
+This is done for multiple combinations of dataloader, submission file, similarity modules, and the alpha weights.
 """
 
 import os

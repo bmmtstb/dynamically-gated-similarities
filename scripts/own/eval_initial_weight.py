@@ -1,5 +1,6 @@
 """
-Script to run an evaluation of the initial weights of the tracks
+Script to run an evaluation of the initial track-weight.
+This script multiple initial weights using multiple similarity modules over the |PT21|_ and |DT|_ datasets.
 """
 
 # pylint: disable=R0801
@@ -20,15 +21,17 @@ from dgs.utils.utils import HidePrint, notify_on_completion_or_error, send_disco
 
 CONFIG_FILE = "./configs/DGS/eval_const_track_weight.yaml"
 
-# 0.0 was done in parameter search
+# 0.0 was implicitly done in parameter-search so it might be skipped
 # 1.0 should be pretty much pointless, because every new track is preferred
 INITIAL_WEIGHTS: list[float] = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
+# name -> similarity functions to use
 DL_KEYS: dict[str, list[str]] = {
     "dgs_pt21_gt_256x192_val": ["iou", "oks", "OSNet"],
     "dgs_Dance_gt_256x192_val": ["iou", "OSNet"],
 }
 
+# name -> (score and iou threshold) and, which similarity functions to use
 RCNN_KEYS: dict[str, tuple[list[tuple[float, float]], list[str]]] = {
     "dgs_pt21_rcnn_256x192_val": ([(0.00, 1.00), (0.85, 0.40)], ["iou", "oks", "OSNet"]),
     "dgs_Dance_rcnn_256x192_val": ([(0.00, 1.00), (0.70, 0.35)], ["iou", "oks", "OSNet"]),

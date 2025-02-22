@@ -1,5 +1,8 @@
 """
-Train a pose embedding model and predict pose similarities using the dgs internal engine.
+Train a visual embedding model and visual similarities using the dgs internal engine.
+This script might not work and hasn't been tested with later versions of the engine.
+
+Instead of training your own visual embedding generators, you can use the ones provided by |torchreid|_.
 """
 
 import time
@@ -7,7 +10,7 @@ from datetime import timedelta
 
 import torch as t
 
-from dgs.models.engine import VisualSimilarityEngine
+from dgs.models.engine.visual_sim_engine import VisualSimilarityEngine
 from dgs.models.loader import module_loader
 from dgs.utils.config import load_config
 from dgs.utils.torchtools import close_all_layers, open_all_layers, open_specified_layers

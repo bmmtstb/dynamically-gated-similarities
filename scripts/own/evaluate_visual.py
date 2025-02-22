@@ -1,5 +1,5 @@
 """
-Given a folder containing model weights or checkpoints, evaluate them.
+Given a folder containing model weights or checkpoints, evaluate them using a single DGS model.
 """
 
 import glob

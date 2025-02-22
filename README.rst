@@ -6,8 +6,6 @@
     :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml
     :alt: Linting and Testing
 
-# CARE: DUPLICATES IN README.md
-
 Dynamically Gated Similarities
 ==============================
 
@@ -17,8 +15,9 @@ Notes
 -----
 
 You can find a visual Pipeline on
-`LucidChart <https://lucid.app/documents/view/848ef9df-ac3d-464d-912f-f5760b6cfbe9>`_ or downloadable as
-`PDF <https://lucid.app/publicSegments/view/ddbebe1b-4bd3-46b8-9dfd-709b281c4b01>`_.
+`LucidChart <https://lucid.app/lucidchart/848ef9df-ac3d-464d-912f-f5760b6cfbe9/edit?viewport_loc=-201%2C-52%2C2143%2C1007%2CuW69bC8kN~kl&invitationId=inv_e5a52469-f95f-414f-a78b-3416435fcb2d>`_ or downloadable as
+`PDF <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Overview.pdf>`_ (or see: ``./docs/figures/Pipeline-DGS-Overview.pdf``).
+The visual pipeline of the training module is also available as `PDF <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Training.pdf>`_ (or see: ``./docs/figures/Pipeline-DGS-Training.pdf``).
 
 
 Folder Structure
@@ -30,12 +29,19 @@ Folder Structure
     │
     └─── configs
     │        Multiple configuration.yaml files for running DGS or different submodules.
+    │
     └─── docs
-    │        Source files for the documentation via sphinx and autodoc.
+    │    │    Source files for the documentation via sphinx and autodoc.
+    │    │
+    │    └─── figures
+    │             Images for the documentation and general explanation.
+    │
     └─── data
     │        folder containing the datasets, for structure see './data/dataset.rst' for more info.
+    │
     └─── dependencies
     │        References to git submodules e.g. to torchreid and my custom AlphaPose Fork.
+    │
     └─── dgs
     │    │    The source code of the algorithm.
     │    │
@@ -54,6 +60,7 @@ Folder Structure
     │             functions for torch module handling  visualization, and overall image handling
     └─── pre_trained_models
     │        storage for downloaded or custom pre-trained models
+    │
     └─── tests
     │        tests for dgs module
     │
