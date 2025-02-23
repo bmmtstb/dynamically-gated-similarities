@@ -1,6 +1,9 @@
 ![Coverage](https://img.shields.io/badge/Coverage-88%25-lime)
 [![Run CI](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml)
 [![Deploy Docs](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yaml/badge.svg?branch=master)](https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/wiki.yaml)
+[![DOI](https://zenodo.org/badge/713506951.svg)](https://doi.org/10.5281/zenodo.14910546)
+
+
 
 # Dynamically Gated Similarities
 
@@ -16,10 +19,6 @@ You can find a visual Pipeline on
 [LucidChart](https://lucid.app/lucidchart/848ef9df-ac3d-464d-912f-f5760b6cfbe9/edit?viewport_loc=-201%2C-52%2C2143%2C1007%2CuW69bC8kN~kl&invitationId=inv_e5a52469-f95f-414f-a78b-3416435fcb2d)
 or downloadable as [PDF](https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Overview.pdf) (or see: ``./docs/figures/Pipeline-DGS-Overview.pdf``).
 The visual pipeline of the training module is also available as [PDF](https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Training.pdf) (or see: ``./docs/figures/Pipeline-DGS-Training.pdf``).
-
-## Thesis
-
-You can find the full thesis [here](https://github.com/bmmtstb/dynamically-gated-similarities/blob/master/thesis.pdf).
 
 ## Citing
 
@@ -42,7 +41,16 @@ To cite this thesis, you can use the following BibTeX entry:
 To cite the code, you can use the following BibTeX entry:
 
 ```bibtex
-...
+@software{brizar_2025_14910547,
+  author       = {Brizar},
+  title        = {bmmtstb/dynamically-gated-similarities},
+  month        = feb,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {v0.3.0},
+  doi          = {10.5281/zenodo.14910547},
+  url          = {https://doi.org/10.5281/zenodo.14910547},
+}
 ```
 
 This code is based on works of other people as well.

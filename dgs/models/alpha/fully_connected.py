@@ -46,6 +46,13 @@ class FullyConnectedAlpha(BaseAlphaModule):
         Has length ``L - 1``.
         Default ``DEF_VAL.alpha.act_func``.
 
+    Important Inherited Params
+    --------------------------
+
+    weight (FilePath):
+        Local or absolute path to the pretrained weights of the model.
+        Can be left empty.
+
     """
 
     def __init__(self, config: Config, path: NodePath):

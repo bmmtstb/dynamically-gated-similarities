@@ -4,6 +4,7 @@ Installation
 Clone the repository, but make sure to recursively clone the submodules too.
 
 ::
+
 	git clone --recursive git@github.com:bmmtstb/dynamically-gated-similarities
 
 If you cloned the repository already, use ``git submodule update --init --recursive``.
@@ -18,11 +19,13 @@ This will also install the required submodules. This will take a while!
 	This will install PyTorch with support for CUDA 12.1, you might want to change that for your environment.
 
 ::
+
 	python3.10 -m venv venv
 
 Activate the environment according to you OS, then install the base requirements.
 
 ::
+
 	pip install -r requirements.txt
 
 
@@ -34,6 +37,7 @@ Some of the respective requirements of |torchreid| have been installed by this p
 And finally, make sure to install the dgs module itself.
 
 ::
+
 	cd ./dependencies/torchreid
 	python setup.py develop
 	cd ../..
@@ -51,11 +55,11 @@ Now the dgs module is installed, including two evaluation tools:
 Next Steps
 ----------
 
-There are a few examples in the `./scripts/` directory, with their explanations _`here <scripts_page>`.
+There are a few examples in the ``./scripts/`` directory, with their explanations _`here <scripts_page>`.
 
 Check the information in _`weights <weights>` to download (more) example model weights or use your own.
 
-There are multiple example configurations in the `./configs/` directory,
+There are multiple example configurations in the ``./configs/`` directory,
 with some additional explanation _`here <configs>`.
 
 If you want to train your own models, use _`custom datasets<dataset>`, or validate results,
@@ -71,7 +75,7 @@ TODO
 Pytorch Keypoint-RCNN
 ~~~~~~~~~~~~~~~~~~~~~
 
-See :class:`KeypointRCNNImageBackbone`.
+See :class:`~.KeypointRCNNImageBackbone`.
 
 AlphaPose Backbone
 ~~~~~~~~~~~~~~~~~~

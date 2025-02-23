@@ -1,7 +1,7 @@
 """
 Implementation of modules that combine two or more similarity matrices.
 Obtain similarity matrices as a result of one or multiple
-:class:``~dgs.models.similarity.similarity.SimilarityModule`` s.
+:class:`~dgs.models.similarity.similarity.SimilarityModule`'s.
 """
 
 from abc import abstractmethod

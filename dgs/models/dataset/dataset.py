@@ -221,7 +221,7 @@ class BaseDataset(NamedModule, TDataset):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A single :class:`State` containing all the data of this index or a list of multiple states.
+            A single :class:`.State` containing all the data of this index or a list of multiple states.
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         s: Union[State, list[State]] = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
@@ -229,12 +229,12 @@ class BaseDataset(NamedModule, TDataset):
 
     @abstractmethod
     def arbitrary_to_ds(self, a: any, idx: int) -> Union[State, list[State]]:
-        """Given an index, convert arbitrary data into a :class:`State` or a list of States."""
+        """Given an index, convert arbitrary data into a :class:`.State` or a list of States."""
         raise NotImplementedError
 
     def get_image_crops(self, ds: State) -> None:
         """Add the image crops and local key-points to a given state.
-        Works for single or batched :class:`State` objects.
+        Works for single or batched :class:`.State` objects.
         This function modifies the given State in place.
 
         Will load precomputed image crops by setting ``self.params["crops_folder"]``.
@@ -412,14 +412,14 @@ class BBoxDataset(BaseDataset, ABC):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A single :class:`State` containing all the data of this index.
+            A single :class:`.State` containing all the data of this index.
         """
         s: State = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
         return s
 
     @abstractmethod
     def arbitrary_to_ds(self, a: any, idx: int) -> State:
-        """Given a single bounding box (ID) and other arbitrary data, convert everything to a :class:`State` object.
+        """Given a single bounding box (ID) and other arbitrary data, convert everything to a :class:`.State` object.
         The index ``idx`` is given additionally, though it might not be used.
         """
         raise NotImplementedError
@@ -440,7 +440,7 @@ class ImageDataset(BaseDataset, ABC):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A list of :class:`State`s containing all the data of this index.
+            A list of :class:`.State`'s containing all the data of this index.
         """
         s: list[State] = self.arbitrary_to_ds(a=self.data[idx], idx=idx)
         return s
@@ -448,7 +448,7 @@ class ImageDataset(BaseDataset, ABC):
     @abstractmethod
     def arbitrary_to_ds(self, a: any, idx: int) -> list[State]:
         """Given a single image ID or filepath, obtain the image, bbox, and possibly more information,
-        then convert everything to a :class:`State` object.
+        then convert everything to a :class:`.State` object.
 
         The index ``idx`` is given additionally, though it might not be used.
         """
@@ -533,7 +533,7 @@ class VideoDataset(BaseDataset, ABC):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A :class:`State` containing all the data of this index or a list of those states.
+            A :class:`.State` containing all the data of this index or a list of those states.
         """
         # don't call .to(self.device), the DS should be created on the correct device!
         self.data.seek(time_s=float(idx) / self.fps)
@@ -587,8 +587,8 @@ class ImageHistoryDataset(BaseDataset, ABC):
                 Is a reference to :attr:`data`, the same object referenced by :func:`__len__`.
 
         Returns:
-            A list of :class:`State`s containing the next ``L`` :class:`State`s and the current
-            :class:`State`.
+            A list of :class:`.State`'s containing the next ``L`` :class:`.State`'s and the current
+            :class:`.State`.
             The indices are from ``idx`` to ``idx + L``, where ``idx + L`` is the current frame.
 
         """
@@ -608,8 +608,8 @@ class ImageHistoryDataset(BaseDataset, ABC):
                 Every index is from ``idx`` to ``idx + L``, where ``idx + L`` is the current frame.
 
         Returns:
-            A list of :class:`State`s containing the next ``L`` (combined) :class:`State`s and the current
-            (combined) :class:`State`s.
+            A list of :class:`.State`'s containing the next ``L`` (combined) :class:`.State`'s and the current
+            (combined) :class:`.State`'s.
 
 
         """
@@ -622,7 +622,7 @@ class ImageHistoryDataset(BaseDataset, ABC):
     @abstractmethod
     def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
         """Given a single image ID or filepath, obtain the image, bbox, and possibly more information,
-        then convert everything to a :class:`State` object.
+        then convert everything to a :class:`.State` object.
 
         The index ``idx`` is given additionally, though it might not be used.
         """

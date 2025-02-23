@@ -5,7 +5,7 @@ Explanation of Different Scripts
 
 To compute the results and to help with the overwhelming amount of data, multiple scripts were created to run DGS.
 
-Most scripts have some sort of error handling using the decorator :function:`notify_on_completion_or_error`.
+Most scripts have some sort of error handling using the decorator :py:meth:`~dgs.utils.notify_on_completion_or_error`.
 This decorator expects an environment variable called ``DISCORD_WEBHOOK_URL`` to be set to a discord webhook,
 which then receives all success and error messages.
 

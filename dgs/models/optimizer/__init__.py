@@ -55,7 +55,7 @@ def get_optimizer(instance: Instance) -> Type[Optimizer]:
 
     Args:
         instance: Either the name of the optimizer, which has to be in :data:``OPTIMIZERS``,
-            or a subclass of :class:``Optimizer``.
+            or a subclass of :class:`.Optimizer`.
 
     Raises:
         ValueError: If the instance has the wrong type.

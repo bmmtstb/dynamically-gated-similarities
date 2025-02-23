@@ -196,7 +196,7 @@ def show_images_with_additional(
         key_points: If present, key points to be drawn on top of every image.
             There can be a different number of detected key points per image.
         bboxes: If present, a list of bounding boxes.
-            Bounding boxes as :class:``~torchvision.tv_tv_tensors.BoundingBoxes`` objects.
+            Bounding boxes as :class:`~torchvision.tv_tv_tensors.BoundingBoxes` objects.
         show: Whether to show the grid of images after drawing the image(s).
         kp_connectivity: If present can contain a list of instructions or one single connectivity.
             The keypoint connectivity is a list of tuples (ID start -> ID end) or

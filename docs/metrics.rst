@@ -68,7 +68,7 @@ Higher-Order Tracking Accuracy
 
 THe higher order tracking accuracy or :math:`\texttt{HOTA}` was developed to balance between the detection and tracking accuracy.
 It can only be computed over the whole video sequence after all predictions were made.
-A more in depth explanation of the HOTA can be found `here <https://autonomousvision.github.io/hota-metrics/>`_ .
+A more in depth explanation of the HOTA can be found on `autonomousvision.github.io <https://autonomousvision.github.io/hota-metrics/>`_ .
 
 .. math::
 

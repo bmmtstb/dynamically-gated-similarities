@@ -185,8 +185,8 @@ class TorchreidEmbeddingGenerator(EmbeddingGeneratorModule):
             Make sure forward is only called in the evaluation mode.
 
         Args:
-            ds: A :class:`State` containing the cropped image as input for the model.
-                :class:`Image` or FloatTensor of shape ``[B x C x w x h]``.
+            ds: A :class:`.State` containing the cropped image as input for the model.
+                :class:`.Image` or FloatTensor of shape ``[B x C x w x h]``.
 
         Returns:
             A batch of embeddings as tensor of shape: ``[B x E]``.

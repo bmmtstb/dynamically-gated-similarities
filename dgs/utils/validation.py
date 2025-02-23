@@ -164,7 +164,7 @@ def validate_bboxes(
     validate them and return them as a torchvision-tensor of bounding-boxes.
 
     Args:
-        bboxes: `tv_tensor.BoundingBoxes` object with an arbitrary shape, most likely ``[B x 4]``.
+        bboxes: `tv_tensors.BoundingBoxes` object with an arbitrary shape, most likely ``[B x 4]``.
         length: The number of items or batch-size the tensor should have.
             Default `None` does not validate the length.
         dims: Number of dimensions bboxes should have.
@@ -174,7 +174,7 @@ def validate_bboxes(
             Default None, and therefore no validation of the format.
 
     Returns:
-        Bounding boxes as `tv_tensor.BoundingBoxes` object with exactly `dims` dimensions.
+        Bounding boxes as `tv_tensors.BoundingBoxes` object with exactly `dims` dimensions.
 
     Raises:
         TypeError: If the `bboxes` input is not a Tensor.
@@ -242,8 +242,8 @@ def validate_filepath(file_paths: Union[FilePath, Iterable[FilePath], FilePaths]
 
     Args:
         file_paths: Path to the file as a string or a file object.
-        length: The length a :class:`FilePaths` object should have.
-            Except for a length of 1 not applicable for :class:`FilePath`.
+        length: The length a :class:`.FilePaths` object should have.
+            Except for a length of 1 not applicable for :class:`.FilePath`.
 
     Returns:
         FilePaths: The validated file path.
@@ -339,7 +339,7 @@ def validate_image(images: Union[Image, t.Tensor], length: int = None, dims: Uni
     """Given one single image or a stacked batch images, validate them and return a torchvision-tensor image.
 
     Args:
-        images: torch tensor or tv_tensor.Image object
+        images: torch tensor or tv_tensors.Image object
         length: The number of items or batch-size the tensor should have.
             Default `None` does not validate the length.
         dims: Number of dimensions img should have.
@@ -347,7 +347,7 @@ def validate_image(images: Union[Image, t.Tensor], length: int = None, dims: Uni
             Defaults to four dimensions with the image dimensions as ``[B x C x H x W]``.
 
     Returns:
-        Image: The images as `tv_tensor.Image` object with exactly `dims` dimensions.
+        Image: The images as `tv_tensors.Image` object with exactly `dims` dimensions.
 
     Raises:
         TypeError: If `images` is not a Tensor or cannot be cast to one.
@@ -378,10 +378,10 @@ def validate_images(images: list[Union[Image, t.Tensor]]) -> Images:
     """Given one single or multiple images, validate them and return a torchvision-tensor image.
 
     Args:
-        images: A list containing :class:`~torch.Tensor` or :class:`.tv_tensor.Image` objects.
+        images: A list containing :class:`~torch.Tensor` or :class:`.tv_tensors.Image` objects.
 
     Returns:
-        The images as a list containing :class:`.tv_tensor.Image` objects, each with exactly 4 dimensions.
+        The images as a list containing :class:`.tv_tensors.Image` objects, each with exactly 4 dimensions.
 
     Raises:
         TypeError: If `images` is not a list.

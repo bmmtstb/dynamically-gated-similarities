@@ -76,7 +76,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
         return self.configure_torch_module(m, train=False)
 
     def get_data(self, ds: State) -> t.Tensor:
-        """Given a :class:`State` get the current embedding or compute it using the image crop."""
+        """Given a :class:`.State` get the current embedding or compute it using the image crop."""
         if self.model.embedding_key in ds:
             return ds[self.model.embedding_key]
         embedding = self.model.predict_embeddings(to_dtype(ds.image_crop, dtype=t.float32, scale=True))
@@ -85,7 +85,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
         return embedding
 
     def get_target(self, ds: State) -> t.Tensor:
-        """Given a :class:`State` get the target embedding or compute it using the image crop."""
+        """Given a :class:`.State` get the target embedding or compute it using the image crop."""
         if self.model.embedding_key in ds:
             return ds[self.model.embedding_key]
         embedding = self.model.predict_embeddings(to_dtype(ds.image_crop, dtype=t.float32, scale=True))
@@ -104,10 +104,10 @@ class TorchreidVisualSimilarity(SimilarityModule):
             Torchreid expects images to have float values.
 
         Args:
-            data: A :class:`State` containing the predicted embedding or the image crop.
+            data: A :class:`.State` containing the predicted embedding or the image crop.
                 If a predicted embedding exists, it should be stored as 'embedding' in the State.
                 ``self.get_data()`` will then extract the embedding as tensor of shape: ``[a x E]``.
-            target: A :class:`State` containing either the target embedding or the image crop.
+            target: A :class:`.State` containing either the target embedding or the image crop.
                 If a predicted embedding exists, it should be stored as 'embedding' in the State.
                 ``self.get_target()`` is then used to extract embedding as tensor of shape ``[b x E]``.
 
@@ -116,7 +116,7 @@ class TorchreidVisualSimilarity(SimilarityModule):
             The similarity is a (Float)Tensor of shape ``[a x b]`` with values in ``[0..1]``.
             If the provided metric does not return a probability distribution,
             you might want to change the metric or set the 'softmax' parameter of this module,
-            or within the :class:`DGSModule` if this is a submodule.
+            or within the :class:`.DGSModule` if this is a submodule.
             Computing the softmax ensures better / correct behavior when combining this similarity with others.
             If requested, the softmax is computed along the -1 dimension,
             resulting in probability distributions for each value of the input data.

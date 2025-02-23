@@ -51,20 +51,20 @@ class DGSEngine(EngineModule):
     For this model:
 
     * ``get_data()`` should return the same as this similarity functions :meth:`SimilarityModule.get_data` call
-    * ``get_target()`` should return the class IDs of the :class:`State` object
-    * ``train_dl`` contains the training data as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset.
+    * ``get_target()`` should return the class IDs of the :class:`.State` object
+    * ``train_dl`` contains the training data as a torch DataLoader containing a :class:`.ImageHistoryDataset` dataset.
       Additionally, the training data should contain all the training sequences and not just a single video.
     * ``test_dl`` contains the test data as a torch DataLoader
-      containing a regular :class:`ImageDataset` or class:`VideoDataset` datasets
+      containing a regular :class:`.ImageDataset` or class:`VideoDataset` datasets
     * ``val_dl`` contains the validation data.
       The validation data can be one of the following,
       depending on the configuration of ``params_train["eval_accuracy"]``:
 
       * If ``eval_accuracy`` is ``True``,
-        the evaluation data is as a torch DataLoader containing a :class:`ImageHistoryDataset` dataset.
+        the evaluation data is as a torch DataLoader containing a :class:`.ImageHistoryDataset` dataset.
         Additionally, the validation data should contain all the validation sequences and not just a single video.
       * If ``eval_accuracy`` is ``False``, the evaluation data is as a torch DataLoader
-        containing a regular :class:`ImageDataset` or class:`VideoDataset` datasets.
+        containing a regular :class:`.ImageDataset` or class:`VideoDataset` datasets.
         With one dataset per video.
 
 
@@ -106,13 +106,13 @@ class DGSEngine(EngineModule):
         Default ``DEF_VAL.engine.dgs.draw_kwargs``.
 
     inactivity_threshold (int):
-        The number of steps after which an inactive :class:`Track` will be removed.
+        The number of steps after which an inactive :class:`.Track` will be removed.
         Removed tracks can be reactivated using :meth:`.Tracks.reactivate_track`.
         Use `None` to disable the removing of inactive tracks.
         Default ``DEF_VAL.tracks.inactivity_threshold``.
 
     max_track_length (int):
-        The maximum number of :class:`.State` objects per :class:`Track`.
+        The maximum number of :class:`.State` objects per :class:`.Track`.
         Default ``DEF_VAL.track.N``.
 
     save_images (bool):
@@ -122,14 +122,14 @@ class DGSEngine(EngineModule):
     show_keypoints (bool):
         Whether to show the key-point-coordinates when generating the image-results.
         Therefore, this will only have an influence, if `save_images` is `True`.
-        To be drawn correctly, the detections- :class:`State` has to contain the global key-point-coordinates as
+        To be drawn correctly, the detections- :class:`.State` has to contain the global key-point-coordinates as
         'keypoints' and possibly the joint-visibility as 'joint_weight'.
         Default ``DEF_VAL.engine.dgs.show_skeleton``.
 
     show_skeleton (bool):
         Whether to connect the drawn key-point-coordinates with the human skeleton.
         This will only have an influence, if `save_images` is `True` and `show_keypoints` is `True` as well.
-        To be drawn correctly, the detections- :class:`State` has to contain a valid 'skeleton_name' key.
+        To be drawn correctly, the detections- :class:`.State` has to contain a valid 'skeleton_name' key.
         Default ``DEF_VAL.engine.dgs.show_skeleton``.
 
     """
@@ -214,7 +214,7 @@ class DGSEngine(EngineModule):
         """Run one step of tracking.
 
         Args:
-            detections: The detections for the current frame as a single :class:`State` object.
+            detections: The detections for the current frame as a single :class:`.State` object.
             frame_idx: The current frame index used for logger stuff.
             name: The name of the current step used for logger stuff.
             timers: The timers to store the timing information of every step.
@@ -678,7 +678,7 @@ class DGSEngine(EngineModule):
         Args:
             fp: The path to the checkpoint file
             new_id: The ID at which index of the alpha weight modules to insert the loaded weights.
-            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_models`` s in a single checkpoint.
+            old_id: The old ID. Necessary only if there are multiple ``combine.alpha_models``'s in a single checkpoint.
                 E.g. when multiple alpha weight generators have been trained in unison.
         """
         checkpoint_data = load_checkpoint(fpath=fp)

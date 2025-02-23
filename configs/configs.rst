@@ -28,7 +28,7 @@ If the model, the user wants to use, defines parameters,
 the configuration file needs to contain values for those parameters.
 If the model contains additional or optional parameters, the user can change those using the configuration too.
 
-Using the :class:`DGSModule` as example, there are currently two required parameters: ``names`` and ``combine``.
+Using the :class:`.DGSModule` as example, there are currently two required parameters: ``names`` and ``combine``.
 Both are references to other keys in the same configuration file, used to load the different required submodules.
 Further, there are two optional boolean parameters.
 Both are used to define whether the module computes a probability distribution using a softmax.

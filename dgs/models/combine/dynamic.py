@@ -38,7 +38,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
     ------
 
     alpha_modules (list[NodePath]):
-        A list containing paths to multiple :class:`BaseAlphaModule` s.
+        A list containing paths to multiple :class:`.BaseAlphaModule`'s.
 
     Optional Params
     ---------------
@@ -67,7 +67,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
 
         :math:`\alpha_i` describes how important the similarity :math:`s_i` is.
         The sum of all :math:`\alpha_i` should be 1 by definition given the last layer is a softmax layer.
-        :math:`\alpha` is computed using the respective :class:`BaseAlphaModule` and the given :class:`State`.
+        :math:`\alpha` is computed using the respective :class:`.BaseAlphaModule` and the given :class:`.State`.
 
         All tensors should be on the same device and should have the same shape.
 
@@ -78,7 +78,7 @@ class DynamicAlphaCombine(CombineSimilaritiesModule):
                 If ``tensors`` is a single tensor, it should have the shape ``[S x D x T]``.
                 ``S`` can be any number of similarity matrices greater than 0,
                 even though only values greater than 1 really make sense.
-            s: A :class:`State` containing the batched input data for the alpha models.
+            s: A :class:`.State` containing the batched input data for the alpha models.
                 The state should be on the same device as ``tensors``.
 
         Returns:

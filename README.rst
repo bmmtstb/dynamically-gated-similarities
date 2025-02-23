@@ -6,18 +6,27 @@
     :target: https://github.com/bmmtstb/dynamically-gated-similarities/actions/workflows/ci.yaml
     :alt: Linting and Testing
 
+
+.. image:: https://zenodo.org/badge/713506951.svg
+  :target: https://doi.org/10.5281/zenodo.14910546
+
+
+
 Dynamically Gated Similarities
 ==============================
 
-You can found the extended Documentation `here <https://bmmtstb.github.io/dynamically-gated-similarities/>`_.
+This is the code for the Thesis *"Multi-Person Pose Tracking using Dynamically Gated Similarities"*, available ` ``./thesis.pdf`` <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/thesis.pdf>`_ .
+
+
+You can found the extended Documentation on `bmmtstb.github.io <https://bmmtstb.github.io/dynamically-gated-similarities/>`_.
 
 Notes
------
+~~~~~
 
 You can find a visual Pipeline on
 `LucidChart <https://lucid.app/lucidchart/848ef9df-ac3d-464d-912f-f5760b6cfbe9/edit?viewport_loc=-201%2C-52%2C2143%2C1007%2CuW69bC8kN~kl&invitationId=inv_e5a52469-f95f-414f-a78b-3416435fcb2d>`_ or downloadable as
-`PDF <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Overview.pdf>`_ (or see: ``./docs/figures/Pipeline-DGS-Overview.pdf``).
-The visual pipeline of the training module is also available as `PDF <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Training.pdf>`_ (or see: ``./docs/figures/Pipeline-DGS-Training.pdf``).
+`PDF (main) <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Overview.pdf>`_ (or see: ``./docs/figures/Pipeline-DGS-Overview.pdf``).
+The visual pipeline of the training module is also available as `PDF (training) <https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Training.pdf>`_ (or see: ``./docs/figures/Pipeline-DGS-Training.pdf``).
 
 
 Folder Structure
@@ -120,3 +129,39 @@ while the visual similarity (e.g. :class:`~.TorchreidVisualSimilarity` ) needs t
 +----------------------------+-------------------------------------------------------------------------+
 | E\ :sub:`V`, E\ :sub:`P`   | Embedding size, denoted for visual or pose based shape                  |
 +----------------------------+-------------------------------------------------------------------------+
+
+
+Citing
+~~~~~~
+
+To cite this thesis, you can use the following BibTeX entry:
+
+::
+
+    @mastersthesis{steinborn2025dgs,
+        author		= {Martin Steinborn},
+        language	= {en},
+        year		= {2025},
+        month		= {Februar},
+        address		= {Darmstadt},
+        school		= {Technische Universit{\"a}t Darmstadt},
+        title		= {Multi-Person Pose Tracking Using Dynamically Gated Similarities},
+        keywords	= {tracking,pose-tracking,mppt},
+        url			= {http://tuprints.ulb.tu-darmstadt.de/29468/},
+    }
+
+To cite the code, you can use the following BibTeX entry:
+
+::
+
+    @software{brizar_2025_14910547,
+      author       = {Brizar},
+      title        = {bmmtstb/dynamically-gated-similarities},
+      month        = feb,
+      year         = 2025,
+      publisher    = {Zenodo},
+      version      = {v0.3.0},
+      doi          = {10.5281/zenodo.14910547},
+      url          = {https://doi.org/10.5281/zenodo.14910547},
+    }
+

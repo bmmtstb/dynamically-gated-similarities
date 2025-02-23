@@ -18,15 +18,15 @@ sequential_combined_validations: Validations = {
 
 
 class SequentialCombinedAlpha(BaseAlphaModule):
-    """An alpha module sequentially combining multiple other :class:`BaseAlphaModule` s.
-    First load the data from the :class:`State` using `name`.
-    Then insert the resulting :class:`.Tensor` into the forward call of the respective next model.
+    """An alpha module sequentially combining multiple other :class:`~.BaseAlphaModule`'s.
+    First load the data from the :class:`~.State` using ``name``.
+    Then insert the resulting :class:`~.Tensor` into the forward call of the respective next model.
 
     Params
     ------
 
     paths (list[str, NodePath]):
-        A list containing either :class:`NodePath` s pointing to the configuration of a :class:`~BaseAlphaModule`
+        A list containing either :obj:`~.NodePath`'s pointing to the configuration of a :class:`~.BaseAlphaModule`
         or the name of a function from `torch.nn` (e.g. 'Flatten', 'ReLU', ...).
         All submodules do not need to have the "name" property,
         because all other layers will use the result returned by the previous layer.
@@ -36,6 +36,12 @@ class SequentialCombinedAlpha(BaseAlphaModule):
     Optional Params
     ---------------
 
+    Important Inherited Params
+    --------------------------
+
+    weight (FilePath):
+        Local or absolute path to the pretrained weights of the model.
+        Can be left empty.
     """
 
     model: t.nn.Sequential
@@ -78,7 +84,7 @@ class SequentialCombinedAlpha(BaseAlphaModule):
 
     def forward(self, s: State) -> t.Tensor:
         """Forward call for sequential model calls the next layer with the output of the previous layer.
-        Works for :class:`BaseAlphaModule` s and any arbitrary model from `torch.nn`.
+        Works for :class:`.BaseAlphaModule`'s and any arbitrary model from `torch.nn`.
         """
         inpt = self.get_data(s)
         for sub_models in self.model:

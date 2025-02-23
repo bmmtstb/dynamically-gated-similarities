@@ -8,20 +8,17 @@
 .. autoclass:: {{ objname }}
 
    {% block methods %}
-       .. automethod:: __init__
+   {% if methods %}
 
-       {% if methods %}
-           .. rubric:: {{ _('Methods') }}
+   .. rubric:: {{ _('Methods') }}
 
-           .. autosummary::
-              :template: method.rst
-              :toctree:
-           {% for item in methods %}
-              {% if '__init__' != item %}
-                ~{{ name }}.{{ item }}
-             {% endif %}
-           {%- endfor %}
-       {% endif %}
+   {% for item in methods %}
+
+   .. automethod:: {{ name }}.{{ item }}
+
+   {%- endfor %}
+   {% endif %}
+
    {% endblock %}
 
    {% block attributes %}

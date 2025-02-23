@@ -45,7 +45,21 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
 ]
-autosummary_generate = True  # Turn on sphinx.ext.autosummary
+
+# force the primary domain to be python
+primary_domain = "py"
+
+# enable autosummary
+autosummary_generate = True
+
+# napoleon (google style docstrings with rst)
+napoleon_attr_annotations = False
+napoleon_custom_sections = [
+    ("Params", "params_style"),
+    ("Optional Params", "params_style"),
+    ("Important Inherited Params", "params_style"),
+]
+
 # linkcheck
 linkcheck_ignore = [
     ".*bmmtstb\.github\.io\/dynamically\-gated\-similarities\/.*",  # Server is down while running docs workflow
@@ -56,6 +70,17 @@ linkcheck_anchors_ignore_for_url = [  # some problem with GitHub text-anchors
     ".*github\.com.*",
     ".*stackoverflow\.com.*",
 ]
+
+# settings for autosummary
+nitpick_ignore = [
+    ("py:class", "torch.device"),
+    ("py:class", "torch.Tensor"),
+    ("py:class", "torchvision.tv_tensors.BoundingBoxes"),
+    ("py:class", "torchvision.tv_tensors.BoundingBoxesFormat"),
+    ("py:class", "torchvision.tv_tensors.Image"),
+    ("py:class", "torchvision.tv_tensors.Mask"),
+]
+
 # custom shortcuts
 rst_prolog = """
 .. |AP| replace:: ``AlphaPose``
@@ -87,7 +112,13 @@ source_suffix = [".rst", ".md"]
 source_parsers = {".md": "recommonmark.parser.CommonMarkParser"}
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "*/venv*", "venv*"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**/venv/**",
+    "**/site-packages/**",
+]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"

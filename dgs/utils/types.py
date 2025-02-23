@@ -30,9 +30,9 @@ Validations: TypeAlias = dict[str, list[Union[str, type, tuple[str, any], Valida
 
 # Data Handling
 DataGetter = Callable[["State"], any]
-"""Function to extract a single specific value from a :class:`State`."""
+"""Function to extract a single specific value from a :class:`.State`."""
 DataGetters = Callable[["State"], tuple[any, ...]]
-"""Function to extract multiple attributes or properties from a :class:`State`."""
+"""Function to extract multiple attributes or properties from a :class:`.State`."""
 
 # Modules
 Instance: TypeAlias = Union[str, type]
