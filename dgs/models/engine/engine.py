@@ -72,7 +72,7 @@ class EngineModule(NamedModule, nn.Module):
         Path to the configuration setting up the model to be trained or tested.
 
     model_type (str):
-        The type of :class:`BaseModule` to be loaded as the model for training and testing.
+        The type of :class:`.BaseModule` to be loaded as the model for training and testing.
         The value will be passed as ``module_type`` in the :func:`module_loader` call.
 
     Optional Params

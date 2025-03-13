@@ -34,7 +34,7 @@ class SimilarityModule(NamedModule, nn.Module):
         Whether to apply the softmax function to the (batched) output of the similarity function.
         Default ``DEF_VAL.similarity.softmax``.
     train_key (str, optional):
-        A name of a :class:`State` property to use to retrieve the data during training.
+        A name of a :class:`.State` property to use to retrieve the data during training.
         E.g. usage of :meth:`State.bbox_relative` instead of the regular bbox.
         If this value isn't set, the regular :meth:`SimilarityModule.get_data` call is used.
 

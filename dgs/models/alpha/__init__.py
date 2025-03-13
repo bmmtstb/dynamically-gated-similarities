@@ -1,5 +1,5 @@
 """
-Modules for predicting the values of the alpha gates given :class:`State` s as input.
+Modules for predicting the values of the alpha gates given :class:`.State`'s as input.
 """
 
 from typing import Type

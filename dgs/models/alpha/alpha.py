@@ -1,5 +1,5 @@
 """
-Base class for modules that predict alpha values given a :class:`State`.
+Base class for modules that predict alpha values given a :class:`.State`.
 """
 
 from abc import abstractmethod
@@ -19,9 +19,6 @@ alpha_validations: Validations = {
 
 class BaseAlphaModule(NamedModule, t.nn.Module):
     """Given a state as input, compute and return the weight of the alpha gate.
-
-    Params
-    ------
 
     Optional Params
     ---------------

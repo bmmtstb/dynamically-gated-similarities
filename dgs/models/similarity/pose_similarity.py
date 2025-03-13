@@ -58,13 +58,13 @@ class ObjectKeypointSimilarity(SimilarityModule):
         self.kp_dim: int = self.params.get("keypoint_dim", DEF_VAL["similarity"]["oks"]["kp_dim"])
 
     def get_data(self, ds: State) -> t.Tensor:
-        """Given a :class:`State`, compute the detected / predicted key points with shape ``[B1 x J x 2|3]``
+        """Given a :class:`.State`, compute the detected / predicted key points with shape ``[B1 x J x 2|3]``
         and the areas of the respective ground-truth bounding-boxes with shape ``[B1]``.
         """
         return ds.keypoints.float().view(ds.B, -1, self.kp_dim)
 
     def get_area(self, ds: State) -> t.Tensor:
-        """Given a :class:`State`, compute the area of the bounding box."""
+        """Given a :class:`.State`, compute the area of the bounding box."""
         bboxes = ds.bbox
 
         if bboxes.format == BoundingBoxFormat.XYXY:
@@ -78,7 +78,7 @@ class ObjectKeypointSimilarity(SimilarityModule):
         return area
 
     def get_target(self, ds: State) -> tuple[t.Tensor, t.Tensor]:
-        """Given a :class:`State` obtain the ground truth key points and the key-point-visibility.
+        """Given a :class:`.State` obtain the ground truth key points and the key-point-visibility.
         Both are tensors, the key points are a FloatTensor of shape ``[B2 x J x 2|3]``
         and the visibility is a BoolTensor of shape ``[B2 x J]``.
         """
@@ -113,8 +113,8 @@ class ObjectKeypointSimilarity(SimilarityModule):
             * :math:`s` the scale of the ground truth object, with :math:`s^2` becoming the object's segmented area
 
         Args:
-            data: A :class:`State` object containing at least the key points and the bounding box. Shape ``N``.
-            target: A :class:`State` containing at least the target key points. Shape ``T``.
+            data: A :class:`.State` object containing at least the key points and the bounding box. Shape ``N``.
+            target: A :class:`.State` containing at least the target key points. Shape ``T``.
 
         Returns:
             A (Float)Tensor of shape ``[N x T]`` with values in ``[0..1]``.
@@ -163,7 +163,7 @@ class IntersectionOverUnion(SimilarityModule):
         self.bbox_transform = ConvertBoundingBoxFormat("XYXY")
 
     def get_data(self, ds: State) -> BoundingBoxes:
-        """Given a :class:`State` obtain the ground-truth bounding-boxes as
+        """Given a :class:`.State` obtain the ground-truth bounding-boxes as
         :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[N x 4]``.
 
         Notes:
@@ -175,7 +175,7 @@ class IntersectionOverUnion(SimilarityModule):
         return bboxes
 
     def get_target(self, ds: State) -> BoundingBoxes:
-        """Given a :class:`State` obtain the ground-truth bounding-boxes as
+        """Given a :class:`.State` obtain the ground-truth bounding-boxes as
         :class:`torchvision.tv_tensors.BoundingBoxes` object of size ``[T x 4]``.
 
         Notes:
@@ -190,8 +190,8 @@ class IntersectionOverUnion(SimilarityModule):
         """Given two states containing bounding-boxes, compute the intersection over union between each pair.
 
         Args:
-            data: A :class:`State` object containing the detected bounding-boxes. Size ``N``
-            target: A :class:`State` object containing the target bounding-boxes. Size ``T``
+            data: A :class:`.State` object containing the detected bounding-boxes. Size ``N``
+            target: A :class:`.State` object containing the target bounding-boxes. Size ``T``
 
         Returns:
             A (Float)Tensor of shape ``[N x T]`` with values in ``[0..1]``.

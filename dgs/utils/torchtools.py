@@ -167,7 +167,7 @@ def load_pretrained_weights(
         >>> load_pretrained_weights(model, weight_path)
     """
     checkpoint = load_checkpoint(weight_path, device=device)
-    if "model" in checkpoint:
+    if isinstance(checkpoint, dict) and "model" in checkpoint:
         state_dict = checkpoint["model"]
     else:
         state_dict = checkpoint

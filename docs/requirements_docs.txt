@@ -7,12 +7,18 @@ numpy==1.*
 scipy==1.14.*
 sphinx
 sphinxcontrib.datatemplates
+tensorboard
 tqdm
 
-# ############################# #
-# torch cpu as extra dependency #
-# ############################# #
+
+# ############################ #
+#     install torch with       #
+# specific cuda or cpu version #
+# ############################ #
 
 --extra-index-url https://download.pytorch.org/whl/cpu
+# --extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.3.*
 torchvision==0.18.*
+torchaudio==2.3.*
+

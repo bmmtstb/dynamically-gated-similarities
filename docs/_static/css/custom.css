@@ -2,3 +2,19 @@ p.monospace-block {
     font-family: monospace;
     white-space: pre;
 }
+
+div.sphinxsidebar {
+	width: 400px;
+}
+
+div.bodywrapper {
+	margin: 0 0 0 400px;
+}
+
+div.body {
+	max-width: 1400px;
+}
+
+dl {
+	margin-bottom: 30px;
+}

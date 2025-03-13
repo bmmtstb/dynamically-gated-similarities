@@ -1,4 +1,12 @@
-"""Use the (trained) DGS module to track / predict a video input."""
+"""
+Use the (trained) DGS module to track / predict a single video input.
+
+Parameters can be changed here and in the configuration file, but most use-cases will only need to change this file.
+
+Make sure that the weights are stored in a folder called ``weights``.
+Additionally, either modify the paths or make sure the weights resemble the structure
+``./weights/trained_alpha/{dataset_name}/box_xywh_sim/box_fc1_Sigmoid/ep004_lr0_0000100000.pth``
+"""
 
 import time
 from datetime import timedelta

@@ -521,7 +521,7 @@ class PoseTrack21_BBox(BBoxDataset, PoseTrack21BaseDataset):
         return self.len
 
     def arbitrary_to_ds(self, a: dict, idx: int) -> State:
-        """Convert raw PoseTrack21 annotations to a :class:`State` object."""
+        """Convert raw PoseTrack21 annotations to a :class:`.State` object."""
         keypoints, visibility = self._get_kps_and_vis(d=a)
 
         ds = State(
@@ -626,7 +626,7 @@ class PoseTrack21_Image(ImageDataset, PoseTrack21BaseDataset):
         return self.len
 
     def arbitrary_to_ds(self, a: dict, idx: int) -> State:
-        """Convert raw PoseTrack21 annotations to a :class:`State` object."""
+        """Convert raw PoseTrack21 annotations to a :class:`.State` object."""
         img_id: int = int(a["id"])
         anno_ids: list[int] = self.map_img_id_to_anno_ids[img_id]
 
@@ -877,7 +877,7 @@ class PoseTrack21_ImageHistory(ImageHistoryDataset, PoseTrack21BaseDataset):
         return ImageHistoryDataset.__getitems__(self=self, indices=indices)
 
     def arbitrary_to_ds(self, a: list[any], idx: int) -> list[State]:
-        """Convert raw PoseTrack21 annotations to a list of :class:`State` objects."""
+        """Convert raw PoseTrack21 annotations to a list of :class:`.State` objects."""
         img_ids: list[int] = [int(a_i["id"]) for a_i in a]
         if len(img_ids) == 0:
             raise NotImplementedError(

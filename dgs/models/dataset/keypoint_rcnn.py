@@ -134,7 +134,7 @@ class KeypointRCNNBackbone(BaseDataset, nn.Module, ABC):
     @t.no_grad()
     def images_to_states(self, images: Images) -> list[State]:
         """Given a list of images, use the key-point-RCNN model to predict key points and bounding boxes,
-        then create a :class:`State` containing the available information.
+        then create a :class:`.State` containing the available information.
 
         Notes:
             Does not add the original image to the new State, to reduce memory / GPU usage.

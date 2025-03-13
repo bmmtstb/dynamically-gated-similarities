@@ -141,7 +141,7 @@ def load_MOT_file(
         InvalidPathException if the file ending is not correct.
 
     Returns:
-        A list containing one :class:`State` per image, each State containing the respective annotations of the image.
+        A list containing one :class:`.State` per image, each State containing the respective annotations of the image.
     """
     # pylint: disable=too-many-arguments,too-many-locals
 

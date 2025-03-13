@@ -131,7 +131,7 @@ class TrackStatistics:
 
 
 class Track:
-    """A Track is a single (de-)queue containing multiple :class:`.State` s, keeping the last N states.
+    """A Track is a single (de-)queue containing multiple :class:`.State`'s, keeping the last N states.
 
     Args:
         N: The max length of this track.
@@ -260,7 +260,7 @@ class Track:
         self._nof_active += 1
 
     def get_all(self) -> State:
-        """Get all the states from the Track and stack them into a single :class:`State`."""
+        """Get all the states from the Track and stack them into a single :class:`.State`."""
         if len(self) == 0:
             raise ValueError("Can not stack the items of an empty Track.")
         return collate_states(list(self._states))
@@ -537,7 +537,7 @@ class Tracks(UserDict):
         self._curr_frame += 1
 
     def get_states(self) -> tuple[list[State], list[TrackID]]:
-        """Get the last state of **every** track in this object as a :class:`State`."""
+        """Get the last state of **every** track in this object as a :class:`.State`."""
         states: list[State] = []
         tids: list[TrackID] = []
 
@@ -548,7 +548,7 @@ class Tracks(UserDict):
         return states, tids
 
     def get_active_states(self) -> list[State]:
-        """Get the last state of every **active** track in this object as a :class:`State`."""
+        """Get the last state of every **active** track in this object as a :class:`.State`."""
         states: list[State] = []
 
         for tid, track in self.data.items():
@@ -589,7 +589,7 @@ class Tracks(UserDict):
         # todo should the states of the track be removed / cleared ?
 
     def _update_track(self, tid: TrackID, add_state: State) -> None:
-        """Use the track-ID to update a track given an additional :class:`State` for the :class:`Track`.
+        """Use the track-ID to update a track given an additional :class:`.State` for the :class:`.Track`.
         Will additionally remove the tid from the inactive Tracks.
 
         Returns:

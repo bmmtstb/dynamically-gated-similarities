@@ -32,10 +32,10 @@ class DGSModule(NamedModule, nn.Module):
     ------
 
     names (list[NodePath]):
-        The names or :class:`NodePath` s of the keys within the current configuration
-        which contain all the :class:`.SimilarityModule` s used in this module.
+        The names or :class:`.NodePath`'s of the keys within the current configuration
+        which contain all the :class:`.SimilarityModule`'s used in this module.
     combine (NodePath):
-        The name or :class:`NodePath` of the key in the current configuration containing the parameters for the
+        The name or :class:`.NodePath` of the key in the current configuration containing the parameters for the
         :class:`.CombineSimilaritiesModule` used to combine the similarities.
 
     Optional Params

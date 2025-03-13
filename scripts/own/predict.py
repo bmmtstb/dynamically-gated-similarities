@@ -42,10 +42,7 @@ if __name__ == "__main__":
     print(f"cd {model.log_dir}")
     print("ffmpeg -framerate 30 -pattern_type glob -i './images/*.png' prediction.mp4")
     print("----")
-    print(
-        "Or use function 'combine_images_to_video' as commented out in 'scripts/predict.py', "
-        "but this function is way slower."
-    )
+    print("Or use function 'combine_images_to_video' as commented out in this file, but this method is way slower.")
     # vid_file = os.path.abspath(os.path.join(model.log_dir, "./prediction.mp4"))
     # combine_images_to_video(
     #     imgs=os.path.abspath(os.path.join(model.log_dir, "./images/")),

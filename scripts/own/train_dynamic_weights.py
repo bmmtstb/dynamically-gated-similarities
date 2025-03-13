@@ -1,5 +1,6 @@
 """
-Train, evaluate, and test the dynamic weights with different individual weights on the |PT21|_ and |Dance|_ datasets.
+Train, evaluate, and test the dynamic weights with different individual weight-models on the
+ |PT21|_ and |DT|_ datasets.
 """
 
 # pylint: disable=R0801
@@ -22,7 +23,7 @@ CONFIG_FILE = "./configs/DGS/train_dynamic_weights.yaml"
 
 TRAIN = True
 EVAL = True
-TEST = False
+TEST = True
 
 DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
     # DanceTrack with evaluation using the accuracy of the weights
@@ -46,6 +47,7 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
                 "visual_osn_fc5_5Sigmoid",
             ],
             "OSNetAIN_sim": [
+                # excluded because it is too similar to the regular OSNet similarities
                 # "visual_osn_fc1_Sigmoid",
                 # "visual_osn_fc3_2ReLUSigmoid",
                 "visual_osn_fc3_3Sigmoid",
@@ -97,6 +99,7 @@ DL_KEYS_TRAIN: list[tuple[str, str, dict[str, list[str]]]] = [
                 "visual_osn_fc5_5Sigmoid",
             ],
             "OSNetAIN_sim": [
+                # excluded because it is too similar to the regular OSNet similarities
                 # "visual_osn_fc1_Sigmoid",
                 # "visual_osn_fc3_2ReLUSigmoid",
                 "visual_osn_fc3_3Sigmoid",

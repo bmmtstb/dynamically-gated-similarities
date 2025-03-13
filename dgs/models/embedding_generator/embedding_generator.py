@@ -49,7 +49,7 @@ class EmbeddingGeneratorModule(NamedModule, nn.Module):
         The key to use to retrieve the embedding of the image.
         Default ``DEF_VAL.embed_gen.embedding_key``.
     save_embeddings (bool, optional):
-        Whether to save the computed embeddings in the given :class:`State`.
+        Whether to save the computed embeddings in the given :class:`.State`.
         Default ``DEF_VAL.embed_gen.save_embeddings``.
 
     """

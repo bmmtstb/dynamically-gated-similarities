@@ -94,7 +94,7 @@ class State(UserDict):
         Shape ``[B x J x h x w]``.
 
     image (:obj:`.Images`)
-        A list containing the original image(s) as :class:`tv_tensors.Image` object.
+        A list containing the original image(s) as :class:`.tv_tensors.Image` object.
 
         A list of length ``B`` containing images of shape ``[1 x C x H x W]``.
 
@@ -196,10 +196,10 @@ class State(UserDict):
     def __getitem__(self, item: any) -> any:
         """Override the getitem call.
         Use strings to get the keys of this dict.
-        Use integers or slices to extract parts of this :class:`State`.
+        Use integers or slices to extract parts of this :class:`.State`.
 
         Returns:
-            A :class:`State` if item is int or slice, and any if item is a string.
+            A :class:`.State` if item is int or slice, and any if item is a string.
         """
         if isinstance(item, str) and hasattr(self, item):
             return getattr(self, item)
@@ -816,7 +816,7 @@ class State(UserDict):
             In the case that :attr:`B` is ``0``,
             this method can still draw an empty image if an image or filepath is set.
             This works iff :attr:`validation` is ``False``.
-            The :class:`PoseTrack21_Image` dataset uses this trick to draw the images that aren't annotated.
+            The :class:`.PoseTrack21_Image` dataset uses this trick to draw the images that aren't annotated.
         """
         # make sure the full image is loaded
         img: Images = self.load_image(store=False)
@@ -939,10 +939,10 @@ EMPTY_STATE = State(bbox=tvte.BoundingBoxes(t.empty((0, 4)), canvas_size=(0, 0),
 
 def get_ds_data_getter(attribute: str) -> DataGetter:
     """Given a single name of an attribute or property,
-    return a function, that gets the respective values from a given :class:`State`.
+    return a function, that gets the respective values from a given :class:`.State`.
 
     Notes:
-        Note that the :func:`__getitem__` call of the :class:`State` will return attributes from strings if applicable.
+        Note that the :func:`__getitem__` call of the :class:`.State` will return attributes from strings if applicable.
     """
 
     def getter(s: State) -> any:
@@ -954,10 +954,10 @@ def get_ds_data_getter(attribute: str) -> DataGetter:
 
 def get_ds_data_getters(attributes: list[str]) -> DataGetters:
     """Given a list of attribute names,
-    return a function, that gets those attributes from a given :class:`State`.
+    return a function, that gets those attributes from a given :class:`.State`.
 
     Notes:
-        Note that the :func:`__getitem__` call of the :class:`State` will return attributes from strings if applicable.
+        Note that the :func:`__getitem__` call of the :class:`.State` will return attributes from strings if applicable.
     """
 
     def getter(s: State) -> tuple[any, ...]:
@@ -1092,8 +1092,8 @@ def collate_list_of_history(batch: Union[State, list[State], list[list[State]]])
     of length ``L+1``.
 
     Args:
-        batch: Either a single list with ``L+1`` :class:`States`
-            or a list containing ``N`` list, each containing ``L+1`` :class:`States`.
+        batch: Either a single list with ``L+1`` :class:`.States`
+            or a list containing ``N`` list, each containing ``L+1`` :class:`.States`.
             A single State is also supported, even though, this shouldn't really be feasible.
 
     Returns:

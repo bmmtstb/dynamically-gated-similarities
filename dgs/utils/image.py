@@ -6,7 +6,7 @@ Utility for handling images in pytorch.
 Loading, saving, manipulating of RGB-images.
 
 Within pytorch an image is a Byte-, Uint8-, or Float-Tensor with a shape of ``[C x h x w]``.
-Within torchvision an image is a tv_tensor.Image object with the same shape.
+Within torchvision an image is a :class:`tv_tensors.Image` object with the same shape.
 A Batch of torch images therefore has a shape of ``[B x C x h x w]``.
 Within pytorch and torchvision, the images have channels in order of RGB.
 The size / shape of an image is given as tuple (and sometimes list) of ints in the form of (h, w).
@@ -282,7 +282,7 @@ class CustomTransformValidator:
     def _validate_inputs(self, *args, necessary_keys: list[str] = None, **kwargs) -> tuple:
         """Validate the inputs of the forward call.
 
-        It can be specified which values have to be validated.
+        It can be specified, which values have to be validated.
 
         Args:
             args: Expects the first value of args to be a structured dict containing all the values.
@@ -295,9 +295,10 @@ class CustomTransformValidator:
             Default: A tuple containing the values for `(image, box, keypoints, mode, output_size)`.
 
         Raises:
-            TypeError:
+            TypeError: If the args are not a single dict.
             KeyError: If a key from `necessary_keys` is not in `args`.
             ValueError:
+            ValidationException: If a key is not in the validators or the validation function is not set.
         """
         if len(args) != 1 or not isinstance(args[0], dict):
             raise TypeError(f"Invalid args, expected one dict, but got {args}")
@@ -389,7 +390,6 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
 
         This transforms' default mode is zero-padding.
 
-
     The following modes are available for resizing:
 
     distort
@@ -445,12 +445,18 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
     ]
 
     H: int
+    """int: Original height of the image"""
     W: int
+    """int: Original width of the image"""
     original_aspect: float
+    """float: Original aspect ratio of the image as width / height"""
 
     h: int
+    """int: New height of the image"""
     w: int
+    """int: New width of the image"""
     target_aspect: float
+    """float: Target aspect ratio of the image as width / height"""
 
     def forward(self, *args, **kwargs) -> dict[str, any]:
         """Modify the image, bboxes and coordinates to have a given aspect ratio (shape)
@@ -459,7 +465,7 @@ class CustomToAspect(Torch_NN_Module, CustomTransformValidator):
         This function will then obtain a dictionary as first and most likely only argument.
 
         Keyword Args:
-            image: One single image as tv_tensor.Image of shape ``[B x C x H x W]``
+            image: One single image as tv_tensors.Image of shape ``[B x C x H x W]``
             box: Zero, one, or multiple bounding boxes per image.
                 With N detections and a batch size of B, the bounding boxes have a shape of ``[B*N x 4]``.
                 Also, keep in mind that bboxes has to be a two-dimensional tensor,
@@ -633,17 +639,21 @@ class CustomResize(Torch_NN_Module, CustomTransformValidator):
     """
 
     H: int
+    """int: Original height of the image"""
     W: int
+    """int: Original width of the image"""
 
     h: int
+    """int: New height of the image"""
     w: int
+    """int: New width of the image"""
 
     def forward(self, *args, **kwargs) -> dict[str, any]:
         """Resize image, bbox and key points in one go.
 
         Keyword Args:
-            image: One single image as tv_tensor.Image of shape ``[B x C x H x W]``
-            box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
+            image: One single image as tv_tensors.Image of shape ``[B x C x H x W]``
+            box: tv_tensors.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
             keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
             output_size: (h, w) as target height and width of the image
 
@@ -685,9 +695,11 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
     """
 
     h: int
+    """int: New height of the image"""
     w: int
+    """int: New width of the image"""
 
-    transform = tvt.Compose([CustomToAspect(), CustomResize()])
+    transform: tvt.Transform = tvt.Compose([CustomToAspect(), CustomResize()])
 
     def forward(self, *args, **kwargs) -> dict[str, any]:
         """Extract bounding boxes out of one or multiple images and resize the crops to the target shape.
@@ -712,10 +724,10 @@ class CustomCropResize(Torch_NN_Module, CustomTransformValidator):
         Keyword Args:
             images: A list of torchvision images either as byte or float image.
                 All images have a shape of ``[1 x C x H x W]``.
-            box: tv_tensor.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
+            box: tv_tensors.BoundingBoxes in XYWH box_format of shape ``[N x 4]``, with N detections.
             keypoints: The joint coordinates in global frame as ``[N x J x 2|3]``
             mode: The mode for resizing.
-                Similar to the modes of :class:`CustomToAspect`,
+                Similar to the modes of :class:`.CustomToAspect`,
                 except there is one additional case 'outside-crop' available.
                 'outside-crop' uses the data of the surrounding original image instead of padding the image with zeros,
                 extracting more of the image than the bounding-box.

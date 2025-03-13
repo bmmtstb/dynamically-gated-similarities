@@ -143,7 +143,7 @@ def extract_crops_and_save(
     Keyword Args:
         crop_size (ImgShape): The target shape of the image crops.
             Defaults to `DEF_VAL.images.crop_size`.
-        transform (tvt.Compose): A torchvision transform given as Compose to get the crops from the original image.
+        transform (tvt.Transform): A torchvision transform given as Compose to get the crops from the original image.
             Defaults to a cleaner version of :class:`.CustomCropResize`.
         crop_mode (str): Defines the resize mode in the transform function.
             Has to be in the modes of :class:`~dgs.utils.image.CustomToAspect`.

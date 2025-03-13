@@ -86,7 +86,7 @@ def get_loss_function(instance: Instance) -> Type[Loss]:
 
     Args:
         instance: Either the name of the loss function, which has to be in :data:``LOSS_FUNCTIONS``,
-            or a subclass of :class:``~.Loss``.
+            or a subclass of :class:`~.Loss`.
 
     Raises:
         ValueError: If the instance has the wrong type.

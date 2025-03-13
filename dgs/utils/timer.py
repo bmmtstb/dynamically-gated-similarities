@@ -71,7 +71,7 @@ class DifferenceTimer(UserList):
 
 
 class DifferenceTimers(UserDict):
-    """Object to store the information of multiple :class:`DifferenceTimer` objects."""
+    """Object to store the information of multiple :class:`.DifferenceTimer` objects."""
 
     data: dict[str, DifferenceTimer]
 

@@ -1,7 +1,7 @@
 """
 Combine multiple similarity matrices.
 Obtain similarity matrices as a result of one or multiple
-:class:``~dgs.models.similarity.similarity.SimilarityModule`` s.
+:class:`~dgs.models.similarity.similarity.SimilarityModule`'s.
 """
 
 from typing import Type

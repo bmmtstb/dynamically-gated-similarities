@@ -1,5 +1,6 @@
 """
 Given the configuration, run the DGS module on test data to predict the results.
+This is done for multiple combinations of dataloader, submission file, similarity modules, and the alpha weights.
 """
 
 import os
@@ -154,7 +155,7 @@ if __name__ == "__main__":
             data_paths = [os.path.normpath(p) for p in glob(cfg[DL_KEY]["paths"])]
         else:
             raise NotImplementedError
-        assert len(data_paths)
+        assert len(data_paths) > 0
 
         # iterate over all sub datasets
         for sub_datapath in (pbar_data := tqdm(data_paths, desc="ds_sub_dir", leave=False)):
