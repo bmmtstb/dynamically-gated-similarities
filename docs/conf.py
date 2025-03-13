@@ -44,6 +44,7 @@ extensions = [
     "sphinxcontrib.datatemplates",  # load default parameters from yaml
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.video",  # display videos in README
 ]
 
 # force the primary domain to be python

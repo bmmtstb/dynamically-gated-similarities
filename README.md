@@ -20,6 +20,12 @@ You can find a visual Pipeline on
 or downloadable as [PDF](https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Overview.pdf) (or see: ``./docs/figures/Pipeline-DGS-Overview.pdf``).
 The visual pipeline of the training module is also available as [PDF](https://github.com/bmmtstb/dynamically-gated-similarities/tree/master/docs/figures/Pipeline-DGS-Training.pdf) (or see: ``./docs/figures/Pipeline-DGS-Training.pdf``).
 
+## Examples
+
+<video src="docs/_static/pt21__val__012968_mpii_test__prediction.mp4" width="320" height="240"></video>
+
+<video src="docs/_static/dance__test__dancetrack0017__prediction.mp4" width="320" height="240"></video>
+
 ## Citing
 
 To cite this thesis, you can use the following BibTeX entry:

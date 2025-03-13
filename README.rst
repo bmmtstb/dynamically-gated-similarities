@@ -130,6 +130,15 @@ while the visual similarity (e.g. :class:`~.TorchreidVisualSimilarity` ) needs t
 | E\ :sub:`V`, E\ :sub:`P`   | Embedding size, denoted for visual or pose based shape                  |
 +----------------------------+-------------------------------------------------------------------------+
 
+Examples
+~~~~~~~~
+
+.. video:: _static/pt21__val__012968_mpii_test__prediction.mp4
+	:caption: PoseTrack21 dataset - val - 012968_mpii_test
+
+.. video:: _static/dance__test__dancetrack0017__prediction.mp4
+	:caption: DanceTrack - test - dancetrack0017
+
 
 Citing
 ~~~~~~
