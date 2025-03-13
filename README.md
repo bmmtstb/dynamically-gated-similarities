@@ -22,9 +22,9 @@ The visual pipeline of the training module is also available as [PDF](https://gi
 
 ## Examples
 
-<video src="docs/_static/pt21__val__012968_mpii_test__prediction.mp4" width="320" height="240"></video>
+<video src="./docs/_static/pt21__val__012968_mpii_test__prediction.mp4" width="320" height="240"></video>
 
-<video src="docs/_static/dance__test__dancetrack0017__prediction.mp4" width="320" height="240"></video>
+<video src="./docs/_static/dance__test__dancetrack0017__prediction.mp4" width="320" height="240"></video>
 
 ## Citing
 
