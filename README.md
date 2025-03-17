@@ -22,9 +22,16 @@ The visual pipeline of the training module is also available as [PDF](https://gi
 
 ## Examples
 
-<video src="./docs/_static/pt21__val__012968_mpii_test__prediction.mp4" width="320" height="240"></video>
+| ![pt21__val__012968_mpii_test__prediction](https://github.com/user-attachments/assets/4639d0b6-d4c4-4eeb-b792-a81a3cbfddb3) |
+|:--:|
+| pt21__val__012968_mpii_test__prediction |
 
-<video src="./docs/_static/dance__test__dancetrack0017__prediction.mp4" width="320" height="240"></video>
+| ![dance__test__dancetrack0017__prediction](https://github.com/user-attachments/assets/164d3eb5-f779-416d-adbd-64f2bfb02816) |
+|:--:|
+| dance__test__dancetrack0017__prediction |
+
+
+
 
 ## Citing
 
