@@ -1,0 +1,39 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: dynamically-gated-similarities
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Martin
+    family-names: Steinborn
+    email: bmmartint.stb+cffinit@gmail.com
+    orcid: 'https://orcid.org/0009-0000-5694-6231'
+identifiers:
+  - type: doi
+    value: 10.26083/tuprints-00029468
+    description: Master Thesis
+repository-code: 'https://github.com/bmmtstb/dynamically-gated-similarities'
+url: 'https://bmmtstb.github.io/dynamically-gated-similarities/'
+abstract: >-
+  This is the code for the Thesis “Multi-Person Pose
+  Tracking using Dynamically Gated Similarities”.
+
+
+  We proposed a new model that uses dynamically learned
+  weights to combine the pose, appearance, and or other
+  information. The so-called Dynamically-Gated Similarities
+  (DGS) model is highly modular and customizable. Weights
+  can be used and trained mostly dataset independent.
+  Additionally, the weights are computed individually for
+  every detection, allowing the model to adapt more freely
+  to the current situation.
+keywords:
+  - human pose tracking
+  - tracking
+license: MIT
+commit: d04eb1b
+version: ' v0.3.0'
