@@ -38,16 +38,18 @@ The visual pipeline of the training module is also available as [PDF](https://gi
 To cite this thesis, you can use the following BibTeX entry:
 
 ```bibtex
-@mastersthesis{steinborn2025dgs,
-          author = {Martin Steinborn},
-        language = {en},
-            year = {2025},
-           month = {Februar},
-         address = {Darmstadt},
-          school = {Technische Universit{\"a}t Darmstadt},
+@mastersthesis{tuprints29468,
            title = {Multi-Person Pose Tracking Using Dynamically Gated Similarities},
-        keywords = {tracking,pose-tracking,mppt},
+          author = {Martin Steinborn},
+          school = {Technische Universit{\"a}t Darmstadt},
+        language = {en},
+         address = {Darmstadt},
+            year = {2025},
+           pages = {VII, 56 Seiten},
+           month = {M{\"a}rz},
              url = {http://tuprints.ulb.tu-darmstadt.de/29468/},
+             doi = {https://doi.org/10.26083/tuprints-00029468},
+        keywords = {tracking, pose-tracking, mppt}
 }
 ```
 
