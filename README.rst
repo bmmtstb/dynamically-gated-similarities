@@ -133,11 +133,9 @@ while the visual similarity (e.g. :class:`~.TorchreidVisualSimilarity` ) needs t
 Examples
 ~~~~~~~~
 
-.. video:: _static/pt21__val__012968_mpii_test__prediction.mp4
-	:caption: PoseTrack21 dataset - val - 012968_mpii_test
+.. image:: https://github.com/user-attachments/assets/4639d0b6-d4c4-4eeb-b792-a81a3cbfddb3
 
-.. video:: _static/dance__test__dancetrack0017__prediction.mp4
-	:caption: DanceTrack - test - dancetrack0017
+.. image:: https://github.com/user-attachments/assets/164d3eb5-f779-416d-adbd-64f2bfb02816
 
 
 Citing

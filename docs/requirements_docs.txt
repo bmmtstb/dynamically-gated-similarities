@@ -7,7 +7,6 @@ numpy==1.*
 scipy==1.14.*
 sphinx
 sphinxcontrib.datatemplates
-sphinxcontrib-video
 tensorboard
 tqdm
 
