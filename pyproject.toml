@@ -1,6 +1,6 @@
 [project]
 name = "dynamically_gated_similarities"
-version = "0.2.1"
+version = "0.3.1"
 authors = [
     { name = "Martin Steinborn", email = "martin.steinborn@stud.tu-darmstadt.de" },
 ]
