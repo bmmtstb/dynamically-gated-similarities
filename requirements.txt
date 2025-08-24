@@ -9,9 +9,9 @@
 
 # --extra-index-url https://download.pytorch.org/whl/cpu
 --extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.3.*
-torchvision==0.18.*
-torchaudio==2.3.*
+torch==2.8.*
+torchvision==0.23.*
+torchaudio==2.8.*
 
 # ######################## #
 # regular pip dependencies #
